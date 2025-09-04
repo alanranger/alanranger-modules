@@ -1,0 +1,8 @@
+{
+  "name": "alanranger-academy-assessment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs module-01"
+  }
+}

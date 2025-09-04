@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{MODULE_TITLE}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  {{STYLES}}
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script>
+    // Embedded module definition
+    const MODULE = {{MODULE_JSON}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  {{SCRIPT}}
+  </script>
+</body>
+</html>
