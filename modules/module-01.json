@@ -1,0 +1,60 @@
+{
+  "moduleId": "module-01-exposure",
+  "title": "Module 1: What is Exposure",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"
+  },
+  "questions": [
+    {
+      "question": "What is exposure in photography?",
+      "options": [
+        "The amount of light that reaches the camera sensor",
+        "The time it takes to take a photo",
+        "The distance between the camera and subject",
+        "The type of lens used"
+      ],
+      "correct": 0
+    },
+    {
+      "question": "Which three elements control exposure?",
+      "options": [
+        "ISO, Shutter Speed, and Aperture",
+        "Focus, Zoom, and Flash",
+        "White Balance, Contrast, and Saturation",
+        "Resolution, Format, and Compression"
+      ],
+      "correct": 0
+    },
+    {
+      "question": "What happens when you increase the ISO setting?",
+      "options": [
+        "The image becomes more sensitive to light but may have more noise",
+        "The image becomes less sensitive to light",
+        "The image becomes sharper",
+        "The image becomes more colorful"
+      ],
+      "correct": 0
+    },
+    {
+      "question": "A faster shutter speed will:",
+      "options": [
+        "Freeze motion and let in less light",
+        "Blur motion and let in more light",
+        "Increase depth of field",
+        "Decrease image quality"
+      ],
+      "correct": 0
+    },
+    {
+      "question": "What does a larger aperture (smaller f-number) do?",
+      "options": [
+        "Lets in more light and creates a shallower depth of field",
+        "Lets in less light and creates a deeper depth of field",
+        "Makes the image sharper",
+        "Reduces camera shake"
+      ],
+      "correct": 0
+    }
+  ]
+}
