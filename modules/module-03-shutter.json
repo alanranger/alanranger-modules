@@ -67,14 +67,14 @@
       "correct": 2
     },
     {
-      "question": "Which shutter speed is best suited for capturing a sharp image of a person running?",
+      "question": "Which shutter speed is best suited for capturing a sharp image of a person running at moderate speed?",
       "options": [
         "1/60",
         "1/125",
-        "1/250",
-        "1/500"
+        "1/30",
+        "1/15"
       ],
-      "correct": 3
+      "correct": 1
     },
     {
       "question": "What is the effect of using a shutter speed slower than 1/60 without a tripod?",
