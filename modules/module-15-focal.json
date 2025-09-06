@@ -1,0 +1,181 @@
+{
+  "moduleId": "module-15-focal",
+  "title": "Focal Length",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What is focal length?",
+      "options": [
+        "The distance from your subject to the camera",
+        "The distance (at infinity focus) from the lens's optical center to the sensor",
+        "The size of the camera sensor",
+        "The diameter of the lens mount"
+      ],
+      "correct": 1,
+      "reviewHint": "Focal length is a property of the lens, defined at infinity focus."
+    },
+    {
+      "question": "As focal length increases, your field of view…",
+      "options": [
+        "Gets wider",
+        "Gets narrower (tighter framing)",
+        "Stays the same",
+        "Only changes on crop-sensor cameras"
+      ],
+      "correct": 1,
+      "reviewHint": "Longer focal length = narrower FOV."
+    },
+    {
+      "question": "You stand in the same spot and switch from 35 mm to 70 mm. What changes?",
+      "options": [
+        "Perspective changes a lot",
+        "Framing gets tighter (subject looks bigger); perspective doesn't change because you didn't move",
+        "Depth of field becomes identical to 35 mm",
+        "The lens becomes \"faster\""
+      ],
+      "correct": 1,
+      "reviewHint": "Perspective depends on camera position, not focal length."
+    },
+    {
+      "question": "What primarily controls perspective (how near/far objects appear relative to each other)?",
+      "options": [
+        "Focal length",
+        "Aperture",
+        "Camera-to-subject distance (where you stand)",
+        "ISO"
+      ],
+      "correct": 2,
+      "reviewHint": "Move your feet → change perspective."
+    },
+    {
+      "question": "Hand-holding rule of thumb on full frame: with a 100 mm lens, use at least…",
+      "options": [
+        "1/40 s",
+        "1/100 s",
+        "1/250 s",
+        "1/1000 s"
+      ],
+      "correct": 1,
+      "reviewHint": "Safe shutter ≈ 1 / focal length (full frame)."
+    },
+    {
+      "question": "On a 1.5× crop camera with a 100 mm lens, a safe hand-held shutter is about…",
+      "options": [
+        "1/60 s",
+        "1/100 s",
+        "1/160 s",
+        "1/320 s"
+      ],
+      "correct": 2,
+      "reviewHint": "Add crop factor: 1 / (focal × crop) → ≈ 1/160 s."
+    },
+    {
+      "question": "Which focal lengths are typically wide-angle on full frame?",
+      "options": [
+        "14–24 mm",
+        "50 mm",
+        "85 mm",
+        "200 mm"
+      ],
+      "correct": 0,
+      "reviewHint": "<35 mm on full frame is wide."
+    },
+    {
+      "question": "A popular portrait focal length on full frame (flattering perspective, comfortable working distance) is:",
+      "options": [
+        "24 mm",
+        "35 mm",
+        "85 mm",
+        "200 mm"
+      ],
+      "correct": 2,
+      "reviewHint": "85 mm is a classic head-and-shoulders choice."
+    },
+    {
+      "question": "Which is true about zoom vs prime lenses?",
+      "options": [
+        "A prime has variable focal length; zoom is fixed",
+        "A prime has a fixed focal length (often smaller, faster); a zoom covers a range",
+        "Primes can't be sharp",
+        "Zooms always have wider maximum apertures"
+      ],
+      "correct": 1,
+      "reviewHint": "Primes = fixed FL, often wider max aperture; zooms = flexible framing."
+    },
+    {
+      "question": "Does focal length itself create \"background compression\"?",
+      "options": [
+        "Yes, longer focal length compresses regardless of distance",
+        "No—\"compression\" mainly comes from standing farther away; longer FLs are often used because you step back",
+        "Only aperture creates compression",
+        "Only sensor size creates compression"
+      ],
+      "correct": 1,
+      "reviewHint": "Compression look = greater camera distance (perspective), not FL alone."
+    },
+    {
+      "question": "Your lens won't focus on a very close subject at 200 mm. Most likely you're…",
+      "options": [
+        "At the wrong ISO",
+        "Inside the lens's minimum focus distance—step back or use macro gear",
+        "Exceeding the shutter rule",
+        "Using too small an aperture"
+      ],
+      "correct": 1,
+      "reviewHint": "Every lens has a minimum focus distance (MFD)."
+    },
+    {
+      "question": "Without moving the camera and at the same f-number, increasing focal length generally makes the background look…",
+      "options": [
+        "Sharper",
+        "More blurred (stronger background blur)",
+        "Unchanged",
+        "More distorted"
+      ],
+      "correct": 1,
+      "reviewHint": "Longer FL at same position & f-number → greater subject magnification → more blur."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"what-is-focal-length","label":"What focal length means"},
+      {"key":"field-of-view","label":"Field of view vs focal length"},
+      {"key":"perspective","label":"Perspective = camera position"},
+      {"key":"shutter-speed-rule","label":"Hand-held shutter speed rule"},
+      {"key":"crop-factor","label":"Crop factor and its impact"},
+      {"key":"wide-angle","label":"Wide-angle choices"},
+      {"key":"portrait-focal-lengths","label":"Portrait-friendly focal lengths"},
+      {"key":"zoom-vs-prime","label":"Zoom vs prime basics"},
+      {"key":"depth-of-field","label":"Depth of field interactions"},
+      {"key":"minimum-focus-distance","label":"Minimum focus distance (MFD)"},
+      {"key":"background-blur","label":"Background blur & subject magnification"}
+    ],
+    "questionTopics": {
+      "q1":["what-is-focal-length"],
+      "q2":["field-of-view"],
+      "q3":["perspective","field-of-view"],
+      "q4":["perspective"],
+      "q5":["shutter-speed-rule"],
+      "q6":["shutter-speed-rule","crop-factor"],
+      "q7":["field-of-view","wide-angle"],
+      "q8":["portrait-focal-lengths"],
+      "q9":["zoom-vs-prime"],
+      "q10":["perspective"],
+      "q11":["minimum-focus-distance"],
+      "q12":["background-blur","depth-of-field"]
+    },
+    "topicLinks": {
+      "what-is-focal-length": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#what-is-focal-length",
+      "field-of-view": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#field-of-view",
+      "perspective": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#perspective",
+      "shutter-speed-rule": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#shutter-speed-rule",
+      "crop-factor": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#crop-factor",
+      "wide-angle": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#wide-angle",
+      "portrait-focal-lengths": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#portrait-focal-lengths",
+      "zoom-vs-prime": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#zoom-vs-prime",
+      "depth-of-field": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#depth-of-field",
+      "minimum-focus-distance": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#minimum-focus-distance",
+      "background-blur": "https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#background-blur"
+    }
+  }
+}
