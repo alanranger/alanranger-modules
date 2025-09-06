@@ -1,0 +1,155 @@
+{
+  "moduleId": "module-14-sensors",
+  "title": "Full Frame vs Crop Sensor",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What's the basic difference between full frame and crop sensor cameras?",
+      "options": [
+        "Full frame uses film; crop uses digital",
+        "Full frame has a larger sensor; crop sensor is smaller (e.g., APS-C)",
+        "Crop sensors have more megapixels",
+        "Full frame changes a lens's focal length"
+      ],
+      "correct": 1,
+      "reviewHint": "Sensor size differs → affects field of view, noise, and depth of field."
+    },
+    {
+      "question": "A 50 mm lens on a 1.5× crop camera gives a field of view similar to which lens on full frame?",
+      "options": [
+        "35 mm",
+        "50 mm",
+        "75 mm",
+        "85 mm"
+      ],
+      "correct": 2,
+      "reviewHint": "\"Equivalent focal length\" = lens × crop factor (50 × 1.5 = 75)."
+    },
+    {
+      "question": "You frame the same head-and-shoulders portrait at f/2.8 on both cameras (adjusting distance/focal length to match framing). Which gives shallower depth of field?",
+      "options": [
+        "Full frame",
+        "Crop sensor",
+        "They're identical",
+        "Depends only on the lens brand"
+      ],
+      "correct": 0,
+      "reviewHint": "For same framing & f-number, full frame tends to have shallower DOF."
+    },
+    {
+      "question": "In low light at higher ISOs, which typically shows less noise (cleaner images), all else equal?",
+      "options": [
+        "Full frame",
+        "Crop sensor",
+        "Both the same",
+        "Depends only on shutter speed"
+      ],
+      "correct": 0,
+      "reviewHint": "Larger sensors usually have better high-ISO performance."
+    },
+    {
+      "question": "For wildlife/sports, which body gives a feeling of extra \"reach\" with the same 300 mm lens (tighter framing without cropping later)?",
+      "options": [
+        "Full frame",
+        "Crop sensor",
+        "Both the same",
+        "Depends on stabilization"
+      ],
+      "correct": 1,
+      "reviewHint": "Crop factor narrows FOV → subjects look closer."
+    },
+    {
+      "question": "Which makes it easier to go ultra-wide with the same focal length lens?",
+      "options": [
+        "Full frame",
+        "Crop sensor",
+        "Both the same",
+        "Depends only on aperture"
+      ],
+      "correct": 0,
+      "reviewHint": "Crop factor trims the wide end; full frame keeps it wider."
+    },
+    {
+      "question": "About mounting crop-only lenses (e.g., EF-S/DX) on full-frame bodies:",
+      "options": [
+        "Always works perfectly",
+        "Often not mountable or causes heavy vignetting—use full-frame lenses on full-frame bodies",
+        "Improves image quality",
+        "Increases focal length"
+      ],
+      "correct": 1,
+      "reviewHint": "Use FF lenses for FF bodies; crop-only lenses are not designed for FF coverage."
+    },
+    {
+      "question": "Cost & size comparison (same generation/quality level):",
+      "options": [
+        "Crop bodies/lenses are usually larger and pricier",
+        "Full-frame bodies/lenses are generally bigger, heavier, and more expensive",
+        "Both systems cost the same",
+        "Only lenses differ, not bodies"
+      ],
+      "correct": 1,
+      "reviewHint": "Full-frame systems often mean bigger/ heavier gear and higher cost."
+    },
+    {
+      "question": "Does a crop sensor change a lens's actual focal length?",
+      "options": [
+        "Yes, it multiplies the lens's focal length",
+        "No—focal length stays the same; the sensor just captures a narrower field of view",
+        "Only at high ISO",
+        "Only in video mode"
+      ],
+      "correct": 1,
+      "reviewHint": "Crop factor affects field of view, not actual focal length."
+    },
+    {
+      "question": "Two cameras are both 24 MP (one full frame, one APS-C). Which typically has larger pixels and can show less noise at the same ISO?",
+      "options": [
+        "Full frame",
+        "Crop sensor",
+        "They must be identical",
+        "Depends only on brand"
+      ],
+      "correct": 0,
+      "reviewHint": "Same MP on larger sensor → bigger pixel pitch, often cleaner at high ISO."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"sensor-size-basics","label":"Sensor size: full frame vs crop"},
+      {"key":"crop-factor","label":"Crop factor explained"},
+      {"key":"field-of-view","label":"Field of view & equivalence"},
+      {"key":"depth-of-field","label":"Depth of field differences"},
+      {"key":"low-light-noise","label":"Low-light & noise performance"},
+      {"key":"wide-angle","label":"Getting true wide angle"},
+      {"key":"telephoto-advantage","label":"\"Reach\"/telephoto advantage"},
+      {"key":"lens-compatibility","label":"Lens compatibility & coverage"},
+      {"key":"cost-size","label":"Cost, size & weight"},
+      {"key":"resolution-and-pixel-pitch","label":"Resolution vs pixel size"}
+    ],
+    "questionTopics": {
+      "q1":["sensor-size-basics"],
+      "q2":["crop-factor","field-of-view"],
+      "q3":["depth-of-field"],
+      "q4":["low-light-noise"],
+      "q5":["telephoto-advantage","field-of-view"],
+      "q6":["wide-angle","field-of-view"],
+      "q7":["lens-compatibility"],
+      "q8":["cost-size"],
+      "q9":["field-of-view","crop-factor"],
+      "q10":["resolution-and-pixel-pitch","low-light-noise"]
+    },
+    "topicLinks": {
+      "sensor-size-basics": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#sensor-size-basics",
+      "crop-factor": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#crop-factor",
+      "field-of-view": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#field-of-view",
+      "depth-of-field": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#depth-of-field",
+      "low-light-noise": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#low-light-noise",
+      "wide-angle": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#wide-angle",
+      "telephoto-advantage": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#telephoto-advantage",
+      "lens-compatibility": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#lens-compatibility",
+      "cost-size": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#cost-size",
+      "resolution-and-pixel-pitch": "https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor#resolution-and-pixel-pitch"
+    }
+  }
+}
