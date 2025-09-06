@@ -1,0 +1,130 @@
+{
+  "moduleId": "module-03-shutter",
+  "title": "Module 3: Shutter Speed",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-shutter-speed"
+  },
+  "questions": [
+    {
+      "question": "What is the primary function of shutter speed?",
+      "options": [
+        "Control the amount of light entering the lens",
+        "Adjust the camera's ISO setting",
+        "Determine the duration the sensor is exposed to light",
+        "Change the focal length of the lens"
+      ],
+      "correct": 2
+    },
+    {
+      "question": "Which shutter speed is most likely to freeze fast motion?",
+      "options": [
+        "1/60",
+        "1/250",
+        "1/500",
+        "1/1000"
+      ],
+      "correct": 3
+    },
+    {
+      "question": "What effect does a slow shutter speed have on a moving subject?",
+      "options": [
+        "Freezes the motion",
+        "Blurs the motion",
+        "Darkens the image",
+        "Increases depth of field"
+      ],
+      "correct": 1
+    },
+    {
+      "question": "Which shutter speed takes the longest duration to collect light?",
+      "options": [
+        "1/1000",
+        "1/250",
+        "1/60",
+        "1/2"
+      ],
+      "correct": 3
+    },
+    {
+      "question": "At what shutter speed is it generally recommended to use a tripod to avoid camera shake?",
+      "options": [
+        "1/500",
+        "1/250",
+        "1/60",
+        "1/30"
+      ],
+      "correct": 3
+    },
+    {
+      "question": "In which camera mode does the photographer set the shutter speed while the camera selects the appropriate aperture?",
+      "options": [
+        "Manual (M)",
+        "Aperture Priority (Av)",
+        "Shutter Priority (Tv)",
+        "Program (P)"
+      ],
+      "correct": 2
+    },
+    {
+      "question": "Which shutter speed is best suited for capturing a sharp image of a person running?",
+      "options": [
+        "1/60",
+        "1/125",
+        "1/250",
+        "1/500"
+      ],
+      "correct": 3
+    },
+    {
+      "question": "What is the effect of using a shutter speed slower than 1/60 without a tripod?",
+      "options": [
+        "Increased depth of field",
+        "Overexposed image",
+        "Camera shake leading to a blurry image",
+        "Underexposed image"
+      ],
+      "correct": 2
+    },
+    {
+      "question": "Which shutter speed takes the shortest duration to collect light?",
+      "options": [
+        "1/1000",
+        "1/500",
+        "1/250",
+        "1/60"
+      ],
+      "correct": 0
+    },
+    {
+      "question": "What is the term for the technique of using a slow shutter speed to capture light trails from moving vehicles at night?",
+      "options": [
+        "Panning",
+        "Light painting",
+        "Long exposure",
+        "Time-lapse"
+      ],
+      "correct": 2
+    },
+    {
+      "question": "What is the minimum shutter speed typically recommended for handheld photography to avoid camera shake?",
+      "options": [
+        "1/1000",
+        "1/250",
+        "1/60",
+        "1/15"
+      ],
+      "correct": 2
+    },
+    {
+      "question": "What happens to the exposure when you decrease the shutter speed from 1/500 to 1/250, with no changes to aperture and ISO?",
+      "options": [
+        "The image becomes darker",
+        "The image becomes brighter",
+        "No change in exposure",
+        "The depth of field increases"
+      ],
+      "correct": 1
+    }
+  ]
+}
