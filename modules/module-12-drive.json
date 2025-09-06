@@ -1,0 +1,125 @@
+{
+  "moduleId": "module-12-drive",
+  "title": "Camera Drive Modes",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What does the camera's drive mode control?",
+      "options": [
+        "How bright the picture is (exposure)",
+        "How the camera takes shots when you press the shutter (single, burst, timer, etc.)",
+        "How fast autofocus works",
+        "ISO behaviour"
+      ],
+      "correct": 1,
+      "reviewHint": "Drive mode = single, continuous/burst, self-timer, remote, etc."
+    },
+    {
+      "question": "You're photographing fast sports and want multiple frames to catch the peak action. Which drive mode?",
+      "options": [
+        "Single shot",
+        "Self-timer 10s",
+        "Continuous High (burst)",
+        "Quiet shutter"
+      ],
+      "correct": 2,
+      "reviewHint": "Burst fires many frames quickly—great for action."
+    },
+    {
+      "question": "You're on a tripod shooting a slow shutter landscape and want to avoid camera shake when you press the button. Easy option?",
+      "options": [
+        "Continuous High",
+        "Self-timer 2 seconds (or \"shutter delay\")",
+        "Single shot",
+        "Scene mode"
+      ],
+      "correct": 1,
+      "reviewHint": "A 2s timer lets vibrations settle before the exposure."
+    },
+    {
+      "question": "You're taking a group photo and need time to step into the frame. Which drive mode?",
+      "options": [
+        "Single shot",
+        "Self-timer 10 seconds",
+        "Continuous Low",
+        "Bracketing"
+      ],
+      "correct": 1,
+      "reviewHint": "10s timer gives you time to get in place."
+    },
+    {
+      "question": "A common trade-off when using continuous/burst shooting is:",
+      "options": [
+        "The lens stops focusing",
+        "The camera's buffer fills, then shooting slows",
+        "ISO changes by itself",
+        "Metering turns off"
+      ],
+      "correct": 1,
+      "reviewHint": "Long bursts can fill the buffer → the camera slows while writing."
+    },
+    {
+      "question": "You want the camera to take 3 different exposures in one press (e.g., for HDR later). What feature should you use?",
+      "options": [
+        "Continuous High only",
+        "Auto Exposure Bracketing (AEB/BKT)",
+        "Self-timer 2s only",
+        "Silent shutter only"
+      ],
+      "correct": 1,
+      "reviewHint": "Enable AEB/BKT; many cameras shoot the set in burst or timer."
+    },
+    {
+      "question": "Silent/quiet (electronic) shutter drive is great when you must be discreet. What's a possible downside?",
+      "options": [
+        "It reduces image resolution",
+        "Can cause banding under some artificial lights or distort fast motion",
+        "It turns off stabilization",
+        "Colors become inaccurate"
+      ],
+      "correct": 1,
+      "reviewHint": "Electronic shutters may show banding/rolling-shutter artifacts."
+    },
+    {
+      "question": "You're photographing kids' portraits and want a few frames per moment without flooding the card or buffer. Best choice?",
+      "options": [
+        "Single shot only",
+        "Continuous Low (short bursts)",
+        "Self-timer 10s",
+        "Bracketing"
+      ],
+      "correct": 1,
+      "reviewHint": "Low-speed burst = several frames, easy on buffer, great for expressions."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"drive-basics","label":"Drive mode basics"},
+      {"key":"burst","label":"Continuous/burst shooting"},
+      {"key":"self-timer","label":"Self-timer / shutter delay"},
+      {"key":"bracketing","label":"Auto Exposure Bracketing (AEB/BKT)"},
+      {"key":"silent","label":"Silent/quiet electronic shutter"},
+      {"key":"buffer","label":"Buffer & card write limits"},
+      {"key":"choosing-mode","label":"Choosing the right mode"}
+    ],
+    "questionTopics": {
+      "q1":["drive-basics","choosing-mode"],
+      "q2":["burst","choosing-mode"],
+      "q3":["self-timer","choosing-mode"],
+      "q4":["self-timer","choosing-mode"],
+      "q5":["buffer","burst"],
+      "q6":["bracketing"],
+      "q7":["silent"],
+      "q8":["burst","choosing-mode"]
+    },
+    "topicLinks": {
+      "drive-basics": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#drive-basics",
+      "burst": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#continuous-burst",
+      "self-timer": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#self-timer",
+      "bracketing": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#bracketing",
+      "silent": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#silent",
+      "buffer": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#buffer",
+      "choosing-mode": "https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#which-to-use"
+    }
+  }
+}
