@@ -1,13 +1,9 @@
 {
   "moduleId": "module-04-iso",
-  "title": "Module 4: ISO",
+  "title": "ISO",
   "passMark": 80,
-  "links": {
-    "article": "https://www.alanranger.com/blog-on-photography/what-is-iso"
-  },
   "questions": [
     {
-      "id": "q1",
       "question": "What does ISO actually control in a digital camera?",
       "options": [
         "The physical sensitivity of the sensor",
@@ -16,34 +12,20 @@
         "The color temperature of the image"
       ],
       "correct": 2,
-      "reviewHint": "ISO boosts (amplifies) the sensor signal; it doesn't change the lens or sensor physics."
+      "reviewHint": "ISO = signal gain, not lens light or white balance."
     },
     {
-      "id": "q2",
-      "question": "Which sequence shows full-stop ISO steps?",
+      "question": "Going from ISO 100 → ISO 400 equals…",
       "options": [
-        "80 → 100 → 125 → 160",
-        "64 → 80 → 100 → 125",
-        "100 → 160 → 250 → 400",
-        "100 → 200 → 400 → 800"
+        "Half a stop",
+        "One stop",
+        "Two stops",
+        "Four stops"
       ],
-      "correct": 3,
-      "reviewHint": "Each step doubles ISO: 100→200→400→800."
+      "correct": 2,
+      "reviewHint": "Each doubling = +1 stop (100→200→400 = +2 stops)."
     },
     {
-      "id": "q3",
-      "question": "You go from ISO 200 to 400, keep aperture at f/8, and started at 1/125s. Which shutter keeps the same exposure?",
-      "options": [
-        "1/60s",
-        "1/250s",
-        "1/125s",
-        "1/30s"
-      ],
-      "correct": 1,
-      "reviewHint": "Doubling ISO requires halving shutter time to keep exposure constant."
-    },
-    {
-      "id": "q4",
       "question": "As ISO increases (all else equal), which artifact increases most?",
       "options": [
         "Motion blur",
@@ -52,10 +34,20 @@
         "Perspective distortion"
       ],
       "correct": 2,
-      "reviewHint": "Higher ISO adds noise."
+      "reviewHint": "Higher ISO → more visible noise, especially in shadows."
     },
     {
-      "id": "q5",
+      "question": "Best everyday practice with ISO is to…",
+      "options": [
+        "Always shoot base ISO, even if motion blurs",
+        "Use the lowest ISO that still gives the shutter/aperture you need",
+        "Always use Auto ISO",
+        "Use maximum ISO and denoise later"
+      ],
+      "correct": 1,
+      "reviewHint": "Balance clean image vs. needed shutter/aperture."
+    },
+    {
       "question": "Which is most likely a camera's base/native ISO?",
       "options": [
         "3200",
@@ -64,59 +56,54 @@
         "12,800"
       ],
       "correct": 2,
-      "reviewHint": "Most modern cameras have base ISO around 100 (some 64)."
+      "reviewHint": "Many cameras have base ISO ≈ 100 (some ≈ 64 or 200)."
     },
     {
-      "id": "q6",
-      "question": "You're at 1/60s, f/4, ISO 100. To freeze action at 1/250s (two stops faster) while keeping f/4, what ISO gives the same exposure?",
+      "question": "Indoors at 1/30s, f/2.8, ISO 100, your subject is blurry from motion. Quickest fix (same mode) is to…",
       "options": [
-        "ISO 200",
-        "ISO 400",
-        "ISO 800",
-        "ISO 1600"
+        "Raise ISO",
+        "Stop down to f/5.6",
+        "Lower ISO",
+        "Turn off stabilization"
       ],
-      "correct": 1,
-      "reviewHint": "1/60→1/125→1/250 is two stops; raise ISO 100→200→400."
+      "correct": 0,
+      "reviewHint": "Higher ISO lets you use a faster shutter to freeze motion."
     },
     {
-      "id": "q7",
-      "question": "In Aperture Priority with Auto ISO (min shutter 1/250s, max ISO not yet reached), what does the camera change first as light drops?",
+      "question": "In Aperture Priority with Auto ISO and a minimum shutter set, as light drops (and max ISO isn't reached) the camera will…",
       "options": [
-        "It opens the aperture",
-        "It slows below the min shutter",
-        "It raises ISO",
-        "It applies exposure compensation"
+        "Open the aperture further",
+        "Go below your min shutter",
+        "Raise ISO",
+        "Apply exposure compensation"
       ],
       "correct": 2,
-      "reviewHint": "Auto ISO increases ISO to maintain the min shutter until limits are hit."
+      "reviewHint": "Auto ISO tries to hold your min shutter by increasing ISO."
     },
     {
-      "id": "q8",
-      "question": "Which statement about ISO and dynamic range is most accurate?",
+      "question": "Does ISO change depth of field or perspective?",
       "options": [
-        "Higher ISO increases highlight headroom",
-        "Higher ISO generally reduces dynamic range",
-        "ISO doesn't affect dynamic range",
-        "Lower ISO always increases shadow noise"
+        "Yes, higher ISO gives shallower depth of field",
+        "No—ISO doesn't change DoF or perspective",
+        "Yes, higher ISO compresses perspective",
+        "Yes, lower ISO increases background blur"
       ],
       "correct": 1,
-      "reviewHint": "Raising ISO usually lowers DR, especially in highlights."
+      "reviewHint": "ISO only affects signal gain/brightness, not optics."
     },
     {
-      "id": "q9",
-      "question": "On an ISO-invariant camera, which approach best preserves highlights while yielding similar noise?",
+      "question": "Your photo at ISO 6400 looks noisy. Next time, what helps reduce noise most?",
       "options": [
-        "Raise ISO in-camera instead of pushing in post",
-        "Shoot at lower ISO to protect highlights, then brighten in post",
-        "Always use the highest ISO",
-        "Use Auto ISO with +2 EV compensation"
+        "Use a lower ISO with a longer shutter (tripod/brace)",
+        "Use a smaller aperture (higher f-number)",
+        "Increase ISO further and denoise later",
+        "Switch to JPEG"
       ],
-      "correct": 1,
-      "reviewHint": "With ISO-invariant sensors, pushing in post is similar in noise while protecting highlights."
+      "correct": 0,
+      "reviewHint": "Lower ISO generally = cleaner file (if you can stabilize)."
     },
     {
-      "id": "q10",
-      "question": "With manual flash power fixed, increasing ISO from 400 to 800 will:",
+      "question": "With manual flash power fixed, increasing ISO from 200 → 400 will…",
       "options": [
         "Brighten ambient but not flash exposure",
         "Brighten both ambient and flash-lit areas by one stop",
@@ -124,31 +111,73 @@
         "Reduce the effective flash power"
       ],
       "correct": 1,
-      "reviewHint": "ISO raises sensitivity to all light sources; both brighten one stop."
+      "reviewHint": "ISO boosts all recorded light, including flash."
     },
     {
-      "id": "q11",
-      "question": "Which is the best practice to minimize high-ISO noise?",
+      "question": "Which statement about Auto ISO is accurate?",
       "options": [
-        "Always shoot base ISO, even if motion blurs",
-        "Use the lowest ISO that still gives the shutter speed/aperture you need",
-        "Always use Auto ISO",
-        "Use maximum ISO and denoise later"
+        "It changes aperture automatically",
+        "It adjusts ISO (within limits) to maintain exposure/min shutter",
+        "It turns off the light meter",
+        "It locks ISO to base"
       ],
       "correct": 1,
-      "reviewHint": "Balance noise with required shutter/aperture."
+      "reviewHint": "Auto ISO raises/lowers ISO automatically within your limits."
     },
     {
-      "id": "q12",
-      "question": "Start at 1/50s, f/2.8, ISO 100. You change to ISO 400 (↑2 stops) and f/5.6 (↓2 stops). To keep the same exposure, which shutter speed?",
+      "question": "Start at 1/60s, f/4, ISO 100. You change to ISO 400 (+2 stops). To keep the same exposure, which shutter?",
       "options": [
-        "1/12s",
-        "1/25s",
-        "1/50s",
-        "1/200s"
+        "1/15s",
+        "1/30s",
+        "1/60s",
+        "1/250s"
       ],
-      "correct": 2,
-      "reviewHint": "+2 ISO and −2 aperture cancel; shutter stays the same."
+      "correct": 3,
+      "reviewHint": "+2 stops ISO → make shutter 2 stops faster (1/60 → 1/125 → 1/250)."
     }
-  ]
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"iso-basics","label":"ISO basics"},
+      {"key":"stops-doubling","label":"Stops and doubling ISO"},
+      {"key":"noise-impact","label":"Noise and ISO"},
+      {"key":"practical-choice","label":"Choosing ISO in practice"},
+      {"key":"base-iso","label":"Base/Native ISO"},
+      {"key":"freezing-action-iso","label":"Using ISO to freeze motion"},
+      {"key":"auto-iso-min-shutter","label":"Auto ISO & minimum shutter"},
+      {"key":"iso-and-dof","label":"What ISO does NOT change"},
+      {"key":"reduce-noise","label":"Ways to reduce noise"},
+      {"key":"flash-and-iso","label":"Flash exposure & ISO"},
+      {"key":"auto-iso-overview","label":"Auto ISO overview"},
+      {"key":"exposure-equivalence","label":"Exposure equivalence (trade-offs)"}
+    ],
+    "questionTopics": {
+      "q1":["iso-basics"],
+      "q2":["stops-doubling"],
+      "q3":["noise-impact"],
+      "q4":["practical-choice"],
+      "q5":["base-iso"],
+      "q6":["freezing-action-iso"],
+      "q7":["auto-iso-min-shutter"],
+      "q8":["iso-and-dof"],
+      "q9":["reduce-noise"],
+      "q10":["flash-and-iso"],
+      "q11":["auto-iso-overview"],
+      "q12":["exposure-equivalence"]
+    },
+    "topicLinks": {
+      "iso-basics": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography",
+      "stops-doubling": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#stops",
+      "noise-impact": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#noise",
+      "practical-choice": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#practice",
+      "base-iso": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#base-iso",
+      "freezing-action-iso": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#freeze",
+      "auto-iso-min-shutter": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#auto-iso",
+      "iso-and-dof": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#does-not-change",
+      "reduce-noise": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#reduce-noise",
+      "flash-and-iso": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#flash",
+      "auto-iso-overview": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#auto-iso",
+      "exposure-equivalence": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography#equivalence"
+    }
+  }
 }
