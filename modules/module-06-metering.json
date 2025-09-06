@@ -1,0 +1,183 @@
+{
+  "moduleId": "module-06-metering",
+  "title": "Metering",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What does camera metering do?",
+      "options": [
+        "Measures light reflected from the scene to suggest exposure settings",
+        "Measures color for white balance",
+        "Sets autofocus points",
+        "Changes picture style"
+      ],
+      "correct": 0,
+      "reviewHint": "Metering basics—the meter reads reflected light and guides exposure."
+    },
+    {
+      "question": "Evaluative/Matrix metering is best described as…",
+      "options": [
+        "A tiny spot at the focus point",
+        "Only the center is measured",
+        "The camera looks at the whole frame and balances it for a general scene",
+        "It ignores the background completely"
+      ],
+      "correct": 2,
+      "reviewHint": "Matrix/Evaluative—good all-rounder that considers most of the frame."
+    },
+    {
+      "question": "Center-weighted metering means…",
+      "options": [
+        "Only 1–5% of the frame is measured",
+        "The center area is given more importance, with the rest averaged in",
+        "The whole frame is treated equally",
+        "It only works in Manual mode"
+      ],
+      "correct": 1,
+      "reviewHint": "Center-weighted—prioritizes the middle while still considering the surroundings."
+    },
+    {
+      "question": "Spot metering…",
+      "options": [
+        "Ignores the subject",
+        "Measures a very small area (≈1–5%), often at the focus point or center",
+        "Is the same as center-weighted",
+        "Is only for landscapes"
+      ],
+      "correct": 1,
+      "reviewHint": "Spot—tiny area reading; great for tricky lighting on faces or small subjects."
+    },
+    {
+      "question": "Your subject is backlit and looks dark in Evaluative/Matrix. Quickest fix without changing mode?",
+      "options": [
+        "Close the aperture",
+        "Lower ISO",
+        "Dial + exposure compensation (e.g., +1 to +2 EV)",
+        "Use a faster shutter"
+      ],
+      "correct": 2,
+      "reviewHint": "Backlit + EC—add +EV so the face isn't a silhouette."
+    },
+    {
+      "question": "You meter off a very dark coat with Spot. If you trust that reading without compensation, the photo will likely be…",
+      "options": [
+        "Too dark",
+        "Too bright (the meter tries to make it mid-gray)",
+        "Perfect",
+        "Very blue"
+      ],
+      "correct": 1,
+      "reviewHint": "Subject tones—dark things get over-bright unless you add negative EC."
+    },
+    {
+      "question": "Why does snow or a white beach often look gray when you rely on the meter?",
+      "options": [
+        "The lens is dirty",
+        "The ISO is too high",
+        "The meter assumes what it sees should be mid-gray",
+        "Auto white balance is off"
+      ],
+      "correct": 2,
+      "reviewHint": "18% gray idea—add +EC for bright scenes to keep whites white."
+    },
+    {
+      "question": "What does *AE-Lock (AEL / ) do?",
+      "options": [
+        "Locks focus only",
+        "Locks the exposure you just metered so you can recompose",
+        "Changes to Spot temporarily",
+        "Sets Auto ISO"
+      ],
+      "correct": 1,
+      "reviewHint": "AE-Lock—meter from the right place, lock exposure, then recompose."
+    },
+    {
+      "question": "Small bird against a bright sky—which metering helps you expose the bird?",
+      "options": [
+        "Center-weighted",
+        "Evaluative/Matrix",
+        "Spot on the bird",
+        "Highlight-weighted off the sky"
+      ],
+      "correct": 2,
+      "reviewHint": "Small subject + bright background—Spot meter the subject."
+    },
+    {
+      "question": "After metering and shooting, what's the best check to avoid clipping?",
+      "options": [
+        "Picture style",
+        "White balance",
+        "Histogram for blown highlights/shadows",
+        "Image stabilization status"
+      ],
+      "correct": 2,
+      "reviewHint": "Histogram—use it to see if tones are crushed or blown."
+    },
+    {
+      "question": "In Manual mode (Auto ISO OFF), the meter mainly…",
+      "options": [
+        "Changes your shutter speed automatically",
+        "Changes your aperture automatically",
+        "Shows where you are vs. \"metered\" exposure—you adjust the triangle",
+        "Applies exposure compensation on its own"
+      ],
+      "correct": 2,
+      "reviewHint": "Manual + meter—it's a guide; you move shutter/aperture/ISO."
+    },
+    {
+      "question": "When might Center-weighted be a smart choice?",
+      "options": [
+        "Portraits where the subject is near the middle and background varies",
+        "Tiny birds against bright skies",
+        "Cityscapes with even light across the frame",
+        "Fast sports under flickering lights"
+      ],
+      "correct": 0,
+      "reviewHint": "Choosing modes—center-weighted is simple and reliable for centered subjects."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"metering-overview","label":"Metering basics"},
+      {"key":"matrix-mode","label":"Evaluative/Matrix metering"},
+      {"key":"center-weighted","label":"Center-weighted metering"},
+      {"key":"spot-mode","label":"Spot metering"},
+      {"key":"backlit-ec","label":"Backlit subjects & exposure compensation"},
+      {"key":"subject-tones","label":"Bright/dark subject tone bias"},
+      {"key":"mid-gray","label":"18% mid-gray concept"},
+      {"key":"ae-lock","label":"AE-Lock (AEL)"},
+      {"key":"small-subject-bright-bg","label":"Small subject vs bright background"},
+      {"key":"histogram-check","label":"Check with histogram"},
+      {"key":"manual-usage","label":"Using the meter in Manual mode"},
+      {"key":"mode-choice","label":"Choosing a metering mode"}
+    ],
+    "questionTopics": {
+      "q1":["metering-overview"],
+      "q2":["matrix-mode"],
+      "q3":["center-weighted"],
+      "q4":["spot-mode"],
+      "q5":["backlit-ec"],
+      "q6":["subject-tones"],
+      "q7":["mid-gray"],
+      "q8":["ae-lock"],
+      "q9":["small-subject-bright-bg"],
+      "q10":["histogram-check"],
+      "q11":["manual-usage"],
+      "q12":["mode-choice"]
+    },
+    "topicLinks": {
+      "metering-overview": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography",
+      "matrix-mode": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#matrix",
+      "center-weighted": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#center-weighted",
+      "spot-mode": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#spot",
+      "backlit-ec": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#backlit",
+      "subject-tones": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#tones",
+      "mid-gray": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#18gray",
+      "ae-lock": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#ael",
+      "small-subject-bright-bg": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#bright-background",
+      "histogram-check": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#histogram",
+      "manual-usage": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#manual",
+      "mode-choice": "https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#choose-mode"
+    }
+  }
+}
