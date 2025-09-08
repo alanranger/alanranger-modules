@@ -7,114 +7,114 @@
   },
   "questions": [
     {
-      "question": "What is “exposure” in photography?",
+      "question": "What does “exposure” mean in photography?",
       "options": [
-        "The amount of light that reaches the camera sensor",
-        "The distance to your subject",
-        "The strength of your flash",
-        "The color of the light"
-      ],
-      "correct": 0,
-      "reviewHint": "Exposure = brightness recorded by the sensor."
-    },
-    {
-      "question": "The exposure triangle is made of…",
-      "options": [
-        "Aperture, shutter speed, ISO",
-        "Aperture, focal length, zoom",
-        "White balance, focus, ISO",
-        "Metering, autofocus, flash"
-      ],
-      "correct": 0,
-      "reviewHint": "Only these three directly change brightness."
-    },
-    {
-      "question": "Which setting controls how long light hits the sensor?",
-      "options": [
-        "Aperture",
-        "Shutter speed",
-        "ISO",
-        "White balance"
+        "The lens’s focal length",
+        "The overall amount of light recorded (image brightness)",
+        "The camera’s focus distance",
+        "The white balance setting"
       ],
       "correct": 1,
-      "reviewHint": "Shutter speed = time."
+      "reviewHint": "Exposure = overall brightness captured by the sensor."
     },
     {
-      "question": "Which change makes a photo brighter by one stop?",
+      "question": "A photo that looks too dark is described as…",
       "options": [
-        "f/8 → f/11",
-        "1/125s → 1/250s",
-        "ISO 100 → ISO 200",
-        "ISO 400 → ISO 200"
+        "Color shifted",
+        "Underexposed",
+        "Overexposed",
+        "Blurred"
+      ],
+      "correct": 1,
+      "reviewHint": "Underexposed = not enough light."
+    },
+    {
+      "question": "Which three settings make up the “exposure triangle”?",
+      "options": [
+        "Aperture, Shutter Speed, ISO",
+        "White Balance, Focus, Zoom",
+        "Histogram, Picture Style, Frame Rate",
+        "Autofocus Mode, Metering, File Format"
+      ],
+      "correct": 0,
+      "reviewHint": "Only these three directly control exposure."
+    },
+    {
+      "question": "Which exposure mode lets you choose the aperture while the camera sets the shutter speed?",
+      "options": [
+        "Program (P)",
+        "Aperture Priority (A/Av)",
+        "Shutter Priority (S/Tv)",
+        "Scene Auto"
+      ],
+      "correct": 1,
+      "reviewHint": "A/Av = you set aperture for depth of field."
+    },
+    {
+      "question": "Which exposure mode lets you choose the shutter speed while the camera sets the aperture?",
+      "options": [
+        "Program (P)",
+        "Aperture Priority (A/Av)",
+        "Shutter Priority (S/Tv)",
+        "Scene Auto"
       ],
       "correct": 2,
-      "reviewHint": "One stop brighter = double the light."
+      "reviewHint": "S/Tv = you set shutter speed to control motion."
     },
     {
-      "question": "Your picture looks too dark. Which single change will brighten it?",
+      "question": "When you raise ISO to keep the same brightness in low light, which side effect usually increases?",
       "options": [
-        "1/250s → 1/125s",
-        "f/5.6 → f/8",
-        "ISO 400 → ISO 200",
-        "Add –1 EV exposure compensation"
+        "Motion blur",
+        "Diffraction",
+        "Image noise/grain",
+        "Perspective distortion"
       ],
-      "correct": 0,
-      "reviewHint": "Slower shutter lets in more light."
+      "correct": 2,
+      "reviewHint": "Higher ISO increases noise."
     },
     {
-      "question": "Your indoor photo is blurry from hand shake. What’s the simplest fix?",
+      "question": "What does +1 EV exposure compensation do to your photo in Av/Tv?",
       "options": [
-        "Use a faster shutter speed",
-        "Lower the ISO",
-        "Close the aperture (higher f-number)",
-        "Switch to daylight white balance"
+        "Makes it darker",
+        "Makes it brighter",
+        "Changes white balance",
+        "Zooms the lens"
       ],
-      "correct": 0,
-      "reviewHint": "Faster shutter freezes movement."
+      "correct": 1,
+      "reviewHint": "+1 EV = one stop brighter."
     },
     {
-      "question": "In bright sun at ISO 100, which is a good starting point?",
+      "question": "If the histogram is bunched to the left, what does that suggest?",
       "options": [
-        "1/125s, f/16",
-        "1/125s, f/2.8",
-        "1/15s, f/16",
-        "1/1000s, f/2"
+        "The image is too bright",
+        "The image is too dark",
+        "Perfect exposure",
+        "Wrong color space"
       ],
-      "correct": 0,
-      "reviewHint": "“Sunny 16”: ~1/ISO at f/16."
+      "correct": 1,
+      "reviewHint": "Left = shadows/dark."
     },
     {
-      "question": "You want a blurry background on a portrait. What helps most?",
+      "question": "If the histogram is clipped against the right edge, what’s likely happening?",
       "options": [
-        "Use f/2.8",
-        "Use f/16",
-        "Use a slower shutter",
-        "Lower the ISO"
+        "Underexposure",
+        "Motion blur",
+        "Highlights are blown out (overexposed)",
+        "Wrong autofocus mode"
       ],
-      "correct": 0,
-      "reviewHint": "Wider aperture (smaller f-number) = shallower depth of field."
+      "correct": 2,
+      "reviewHint": "Right clipping = lost highlight detail."
     },
     {
-      "question": "Which histogram suggests underexposure?",
+      "question": "What is depth of field?",
       "options": [
-        "Most of the graph pushed to the left",
-        "Most of the graph pushed to the right",
-        "A spike only in the middle",
-        "A perfectly flat line"
+        "The camera’s dynamic range",
+        "The range of distances that appears acceptably sharp in the photo",
+        "The amount of background blur caused by zooming",
+        "The distance your lens can focus at infinity"
       ],
-      "correct": 0,
-      "reviewHint": "Left = dark; right = bright."
-    },
-    {
-      "question": "Which pair is an equivalent exposure to 1/125s at f/5.6 (ISO 100)?",
-      "options": [
-        "1/250s at f/4",
-        "1/60s at f/8",
-        "1/250s at f/8",
-        "1/60s at f/4"
-      ],
-      "correct": 0,
-      "reviewHint": "One stop faster shutter + one stop wider aperture = same brightness."
+      "correct": 1,
+      "reviewHint": "Depth of field = zone of acceptable sharpness."
     }
   ]
 }
