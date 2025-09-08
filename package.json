@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node tools/build.mjs module-01"
+    "build": "node tools/build.mjs module-01",
+    "watch": "npx nodemon -e js,css,json,html -w src -x \"npm run build\"",
+    "serve": "npx live-server dist --port=5173 --open=module-01.html --no-css-inject",
+    "dev": "npm run build && npx npm-run-all --parallel watch serve"
   }
 }

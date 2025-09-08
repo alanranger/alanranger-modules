@@ -1,0 +1,184 @@
+{
+  "moduleId": "module-13-jpeg-raw",
+  "title": "JPEG vs RAW — The Key Differences",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What's the main difference between RAW and JPEG?",
+      "options": [
+        "RAW is a video format; JPEG is a photo format",
+        "RAW is already edited; JPEG is unprocessed",
+        "RAW is minimally processed sensor data; JPEG is processed and compressed in-camera",
+        "RAW has fewer colors than JPEG"
+      ],
+      "correct": 2,
+      "reviewHint": "RAW = more data, less processing; JPEG = processed & compressed."
+    },
+    {
+      "question": "Which file is usually smaller straight out of the camera?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "RAW+JPEG",
+        "TIFF"
+      ],
+      "correct": 1,
+      "reviewHint": "JPEG compresses, so file sizes are smaller."
+    },
+    {
+      "question": "You shot under tungsten light with the wrong white balance. Which file lets you fix WB most easily after the shot?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "PNG",
+        "HEIF"
+      ],
+      "correct": 0,
+      "reviewHint": "RAW keeps full WB flexibility; JPEG bakes WB."
+    },
+    {
+      "question": "To recover highlights/shadows and handle high contrast scenes, which gives you the most dynamic range?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "RAW+JPEG",
+        "Both the same"
+      ],
+      "correct": 0,
+      "reviewHint": "RAW usually stores more highlight/shadow detail."
+    },
+    {
+      "question": "You need images ready to share quickly with pleasing contrast and sharpening without editing. Best choice?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "RAW+JPEG",
+        "TIFF"
+      ],
+      "correct": 1,
+      "reviewHint": "JPEG has in-camera processing (contrast, color, sharpening)."
+    },
+    {
+      "question": "Which settings are baked into JPEG but not into the underlying RAW data (only noted as metadata)?",
+      "options": [
+        "ISO & aperture",
+        "Picture Style/Creative Style (contrast, saturation, sharpening)",
+        "Focal length",
+        "Shutter count"
+      ],
+      "correct": 1,
+      "reviewHint": "Style settings affect JPEG rendering, RAW keeps data for later edits."
+    },
+    {
+      "question": "For long bursts (sports/wildlife), which typically maintains buffer longer at the same quality level?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "RAW+JPEG",
+        "TIFF"
+      ],
+      "correct": 1,
+      "reviewHint": "Smaller JPEG files = longer bursts before buffer fills."
+    },
+    {
+      "question": "Typical bit depth comparison out of camera:",
+      "options": [
+        "JPEG 16-bit, RAW 8-bit",
+        "JPEG 12-bit, RAW 8-bit",
+        "JPEG 8-bit, RAW 12- or 14-bit (camera-dependent)",
+        "Both are 10-bit"
+      ],
+      "correct": 2,
+      "reviewHint": "RAW usually has higher bit depth → more tonal precision."
+    },
+    {
+      "question": "You're shooting a difficult, high-contrast sunset and plan to edit later. Best choice?",
+      "options": [
+        "JPEG only",
+        "RAW only",
+        "TIFF only",
+        "HEIF only"
+      ],
+      "correct": 1,
+      "reviewHint": "Use RAW for maximum recovery latitude."
+    },
+    {
+      "question": "You must shoot and deliver quickly at an event with minimal editing. Best choice?",
+      "options": [
+        "RAW only",
+        "TIFF only",
+        "JPEG only",
+        "RAW+TIFF"
+      ],
+      "correct": 2,
+      "reviewHint": "JPEG is fast, small, ready-to-share."
+    },
+    {
+      "question": "You want both flexibility for editing and a ready-to-share file from the same shot. What should you set?",
+      "options": [
+        "RAW",
+        "JPEG",
+        "TIFF",
+        "RAW+JPEG"
+      ],
+      "correct": 3,
+      "reviewHint": "RAW+JPEG gives an editable RAW plus an instant JPEG."
+    },
+    {
+      "question": "Which statement about noise reduction and sharpening is most accurate?",
+      "options": [
+        "RAW files are always noisier in the final image",
+        "JPEG has in-camera NR/sharpening baked in; RAW leaves you to adjust these in editing",
+        "Both bake NR/sharpening permanently",
+        "RAW cannot be sharpened"
+      ],
+      "correct": 1,
+      "reviewHint": "JPEG bakes NR/sharpening; RAW offers control in post."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"what-is-raw","label":"What is RAW?"},
+      {"key":"what-is-jpeg","label":"What is JPEG?"},
+      {"key":"dynamic-range","label":"Dynamic range & recovery"},
+      {"key":"white-balance","label":"White balance flexibility"},
+      {"key":"bit-depth","label":"Bit depth & tones"},
+      {"key":"file-size","label":"File size & storage"},
+      {"key":"burst-buffer","label":"Burst speed & buffer"},
+      {"key":"in-camera-settings","label":"In-camera styles & processing"},
+      {"key":"workflow","label":"Workflow & delivery speed"},
+      {"key":"when-to-use-raw","label":"When to choose RAW"},
+      {"key":"when-to-use-jpeg","label":"When to choose JPEG"},
+      {"key":"raw-plus-jpeg","label":"Using RAW+JPEG"}
+    ],
+    "questionTopics": {
+      "q1":["what-is-raw","what-is-jpeg"],
+      "q2":["file-size"],
+      "q3":["white-balance"],
+      "q4":["dynamic-range"],
+      "q5":["workflow","in-camera-settings"],
+      "q6":["in-camera-settings"],
+      "q7":["burst-buffer","file-size"],
+      "q8":["bit-depth"],
+      "q9":["when-to-use-raw","dynamic-range"],
+      "q10":["when-to-use-jpeg","workflow"],
+      "q11":["raw-plus-jpeg"],
+      "q12":["in-camera-settings","workflow"]
+    },
+    "topicLinks": {
+      "what-is-raw": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#what-is-raw",
+      "what-is-jpeg": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#what-is-jpeg",
+      "dynamic-range": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#dynamic-range",
+      "white-balance": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#white-balance",
+      "bit-depth": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#bit-depth",
+      "file-size": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#file-size",
+      "burst-buffer": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#burst-buffer",
+      "in-camera-settings": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#in-camera-settings",
+      "workflow": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#workflow",
+      "when-to-use-raw": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#when-to-use-raw",
+      "when-to-use-jpeg": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#when-to-use-jpeg",
+      "raw-plus-jpeg": "https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences#raw-plus-jpeg"
+    }
+  }
+}
+

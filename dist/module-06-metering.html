@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Metering</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-06-metering","title":"Metering","passMark":80,"questions":[{"question":"What does camera metering do?","options":["Measures light reflected from the scene to suggest exposure settings","Measures color for white balance","Sets autofocus points","Changes picture style"],"correct":0,"reviewHint":"Metering basics—the meter reads reflected light and guides exposure."},{"question":"Evaluative/Matrix metering is best described as…","options":["A tiny spot at the focus point","Only the center is measured","The camera looks at the whole frame and balances it for a general scene","It ignores the background completely"],"correct":2,"reviewHint":"Matrix/Evaluative—good all-rounder that considers most of the frame."},{"question":"Center-weighted metering means…","options":["Only 1–5% of the frame is measured","The center area is given more importance, with the rest averaged in","The whole frame is treated equally","It only works in Manual mode"],"correct":1,"reviewHint":"Center-weighted—prioritizes the middle while still considering the surroundings."},{"question":"Spot metering…","options":["Ignores the subject","Measures a very small area (≈1–5%), often at the focus point or center","Is the same as center-weighted","Is only for landscapes"],"correct":1,"reviewHint":"Spot—tiny area reading; great for tricky lighting on faces or small subjects."},{"question":"Your subject is backlit and looks dark in Evaluative/Matrix. Quickest fix without changing mode?","options":["Close the aperture","Lower ISO","Dial + exposure compensation (e.g., +1 to +2 EV)","Use a faster shutter"],"correct":2,"reviewHint":"Backlit + EC—add +EV so the face isn't a silhouette."},{"question":"You meter off a very dark coat with Spot. If you trust that reading without compensation, the photo will likely be…","options":["Too dark","Too bright (the meter tries to make it mid-gray)","Perfect","Very blue"],"correct":1,"reviewHint":"Subject tones—dark things get over-bright unless you add negative EC."},{"question":"Why does snow or a white beach often look gray when you rely on the meter?","options":["The lens is dirty","The ISO is too high","The meter assumes what it sees should be mid-gray","Auto white balance is off"],"correct":2,"reviewHint":"18% gray idea—add +EC for bright scenes to keep whites white."},{"question":"What does *AE-Lock (AEL / ) do?","options":["Locks focus only","Locks the exposure you just metered so you can recompose","Changes to Spot temporarily","Sets Auto ISO"],"correct":1,"reviewHint":"AE-Lock—meter from the right place, lock exposure, then recompose."},{"question":"Small bird against a bright sky—which metering helps you expose the bird?","options":["Center-weighted","Evaluative/Matrix","Spot on the bird","Highlight-weighted off the sky"],"correct":2,"reviewHint":"Small subject + bright background—Spot meter the subject."},{"question":"After metering and shooting, what's the best check to avoid clipping?","options":["Picture style","White balance","Histogram for blown highlights/shadows","Image stabilization status"],"correct":2,"reviewHint":"Histogram—use it to see if tones are crushed or blown."},{"question":"In Manual mode (Auto ISO OFF), the meter mainly…","options":["Changes your shutter speed automatically","Changes your aperture automatically","Shows where you are vs. \"metered\" exposure—you adjust the triangle","Applies exposure compensation on its own"],"correct":2,"reviewHint":"Manual + meter—it's a guide; you move shutter/aperture/ISO."},{"question":"When might Center-weighted be a smart choice?","options":["Portraits where the subject is near the middle and background varies","Tiny birds against bright skies","Cityscapes with even light across the frame","Fast sports under flickering lights"],"correct":0,"reviewHint":"Choosing modes—center-weighted is simple and reliable for centered subjects."}],"feedbackMap":{"topics":[{"key":"metering-overview","label":"Metering basics"},{"key":"matrix-mode","label":"Evaluative/Matrix metering"},{"key":"center-weighted","label":"Center-weighted metering"},{"key":"spot-mode","label":"Spot metering"},{"key":"backlit-ec","label":"Backlit subjects & exposure compensation"},{"key":"subject-tones","label":"Bright/dark subject tone bias"},{"key":"mid-gray","label":"18% mid-gray concept"},{"key":"ae-lock","label":"AE-Lock (AEL)"},{"key":"small-subject-bright-bg","label":"Small subject vs bright background"},{"key":"histogram-check","label":"Check with histogram"},{"key":"manual-usage","label":"Using the meter in Manual mode"},{"key":"mode-choice","label":"Choosing a metering mode"}],"questionTopics":{"q1":["metering-overview"],"q2":["matrix-mode"],"q3":["center-weighted"],"q4":["spot-mode"],"q5":["backlit-ec"],"q6":["subject-tones"],"q7":["mid-gray"],"q8":["ae-lock"],"q9":["small-subject-bright-bg"],"q10":["histogram-check"],"q11":["manual-usage"],"q12":["mode-choice"]},"topicLinks":{"metering-overview":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography","matrix-mode":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#matrix","center-weighted":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#center-weighted","spot-mode":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#spot","backlit-ec":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#backlit","subject-tones":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#tones","mid-gray":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#18gray","ae-lock":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#ael","small-subject-bright-bg":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#bright-background","histogram-check":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#histogram","manual-usage":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#manual","mode-choice":"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography#choose-mode"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

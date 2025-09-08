@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Module 2: Aperture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-02-aperture","title":"Module 2: Aperture","passMark":80,"links":{"article":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"},"questions":[{"question":"What is the primary use of aperture?","options":["Depth of field","Exposure time","Image sharpness","Color saturation"],"correct":0,"reviewHint":"Aperture primarily controls depth of field - how much of the image is in focus."},{"question":"What is the widest aperture?","options":["f/22","f/16","f/2.8","f/11"],"correct":2,"reviewHint":"Wide apertures have smaller f-stop numbers (f/1.4, f/2.8, f/4)."},{"question":"How does a wide aperture affect the depth of field?","options":["Increases depth of field","Decreases depth of field","Has no effect on depth of field","Improves image sharpness"],"correct":1,"reviewHint":"Wide apertures create shallow depth of field - less of the image is in focus."},{"question":"Which aperture setting would you use for a landscape photo to get maximum depth of field?","options":["f/2.8","f/8","f/16","f/1.4"],"correct":2,"reviewHint":"Small apertures (high f-stop numbers) create greater depth of field for landscapes."},{"question":"What happens when you use a small aperture (higher f-stop number)?","options":["It takes longer to collect the same quantity of light","It takes less time to collect the same quantity of light","The image becomes overexposed","The image sharpness decreases"],"correct":0,"reviewHint":"Small apertures have narrow openings, so they collect light more slowly."},{"question":"Which f-stop number represents the smallest aperture opening?","options":["f/2","f/5.6","f/16","f/22"],"correct":3,"reviewHint":"Higher f-stop numbers represent smaller aperture openings."},{"question":"What is the effect of a small aperture on bokeh (background blur)?","options":["It makes the background more blurred","It makes the background more defined","It eliminates the background completely","It has no effect on the background"],"correct":1,"reviewHint":"Small apertures increase depth of field, making backgrounds more defined."},{"question":"Which of the following would result in the most shallow depth of field?","options":["f/11","f/8","f/4","f/2.8"],"correct":3,"reviewHint":"The widest aperture (smallest f-stop number) creates the shallowest depth of field."},{"question":"What is the primary purpose of the diaphragm in a camera lens?","options":["To focus the image","To control the aperture opening","To stabilize the lens","To filter light colors"],"correct":1,"reviewHint":"The diaphragm is the mechanical component that opens and closes to control the aperture size."},{"question":"What is the term used to describe the circular opening that controls the aperture?","options":["Diaphragm","Lens cap","Shutter","Filter"],"correct":0,"reviewHint":"The diaphragm is the mechanical device that creates the aperture opening."},{"question":"If you change the aperture from f/5.6 to f/16, how does this affect exposure time?","options":["Increases exposure time","Decreases exposure time","No change to exposure time","Doubles exposure time"],"correct":0,"reviewHint":"Moving to a smaller aperture (higher f-stop) requires longer exposure time to collect the same amount of light."},{"question":"What is the 'sweet spot' of a lens?","options":["The widest aperture of the lens","The aperture at which the lens produces the sharpest image","The aperture with the most bokeh","The smallest aperture of the lens"],"correct":1,"reviewHint":"The sweet spot is typically 2-3 stops down from the widest aperture, where the lens performs at its sharpest."}],"feedbackMap":{"topics":[{"key":"aperture-basics","label":"Aperture basics (definition and function)"},{"key":"f-stop-numbers","label":"F-stop numbers and aperture sizes"},{"key":"depth-of-field","label":"Depth of field and aperture"},{"key":"light-collection","label":"Light collection rate and aperture"},{"key":"bokeh-background","label":"Bokeh and background blur"},{"key":"photography-applications","label":"Aperture for different photography types"},{"key":"lens-mechanics","label":"Lens mechanics and diaphragm"},{"key":"exposure-relationship","label":"Aperture and exposure relationship"},{"key":"lens-sweet-spot","label":"Lens sweet spot and optimal sharpness"}],"questionTopics":{"q1":["aperture-basics"],"q2":["f-stop-numbers"],"q3":["depth-of-field"],"q4":["depth-of-field","photography-applications"],"q5":["light-collection"],"q6":["f-stop-numbers"],"q7":["bokeh-background","depth-of-field"],"q8":["depth-of-field"],"q9":["photography-applications","bokeh-background"],"q10":["lens-mechanics"],"q11":["exposure-relationship"],"q12":["lens-sweet-spot"]},"topicLinks":{"aperture-basics":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","f-stop-numbers":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","depth-of-field":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","light-collection":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","bokeh-background":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","photography-applications":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","lens-mechanics":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","exposure-relationship":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography","lens-sweet-spot":"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

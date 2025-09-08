@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Camera Drive Modes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-12-drive","title":"Camera Drive Modes","passMark":80,"questions":[{"question":"What does the camera's drive mode control?","options":["How bright the picture is (exposure)","How the camera takes shots when you press the shutter (single, burst, timer, etc.)","How fast autofocus works","ISO behaviour"],"correct":1,"reviewHint":"Drive mode = single, continuous/burst, self-timer, remote, etc."},{"question":"You're photographing fast sports and want multiple frames to catch the peak action. Which drive mode?","options":["Single shot","Self-timer 10s","Continuous High (burst)","Quiet shutter"],"correct":2,"reviewHint":"Burst fires many frames quickly—great for action."},{"question":"You're on a tripod shooting a slow shutter landscape and want to avoid camera shake when you press the button. Easy option?","options":["Continuous High","Self-timer 2 seconds (or \"shutter delay\")","Single shot","Scene mode"],"correct":1,"reviewHint":"A 2s timer lets vibrations settle before the exposure."},{"question":"You're taking a group photo and need time to step into the frame. Which drive mode?","options":["Single shot","Self-timer 10 seconds","Continuous Low","Bracketing"],"correct":1,"reviewHint":"10s timer gives you time to get in place."},{"question":"A common trade-off when using continuous/burst shooting is:","options":["The lens stops focusing","The camera's buffer fills, then shooting slows","ISO changes by itself","Metering turns off"],"correct":1,"reviewHint":"Long bursts can fill the buffer → the camera slows while writing."},{"question":"You want the camera to take 3 different exposures in one press (e.g., for HDR later). What feature should you use?","options":["Continuous High only","Auto Exposure Bracketing (AEB/BKT)","Self-timer 2s only","Silent shutter only"],"correct":1,"reviewHint":"Enable AEB/BKT; many cameras shoot the set in burst or timer."},{"question":"Silent/quiet (electronic) shutter drive is great when you must be discreet. What's a possible downside?","options":["It reduces image resolution","Can cause banding under some artificial lights or distort fast motion","It turns off stabilization","Colors become inaccurate"],"correct":1,"reviewHint":"Electronic shutters may show banding/rolling-shutter artifacts."},{"question":"You're photographing kids' portraits and want a few frames per moment without flooding the card or buffer. Best choice?","options":["Single shot only","Continuous Low (short bursts)","Self-timer 10s","Bracketing"],"correct":1,"reviewHint":"Low-speed burst = several frames, easy on buffer, great for expressions."}],"feedbackMap":{"topics":[{"key":"drive-basics","label":"Drive mode basics"},{"key":"burst","label":"Continuous/burst shooting"},{"key":"self-timer","label":"Self-timer / shutter delay"},{"key":"bracketing","label":"Auto Exposure Bracketing (AEB/BKT)"},{"key":"silent","label":"Silent/quiet electronic shutter"},{"key":"buffer","label":"Buffer & card write limits"},{"key":"choosing-mode","label":"Choosing the right mode"}],"questionTopics":{"q1":["drive-basics","choosing-mode"],"q2":["burst","choosing-mode"],"q3":["self-timer","choosing-mode"],"q4":["self-timer","choosing-mode"],"q5":["buffer","burst"],"q6":["bracketing"],"q7":["silent"],"q8":["burst","choosing-mode"]},"topicLinks":{"drive-basics":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#drive-basics","burst":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#continuous-burst","self-timer":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#self-timer","bracketing":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#bracketing","silent":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#silent","buffer":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#buffer","choosing-mode":"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes#which-to-use"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

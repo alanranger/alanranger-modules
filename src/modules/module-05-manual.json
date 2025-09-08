@@ -1,0 +1,182 @@
+{
+  "moduleId": "module-05-manual",
+  "title": "Manual Exposure",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What does Manual (M) mode mean?",
+      "options": [
+        "The camera chooses shutter and aperture, you choose ISO",
+        "You choose shutter, aperture, and ISO",
+        "Only ISO is manual, the rest is automatic",
+        "The camera uses exposure compensation to set brightness"
+      ],
+      "correct": 1,
+      "reviewHint": "Review Manual mode overview—you control shutter, aperture, and ISO (not the camera)."
+    },
+    {
+      "question": "When is Manual mode most helpful?",
+      "options": [
+        "Rapidly changing stage lights where every shot is different",
+        "Very steady lighting and a series of similar shots",
+        "Random street scenes where each frame varies",
+        "When you want the camera to adjust each shot for you"
+      ],
+      "correct": 1,
+      "reviewHint": "See When to use Manual—steady light + consistent results across shots."
+    },
+    {
+      "question": "You want shallow background blur for portraits but consistent brightness. What should you set first in Manual?",
+      "options": [
+        "Aperture to the f-number you want for the look",
+        "ISO to the lowest number",
+        "Shutter to 1/1000s",
+        "White balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Start with your creative priority—set aperture first, then match exposure."
+    },
+    {
+      "question": "In pure Manual with Auto ISO OFF, what does Exposure Compensation (±) do?",
+      "options": [
+        "It changes brightness by itself",
+        "It changes ISO automatically",
+        "Nothing—it's ignored",
+        "It changes white balance"
+      ],
+      "correct": 2,
+      "reviewHint": "Exposure compensation in Manual only has effect if Auto ISO is ON."
+    },
+    {
+      "question": "Your test shot is too dark by about one stop. You need to keep the same depth of field and your shutter is still safe. What's the easiest fix?",
+      "options": [
+        "Open the aperture (changes your DOF)",
+        "Slow the shutter by one stop",
+        "Lower ISO",
+        "Change white balance"
+      ],
+      "correct": 1,
+      "reviewHint": "Stops & shutter—add one stop of light by slowing the shutter one stop."
+    },
+    {
+      "question": "What mainly freezes motion?",
+      "options": [
+        "Lower ISO",
+        "Faster shutter speed",
+        "Smaller aperture (higher f-number)",
+        "Image stabilization alone"
+      ],
+      "correct": 1,
+      "reviewHint": "See Freezing motion—fast shutter speed is the key."
+    },
+    {
+      "question": "Which setting gives more background blur?",
+      "options": [
+        "f/5.6",
+        "f/8",
+        "f/2.8",
+        "f/16"
+      ],
+      "correct": 2,
+      "reviewHint": "Aperture & depth of field—lower f-number = more blur."
+    },
+    {
+      "question": "You've set f/2.8 and 1/250s for the look you want, but the photo is still too dark. What keeps the same DOF and motion while brightening?",
+      "options": [
+        "Raise ISO",
+        "Open to f/2.0",
+        "Slow to 1/60s",
+        "Turn on HDR"
+      ],
+      "correct": 0,
+      "reviewHint": "ISO & exposure—raise ISO to brighten without changing DOF or motion."
+    },
+    {
+      "question": "Your subject is backlit and their face is dark. In Manual, what should you do?",
+      "options": [
+        "Keep the meter centered; it will be fine",
+        "Open up / slow shutter / raise ISO until the subject is correctly exposed",
+        "Use AE-Lock only",
+        "Only lower ISO"
+      ],
+      "correct": 1,
+      "reviewHint": "Backlit subjects—expose for the subject, not the bright background."
+    },
+    {
+      "question": "Manual with Auto ISO ON and +1 EC: what happens?",
+      "options": [
+        "The camera ignores exposure compensation",
+        "ISO goes lower to darken",
+        "ISO increases to brighten by ~1 stop",
+        "Shutter speeds get slower automatically"
+      ],
+      "correct": 2,
+      "reviewHint": "Manual + Auto ISO—EC biases the ISO brighter/darker."
+    },
+    {
+      "question": "You change from f/4 → f/5.6 (one stop less light) but want motion blur to stay similar. What compensates?",
+      "options": [
+        "Slow shutter one stop (adds blur)",
+        "Raise ISO one stop (e.g., 100 → 200)",
+        "Speed up shutter one stop",
+        "Close aperture another stop"
+      ],
+      "correct": 1,
+      "reviewHint": "Equivalent exposures—to keep shutter (motion) the same, raise ISO one stop."
+    },
+    {
+      "question": "Sunny 16: On a sunny day at ISO 100, a typical starting exposure near f/16 is:",
+      "options": [
+        "1/100s at f/16",
+        "1/1000s at f/16",
+        "1/100s at f/2.8",
+        "1/30s at f/16"
+      ],
+      "correct": 0,
+      "reviewHint": "Sunny 16—start around 1/ISO at f/16 (≈1/100s at ISO 100)."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"manual-overview","label":"Manual mode overview"},
+      {"key":"when-to-use","label":"When to use Manual"},
+      {"key":"shutter-brightness","label":"Shutter & brightness"},
+      {"key":"ec-autoiso","label":"Exposure compensation & Auto ISO"},
+      {"key":"stops","label":"Stops & exposure"},
+      {"key":"freeze-motion","label":"Freezing motion"},
+      {"key":"aperture-dof","label":"Aperture & depth of field"},
+      {"key":"iso-exposure","label":"ISO & exposure"},
+      {"key":"backlit","label":"Backlit subjects"},
+      {"key":"equivalents","label":"Equivalent exposures"},
+      {"key":"sunny16","label":"Sunny 16 rule"}
+    ],
+    "questionTopics": {
+      "q1":["manual-overview"],
+      "q2":["when-to-use"],
+      "q3":["aperture-dof"],
+      "q4":["ec-autoiso"],
+      "q5":["stops"],
+      "q6":["freeze-motion"],
+      "q7":["aperture-dof"],
+      "q8":["iso-exposure"],
+      "q9":["backlit"],
+      "q10":["ec-autoiso"],
+      "q11":["equivalents"],
+      "q12":["sunny16"]
+    },
+    "topicLinks": {
+      "manual-overview": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography",
+      "when-to-use": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#when",
+      "shutter-brightness": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#shutter",
+      "ec-autoiso": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#autoiso-ec",
+      "stops": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#stops",
+      "freeze-motion": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#motion",
+      "aperture-dof": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#aperture",
+      "iso-exposure": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#iso",
+      "backlit": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#backlit",
+      "equivalents": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#equivalents",
+      "sunny16": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#sunny16"
+    }
+  }
+}
+

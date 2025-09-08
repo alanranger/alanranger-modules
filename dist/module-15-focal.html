@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Focal Length</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-15-focal","title":"Focal Length","passMark":80,"questions":[{"question":"What is focal length?","options":["The distance from your subject to the camera","The distance (at infinity focus) from the lens's optical center to the sensor","The size of the camera sensor","The diameter of the lens mount"],"correct":1,"reviewHint":"Focal length is a property of the lens, defined at infinity focus."},{"question":"As focal length increases, your field of view…","options":["Gets wider","Gets narrower (tighter framing)","Stays the same","Only changes on crop-sensor cameras"],"correct":1,"reviewHint":"Longer focal length = narrower FOV."},{"question":"You stand in the same spot and switch from 35 mm to 70 mm. What changes?","options":["Perspective changes a lot","Framing gets tighter (subject looks bigger); perspective doesn't change because you didn't move","Depth of field becomes identical to 35 mm","The lens becomes \"faster\""],"correct":1,"reviewHint":"Perspective depends on camera position, not focal length."},{"question":"What primarily controls perspective (how near/far objects appear relative to each other)?","options":["Focal length","Aperture","Camera-to-subject distance (where you stand)","ISO"],"correct":2,"reviewHint":"Move your feet → change perspective."},{"question":"Hand-holding rule of thumb on full frame: with a 100 mm lens, use at least…","options":["1/40 s","1/100 s","1/250 s","1/1000 s"],"correct":1,"reviewHint":"Safe shutter ≈ 1 / focal length (full frame)."},{"question":"On a 1.5× crop camera with a 100 mm lens, a safe hand-held shutter is about…","options":["1/60 s","1/100 s","1/160 s","1/320 s"],"correct":2,"reviewHint":"Add crop factor: 1 / (focal × crop) → ≈ 1/160 s."},{"question":"Which focal lengths are typically wide-angle on full frame?","options":["14–24 mm","50 mm","85 mm","200 mm"],"correct":0,"reviewHint":"<35 mm on full frame is wide."},{"question":"A popular portrait focal length on full frame (flattering perspective, comfortable working distance) is:","options":["24 mm","35 mm","85 mm","200 mm"],"correct":2,"reviewHint":"85 mm is a classic head-and-shoulders choice."},{"question":"Which is true about zoom vs prime lenses?","options":["A prime has variable focal length; zoom is fixed","A prime has a fixed focal length (often smaller, faster); a zoom covers a range","Primes can't be sharp","Zooms always have wider maximum apertures"],"correct":1,"reviewHint":"Primes = fixed FL, often wider max aperture; zooms = flexible framing."},{"question":"Does focal length itself create \"background compression\"?","options":["Yes, longer focal length compresses regardless of distance","No—\"compression\" mainly comes from standing farther away; longer FLs are often used because you step back","Only aperture creates compression","Only sensor size creates compression"],"correct":1,"reviewHint":"Compression look = greater camera distance (perspective), not FL alone."},{"question":"Your lens won't focus on a very close subject at 200 mm. Most likely you're…","options":["At the wrong ISO","Inside the lens's minimum focus distance—step back or use macro gear","Exceeding the shutter rule","Using too small an aperture"],"correct":1,"reviewHint":"Every lens has a minimum focus distance (MFD)."},{"question":"Without moving the camera and at the same f-number, increasing focal length generally makes the background look…","options":["Sharper","More blurred (stronger background blur)","Unchanged","More distorted"],"correct":1,"reviewHint":"Longer FL at same position & f-number → greater subject magnification → more blur."}],"feedbackMap":{"topics":[{"key":"what-is-focal-length","label":"What focal length means"},{"key":"field-of-view","label":"Field of view vs focal length"},{"key":"perspective","label":"Perspective = camera position"},{"key":"shutter-speed-rule","label":"Hand-held shutter speed rule"},{"key":"crop-factor","label":"Crop factor and its impact"},{"key":"wide-angle","label":"Wide-angle choices"},{"key":"portrait-focal-lengths","label":"Portrait-friendly focal lengths"},{"key":"zoom-vs-prime","label":"Zoom vs prime basics"},{"key":"depth-of-field","label":"Depth of field interactions"},{"key":"minimum-focus-distance","label":"Minimum focus distance (MFD)"},{"key":"background-blur","label":"Background blur & subject magnification"}],"questionTopics":{"q1":["what-is-focal-length"],"q2":["field-of-view"],"q3":["perspective","field-of-view"],"q4":["perspective"],"q5":["shutter-speed-rule"],"q6":["shutter-speed-rule","crop-factor"],"q7":["field-of-view","wide-angle"],"q8":["portrait-focal-lengths"],"q9":["zoom-vs-prime"],"q10":["perspective"],"q11":["minimum-focus-distance"],"q12":["background-blur","depth-of-field"]},"topicLinks":{"what-is-focal-length":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#what-is-focal-length","field-of-view":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#field-of-view","perspective":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#perspective","shutter-speed-rule":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#shutter-speed-rule","crop-factor":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#crop-factor","wide-angle":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#wide-angle","portrait-focal-lengths":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#portrait-focal-lengths","zoom-vs-prime":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#zoom-vs-prime","depth-of-field":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#depth-of-field","minimum-focus-distance":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#minimum-focus-distance","background-blur":"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography#background-blur"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

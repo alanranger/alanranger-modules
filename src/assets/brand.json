@@ -1,0 +1,23 @@
+{
+  "colors": {
+    "primary": "#E57200",
+    "primaryHover": "#cc6500",
+    "secondary": "#2563eb",
+    "border": "#e9e9e9",
+    "text": "#111",
+    "muted": "#6b7280"
+  },
+  "images": {
+    "academy": "academy.png",
+    "orgIcon": "org-icon.png", 
+    "signature": "signature.png",
+    "logoFull": "logo-full.png",
+    "exampleShield": "example-shield.jpg"
+  },
+  "brand": {
+    "name": "Alan Ranger Photography Academy",
+    "website": "https://www.alanranger.com",
+    "academyUrl": "https://www.alanranger.com/academy"
+  }
+}
+

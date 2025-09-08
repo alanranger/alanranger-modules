@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Depth of Field</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-09-dof","title":"Depth of Field","passMark":80,"questions":[{"question":"What is depth of field (DoF)?","options":["The focal length of the lens","The range of distances that look acceptably sharp","How bright the image is","How wide the lens opens"],"correct":1,"reviewHint":"DoF = near-to-far zone of acceptable sharpness."},{"question":"Which aperture gives the shallowest DoF (most background blur)?","options":["f/16","f/11","f/5.6","f/1.8"],"correct":3,"reviewHint":"Lower f-number = wider aperture = shallower DoF."},{"question":"Which change will NOT increase background blur?","options":["Moving closer to your subject","Using a longer focal length","Placing the subject farther from the background","Stopping down to f/16"],"correct":3,"reviewHint":"Smaller aperture (higher f-number) increases DoF, not blur."},{"question":"At the same aperture and distance, which gives a shallower DoF?","options":["24 mm","85 mm","35 mm","16 mm"],"correct":1,"reviewHint":"Longer focal lengths give shallower DoF at the same distance."},{"question":"For a group portrait (two rows), which is the safest approach?","options":["f/2 and focus on the front person","Use f/5.6–f/8 and focus around the front row's eyes","f/1.4 and focus on the background","f/22 to avoid diffraction"],"correct":1,"reviewHint":"Stop down a bit for more DoF across both rows."},{"question":"Landscape with foreground rock + distant mountains—how to keep most sharp?","options":["f/2 and focus on the mountains","Use ~f/8–f/11 and focus about a third into the scene","Use the longest focal length","Focus on the closest rock only"],"correct":1,"reviewHint":"Hyperfocal-style focusing: stop down and focus ~1/3 in."},{"question":"What is a common side effect of using very small apertures (e.g., f/22)?","options":["Stronger bokeh","Diffraction softening (reduced sharpness)","Better AF speed","Lower ISO noise"],"correct":1,"reviewHint":"Diffraction can soften fine detail at very high f-numbers."},{"question":"Bokeh refers to:","options":["The amount of blur only","The quality/character of out-of-focus areas","The shape of the sensor","The autofocus speed"],"correct":1,"reviewHint":"Bokeh = how the blur looks (smooth/harsh), not just \"more/less.\""},{"question":"For a shallow-DoF portrait, where should you place the focus point?","options":["On the subject's nose","On the nearest eye","On the background","Center then recompose at f/1.4"],"correct":1,"reviewHint":"Nearest eye is the priority with shallow DoF."},{"question":"In macro/very close-up work, DoF becomes:","options":["Deeper than usual","Unchanged","Extremely thin; stop down (higher f-number) to gain depth","Controlled only by ISO"],"correct":2,"reviewHint":"Close focus = paper-thin DoF → use smaller aperture (and more light)."},{"question":"As you move closer to your subject (keeping settings the same), DoF:","options":["Stays the same","Gets shallower","Gets deeper","Depends only on ISO"],"correct":1,"reviewHint":"Closer distance = shallower DoF."},{"question":"At the same framing and f-number, a full-frame camera typically gives:","options":["Shallower DoF than APS-C","The same DoF as APS-C","Deeper DoF than APS-C","Only depends on shutter speed"],"correct":0,"reviewHint":"Matching framing often means closer/longer on full-frame → shallower DoF."},{"question":"Changing from f/4 to f/8 (no other changes) will:","options":["Decrease DoF and brighten by 2 stops","Increase DoF and darken by 2 stops","Not affect exposure","Reduce motion blur at the same shutter speed"],"correct":1,"reviewHint":"Higher f-number = more DoF and less light (adjust shutter/ISO)."},{"question":"It's bright midday and you want f/1.4 for creamy background but you're already at 1/8000 s, ISO 100. What helps?","options":["Use f/11 instead","Raise ISO","Add an ND filter to keep exposure while staying at f/1.4","Switch to manual focus"],"correct":2,"reviewHint":"ND filter cuts light so you can keep wide aperture for blur."}],"feedbackMap":{"topics":[{"key":"dof-basics","label":"What is depth of field?"},{"key":"aperture","label":"Aperture & DoF"},{"key":"focal-length","label":"Focal length & DoF"},{"key":"subject-distance","label":"Subject distance & DoF"},{"key":"group-portraits","label":"Group portraits & DoF"},{"key":"landscape-hyperfocal","label":"Landscape & hyperfocal"},{"key":"diffraction","label":"Diffraction at small apertures"},{"key":"bokeh","label":"Bokeh (quality of blur)"},{"key":"focus-point","label":"Focus point placement"},{"key":"macro","label":"Macro & very close focus"},{"key":"sensor-size","label":"Sensor size & DoF"},{"key":"exposure-link","label":"Aperture vs exposure"},{"key":"nd-filter","label":"Using ND for wide apertures"}],"questionTopics":{"q1":["dof-basics"],"q2":["aperture"],"q3":["aperture"],"q4":["focal-length"],"q5":["group-portraits","aperture"],"q6":["landscape-hyperfocal","aperture"],"q7":["diffraction"],"q8":["bokeh"],"q9":["focus-point","portrait"],"q10":["macro","aperture"],"q11":["subject-distance"],"q12":["sensor-size","framing"],"q13":["exposure-link","aperture"],"q14":["nd-filter","aperture","bokeh"]},"topicLinks":{"dof-basics":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#what-is-dof","aperture":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#aperture","focal-length":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#focal-length","subject-distance":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#distance","group-portraits":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#group-portraits","landscape-hyperfocal":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#hyperfocal","diffraction":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#diffraction","bokeh":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#bokeh","focus-point":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#focus-point","macro":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#macro","sensor-size":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#sensor-size","exposure-link":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#exposure","nd-filter":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#nd-filter","framing":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#framing","portrait":"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field#portraits"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

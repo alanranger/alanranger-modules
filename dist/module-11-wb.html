@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>White Balance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-11-wb","title":"White Balance","passMark":80,"questions":[{"question":"What is white balance in photography?","options":["Adjusting exposure for brightness","Making neutral subjects (whites/greys) look neutral under different lighting","Increasing sharpness","Changing ISO"],"correct":1,"reviewHint":"WB corrects color cast so whites/greys look neutral."},{"question":"Which preset is designed for indoor tungsten/incandescent lighting?","options":["Daylight","Shade","Fluorescent","Tungsten / Incandescent"],"correct":3,"reviewHint":"Tungsten ≈ 3200K; preset adds blue to cancel orange."},{"question":"In open shade, photos often look cool/blue. Which preset helps?","options":["Daylight","Shade","Fluorescent","Tungsten"],"correct":1,"reviewHint":"Shade/Cloudy presets add warmth."},{"question":"Which Kelvin value is closest to typical indoor tungsten light?","options":["2800K","3200K","5600K","7500K"],"correct":1,"reviewHint":"Rough guide: Tungsten ~3200K, Daylight ~5500–5600K, Shade ~6500–7500K."},{"question":"Auto White Balance (AWB) can struggle most with:","options":["Overcast days","Single softbox in studio","Mixed lighting (e.g., window daylight + tungsten lamps)","Noon sun"],"correct":2,"reviewHint":"Different color temps confuse AWB."},{"question":"For the easiest white-balance fixing in post, shoot:","options":["JPEG","PNG","RAW","HEIF"],"correct":2,"reviewHint":"RAW stores full color data → non-destructive WB edits."},{"question":"Your indoor photo looks too orange. Simple in-camera fix?","options":["Raise ISO","Use Tungsten/Incandescent preset","Use Shade preset","Add +1 EV"],"correct":1,"reviewHint":"Tungsten preset adds blue to offset orange cast."},{"question":"Under some fluorescent lights, images look green. Which control removes that cast?","options":["Increase Temperature (warmer)","Decrease Temperature (cooler)","Tint toward magenta","Tint toward green"],"correct":2,"reviewHint":"Tint fixes green ↔ magenta; Temperature fixes blue ↔ yellow."},{"question":"A quick way to set a Custom WB is to:","options":["Meter off your hand","Photograph a neutral grey/white target and set WB from it","Overexpose by +1 EV","Use a polarizer"],"correct":1,"reviewHint":"Use a grey card/white card to sample neutral."},{"question":"You want a warmer look at sunset without bracketing. Best choice?","options":["Tungsten preset","Auto WB","Shade/Cloudy preset or higher Kelvin (warmer)","Fluorescent preset"],"correct":2,"reviewHint":"Shade/Cloudy / raise K = more warmth."},{"question":"In a room lit by window daylight + tungsten lamps, a practical approach is to:","options":["Always pick Fluorescent preset","Set WB for the dominant light and shoot RAW to fine-tune later","Use AWB and ignore the rest","Only increase Temperature"],"correct":1,"reviewHint":"Mixed light: pick a dominant source; RAW helps fix remaining cast."},{"question":"Increasing Kelvin (e.g., 5000K → 6500K) will make the image appear:","options":["Cooler/bluer","Desaturated","Warmer/more yellow-orange","More magenta"],"correct":2,"reviewHint":"Higher K → warmer; lower K → cooler."}],"feedbackMap":{"topics":[{"key":"wb-basics","label":"White balance basics"},{"key":"presets","label":"WB presets (Daylight/Cloudy/Shade/Tungsten/Fluoro)"},{"key":"kelvin-scale","label":"Kelvin scale overview"},{"key":"auto-wb","label":"Auto white balance limits"},{"key":"tungsten","label":"Tungsten/incandescent correction"},{"key":"shade-cloudy","label":"Shade/Cloudy for warmth"},{"key":"fluorescent-green","label":"Fluorescent green cast"},{"key":"tint","label":"Temperature vs Tint"},{"key":"custom-wb","label":"Custom WB with grey/white card"},{"key":"raw-vs-jpeg","label":"RAW vs JPEG for WB edits"},{"key":"mixed-light","label":"Handling mixed lighting"},{"key":"creative-warmth","label":"Creative warming/cooling"}],"questionTopics":{"q1":["wb-basics"],"q2":["presets","tungsten"],"q3":["presets","shade-cloudy"],"q4":["kelvin-scale","tungsten"],"q5":["auto-wb","mixed-light"],"q6":["raw-vs-jpeg"],"q7":["tungsten","presets"],"q8":["fluorescent-green","tint"],"q9":["custom-wb"],"q10":["creative-warmth","presets","kelvin-scale"],"q11":["mixed-light","raw-vs-jpeg"],"q12":["kelvin-scale","creative-warmth"]},"topicLinks":{"wb-basics":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#what-is-white-balance","presets":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#presets","kelvin-scale":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#kelvin","auto-wb":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#auto-wb","tungsten":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#tungsten","shade-cloudy":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#shade-cloudy","fluorescent-green":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#fluorescent","tint":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#tint","custom-wb":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#custom-wb","raw-vs-jpeg":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#raw","mixed-light":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#mixed-light","creative-warmth":"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography#creative"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

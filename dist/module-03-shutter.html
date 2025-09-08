@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Module 3: Shutter Speed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-03-shutter","title":"Module 3: Shutter Speed","passMark":80,"links":{"article":"https://www.alanranger.com/blog-on-photography/what-is-shutter-speed"},"questions":[{"question":"What is the primary function of shutter speed?","options":["Control the amount of light entering the lens","Adjust the camera's ISO setting","Determine the duration the sensor is exposed to light","Change the focal length of the lens"],"correct":2},{"question":"Which shutter speed is most likely to freeze fast motion?","options":["1/60","1/250","1/500","1/1000"],"correct":3},{"question":"What effect does a slow shutter speed have on a moving subject?","options":["Freezes the motion","Blurs the motion","Darkens the image","Increases depth of field"],"correct":1},{"question":"Which shutter speed takes the longest duration to collect light?","options":["1/1000","1/250","1/60","1/2"],"correct":3},{"question":"At what shutter speed is it generally recommended to use a tripod to avoid camera shake?","options":["1/500","1/250","1/60","1/30"],"correct":3},{"question":"In which camera mode does the photographer set the shutter speed while the camera selects the appropriate aperture?","options":["Manual (M)","Aperture Priority (Av)","Shutter Priority (Tv)","Program (P)"],"correct":2},{"question":"Which shutter speed is best suited for capturing a sharp image of a person running?","options":["1/60","1/125","1/250","1/500"],"correct":3},{"question":"What is the effect of using a shutter speed slower than 1/60 without a tripod?","options":["Increased depth of field","Overexposed image","Camera shake leading to a blurry image","Underexposed image"],"correct":2},{"question":"Which shutter speed takes the shortest duration to collect light?","options":["1/1000","1/500","1/250","1/60"],"correct":0},{"question":"What is the term for the technique of using a slow shutter speed to capture light trails from moving vehicles at night?","options":["Panning","Light painting","Long exposure","Time-lapse"],"correct":2},{"question":"What is the minimum shutter speed typically recommended for handheld photography to avoid camera shake?","options":["1/1000","1/250","1/60","1/15"],"correct":2},{"question":"What happens to the exposure when you decrease the shutter speed from 1/500 to 1/250, with no changes to aperture and ISO?","options":["The image becomes darker","The image becomes brighter","No change in exposure","The depth of field increases"],"correct":1}]};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>

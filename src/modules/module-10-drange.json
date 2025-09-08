@@ -1,0 +1,184 @@
+{
+  "moduleId": "module-10-drange",
+  "title": "Dynamic Range",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What is dynamic range in photography?",
+      "options": [
+        "The range of focal lengths your lens can zoom",
+        "The range between the darkest and brightest tones a camera can capture at once",
+        "The sharpness across the frame",
+        "The color gamut of the sensor"
+      ],
+      "correct": 1,
+      "reviewHint": "DR = dark-to-bright span the camera can record without losing detail."
+    },
+    {
+      "question": "Which scene usually has high dynamic range (hard to expose in one shot)?",
+      "options": [
+        "Overcast sky and evenly lit subject",
+        "Bright sky with a dark foreground at sunset",
+        "Indoor scene with soft lamps",
+        "Studio portrait with softbox"
+      ],
+      "correct": 1,
+      "reviewHint": "Bright sky + dark land = big brightness gap → high DR."
+    },
+    {
+      "question": "On the histogram, blown highlights are indicated by:",
+      "options": [
+        "A tall spike in the center",
+        "Data piled up hard against the right edge",
+        "Data piled up hard against the left edge",
+        "A gap on both sides"
+      ],
+      "correct": 1,
+      "reviewHint": "Right edge = highlight clipping; left edge = shadow clipping."
+    },
+    {
+      "question": "You're losing detail in the bright sky. Easiest first step?",
+      "options": [
+        "Increase ISO",
+        "Open the aperture",
+        "Dial negative exposure compensation (e.g., −1 EV)",
+        "Add +1 EV compensation"
+      ],
+      "correct": 2,
+      "reviewHint": "Go brighter ( +EV ) to lift shadows, darker ( −EV ) to save highlights."
+    },
+    {
+      "question": "For maximum editing flexibility with dynamic range, shoot:",
+      "options": [
+        "PNG",
+        "RAW",
+        "JPEG (Normal)",
+        "GIF"
+      ],
+      "correct": 1,
+      "reviewHint": "RAW files retain more highlight/shadow detail."
+    },
+    {
+      "question": "Which typically reduces a camera's usable dynamic range?",
+      "options": [
+        "Using a tripod",
+        "Stopping down from f/4 to f/8",
+        "Raising ISO far above base ISO",
+        "Switching to manual focus"
+      ],
+      "correct": 2,
+      "reviewHint": "Higher ISO usually lowers DR (less highlight headroom, more noise)."
+    },
+    {
+      "question": "When is HDR / exposure bracketing most helpful?",
+      "options": [
+        "Static scenes with bright sky + dark foreground",
+        "Sports action",
+        "Windy fields of grass",
+        "Fast-moving crowds"
+      ],
+      "correct": 0,
+      "reviewHint": "HDR works best when little moves between frames."
+    },
+    {
+      "question": "Outdoor backlit portrait (bright sky behind, face in shade) without bracketing—what helps keep both usable?",
+      "options": [
+        "Spot meter the sky and keep it dark",
+        "Expose a bit for the highlights (−EV) and add fill (flash/reflector), or lift shadows later",
+        "Always meter the face only",
+        "Raise ISO to brighten everything"
+      ],
+      "correct": 1,
+      "reviewHint": "Protect highlights then fill/brighten shadows."
+    },
+    {
+      "question": "A graduated ND filter is most useful when:",
+      "options": [
+        "The whole scene is uniformly dark",
+        "The sky is much brighter than the land",
+        "Shooting indoor portraits",
+        "Panning action shots"
+      ],
+      "correct": 1,
+      "reviewHint": "Grad ND darkens the sky so exposure fits the camera's DR."
+    },
+    {
+      "question": "Expose To The Right (ETTR) means:",
+      "options": [
+        "Overexpose until the image looks white",
+        "Place the histogram as far right as possible without clipping",
+        "Always use +2 EV",
+        "Always shoot at ISO 6400"
+      ],
+      "correct": 1,
+      "reviewHint": "ETTR aims for brighter (noise-cleaner) exposure without blowing highlights."
+    },
+    {
+      "question": "Which statement is most accurate about dynamic range vs. contrast?",
+      "options": [
+        "They're the same thing",
+        "Contrast is how tones are distributed/appear; DR is the camera's capture limits",
+        "Higher contrast always means higher DR",
+        "DR is only about color saturation"
+      ],
+      "correct": 1,
+      "reviewHint": "Contrast = look; DR = recordable range."
+    },
+    {
+      "question": "In post-processing of a RAW file with bright clouds just below clipping, which control is most helpful?",
+      "options": [
+        "Clarity +100",
+        "Reduce Highlights / pull back Highlights",
+        "Add heavy vignette",
+        "Increase Contrast"
+      ],
+      "correct": 1,
+      "reviewHint": "Highlights slider helps recover near-clipped bright areas."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"dr-basics","label":"What is dynamic range?"},
+      {"key":"high-contrast-scenes","label":"Recognising high-DR scenes"},
+      {"key":"histogram","label":"Histogram & clipping"},
+      {"key":"protect-highlights","label":"Protecting highlights"},
+      {"key":"raw-vs-jpeg","label":"RAW vs JPEG for DR"},
+      {"key":"iso-and-dr","label":"ISO and dynamic range"},
+      {"key":"hdr-bracketing","label":"HDR / Exposure bracketing"},
+      {"key":"backlighting","label":"Backlighting solutions"},
+      {"key":"grad-nd","label":"Graduated ND filters"},
+      {"key":"ettr","label":"Expose To The Right (ETTR)"},
+      {"key":"contrast","label":"Contrast vs Dynamic Range"},
+      {"key":"recover-highlights","label":"Recovering highlights in post"}
+    ],
+    "questionTopics": {
+      "q1":["dr-basics"],
+      "q2":["high-contrast-scenes"],
+      "q3":["histogram"],
+      "q4":["protect-highlights"],
+      "q5":["raw-vs-jpeg"],
+      "q6":["iso-and-dr"],
+      "q7":["hdr-bracketing","high-contrast-scenes"],
+      "q8":["backlighting","protect-highlights"],
+      "q9":["grad-nd","protect-highlights"],
+      "q10":["ettr","histogram"],
+      "q11":["contrast","dr-basics"],
+      "q12":["recover-highlights","raw-vs-jpeg"]
+    },
+    "topicLinks": {
+      "dr-basics": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#what-is-dynamic-range",
+      "high-contrast-scenes": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#high-contrast",
+      "histogram": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#histogram",
+      "protect-highlights": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#protect-highlights",
+      "raw-vs-jpeg": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#raw",
+      "iso-and-dr": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#iso",
+      "hdr-bracketing": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#hdr-bracketing",
+      "backlighting": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#backlighting",
+      "grad-nd": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#grad-nd",
+      "ettr": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#ettr",
+      "contrast": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#contrast",
+      "recover-highlights": "https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography#recover-highlights"
+    }
+  }
+}
+

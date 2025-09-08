@@ -1,0 +1,156 @@
+{
+  "moduleId": "module-07-bracketing",
+  "title": "Exposure Bracketing",
+  "passMark": 80,
+  "questions": [
+    {
+      "question": "What is exposure bracketing?",
+      "options": [
+        "Taking one perfectly exposed image using the histogram",
+        "Taking several images at different exposures (e.g., −/0/+ EV)",
+        "Using Auto ISO only",
+        "Changing white balance across frames"
+      ],
+      "correct": 1,
+      "reviewHint": "Bracketing = multiple exposures so you can pick/merge later."
+    },
+    {
+      "question": "A common bracketing step size is:",
+      "options": [
+        "⅓ EV only",
+        "½ EV only",
+        "±1 EV per step is very common",
+        "±4 EV per step"
+      ],
+      "correct": 2,
+      "reviewHint": "Many cameras default to ±1 EV steps for 3-shot brackets."
+    },
+    {
+      "question": "AEB on a camera stands for:",
+      "options": [
+        "Auto Exposure Balance",
+        "Auto Exposure Bracketing",
+        "Assisted Exposure Blend",
+        "All Exposure Boost"
+      ],
+      "correct": 1,
+      "reviewHint": "AEB = camera auto-shoots a sequence at different EVs."
+    },
+    {
+      "question": "When does bracketing help most?",
+      "options": [
+        "In a studio with controlled soft light",
+        "At noon on a cloudy day",
+        "High-contrast scenes (bright sky + dark foreground)",
+        "Macro shots with flash"
+      ],
+      "correct": 2,
+      "reviewHint": "Use bracketing when dynamic range is too high for one shot."
+    },
+    {
+      "question": "You set a 3-shot bracketing at ±1 EV. Base exposure is 1/125s, f/8, ISO 100 in Aperture Priority. Which shutters are most likely?",
+      "options": [
+        "1/125s, 1/1000s, 1/15s",
+        "1/500s, 1/125s, 1/2000s",
+        "1/60s, 1/125s, 1/500s",
+        "1/250s (−1 EV), 1/125s (0 EV), 1/60s (+1 EV)"
+      ],
+      "correct": 3,
+      "reviewHint": "In Av, camera changes shutter: ±1 EV ≈ ×2 / ÷2 on shutter."
+    },
+    {
+      "question": "For a simple static HDR landscape, a common starting bracket is:",
+      "options": [
+        "2 shots at 0 and +3 EV",
+        "3 shots at −2, 0, +2 EV",
+        "7 shots at ⅓ EV steps",
+        "1 well-exposed RAW"
+      ],
+      "correct": 1,
+      "reviewHint": "Many HDR workflows start with −2/0/+2 EV."
+    },
+    {
+      "question": "How can you reduce ghosting (moving leaves/water) when bracketing?",
+      "options": [
+        "Turn off burst shooting",
+        "Use a long self-timer for each frame",
+        "Use a tripod + high-speed burst; enable de-ghosting when merging",
+        "Only shoot the +2 EV frame"
+      ],
+      "correct": 2,
+      "reviewHint": "Tripod + fast sequence + de-ghosting helps align motion."
+    },
+    {
+      "question": "Which mode keeps depth of field consistent while bracketing?",
+      "options": [
+        "Program",
+        "Shutter Priority",
+        "Manual with Auto ISO",
+        "Aperture Priority (A/Av)"
+      ],
+      "correct": 3,
+      "reviewHint": "In Av, aperture stays fixed; camera varies shutter."
+    },
+    {
+      "question": "When is bracketing usually unnecessary?",
+      "options": [
+        "Evenly lit scene with no clipping on the histogram",
+        "Sunset with dark foreground",
+        "Backlit subject against a bright window",
+        "Night cityscape with bright signs"
+      ],
+      "correct": 0,
+      "reviewHint": "If one exposure fits the scene's range, no bracket needed."
+    },
+    {
+      "question": "AEB set to 5 frames, 1 EV steps in Av. Base is 1/60s, f/4, ISO 200. Which shutter sequence fits?",
+      "options": [
+        "1/4, 1/8, 1/15, 1/30, 1/60",
+        "1/250, 1/125, 1/60, 1/30, 1/15",
+        "1/1000 only",
+        "1/60 for all frames"
+      ],
+      "correct": 1,
+      "reviewHint": "5 frames at −2, −1, 0, +1, +2 EV → shutters about ×4, ×2, base, ÷2, ÷4."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {"key":"bracketing-basics","label":"Bracketing basics"},
+      {"key":"why-bracket","label":"Why bracket"},
+      {"key":"aeb-feature","label":"Auto Exposure Bracketing (AEB)"},
+      {"key":"ev-steps","label":"EV step sizes"},
+      {"key":"mode-choice","label":"Best mode for bracketing"},
+      {"key":"hdr-merge","label":"HDR merge basics"},
+      {"key":"ghosting-motion","label":"Handling motion/ghosting"},
+      {"key":"tripod-handheld","label":"Tripod vs handheld"},
+      {"key":"when-not-needed","label":"When bracketing isn't needed"},
+      {"key":"shutter-changes","label":"How shutters change with EV"}
+    ],
+    "questionTopics": {
+      "q1":["bracketing-basics"],
+      "q2":["ev-steps"],
+      "q3":["aeb-feature"],
+      "q4":["why-bracket"],
+      "q5":["shutter-changes","mode-choice"],
+      "q6":["hdr-merge","ev-steps"],
+      "q7":["ghosting-motion","tripod-handheld"],
+      "q8":["mode-choice"],
+      "q9":["when-not-needed","why-bracket"],
+      "q10":["shutter-changes","ev-steps"]
+    },
+    "topicLinks": {
+      "bracketing-basics": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#what-is-bracketing",
+      "why-bracket": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#why",
+      "aeb-feature": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#aeb",
+      "ev-steps": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#ev-steps",
+      "mode-choice": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#modes",
+      "hdr-merge": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#hdr",
+      "ghosting-motion": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#ghosting",
+      "tripod-handheld": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#tripod",
+      "when-not-needed": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#when-not",
+      "shutter-changes": "https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers#shutter"
+    }
+  }
+}
+

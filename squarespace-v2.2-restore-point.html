@@ -1,0 +1,1529 @@
+<!-- AR Assessment v2.2 — Module 1 + Supabase progress + branded PDFs + Grid (Squarespace Code Block) -->
+<div id="ar-modgrid">
+  <!-- Grid View -->
+  <div id="grid-container" style="display:block; max-width:1200px; margin:0 auto; padding:20px;">
+    <style>
+      :root{ --ar-orange:#E57200; --ar-green:#10b981; --ar-red:#ef4444; --ar-gray:#eaeaea; --ar-text:#1f2937; }
+      #ar-modgrid a{color:#2563eb;text-decoration:none} #ar-modgrid a:hover{text-decoration:underline}
+      #ar-modgrid .top{ display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;margin:8px 0 18px }
+      #ar-modgrid h2{margin:0;font-size:36px;line-height:1.2;font-weight:800}
+      #ar-modgrid .summary{ min-width:380px;max-width:560px; border:1px solid var(--ar-gray);border-radius:12px;background:#fff;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.06) }
+      #ar-modgrid .summary h3{margin:0 0 6px 0;font-size:18px;font-weight:800}
+      #ar-modgrid .progressline{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px 0}
+      #ar-modgrid .progressline .stat{font-weight:800}
+      #ar-modgrid .track{margin-top:8px;height:10px;border-radius:999px;background:#f2f2f2;overflow:hidden}
+      #ar-modgrid .bar{height:100%;width:0;background:var(--ar-orange);transition:width .4s ease;border-radius:999px}
+      #ar-modgrid .auth{ display:grid; grid-template-columns:auto 1fr auto auto; align-items:center;gap:8px;margin-top:10px }
+      #ar-modgrid .badge{padding:6px 10px;border:1px solid var(--ar-gray);border-radius:999px;background:#fff;font-weight:600}
+      #ar-modgrid input[type="email"]{ width:100%;min-width:180px;padding:8px 10px;border:1px solid #ddd;border-radius:10px }
+      #ar-modgrid .btn{ display:inline-flex;align-items:center;justify-content:center;gap:8px; padding:10px 14px;border-radius:10px;border:1px solid var(--ar-orange);background:var(--ar-orange);color:#fff; font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap }
+      #ar-modgrid .btn.sm{padding:7px 12px;border-radius:8px;font-size:14px}
+      #ar-modgrid .btn.secondary{background:#fff;color:var(--ar-orange)}
+      #ar-modgrid .hint{margin-top:8px;color:#444;font-size:14px}
+      #ar-modgrid .grid{ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px }
+      @media (max-width:980px){ #ar-modgrid .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+      @media (max-width:640px){ #ar-modgrid .top{grid-template-columns:1fr} #ar-modgrid .grid{grid-template-columns:1fr} #ar-modgrid .summary{max-width:none} }
+      #ar-modgrid .card{ position:relative;background:#fff;border:1px solid var(--ar-gray);border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.05); overflow:hidden }
+      #ar-modgrid .card::before{ content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--ar-orange) }
+      #ar-modgrid .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+      #ar-modgrid .num{min-width:28px;height:28px;border-radius:999px;background:rgba(229,114,0,.12);color:#793d00;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+      #ar-modgrid .title{font-weight:800;font-size:18px}
+      #ar-modgrid .chips{ display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:4px 0 10px 0;text-align:center }
+      #ar-modgrid .chip{ display:inline-flex;align-items:center;justify-content:center;gap:6px; padding:6px 10px;border-radius:999px;border:1px solid var(--ar-gray);background:#fff;font-size:14px }
+      #ar-modgrid .chip.pass{background:#f6fffa;border-color:#b7f0d2;color:#067647}
+      #ar-modgrid .chip.fail{background:#fff5f5;border-color:#fac5c5;color:#b42318}
+      #ar-modgrid .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+      #ar-modgrid .card.passed{background:#e6f7ed} #ar-modgrid .card.failed{background:#fef2f2}
+      #ar-modgrid .tick{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#e6fff4;border:1px solid #b7f0d2;color:#067647;font-weight:900;display:flex;align-items:center;justify-content:center}
+      #ar-modgrid .xmark{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#ffecec;border:1px solid #f8caca;color:#b42318;font-weight:900;display:flex;align-items:center;justify-content:center}
+      #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff; padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
+      #ar-modgrid .toast.ok{background:var(--ar-green)} #ar-modgrid .toast.err{background:var(--ar-red)}
+      
+      /* Debug panel styles */
+      #debugPanel{ position:fixed; top:20px; right:20px; width:300px; max-height:400px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.15); z-index:10000; display:none; }
+      #debugContent{ max-height:300px; overflow-y:auto; padding:12px; font-family:monospace; font-size:12px; line-height:1.4; }
+      #debugBtn{ position:fixed; top:20px; right:20px; background:#8b5cf6; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; z-index:10001; }
+    </style>
+    
+    <div class="top">
+      <h2>15 Camera Settings — Modules</h2>
+      <div class="summary" id="summary">
+        <div class="progressline">
+          <div class="stat"><span id="passedCount">0</span>/15 Passed</div>
+          <div class="stat"><span id="progressPct">0</span>%</div>
+        </div>
+        <div class="track"><div class="bar" id="progressBar"></div></div>
+        <div class="auth">
+          <span class="badge" id="authBadge">Not signed in</span>
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
+          <button class="btn" id="btnMagic">Get magic link</button>
+          <button class="btn secondary" id="btnSignIn" style="background:#10b981; color:#fff;">Sign in</button>
+          <button class="btn secondary" id="btnSignOut" style="display:none">Sign out</button>
+        </div>
+        <div class="hint">New users: "Get magic link" | Returning users: "Sign in" to access your saved progress.</div>
+        <div class="hint" style="margin-top: 4px; font-size: 12px; color: #666;">
+          💡 Tip: Once signed in, you'll stay signed in for 30 days unless you sign out.
+        </div>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="toast" id="toast"></div>
+  
+  <!-- Loading spinner for sign-in process -->
+  <div id="loadingSpinner" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10000; background:rgba(255,255,255,0.95); padding:20px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.2); text-align:center;">
+    <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #E57200; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 12px;"></div>
+    <div id="loadingText" style="font-weight:600; color:#333;">Loading your progress...</div>
+  </div>
+  
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+    
+    <!-- Debug Panel -->
+    <button id="debugBtn">Debug Info</button>
+    <div id="debugPanel">
+      <div style="padding:12px; border-bottom:1px solid #ddd; font-weight:bold;">Debug Information</div>
+      <div id="debugContent" style="white-space:pre-wrap; line-height:1.4;"></div>
+      <button onclick="copyDebugInfo()" style="background:#8b5cf6; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; margin:10px; width:calc(100% - 20px);">Copy Debug Info</button>
+    </div>
+  </div>
+
+  <!-- Quiz View -->
+  <div id="quiz-container" style="display:none;">
+    <div id="ar-quiz" style="border:1px solid #eaeaea;border-left:10px solid #F05922;background:#fafafa;padding:24px;border-radius:12px;max-width:820px;margin:28px auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <style>
+    #ar-quiz a { color:#2563eb !important; text-decoration:none; }
+    #ar-quiz a:hover { text-decoration:underline; }
+    #ar-toast{ position:fixed; z-index:99999; left:50%; top:22px; transform:translateX(-50%);
+      background:#111; color:#fff; padding:12px 16px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); display:none; max-width:90vw; font-size:14px; line-height:1.35; text-align:center; }
+    #ar-toast.success{ background:#10b981; } #ar-toast.error{ background:#ef4444; } #ar-toast.info{ background:#2563eb; }
+    .ar-field{ border:1px solid #eaeaea;background:#fff;border-radius:10px;padding:14px;margin:12px 0; }
+    .ar-qtxt{ font-weight:800;margin:0 0 8px; color:#F05922; }
+    .ar-opt{ display:flex; gap:10px; align-items:center; margin:8px 0; cursor:pointer; }
+    #results .pill { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; }
+    #results .pill-pass { background:#e8fff4; color:#067647; border:1px solid #b7f0d2; }
+    #results .pill-fail { background:#fff5f5; color:#b42318; border:1px solid #fac5c5; }
+    #ar-auth { display:flex; align-items:center; gap:10px; margin:0 0 8px; color:#555; font-size:14px; flex-wrap:wrap; }
+    #ar-auth .badge { padding:2px 8px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; }
+    #ar-auth .mini-btn { background:#fff; color:#333; border:1px solid #ddd; border-radius:999px; padding:6px 10px; cursor:pointer; font-size:12px; }
+    #ar-auth .mini-btn:disabled { opacity:.6; cursor:not-allowed; }
+    #ar-status { margin:6px 0 0; font-size:14px; color:#111; }
+    .muted { color:#6b7280; }
+    input[type="radio"] { accent-color:#F05922; }
+    input[type="radio"]:checked { accent-color:#F05922; }
+  </style>
+
+  <div id="ar-auth">
+    <span id="ar-auth-status" class="badge">Not signed in</span>
+    <span id="ar-auth-email"></span>
+    <button id="btn-magic" type="button" class="mini-btn" style="background:#F05922;color:#fff;border-color:#F05922;">Send magic link</button>
+    <button id="btn-clear" type="button" class="mini-btn" style="background:#6b7280;color:#fff;border-color:#6b7280;">Clear results / Sign out</button>
+  </div>
+  <div style="font-size:12px;color:#6b7280;margin:8px 0 16px 0;padding:8px;background:#f9f9f9;border-radius:6px;">
+    <strong>Magic link:</strong> Enter your email and click "Send magic link" to receive a secure login link. No password needed. 
+    <strong>Clear results:</strong> Use this to sign out and reset the quiz so you can retake it.
+  </div>
+
+  <h2 style="margin:0 0 12px;font-weight:700;line-height:1.2;">Module 1 Assessment: What is Exposure</h2>
+  <p style="margin:0 0 16px;color:#333;">Enter your details, answer the questions, then view your score. Download your results as a PDF. If you pass, you can also download a personalised certificate.</p>
+
+  <!-- Learner details -->
+  <form id="learner-form" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;">
+    <div>
+      <label for="name" style="display:block;font-weight:600;margin-bottom:6px;">Name</label>
+      <input id="name" name="name" type="text" required placeholder="Your name"
+             style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;background-color:#fff5f5;border-color:#fca5a5;">
+      <div style="font-size:12px;color:#666;margin-top:4px;font-style:italic;">
+        💡 Enter your full name as you'd like it to appear on your certificate
+      </div>
+    </div>
+    <div>
+      <label for="email" style="display:block;font-weight:600;margin-bottom:6px;">Email (for saving progress)</label>
+      <input id="email" name="email" type="email" placeholder="you@example.com"
+             style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
+      <div id="ar-status"></div>
+    </div>
+  </form>
+
+  <!-- Assessment -->
+  <form id="quiz-form" novalidate></form>
+
+  <!-- Actions -->
+  <div id="quiz-actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+    <button id="btn-submit" type="button"
+            style="background:#F05922;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">Submit answers</button>
+    <button id="btn-retake" type="button" style="display:none;"
+            style="background:#dc2626;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">Retake test</button>
+    <button id="btn-test-correct" type="button" 
+            style="background:#10b981;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">🧪 Test: All Correct</button>
+    <button id="btn-test-fail" type="button" 
+            style="background:#ef4444;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">🧪 Test: All Wrong</button>
+    <button id="btn-pdf" type="button" disabled
+            style="background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;opacity:.6;">Download results (PDF)</button>
+    <button id="btn-certificate" type="button" disabled
+            style="background:#10b981;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;opacity:.6;">Download certificate (PDF)</button>
+    <button id="btn-save" type="button" disabled
+            style="background:#111827;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;opacity:.6;">Save to my account</button>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="margin-top:20px;display:none;background:#fff;border:1px solid #eaeaea;border-radius:10px;padding:16px;">
+    <h3 style="margin:0 0 10px;font-size:18px;">Your results</h3>
+    <div id="results-summary" style="margin-bottom:12px;"></div>
+    <div id="results-compact" class="muted" style="font-size:13px;"></div>
+    <div id="results-feedback" style="margin-top:8px;"></div>
+  </div>
+
+  <div id="ar-toast" role="status" aria-live="polite"></div>
+  
+  <!-- Back to Modules Button -->
+  <div style="text-align:center; margin-top:24px; padding-top:16px; border-top:1px solid #eaeaea;">
+    <button onclick="backToGrid()" style="display:inline-block; background:#6b7280; color:#fff; text-decoration:none; padding:12px 20px; border-radius:10px; font-weight:700; border:none; cursor:pointer;">
+      ← Back to Modules
+    </button>
+  </div>
+    </div>
+  </div>
+</div>
+
+<!-- Deps -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* ---------- GRID FUNCTIONALITY ---------- */
+const modules = [
+  {id:"module-01-exposure", n:1, title:"Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"},
+  {id:"module-02-aperture", n:2, title:"Aperture", article:"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"},
+  {id:"module-03-shutter", n:3, title:"Shutter Speed", article:"https://www.alanranger.com/blog-on-photography/what-is-shutter-speed"},
+  {id:"module-04-iso", n:4, title:"ISO", article:"https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography"},
+  {id:"module-05-manual", n:5, title:"Manual Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography"},
+  {id:"module-06-metering", n:6, title:"Metering", article:"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography"},
+  {id:"module-07-bracketing", n:7, title:"Exposure Bracketing", article:"https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers"},
+  {id:"module-08-focusing", n:8, title:"Focusing", article:"https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography"},
+  {id:"module-09-dof", n:9, title:"Depth of Field", article:"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field"},
+  {id:"module-10-drange", n:10, title:"Dynamic Range", article:"https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography"},
+  {id:"module-11-wb", n:11, title:"White Balance", article:"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography"},
+  {id:"module-12-drive", n:12, title:"Camera Drive Modes", article:"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes"},
+  {id:"module-13-jpeg-raw", n:13, title:"JPEG vs RAW", article:"https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences"},
+  {id:"module-14-sensors", n:14, title:"Full Frame vs Crop Sensor", article:"https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor"},
+  {id:"module-15-focal", n:15, title:"Focal Length", article:"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography"},
+];
+
+function renderGrid(statusByModuleId = {}) {
+  debugLog('🎨 renderGrid called with: ' + JSON.stringify(statusByModuleId));
+  
+  const gridEl = document.getElementById('grid');
+  if (!gridEl) {
+    debugLog('❌ Grid element not found');
+    return;
+  }
+  
+  gridEl.innerHTML = '';
+  modules.forEach(m => {
+    const st = statusByModuleId[m.id];
+    const passed = st?.passed === true;
+    const failed = st && st.passed === false;
+    
+    debugLog(`📝 Module ${m.id}: status=${JSON.stringify(st)}, passed=${passed}, failed=${failed}`);
+    
+    const card = document.createElement('div');
+    card.className = `card${passed ? ' passed' : ''}${failed ? ' failed' : ''}`;
+    
+    const head = document.createElement('div');
+    head.className = 'head';
+    head.innerHTML = `<div class="num">${m.n}</div><div class="title">${m.title}</div>`;
+    card.appendChild(head);
+    
+    if (passed) {
+      const tick = document.createElement('div');
+      tick.className='tick'; tick.textContent='✓';
+      card.appendChild(tick);
+    } else if (failed) {
+      const x = document.createElement('div');
+      x.className='xmark'; x.textContent='✕';
+      card.appendChild(x);
+    }
+    
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    const scoreTxt = (typeof st?.score === 'number') ? `${st.score}%` : '—';
+    chips.innerHTML = `
+      <span class="chip">Score: <strong>${scoreTxt}</strong></span>
+      <span class="chip">Pass ≥ <strong>80%</strong></span>
+      ${passed ? `<span class="chip pass">Passed</span>` : (failed ? `<span class="chip fail">Failed</span>` : '')}
+    `;
+    card.appendChild(chips);
+    
+      const actions = document.createElement('div');
+  actions.className = 'actions';
+  const examButtonText = passed ? 'View results' : (failed ? 'Retake exam' : 'Take exam');
+  const examButtonClass = passed ? 'btn sm' : 'btn sm secondary';
+  actions.innerHTML = `
+    <a class="btn sm" href="${m.article}" target="_blank" rel="noopener">Open module</a>
+    <a class="${examButtonClass}" href="#" onclick="loadExam('${m.id}'); return false;">${examButtonText}</a>
+  `;
+  card.appendChild(actions);
+  
+  // Debug logging for grid rendering
+  debugLog(`🎨 Rendered module ${m.id}: passed=${passed}, buttonText="${examButtonText}", buttonClass="${examButtonClass}"`);
+    
+    gridEl.appendChild(card);
+  });
+  
+  // Debug: Log the final grid state
+  debugLog(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
+  debugLog(`🎨 Grid HTML preview: ${gridEl.innerHTML.substring(0, 200)}...`);
+}
+
+function renderSummary(statusByModuleId) {
+  const total = modules.length;
+  const passed = Object.values(statusByModuleId).filter(s => s.passed === true).length;
+  const passedCountEl = document.getElementById('passedCount');
+  const progressPctEl = document.getElementById('progressPct');
+  const progressBar = document.getElementById('progressBar');
+  
+  if (passedCountEl) passedCountEl.textContent = String(passed);
+  if (progressPctEl) {
+    const pct = Math.round((passed/total)*100);
+    progressPctEl.textContent = String(pct);
+  }
+  if (progressBar) {
+    const pct = Math.round((passed/total)*100);
+    progressBar.style.width = pct + '%';
+  }
+}
+
+async function fetchStatusForUser(user) {
+  if (!user) {
+    debugLog('⚠️ fetchStatusForUser: No user provided');
+    return {};
+  }
+  
+  debugLog('🔍 Fetching status for user: ' + user.email + ' (ID: ' + user.id + ')');
+  
+  try {
+    debugLog('🔍 Starting Supabase query...');
+    
+    // Add timeout to prevent hanging
+    const queryPromise = supabase
+      .from('module_results')
+      .select('module_id, score_percent, passed, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+    );
+    
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+    
+    debugLog('🔍 Supabase query completed');
+    
+    if (error) {
+      debugLog('❌ Error fetching status: ' + JSON.stringify(error));
+      return {};
+    }
+    
+    if (!data) {
+      debugLog('⚠️ No data returned from fetchStatusForUser');
+      return {};
+    }
+    
+    debugLog('📋 Raw data from DB: ' + JSON.stringify(data));
+    debugLog('📋 Data length: ' + data.length);
+    
+    const latest = {};
+    for (const row of data) {
+      if (!latest[row.module_id]) {
+        latest[row.module_id] = {
+          score: row.score_percent,
+          passed: row.passed,
+          when: row.created_at
+        };
+      }
+    }
+    
+    debugLog('📊 Processed status: ' + JSON.stringify(latest));
+    return latest;
+  } catch (err) {
+    debugLog('❌ Exception in fetchStatusForUser: ' + err.message);
+    return {};
+  }
+}
+
+async function loadExam(moduleId) {
+  if (moduleId === 'module-01-exposure') {
+    document.getElementById('grid-container').style.display = 'none';
+    document.getElementById('quiz-container').style.display = 'block';
+    
+    // Populate name field if user is signed in
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.email) {
+        const nameField = document.getElementById('name');
+        const emailField = document.getElementById('email');
+        
+        if (nameField) {
+          // Clear the name field and show red background to prompt user input
+          nameField.value = '';
+          nameField.style.backgroundColor = '#fff5f5';
+          nameField.style.borderColor = '#fca5a5';
+          
+          // Add event listener to change background when user types
+          nameField.addEventListener('input', function() {
+            if (this.value.trim().length > 0) {
+              this.style.backgroundColor = '#fff';
+              this.style.borderColor = '#10b981';
+            } else {
+              this.style.backgroundColor = '#fff5f5';
+              this.style.borderColor = '#fca5a5';
+            }
+          });
+        }
+        
+        if (emailField && !emailField.value) {
+          emailField.value = user.email;
+        }
+      }
+    } catch (error) {
+      debugLog('❌ Error populating user fields:', error);
+    }
+  }
+}
+
+async function backToGrid() {
+  debugLog('🔙 Returning to grid from quiz');
+  
+  document.getElementById('quiz-container').style.display = 'none';
+  document.getElementById('grid-container').style.display = 'block';
+  
+  // Wait a moment for DOM to update
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Refresh grid with updated results
+  try {
+    debugLog('🔍 Getting current user...');
+    const { data: { user } } = await supabase.auth.getUser();
+    debugLog('👤 Current user: ' + (user ? user.email : 'None'));
+    
+    if (user) {
+      debugLog('🔄 Fetching user status...');
+      const status = await fetchStatusForUser(user);
+      debugLog('📊 Fetched status: ' + JSON.stringify(status));
+      
+      debugLog('🎨 Rendering summary and grid...');
+      renderSummary(status);
+      renderGrid(status);
+      
+      debugLog('✅ Grid refreshed with updated results');
+    } else {
+      debugLog('⚠️ No user found, clearing grid');
+      renderSummary({});
+      renderGrid({});
+    }
+  } catch (error) {
+    debugLog('❌ Error refreshing grid: ' + error.message);
+    debugLog('❌ Error stack: ' + error.stack);
+  }
+}
+
+// Check URL parameters for direct exam access
+function checkUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const moduleId = urlParams.get('m');
+  if (moduleId === 'module-01-exposure') {
+    setTimeout(() => loadExam(moduleId), 100);
+  }
+}
+
+// Debug functions
+function debugLog(message) {
+  try {
+    const debugContent = document.getElementById('debugContent');
+    if (debugContent) {
+      const timestamp = new Date().toLocaleTimeString();
+      debugContent.textContent += `[${timestamp}] ${message}\n`;
+      debugContent.scrollTop = debugContent.scrollHeight;
+    }
+    console.log(message);
+  } catch (error) {
+    console.log('Debug error:', error);
+  }
+}
+
+function showDebugPanel() {
+  const panel = document.getElementById('debugPanel');
+  if (panel) {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function copyDebugInfo() {
+  const content = document.getElementById('debugContent');
+  if (content) {
+    navigator.clipboard.writeText(content.textContent).then(() => {
+      alert('Debug info copied to clipboard!');
+    });
+  }
+}
+
+/* ---------- BRANDING & LINKS ---------- */
+const branding = {
+  orange:"#F05922",
+  logoUrl:"https://www.alanranger.com/s/ALAN-RANGER-LOGO-and-Icon-BLACK.png",
+  academyUrl:"https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png",
+  signatureUrl:"https://www.alanranger.com/s/Alan-Ranger-black-high-res.png",
+  emblemUrl:"https://www.alanranger.com/s/academy-emblem-ndsx.png",
+  courseUrl:"https://www.alanranger.com/online-photography-course",
+  exposureUrl:"https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography",
+  siteUrl:"https://alanranger.com"
+};
+
+/* ---------- SUPABASE (your live values) ---------- */
+const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------- MODULE CONFIG ---------- */
+const quizConfig = {
+  moduleId:"module-01-exposure",
+  moduleTitle:"Module 1: What is Exposure",
+  passMarkPercent:80,
+  questions:[
+    { id:"q1", text:"What does the term exposure mean in photography?", options:[
+      "Collecting the correct quantity of light for proper image brightness",
+      "Collecting quality of light to capture the image",
+      "Using autofocus to make the image sharp",
+      "Ensuring the colour is right in the image"
+    ], correctIndex:0, reviewHint:"Review the 'What is Exposure' definition section."},
+    { id:"q2", text:"What 3 variables control exposure?", options:[
+      "Aperture, Shutter Speed, ISO","The lens, Colour, Focusing","White Balance, Focus, Metering","Histogram, Composition, Lighting"
+    ], correctIndex:0, reviewHint:"See the Exposure Triangle section (Aperture, Shutter Speed, ISO)."},
+    { id:"q3", text:"What does the aperture control in photography?", options:[
+      "Colour enhancement","Depth of Field","Shutter Speed","ISO"
+    ], correctIndex:1, reviewHint:"See aperture section - aperture controls depth of field."},
+    { id:"q4", text:"What does the shutter control in photography?", options:[
+      "Colour and saturation","Length of exposure time","Sharpness of moving subjects","ISO"
+    ], correctIndex:1, reviewHint:"Check shutter speed section - shutter controls exposure time."},
+    { id:"q5", text:"What does the ISO control in photography?", options:[
+      "Amount of digital noise (grain)","Image sharpness","Aperture","Shutter speed"
+    ], correctIndex:0, reviewHint:"Review ISO section - ISO controls sensor sensitivity and noise."},
+    { id:"q6", text:"If an image appears too dark, it is considered:", options:[
+      "Overexposed","Underexposed","Correctly exposed","High contrast"
+    ], correctIndex:1, reviewHint:"Check 'Underexposure vs Overexposure' with examples."},
+    { id:"q7", text:"If an image appears too bright with lost highlight details, it is:", options:[
+      "Overexposed","Underexposed","Correctly exposed","Low contrast"
+    ], correctIndex:0, reviewHint:"Review overexposure effects - washed out highlights."},
+    { id:"q8", text:"Why might a photographer deliberately over/underexpose?", options:[
+      "To save battery life","To test different metering modes","To achieve a creative effect or mood","To avoid using ISO"
+    ], correctIndex:2, reviewHint:"See 'Creative exposure choices' and examples."},
+    { id:"q9", text:"What is the main purpose of the histogram?", options:[
+      "To show camera battery level","To display image composition","To reveal exposure clipping in highlights/shadows","To show autofocus points"
+    ], correctIndex:2, reviewHint:"See histogram section - it shows tonal distribution and clipping."},
+    { id:"q10", text:"Exposure compensation (+/-) is used to:", options:[
+      "Change the camera's metering mode","Quickly correct metering bias","Adjust the ISO setting","Change the aperture size"
+    ], correctIndex:1, reviewHint:"Review exposure compensation section - quick correction for metering bias."},
+    { id:"q11", text:"If you increase shutter speed without changing other settings, the image will:", options:[
+      "Become darker","Become brighter","Stay the same brightness","Increase in depth of field"
+    ], correctIndex:0, reviewHint:"Revisit 'Shutter speed and exposure' cause/effect."},
+    { id:"q12", text:"The exposure triangle demonstrates that:", options:[
+      "All three settings work independently","Changing one setting requires adjusting others to maintain exposure","Only aperture affects brightness","ISO is the most important setting"
+    ], correctIndex:1, reviewHint:"See exposure triangle section - the three settings work together."}
+  ],
+  feedbackMap:{
+    topics:[
+      { key:"exposure-basics",label:"Exposure basics (definition)" },
+      { key:"exposure-triangle",label:"The Exposure Triangle (Aperture, Shutter, ISO)" },
+      { key:"aperture-control",label:"What aperture controls" },
+      { key:"shutter-control",label:"What shutter controls" },
+      { key:"iso-control",label:"What ISO controls" },
+      { key:"under-over",label:"Underexposed vs Overexposed" },
+      { key:"creative-exposure",label:"Creative exposure choices" },
+      { key:"histogram",label:"Using the histogram for exposure" },
+      { key:"exposure-compensation",label:"Exposure compensation" },
+      { key:"triangle-relationships",label:"Exposure triangle relationships" }
+    ],
+    questionTopics:{ 
+      q1:["exposure-basics"], 
+      q2:["exposure-triangle"], 
+      q3:["aperture-control"], 
+      q4:["shutter-control"], 
+      q5:["iso-control"], 
+      q6:["under-over"], 
+      q7:["under-over"], 
+      q8:["creative-exposure"], 
+      q9:["histogram"], 
+      q10:["exposure-compensation"], 
+      q11:["triangle-relationships"], 
+      q12:["triangle-relationships"] 
+    },
+    topicLinks:{
+      "exposure-basics":branding.exposureUrl,
+      "exposure-triangle":branding.exposureUrl + "#exposure-triangle",
+      "aperture-control":branding.exposureUrl + "#aperture",
+      "shutter-control":branding.exposureUrl + "#shutter",
+      "iso-control":branding.exposureUrl + "#iso",
+      "under-over":branding.exposureUrl + "#over-under",
+      "creative-exposure":branding.exposureUrl + "#creative",
+      "histogram":branding.exposureUrl + "#histogram",
+      "exposure-compensation":branding.exposureUrl + "#compensation",
+      "triangle-relationships":branding.exposureUrl + "#exposure-triangle"
+    }
+  }
+};
+
+/* ---------- RENDER UI ---------- */
+(function initQuiz(){
+  const quizForm = document.getElementById("quiz-form");
+  const frag = document.createDocumentFragment();
+  quizConfig.questions.forEach((q, idx) => {
+    const field = document.createElement("div"); field.className = "ar-field";
+    const qtxt = document.createElement("div"); qtxt.className = "ar-qtxt"; qtxt.textContent = `Q${idx+1}. ${q.text}`;
+    field.appendChild(qtxt);
+    q.options.forEach((opt, i) => {
+      const id = `${q.id}-${i}`;
+      const label = document.createElement("label"); label.className = "ar-opt"; label.setAttribute("for", id);
+      const input = document.createElement("input"); input.type="radio"; input.name=q.id; input.id=id; input.value=i; input.required=true; input.style.cssText="margin-top:4px;";
+      const span = document.createElement("span"); span.textContent = opt;
+      label.appendChild(input); label.appendChild(span); field.appendChild(label);
+    });
+    frag.appendChild(field);
+  });
+  quizForm.appendChild(frag);
+  
+  // Set up test button handlers after quiz is loaded
+  setupTestButtons();
+})();
+
+function setupTestButtons() {
+  const btnTestCorrect = document.getElementById("btn-test-correct");
+  const btnTestFail = document.getElementById("btn-test-fail");
+  
+  console.log("🔍 Setting up test buttons:", {
+    btnTestCorrect: !!btnTestCorrect,
+    btnTestFail: !!btnTestFail
+  });
+  
+  if (btnTestCorrect) {
+    console.log("✅ Adding event listener to Test Correct button");
+    btnTestCorrect.addEventListener("click", () => {
+      console.log("🧪 Test: All Correct clicked");
+      // Auto-select all correct answers
+      const questions = document.querySelectorAll('.ar-field');
+      console.log("Found questions:", questions.length);
+      
+      questions.forEach((field, index) => {
+        if (index < quizConfig.questions.length) {
+          const correctIndex = quizConfig.questions[index].correctIndex;
+          const radioButtons = field.querySelectorAll('input[type="radio"]');
+          console.log(`Question ${index + 1}: correct index ${correctIndex}, found ${radioButtons.length} radio buttons`);
+          
+          if (radioButtons[correctIndex]) {
+            radioButtons[correctIndex].checked = true;
+            console.log(`✅ Selected correct answer for question ${index + 1}`);
+          } else {
+            console.log(`❌ Could not find radio button at index ${correctIndex} for question ${index + 1}`);
+          }
+        }
+      });
+      showToast("🧪 All correct answers selected for testing", "info", 2000);
+    });
+  } else {
+    console.log("❌ Test Correct button not found!");
+  }
+
+  if (btnTestFail) {
+    console.log("✅ Adding event listener to Test Fail button");
+    btnTestFail.addEventListener("click", (e) => {
+      console.log("🧪 Test: All Wrong clicked - Event:", e);
+      console.log("🧪 Button element:", btnTestFail);
+      
+      // Auto-select all wrong answers (first wrong option for each question)
+      const questions = document.querySelectorAll('.ar-field');
+      console.log("Found questions:", questions.length);
+      
+      if (questions.length === 0) {
+        console.log("❌ No questions found! Quiz may not be loaded yet.");
+        showToast("❌ Quiz not ready. Please wait a moment and try again.", "err", 3000);
+        return;
+      }
+      
+      questions.forEach((field, index) => {
+        if (index < quizConfig.questions.length) {
+          const correctIndex = quizConfig.questions[index].correctIndex;
+          const radioButtons = field.querySelectorAll('input[type="radio"]');
+          // Select the first wrong answer (index 0 if correct is not 0, otherwise index 1)
+          const wrongIndex = correctIndex === 0 ? 1 : 0;
+          console.log(`Question ${index + 1}: correct index ${correctIndex}, selecting wrong index ${wrongIndex}, found ${radioButtons.length} radio buttons`);
+          
+          if (radioButtons[wrongIndex]) {
+            radioButtons[wrongIndex].checked = true;
+            // Trigger change event to ensure the selection is registered
+            radioButtons[wrongIndex].dispatchEvent(new Event('change', { bubbles: true }));
+            console.log(`✅ Selected wrong answer for question ${index + 1}`);
+          } else {
+            console.log(`❌ Could not find radio button at index ${wrongIndex} for question ${index + 1}`);
+          }
+        }
+      });
+      showToast("🧪 All wrong answers selected for testing", "info", 2000);
+    });
+  } else {
+    console.log("❌ Test Fail button not found!");
+  }
+}
+
+/* ---------- AUTH & PROGRESS HELPERS ---------- */
+const authBadge = document.getElementById('ar-auth-status');
+const authEmail = document.getElementById('ar-auth-email');
+const statusDiv = document.getElementById('ar-status');
+const btnMagic = document.getElementById('btn-magic');
+const btnClear = document.getElementById('btn-clear');
+
+let lastMagicSentAt = 0;
+const MAGIC_DEBOUNCE_MS = 60000;
+
+function setAuthUI(user){
+  if (user){
+    authBadge.textContent = "Signed in";
+    authEmail.textContent = user.email || "";
+    const em = document.getElementById('email');
+    if (user.email && (!em.value || em.value !== user.email)) em.value = user.email;
+  } else {
+    authBadge.textContent = "Not signed in";
+    authEmail.textContent = "";
+  }
+}
+
+async function currentUser(){ const { data:{user} } = await supabase.auth.getUser(); return user; }
+
+async function sendMagicLink(email){
+  if (!email || !email.includes("@")) { showToast("Please enter a valid email address.", "error"); return; }
+  const now = Date.now();
+  if (now - lastMagicSentAt < MAGIC_DEBOUNCE_MS) { showToast("Use the link we just sent, or try again in ~60s.", "info", 5000); return; }
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options:{ emailRedirectTo: window.location.href.split('#')[0] }
+  });
+  if (error) { showToast("Could not send sign‑in link.", "error"); console.error(error); }
+  else { lastMagicSentAt = now; showToast("Magic link sent! Check your email to sign in.", "success", 7000); }
+}
+
+btnMagic.addEventListener("click", async () => {
+  const email = (document.getElementById('email').value || "").trim();
+  await sendMagicLink(email);
+});
+
+// Clear results / sign out so you can retest immediately
+async function clearForRetest(){
+  try { await supabase.auth.signOut(); } catch(e){}
+  localStorage.removeItem('ar_pending_result');
+  localStorage.removeItem('ar_pending_email');
+  const lf = document.getElementById("learner-form");
+  const qf = document.getElementById("quiz-form");
+  if (lf) lf.reset();
+  if (qf) qf.reset();
+  const box = document.getElementById("results");
+  if (box) box.style.display = "none";
+  const pdf = document.getElementById("btn-pdf");
+  const cert = document.getElementById("btn-certificate");
+  const save = document.getElementById("btn-save");
+  if (pdf) { pdf.disabled = true; pdf.style.opacity = .6; }
+  if (cert) { cert.disabled = true; cert.style.opacity = .6; }
+  if (save) { save.disabled = true; save.style.opacity = .6; }
+  lastReport = null;
+  setAuthUI(null);
+  renderProgressBadge();
+  
+  // Unlock radio buttons and restore submit button
+  document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.disabled = false;
+    radio.style.cursor = 'pointer';
+  });
+  btnSubmit.style.display = 'inline-block';
+  document.getElementById('btn-retake').style.display = 'none';
+  
+  showToast("Signed out and cleared previous results. You can retake now.", "info", 5000);
+}
+btnClear.addEventListener("click", clearForRetest);
+
+async function getLatestStatus(moduleId){
+  const user = await currentUser(); if (!user) return null;
+  const { data, error } = await supabase.from('module_results')
+    .select('score_percent, passed, created_at').eq('user_id', user.id).eq('module_id', moduleId)
+    .order('created_at', { ascending:false }).limit(1);
+  if (error || !data?.length) return null;
+  return data[0];
+}
+
+async function saveResultToDB(report){
+  const user = await currentUser();
+  if (!user){
+    const email = document.getElementById('email').value.trim();
+    if (!email) { alert("Enter your email to save progress."); return; }
+    localStorage.setItem('ar_pending_result', JSON.stringify(report));
+    localStorage.setItem('ar_pending_email', email);
+    await sendMagicLink(email);
+    return;
+  }
+  const { count } = await supabase.from('module_results')
+    .select('*', { count:'exact', head:true })
+    .eq('user_id', user.id).eq('module_id', report.moduleId);
+
+  const payload = {
+    user_id: user.id,
+    email: user.email || (document.getElementById('email').value.trim() || ''),
+    module_id: report.moduleId,
+    score_percent: report.percent,
+    passed: report.pass,
+    attempt: (count || 0) + 1,
+    details: { misses: report.misses }
+  };
+  const { error } = await supabase.from('module_results').insert(payload);
+  if (error){ showToast("Save failed.", "error"); console.error(error); }
+  else { showToast("Progress saved to your account.", "success"); renderProgressBadge(); }
+}
+
+async function renderProgressBadge(){
+  const latest = await getLatestStatus(quizConfig.moduleId);
+  if (latest){
+    const when = new Date(latest.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+    statusDiv.innerHTML = latest.passed
+      ? `Status: <strong>Completed ✓</strong> (${latest.score_percent}% on ${when})`
+      : `Status: Last attempt ${latest.score_percent}% on ${when}`;
+  } else {
+    statusDiv.textContent = "";
+  }
+}
+
+/* ---------- REHYDRATE RESULTS AFTER MAGIC LINK ---------- */
+const resultsBox      = document.getElementById("results");
+const resultsSummary  = document.getElementById("results-summary");
+const resultsCompact  = document.getElementById("results-compact");
+const resultsFeedback = document.getElementById("results-feedback");
+
+function renderResultsFromReport(rpt){
+  const passPill = rpt.pass ? `<span class="pill pill-pass">Pass</span>`
+                            : `<span class="pill pill-fail">Fail</span>`;
+  resultsSummary.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+      <div style="font-size:28px;font-weight:800;">${rpt.percent}%</div>
+      <div>${passPill} — ${rpt.correct}/${rpt.total} correct (Pass mark: ${quizConfig.passMarkPercent}%)</div>
+    </div>
+    <div style="margin-top:8px;color:#555;">
+      <div><strong>Name:</strong> ${escapeHtml(rpt.name)} ${rpt.email ? `| <strong>Email:</strong> ${escapeHtml(rpt.email)}` : ""}</div>
+      <div><strong>Date:</strong> ${formatDate(new Date(rpt.timestamp))}</div>
+      <div><strong>Module:</strong> ${escapeHtml(rpt.moduleTitle)}</div>
+    </div>`;
+  resultsCompact.textContent = rpt.compact || "";
+
+  if (!rpt.misses.length){
+    resultsFeedback.innerHTML =
+      `<div style="padding:12px;border:1px solid #e6f4ea;background:#f6fffa;border-radius:8px;">
+         Great work — no weak topics identified for this module.
+       </div>`;
+  } else {
+    const keys = [...new Set(rpt.misses.flatMap(m => quizConfig.feedbackMap.questionTopics[m.id]||[]))];
+    resultsFeedback.innerHTML = `
+      <h4 style="margin:12px 0 6px;font-size:16px;">Question review</h4>
+      <ol style="margin:0 0 0 18px;">
+        ${rpt.misses.map((m,i)=>`<li style="margin:6px 0;"><strong>${m.id.toUpperCase()}</strong>: ${escapeHtml(m.reviewHint||'Please review the relevant section.')}</li>`).join('')}
+      </ol>
+      <div style="padding:12px;border:1px dashed #f3c7b4;background:#fff7f3;border-radius:8px;margin-top:8px;">
+        <strong>Topics to review:</strong>
+        <ul style="margin:8px 0 0 18px;">
+          ${keys.map(k=>{
+              const t = (quizConfig.feedbackMap.topics.find(t=>t.key===k)||{}).label||k;
+              const href = quizConfig.feedbackMap.topicLinks[k];
+              return href ? `<li><a href="${href}" target="_blank" rel="noopener">${t}</a></li>` : `<li>${t}</li>`;
+            }).join('')}
+        </ul>
+      </div>`;
+  }
+
+  resultsBox.style.display = "block";
+  btnPDF.disabled = false; btnPDF.style.opacity = 1;
+  btnSave.disabled = false; btnSave.style.opacity = 1;
+  btnCert.disabled = !rpt.pass; btnCert.style.opacity = rpt.pass ? 1 : .6;
+}
+
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  setAuthUI(session?.user || null);
+  
+  // Update grid authentication
+  const authBadge = document.getElementById('authBadge');
+  const emailInput = document.getElementById('loginEmail');
+  const btnMagic = document.getElementById('btnMagic');
+  const btnSignOut = document.getElementById('btnSignOut');
+  
+  if (session?.user) {
+    debugLog('🔄 Auth state change: User signed in - ' + session.user.email);
+    if (authBadge) authBadge.textContent = "Signed in";
+    if (btnSignOut) btnSignOut.style.display = '';
+    if (emailInput && !emailInput.value) emailInput.value = session.user.email || '';
+    
+    // Show loading spinner while fetching progress
+    showLoadingSpinner("Loading your progress...");
+    
+    // Update grid with user's progress
+    debugLog('🔄 Auth state change: Fetching user status...');
+    const status = await fetchStatusForUser(session.user);
+    debugLog('🔄 Auth state change: Status fetched, rendering...');
+    renderSummary(status);
+    renderGrid(status);
+    
+    // Hide loading spinner
+    hideLoadingSpinner();
+  } else {
+    debugLog('🔄 Auth state change: User signed out');
+    if (authBadge) authBadge.textContent = "Not signed in";
+    if (btnSignOut) btnSignOut.style.display = 'none';
+    
+    // Clear grid
+    renderSummary({});
+    renderGrid({});
+  }
+  
+  if (!session?.user) return;
+
+  const pending = localStorage.getItem('ar_pending_result');
+  const pendingEmail = localStorage.getItem('ar_pending_email');
+
+  if (pending){
+    const rpt = JSON.parse(pending);
+    if (pendingEmail) document.getElementById('email').value = pendingEmail;
+
+    await saveResultToDB(rpt);
+    lastReport = rpt;
+    renderResultsFromReport(rpt);
+    if (rpt.pass) showToast("Signed in. Progress saved — you can download your PDFs now.", "success", 6000);
+
+    localStorage.removeItem('ar_pending_result');
+    localStorage.removeItem('ar_pending_email');
+  } else {
+    renderProgressBadge();
+  }
+});
+// Grid authentication setup
+document.addEventListener('DOMContentLoaded', () => {
+  debugLog('🚀 Grid script starting...');
+  
+  // Setup debug button
+  const debugBtn = document.getElementById('debugBtn');
+  if (debugBtn) {
+    debugBtn.addEventListener('click', showDebugPanel);
+  }
+  
+  // Check for existing session on page load
+  checkExistingSession();
+  
+  // Check if user came from a "remember me" magic link
+  checkRememberMe();
+  
+  // Function to handle "remember me" functionality
+  async function checkRememberMe() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const remember = urlParams.get('remember');
+    
+    if (remember === 'true') {
+      debugLog('🔐 Remember me detected - setting long-term session');
+      
+      // Store session info in localStorage for long-term persistence
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        const sessionData = {
+          user: session.user,
+          expires: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+        };
+        localStorage.setItem('ar_remember_session', JSON.stringify(sessionData));
+        debugLog('💾 Long-term session stored for 30 days');
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+    
+    // Check for stored session
+    const storedSession = localStorage.getItem('ar_remember_session');
+    if (storedSession) {
+      try {
+        const sessionData = JSON.parse(storedSession);
+        if (sessionData.expires > Date.now()) {
+          debugLog('🔄 Found valid stored session, auto-signing in');
+          
+          // Check if current Supabase session is still valid
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session || !session.user) {
+            debugLog('⚠️ Supabase session expired, but stored session valid - user needs to re-authenticate');
+            showToast('Your session expired. Please sign in again to continue.', 'info', 5000);
+            localStorage.removeItem('ar_remember_session');
+            return;
+          }
+          
+          // Load user progress
+          const status = await fetchStatusForUser(sessionData.user);
+          renderSummary(status);
+          renderGrid(status);
+          return;
+        } else {
+          debugLog('⏰ Stored session expired, removing');
+          localStorage.removeItem('ar_remember_session');
+        }
+      } catch (e) {
+        debugLog('❌ Error parsing stored session:', e);
+        localStorage.removeItem('ar_remember_session');
+      }
+    }
+  }
+  
+  // Function to check for existing session and auto-sign in
+  async function checkExistingSession() {
+    try {
+      debugLog('🔍 Checking for existing session...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        debugLog('❌ Session check error:', error);
+        return;
+      }
+      
+      if (session && session.user) {
+        debugLog('✅ Found existing session for:', session.user.email);
+        // User is already signed in, update UI
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          debugLog('🔄 Auto-signing in existing user:', user.email);
+          // Trigger auth state change to load progress
+          const status = await fetchStatusForUser(user);
+          renderSummary(status);
+          renderGrid(status);
+        }
+      } else {
+        debugLog('ℹ️ No existing session found');
+      }
+    } catch (err) {
+      debugLog('❌ Session check exception:', err);
+    }
+  }
+  
+  // Setup grid magic link
+  const btnMagic = document.getElementById('btnMagic');
+  const btnSignIn = document.getElementById('btnSignIn');
+  const btnSignOut = document.getElementById('btnSignOut');
+  const emailInput = document.getElementById('loginEmail');
+  
+  if (btnMagic) {
+    btnMagic.addEventListener('click', async () => {
+      const email = emailInput?.value?.trim();
+      if (!email) {
+        showToast('Enter your email address first.', 'error');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address.', 'error');
+        return;
+      }
+      
+      debugLog('📧 Sending magic link to: ' + email);
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.href.split('#')[0] }
+      });
+      
+      if (error) {
+        debugLog('❌ Magic link error: ' + error.message);
+        showToast('Could not send sign-in link.', 'error');
+      } else {
+        debugLog('✅ Magic link sent successfully');
+        showToast('Magic link sent — check your inbox.', 'success', 5200);
+      }
+    });
+  }
+  
+  if (btnSignIn) {
+    btnSignIn.addEventListener('click', async () => {
+      const email = emailInput?.value?.trim();
+      if (!email) {
+        showToast('Enter your email address first.', 'error');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address.', 'error');
+        return;
+      }
+      
+      debugLog('🔐 Attempting to sign in existing user: ' + email);
+      
+      // Check rate limiting (same as magic link)
+      const now = Date.now();
+      if (now - lastMagicSentAt < MAGIC_DEBOUNCE_MS) {
+        const remaining = Math.ceil((MAGIC_DEBOUNCE_MS - (now - lastMagicSentAt)) / 1000);
+        showToast(`Please wait ${remaining} seconds before requesting another link.`, 'error');
+        return;
+      }
+      
+      try {
+        // Show immediate feedback
+        showLoadingSpinner("Sending sign-in link...");
+        
+        // For returning users, we'll send a magic link with extended session
+        const { data, error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { 
+            emailRedirectTo: window.location.href.split('#')[0] + '?remember=true'
+          }
+        });
+        
+        debugLog('🔐 Sign in response:', { data, error });
+        
+        if (error) {
+          debugLog('❌ Sign in error:', error);
+          hideLoadingSpinner();
+          showToast('Could not send sign-in link: ' + error.message, 'error');
+          console.error('Sign in error:', error);
+        } else {
+          debugLog('✅ Sign in magic link sent successfully');
+          lastMagicSentAt = now; // Update timestamp for rate limiting
+          hideLoadingSpinner();
+          showToast('Sign-in link sent! Check your email to continue where you left off.', 'success', 7000);
+        }
+      } catch (err) {
+        debugLog('❌ Sign in exception:', err);
+        hideLoadingSpinner();
+        showToast('An error occurred while sending sign-in link.', 'error');
+        console.error('Sign in exception:', err);
+      }
+    });
+  }
+  
+  if (btnSignOut) {
+    btnSignOut.addEventListener('click', async () => {
+      debugLog('🚪 Signing out user');
+      await supabase.auth.signOut();
+      // Clear stored session
+      localStorage.removeItem('ar_remember_session');
+      debugLog('🗑️ Cleared stored session');
+      showToast('Signed out.', 'success');
+    });
+  }
+  
+  
+  // Initial render
+  debugLog('🎨 Rendering initial grid');
+  renderGrid({});
+  checkUrlParams();
+  debugLog('✅ Grid initialization completed');
+});
+
+(async ()=>{ const { data:{user} } = await supabase.auth.getUser(); setAuthUI(user||null); renderProgressBadge(); })();
+
+/* ---------- TOAST & CONFETTI ---------- */
+function fireConfetti(){ confetti({ particleCount: 140, spread: 80, origin: { x: 0.5, y: 0.5 } }); setTimeout(()=>confetti({ particleCount:100, spread:100, origin:{x:0.5,y:0.5}}),250); }
+function showToast(msg, type="error", duration=4000){ const t=document.getElementById('ar-toast'); t.textContent=msg; t.className=type==="success"?"success":(type==="info"?"info":"error"); t.style.display="block"; clearTimeout(showToast._timer); showToast._timer=setTimeout(()=>t.style.display="none", duration); }
+
+const showLoadingSpinner = (text = "Loading your progress...") => {
+  const spinner = document.getElementById('loadingSpinner');
+  const loadingText = document.getElementById('loadingText');
+  if (spinner) {
+    if (loadingText) loadingText.textContent = text;
+    spinner.style.display = 'block';
+  }
+};
+
+const hideLoadingSpinner = () => {
+  const spinner = document.getElementById('loadingSpinner');
+  if (spinner) {
+    spinner.style.display = 'none';
+  }
+};
+
+/* ---------- BUTTONS ---------- */
+const btnSubmit = document.getElementById("btn-submit");
+const btnPDF    = document.getElementById("btn-pdf");
+const btnCert   = document.getElementById("btn-certificate");
+const btnSave   = document.getElementById("btn-save");
+const btnTestCorrect = document.getElementById("btn-test-correct");
+const btnTestFail = document.getElementById("btn-test-fail");
+
+// Debug: Check if buttons are found
+console.log("🔍 Test buttons found:", {
+  btnTestCorrect: !!btnTestCorrect,
+  btnTestFail: !!btnTestFail
+});
+let lastReport = null;
+
+btnSubmit.addEventListener("click", async () => {
+  const learnerName  = document.getElementById("name").value.trim();
+  if (!learnerName) { alert("Please enter your name."); return; }
+
+  const unanswered = quizConfig.questions.filter(q => !document.querySelector(`input[name="${q.id}"]:checked`));
+  if (unanswered.length) { alert("Please answer all questions before submitting."); return; }
+
+  let correct = 0; const misses = []; const compactParts=[];
+  quizConfig.questions.forEach((q, idx) => {
+    const chosen = +document.querySelector(`input[name="${q.id}"]:checked`).value;
+    const isCorrect = chosen === q.correctIndex;
+    if (isCorrect) correct++; else misses.push({ id:q.id, reviewHint:q.reviewHint });
+    compactParts.push(`Q${idx+1}: ${isCorrect ? 'Correct' : 'Incorrect'}`);
+  });
+  const total = quizConfig.questions.length;
+  const pct   = Math.round((correct / total) * 100);
+  const pass  = pct >= quizConfig.passMarkPercent;
+  const compactLine = compactParts.join(', ');
+
+  const topicKeys = new Set();
+  misses.forEach(m => (quizConfig.feedbackMap.questionTopics[m.id] || []).forEach(k => topicKeys.add(k)));
+
+  const passPill = pass ? `<span class="pill pill-pass">Pass</span>` : `<span class="pill pill-fail">Fail</span>`;
+  resultsSummary.innerHTML = `
+    <div style=\"display:flex;flex-wrap:wrap;gap:16px;align-items:center;\">\n      <div style=\"font-size:28px;font-weight:800;\">${pct}%</div>\n      <div>${passPill} — ${correct}/${total} correct (Pass mark: ${quizConfig.passMarkPercent}%)</div>\n    </div>\n    <div style=\"margin-top:8px;color:#555;\">\n      <div><strong>Name:</strong> ${escapeHtml(learnerName)} ${document.getElementById("email").value ? `| <strong>Email:</strong> ${escapeHtml(document.getElementById("email").value)}` : ""}</div>\n      <div><strong>Date:</strong> ${formatDate(new Date())}</div>\n      <div><strong>Module:</strong> ${escapeHtml(quizConfig.moduleTitle)}</div>\n    </div>`;
+  resultsCompact.textContent = compactLine;
+
+  resultsFeedback.innerHTML = misses.length
+    ? `<h4 style=\"margin:12px 0 6px;font-size:16px;\">Question review</h4>\n       <ol style=\"margin:0 0 0 18px;\">${
+         misses.map(m => `<li style=\"margin:6px 0;\"><strong>${m.id.toUpperCase()}</strong>: ${escapeHtml(m.reviewHint || "Please review the relevant section.")}</li>`).join("")
+       }</ol>\n       <div style=\"padding:12px;border:1px dashed #f3c7b4;background:#fff7f3;border-radius:8px;margin-top:8px;\">\n         <strong>Topics to review:</strong>\n         <ul style=\"margin:8px 0 0 18px;\">${
+           Array.from(topicKeys).map(k => {
+             const label = (quizConfig.feedbackMap.topics.find(t => t.key === k) || {}).label || k;
+             const href  = quizConfig.feedbackMap.topicLinks[k];
+             return href ? `<li><a href=\"${href}\" target=\"_blank\" rel=\"noopener\">${label}</a></li>` : `<li>${label}</li>`;
+           }).join("")
+         }</ul>\n       </div>`
+    : `<div style="padding:12px;border:1px solid #e6f4ea;background:#f6fffa;border-radius:8px;">Great work — no weak topics identified for this module.</div>`;
+  resultsBox.style.display = "block";
+
+  btnPDF.disabled = false; btnPDF.style.opacity = 1;
+  btnSave.disabled = false; btnSave.style.opacity = 1;
+  btnCert.disabled = !pass; btnCert.style.opacity = pass ? 1 : .6;
+
+  lastReport = {
+    moduleId: quizConfig.moduleId, moduleTitle: quizConfig.moduleTitle,
+    name: learnerName, email: document.getElementById("email").value.trim(),
+    percent: pct, pass, correct, total, misses, compact: compactLine, timestamp: new Date().toISOString()
+  };
+
+  // Lock all radio buttons after submission
+  document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.disabled = true;
+    radio.style.cursor = 'not-allowed';
+  });
+  
+  // Hide submit button and show retake button
+  btnSubmit.style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'inline-block';
+
+  if (pass){ fireConfetti(); showToast("Congrats! You passed this module. You can download your certificate now.", "success", 5000); }
+  else { showToast("You didn't pass this time. Review the linked topics, then use the 'Retake test' button to try again.", "error", 6000); }
+  
+  // Save results and refresh grid
+  await saveResultToDB(lastReport);
+  
+  // Also refresh grid if we're in quiz view
+  if (document.getElementById('quiz-container').style.display !== 'none') {
+    debugLog('🔄 Quiz completed, refreshing grid in background');
+    setTimeout(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      let status = await fetchStatusForUser(user);
+      
+      // If no user or no results from DB, check localStorage for recent results
+      if (!user || Object.keys(status).length === 0) {
+        debugLog('🔍 No user or DB results, checking localStorage...');
+        const pendingResult = localStorage.getItem('ar_pending_result');
+        if (pendingResult) {
+          try {
+            const parsed = JSON.parse(pendingResult);
+            if (parsed.moduleId === lastReport.moduleId) {
+              debugLog('📋 Found matching localStorage result:', parsed);
+              status = {
+                [parsed.moduleId]: {
+                  score: parsed.percent,
+                  passed: parsed.pass,
+                  when: new Date(parsed.timestamp).toISOString()
+                }
+              };
+            }
+          } catch (e) {
+            debugLog('❌ Error parsing localStorage result:', e);
+          }
+        }
+      }
+      
+      renderSummary(status);
+      renderGrid(status);
+    }, 1000);
+  }
+});
+
+
+// Add retake button handler
+document.getElementById('btn-retake').addEventListener("click", () => {
+  // Preserve name and email, only reset quiz answers
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  
+  document.getElementById("quiz-form").reset();
+  resultsBox.style.display = "none";
+  btnPDF.disabled = true; btnPDF.style.opacity = .6;
+  btnCert.disabled = true; btnCert.style.opacity = .6;
+  btnSave.disabled = true; btnSave.style.opacity = .6;
+  lastReport = null;
+  
+  // Restore name and email
+  document.getElementById("name").value = name;
+  document.getElementById("email").value = email;
+  
+  // Unlock radio buttons and restore submit button
+  document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.disabled = false;
+    radio.style.cursor = 'pointer';
+  });
+  btnSubmit.style.display = 'inline-block';
+  document.getElementById('btn-retake').style.display = 'none';
+  
+  showToast("Quiz reset. You can now retake the test.", "info", 3000);
+});
+
+// Test button handlers will be set up when quiz loads
+
+btnSave.addEventListener("click", async () => {
+  if (!lastReport) { alert("Please complete the assessment first."); return; }
+  await saveResultToDB(lastReport);
+});
+
+/* ---------- PDF HELPERS ---------- */
+async function toDataURL(url){ try{ const res=await fetch(url,{mode:'cors'}); const blob=await res.blob();
+  return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); } catch(e){ return null; } }
+
+// Special function for emblem to handle transparency properly
+async function toDataURLWithTransparency(url) {
+  try {
+    const res = await fetch(url, {mode: 'cors'});
+    const blob = await res.blob();
+    
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        
+        // Clear canvas with transparent background
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw image preserving transparency
+        ctx.drawImage(img, 0, 0);
+        
+        // Convert to data URL with transparency
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(blob);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+function getImgDims(dataURL){ return new Promise(res=>{ const img=new Image(); img.onload=()=>res({w:img.naturalWidth,h:img.naturalHeight}); img.src=dataURL; }); }
+function fitWithin(sw,sh,mw,mh){ const t=Math.min(mw/sw,mh/sh); return {w:sw*t,h:sh*t}; }
+function svgToPNG(svgString, width, height) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+    
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
+  });
+}
+function escapeHtml(s=""){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function slugify(s=""){ return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+function formatDate(d){ return d.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}); }
+function writeWrapped(doc, text, x, y, maxWidth, lineHeight){ const lines=doc.splitTextToSize(text,maxWidth); lines.forEach(l=>{ doc.text(l,x,y); y+=lineHeight; }); return y; }
+const { jsPDF } = window.jspdf;
+
+/* ---------- RESULTS PDF ---------- */
+document.getElementById("btn-pdf").addEventListener("click", async () => {
+  if (!lastReport) return;
+  const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
+  const [logo, academy] = await Promise.all([toDataURL(branding.logoUrl), toDataURL(branding.academyUrl)]);
+
+  doc.setFillColor(240,89,34); doc.rect(0,0,210,24,'F');
+  if (logo) { const logoDims=await getImgDims(logo); const logoFitted=fitWithin(logoDims.w,logoDims.h,20,16);
+    doc.addImage(logo,'PNG',8,4,logoFitted.w,logoFitted.h); }
+  if (academy) doc.addImage(academy,'PNG',210-24,4,16,16);
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(quizConfig.moduleTitle,28,15); doc.setTextColor(0,0,0);
+
+  let y=34; doc.setDrawColor(230,230,230); doc.roundedRect(12,y,186,38,2,2);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.text(`Name: ${lastReport.name}`,18,y+9);
+  doc.text(`Date: ${formatDate(new Date(lastReport.timestamp))}`,18,y+16);
+  doc.text(`Score: ${lastReport.percent}% (${lastReport.correct}/${lastReport.total}) — ${lastReport.pass?'Pass':'Fail'}`,18,y+23);
+
+  doc.setFontSize(10); doc.setTextColor(90,90,90);
+  doc.text(lastReport.compact || "", 18, y+31);
+  doc.setTextColor(0,0,0);
+
+  y+=48; doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('About the Alan Ranger Photography Academy',12,y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  const blurb=`This assessment is part of the Beginners pathway (15 modules): Exposure, Aperture, Shutter Speed, ISO, Manual Exposure, Metering, Exposure Bracketing, Focusing, Depth of Field, Dynamic Range, White Balance, Camera Drive Modes, JPEG vs RAW, Full Frame vs Crop Sensor, and Focal Length.`;
+  y=writeWrapped(doc, blurb, 12, y, 186, 6); y+=3;
+  const link1="Course page: "+branding.courseUrl.replace(/^https?:\/\//,'');
+  const link2="Module article: "+branding.exposureUrl.replace(/^https?:\/\//,'');
+  doc.setTextColor(37,99,235); doc.text(link1,12,y); doc.link(12,y-4,doc.getTextWidth(link1),6,{url:branding.courseUrl}); y+=6;
+  doc.text(link2,12,y); doc.link(12,y-4,doc.getTextWidth(link2),6,{url:branding.exposureUrl}); doc.setTextColor(0,0,0); y+=10;
+
+  doc.setFont('helvetica','bold'); doc.text('Question review',12,y); y+=6; doc.setFont('helvetica','normal');
+  if (!lastReport.misses.length) { y=writeWrapped(doc,'Great work — no weak topics identified for this module.',12,y,186,6); }
+  else {
+    lastReport.misses.forEach((m,i)=>{ y=writeWrapped(doc,`${i+1}. ${m.id.toUpperCase()}: ${m.reviewHint||'Please review the relevant section.'}`,12,y,186,6); });
+    y+=4; doc.setFont('helvetica','bold'); doc.text('Topics to review',12,y); y+=6; doc.setFont('helvetica','normal');
+    const keys=[...new Set(lastReport.misses.flatMap(m=>quizConfig.feedbackMap.questionTopics[m.id]||[]))];
+    keys.forEach(k=>{ const label=(quizConfig.feedbackMap.topics.find(t=>t.key===k)||{}).label||k; y=writeWrapped(doc,`• ${label}`,16,y,182,6); });
+  }
+  doc.save(`${slugify(lastReport.moduleId)}-results-${Date.now()}.pdf`);
+});
+
+/* ---------- CERTIFICATE PDF ---------- */
+document.getElementById("btn-certificate").addEventListener("click", async () => {
+  console.log("Certificate button clicked", lastReport);
+  if (!lastReport || !lastReport.pass) { console.log("No report or didn't pass"); return; }
+  
+  try {
+    console.log("Starting certificate generation...");
+    const doc = new jsPDF({ orientation:'l', unit:'mm', format:'a4' });
+    console.log("jsPDF created");
+    
+    console.log("Loading images from URLs:", {logo: branding.logoUrl, academy: branding.academyUrl, sign: branding.signatureUrl, emblem: branding.emblemUrl});
+    
+    const [logo, academy, sign, emblem] = await Promise.all([
+      toDataURL(branding.logoUrl).catch(err => { console.error("Logo failed to load:", err); return null; }),
+      toDataURL(branding.academyUrl).catch(err => { console.error("Academy failed to load:", err); return null; }),
+      toDataURL(branding.signatureUrl).catch(err => { console.error("Signature failed to load:", err); return null; }),
+      toDataURLWithTransparency(branding.emblemUrl).catch(err => { console.error("Emblem failed to load:", err); return null; })
+    ]);
+    console.log("Images loaded", {logo: !!logo, academy: !!academy, sign: !!sign, emblem: !!emblem});
+
+  doc.setDrawColor(240,89,34); doc.setLineWidth(3);  doc.rect(10,10,277,187);
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.6); doc.rect(16,16,265,175);
+
+  // Add your full logo back in top-left (no distortion)
+  if (logo) { const logoDims=await getImgDims(logo); const logoFitted=fitWithin(logoDims.w,logoDims.h,50,20);
+    doc.addImage(logo,'PNG',22,22,logoFitted.w,logoFitted.h); }
+  
+  
+  if (academy) doc.addImage(academy,'PNG',290-42,22,20,20);
+  
+  // Add emblem to top center with proper aspect ratio
+  if (emblem) {
+    try {
+      const emblemDims = await getImgDims(emblem);
+      console.log("Emblem dimensions:", emblemDims);
+      
+      // Scale to fit within 40x40mm while preserving aspect ratio
+      const maxSize = 40;
+      const fitted = fitWithin(emblemDims.w, emblemDims.h, maxSize, maxSize);
+      console.log("Fitted emblem dimensions:", fitted);
+      
+      // Center horizontally: (297 - fitted.w) / 2
+      const x = (297 - fitted.w) / 2;
+      const y = 22;
+      
+      doc.addImage(emblem, 'PNG', x, y, fitted.w, fitted.h);
+      console.log(`Emblem added successfully at position (${x}, ${y}) with size ${fitted.w}x${fitted.h}`);
+    } catch (err) {
+      console.error("Failed to add emblem:", err);
+    }
+  } else {
+    console.log("No emblem available, skipping...");
+  }
+
+  doc.setFont('times','bold'); doc.setFontSize(30); doc.text('Certificate of Achievement',148.5,72,{align:'center'});
+  doc.setFont('times','normal'); doc.setFontSize(14); doc.text('This certifies that',148.5,88,{align:'center'});
+  doc.setFont('times','bold'); doc.setFontSize(26); doc.setTextColor(0,0,139); doc.text(lastReport.name||'Student',148.5,104,{align:'center'});
+  doc.setFont('times','normal'); doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text('has successfully passed',148.5,120,{align:'center'});
+  doc.setFont('times','bold'); doc.setFontSize(20); doc.setTextColor(0,0,139); doc.text(quizConfig.moduleTitle,148.5,136,{align:'center'});
+  // Score line with mixed colors and formatting - italic score, bold date
+  doc.setFont('times','italic'); doc.setFontSize(13);
+  
+  const prefix = `with a score of `;
+  const scoreResults = `${lastReport.percent}% (${lastReport.correct}/${lastReport.total})`;
+  const suffix = ` on `;
+  const dateText = `${formatDate(new Date(lastReport.timestamp))}.`;
+  const fullText = prefix + scoreResults + suffix + dateText;
+  
+  // Calculate text widths for positioning
+  const prefixWidth = doc.getTextWidth(prefix);
+  const scoreWidth = doc.getTextWidth(scoreResults);
+  const suffixWidth = doc.getTextWidth(suffix);
+  const dateWidth = doc.getTextWidth(dateText);
+  const totalWidth = prefixWidth + scoreWidth + suffixWidth + dateWidth;
+  
+  // Center the entire text block
+  const startX = 148.5 - (totalWidth / 2);
+  
+  // Draw each segment with appropriate color and formatting
+  doc.setTextColor(0,0,0); // Black for prefix
+  doc.text(prefix, startX, 150);
+  
+  doc.setTextColor(50,50,50); // Dark grey for score results
+  doc.text(scoreResults, startX + prefixWidth, 150);
+  
+  doc.setTextColor(0,0,0); // Black for suffix
+  doc.text(suffix, startX + prefixWidth + scoreWidth, 150);
+  
+  doc.setFont('times','bold'); // Bold for date
+  doc.setTextColor(0,0,0); // Black for date
+  doc.text(dateText, startX + prefixWidth + scoreWidth + suffixWidth, 150);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.text('Alan Ranger Photography Academy — Beginners Modules',148.5,160,{align:'center'});
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(12);
+  doc.text('Instructor: Alan Ranger',22,172);
+  const siteText='Website: alanranger.com'; doc.text(siteText,22,180); doc.link(22,176,doc.getTextWidth(siteText),6,{url:branding.siteUrl});
+
+  const sigLineY=184;
+  if (sign){ 
+    console.log("Adding signature to certificate...");
+    try {
+      const dims=await getImgDims(sign); 
+      const fitted=fitWithin(dims.w,dims.h,130*0.8,50*0.8);
+      const x=290-22-fitted.w; 
+      const y=sigLineY-fitted.h+3; 
+      doc.addImage(sign,'PNG',x,y,fitted.w,fitted.h);
+      console.log("Signature added successfully");
+    } catch (err) {
+      console.error("Failed to add signature:", err);
+    }
+  } else {
+    console.log("No signature available, skipping...");
+  }
+  doc.setDrawColor(240,89,34); doc.setLineWidth(0.6); doc.line(290-80,sigLineY,290-22,sigLineY);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.text('Signature',290-22,sigLineY+6,{align:'right'});
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(`Certificate ID: ${slugify(lastReport.moduleId)}-${Date.now()}`,290-16,46,{align:'right'});
+
+  console.log("About to save certificate...");
+  doc.save(`${slugify(lastReport.moduleId)}-certificate-${Date.now()}.pdf`);
+  console.log("Certificate saved successfully!");
+  
+  } catch (error) {
+    console.error("Error generating certificate:", error);
+    alert("Error generating certificate: " + error.message);
+  }
+});
+</script>

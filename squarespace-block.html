@@ -1,0 +1,634 @@
+<div id="ar-assessment">
+  <style>
+    :root{
+      --ar-orange:#E57200;
+      --ar-orange-700:#cc6500;
+      --ar-blue:#2563eb;
+      --ar-border:#e9e9e9;
+      --ar-text:#111;
+      --ar-muted:#6b7280;
+    }
+    #ar-assessment{
+      border-left:12px solid var(--ar-orange);
+      padding-left:18px;
+      max-width:880px;
+      margin:28px auto;
+      background:#fff;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color:var(--ar-text);
+    }
+    .card{
+      background:#fff;
+      border:1px solid var(--ar-border);
+      border-radius:12px;
+      padding:18px 20px;
+      margin:24px 0;
+      box-shadow:0 2px 10px rgba(0,0,0,.06);
+    }
+    .bar{
+      border-left:6px solid var(--ar-orange);
+      background:#fafafa;
+      padding:18px 20px;
+      margin:24px 0;
+      border-radius:8px;
+      box-shadow:0 1px 4px rgba(0,0,0,.08);
+    }
+    .qtitle{
+      color:var(--ar-orange);
+      font-weight:700;
+      margin:0 0 6px 0;
+    }
+    .btn{
+      border:0;
+      border-radius:10px;
+      padding:12px 16px;
+      font-weight:700;
+      cursor:pointer;
+      line-height:1.1;
+      transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn-orange{background:var(--ar-orange);color:#fff}
+    .btn-orange:hover{background:var(--ar-orange-700)}
+    .btn-blue{background:#1e40af;color:#fff}
+    .btn-green{background:#10b981;color:#fff}
+    .btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+    .btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+    .actions{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .help{
+      font-size:12px;
+      color:var(--ar-muted);
+      margin:8px 0 0 0;
+    }
+    .pill{
+      display:inline-block;
+      padding:3px 10px;
+      border-radius:999px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      font-size:12px
+    }
+    .pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+    .pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+    .radio-option{
+      display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+    }
+    .radio-input{
+      margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+    }
+    .radio-text{
+      font-weight:400;color:var(--ar-text);
+    }
+    #ar-toast{
+      position:fixed;left:50%;top:22px;transform:translateX(-50%);
+      z-index:99999;background:#111;color:#fff;border-radius:10px;
+      padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+    }
+    #ar-toast.ok{background:#10b981}
+    #ar-toast.err{background:#ef4444}
+    #ar-toast.info{background:#2563eb}
+  </style>
+  
+  <script>
+    // Embedded Supabase client (minified)
+    (function(){var e=function(e,t){return e&&t?new Promise(function(n,r){var o=new XMLHttpRequest;o.open("GET","https://unpkg.com/@supabase/supabase-js@2/dist/index.js",!0),o.onload=function(){if(200===o.status){var e=document.createElement("script");e.textContent=o.responseText,document.head.appendChild(e),n(window.supabase)}else r(new Error("Failed to load Supabase"))},o.onerror=function(){r(new Error("Failed to load Supabase"))},o.send()})}();var t=function(e,t){return e&&t?new Promise(function(n,r){var o=new XMLHttpRequest;o.open("GET","https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js",!0),o.onload=function(){if(200===o.status){var e=document.createElement("script");e.textContent=o.responseText,document.head.appendChild(e),n(window.jspdf)}else r(new Error("Failed to load jsPDF"))},o.onerror=function(){r(new Error("Failed to load jsPDF"))},o.send()})}();
+    
+    // Module data
+    const MODULE = {"moduleId":"module-01-exposure","title":"Module 1: What is Exposure","passMark":80,"links":{"article":"https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"},"questions":[{"question":"What is exposure in photography?","options":["The amount of light that reaches the camera sensor","The time it takes to take a photo","The distance between the camera and subject","The type of lens used"],"correct":0},{"question":"Which three elements control exposure?","options":["ISO, Shutter Speed, and Aperture","Focus, Zoom, and Flash","White Balance, Contrast, and Saturation","Resolution, Format, and Compression"],"correct":0},{"question":"What happens when you increase the ISO setting?","options":["The image becomes more sensitive to light but may have more noise","The image becomes less sensitive to light","The image becomes sharper","The image becomes more colorful"],"correct":0},{"question":"A faster shutter speed will:","options":["Freeze motion and let in less light","Blur motion and let in more light","Increase depth of field","Decrease image quality"],"correct":0},{"question":"What does a larger aperture (smaller f-number) do?","options":["Lets in more light and creates a shallower depth of field","Lets in less light and creates a deeper depth of field","Makes the image sharper","Reduces camera shake"],"correct":0}]};
+    
+    // Asset URLs
+    const ASSETS = {
+      logoFull: 'https://www.alanranger.com/s/ALAN-RANGER-LOGO-and-Icon-BLACK.png',
+      academy: 'https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png',
+      signature: 'https://www.alanranger.com/s/Alan-Ranger-black-high-res.png'
+    };
+    
+    // Main app
+    (async function(){
+      // Load dependencies
+      await Promise.all([
+        e('https://unpkg.com/@supabase/supabase-js@2', 'supabase'),
+        t('https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js', 'jspdf')
+      ]);
+      
+      // Supabase config
+      const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk';
+      
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      
+      // App state
+      let currentUser = null;
+      let quizAnswers = {};
+      let isSubmitting = false;
+      let lastEmailSent = 0;
+      const EMAIL_DEBOUNCE_MS = 60000;
+      
+      // Toast system
+      function showToast(message, type = 'info') {
+        const toast = document.getElementById('ar-toast');
+        toast.textContent = message;
+        toast.className = `ar-toast ${type}`;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 5000);
+      }
+      
+      // Auth functions
+      async function signInWithEmail(email) {
+        if (!email || !email.includes('@')) {
+          showToast('Please enter a valid email address', 'err');
+          return;
+        }
+        
+        const now = Date.now();
+        if (now - lastEmailSent < EMAIL_DEBOUNCE_MS) {
+          showToast('Use the link we just sent, or try again in ~60s.', 'warn');
+          return;
+        }
+        
+        try {
+          const { error } = await supabaseClient.auth.signInWithOtp({
+            email: email,
+            options: { emailRedirectTo: window.location.href }
+          });
+          
+          if (error) {
+            if (error.message.includes('rate limit')) {
+              showToast('Use the link we just sent, or try again in ~60s.', 'warn');
+            } else {
+              showToast('Invalid email address', 'err');
+            }
+            return;
+          }
+          
+          lastEmailSent = now;
+          showToast('Magic link sent! Check your email and click the link to sign in.', 'ok');
+          queueResultsForSave();
+          
+        } catch (err) {
+          showToast('Something went wrong. Please try again.', 'err');
+        }
+      }
+      
+      async function signOut() {
+        await supabaseClient.auth.signOut();
+        currentUser = null;
+        localStorage.removeItem('ar_queued_results');
+        render();
+      }
+      
+      // Save flow
+      function queueResultsForSave() {
+        const results = {
+          moduleId: MODULE.moduleId,
+          answers: quizAnswers,
+          timestamp: new Date().toISOString(),
+          score: calculateScore()
+        };
+        localStorage.setItem('ar_queued_results', JSON.stringify(results));
+      }
+      
+      async function saveResults() {
+        if (!currentUser) {
+          showToast('Please sign in to save your results', 'warn');
+          return;
+        }
+        
+        try {
+          const results = {
+            user_id: currentUser.id,
+            module_id: MODULE.moduleId,
+            answers: quizAnswers,
+            score: calculateScore(),
+            passed: calculateScore() >= MODULE.passMark,
+            completed_at: new Date().toISOString()
+          };
+          
+          const { error } = await supabaseClient
+            .from('module_results')
+            .upsert(results, { onConflict: 'user_id,module_id' });
+          
+          if (error) throw error;
+          showToast('Results saved to your account!', 'ok');
+          
+        } catch (err) {
+          showToast('Failed to save results. Please try again.', 'err');
+        }
+      }
+      
+      async function autoSaveQueuedResults() {
+        const queued = localStorage.getItem('ar_queued_results');
+        if (!queued || !currentUser) return;
+        
+        try {
+          const results = JSON.parse(queued);
+          if (results.moduleId !== MODULE.moduleId) return;
+          
+          const saveData = {
+            user_id: currentUser.id,
+            module_id: MODULE.moduleId,
+            answers: results.answers,
+            score: results.score,
+            passed: results.score >= MODULE.passMark,
+            completed_at: results.timestamp
+          };
+          
+          const { error } = await supabaseClient
+            .from('module_results')
+            .upsert(saveData, { onConflict: 'user_id,module_id' });
+          
+          if (!error) {
+            localStorage.removeItem('ar_queued_results');
+            showToast('Previous results automatically saved!', 'ok');
+          }
+          
+        } catch (err) {
+          console.error('Auto-save failed:', err);
+        }
+      }
+      
+      // Quiz functions
+      function calculateScore() {
+        if (!MODULE.questions || MODULE.questions.length === 0) return 0;
+        let correct = 0;
+        MODULE.questions.forEach((q, i) => {
+          if (quizAnswers[i] === q.correct) correct++;
+        });
+        return Math.round((correct / MODULE.questions.length) * 100);
+      }
+      
+      function handleAnswerChange(questionIndex, answer) {
+        quizAnswers[questionIndex] = answer;
+        render();
+      }
+      
+      function resetQuiz() {
+        quizAnswers = {};
+        window.quizResults = null;
+        render();
+      }
+      
+      function submitAnswers() {
+        if (isSubmitting) return;
+        
+        const answered = Object.keys(quizAnswers).length;
+        const total = MODULE.questions ? MODULE.questions.length : 0;
+        
+        if (answered < total) {
+          showToast(`Please answer all ${total} questions before submitting.`, 'warn');
+          return;
+        }
+        
+        isSubmitting = true;
+        const score = calculateScore();
+        const passed = score >= MODULE.passMark;
+        
+        const results = MODULE.questions.map((q, i) => {
+          const isCorrect = quizAnswers[i] === q.correct;
+          return `Q${i + 1}: ${isCorrect ? 'Correct' : 'Incorrect'}`;
+        }).join(', ');
+        
+        showToast(`Quiz completed! Score: ${score}% ${passed ? '✅ Passed' : '❌ Failed'}`, passed ? 'ok' : 'warn');
+        
+        window.quizResults = { score, passed, results, submitted: true };
+        
+        if (!currentUser) {
+          queueResultsForSave();
+        }
+        
+        isSubmitting = false;
+        render();
+      }
+      
+      // PDF functions
+      async function getBase64Image(imageUrl) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png').split(',')[1]);
+          };
+          img.onerror = () => resolve('');
+          img.src = imageUrl;
+        });
+      }
+      
+      async function downloadResultsPDF() {
+        if (!window.quizResults || !window.quizResults.submitted) return;
+        
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          
+          // Orange header bar
+          doc.setFillColor(229, 114, 0);
+          doc.rect(0, 0, 210, 20, 'F');
+          
+          // Logos
+          const orgIcon = await getBase64Image(ASSETS.logoFull);
+          if (orgIcon) {
+            doc.addImage('data:image/png;base64,' + orgIcon, 'PNG', 10, 5, 15, 10);
+          }
+          
+          const academyCap = await getBase64Image(ASSETS.academy);
+          if (academyCap) {
+            doc.addImage('data:image/png;base64,' + academyCap, 'PNG', 180, 5, 20, 10);
+          }
+          
+          // Content
+          doc.setFontSize(18);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Module 1: What is Exposure', 20, 40);
+          
+          // Info box
+          doc.setDrawColor(200, 200, 200);
+          doc.setFillColor(248, 249, 250);
+          doc.rect(20, 50, 170, 40, 'FD');
+          
+          const studentName = currentUser ? currentUser.email : 'Student';
+          doc.setFontSize(10);
+          doc.text(`Name: ${studentName}`, 25, 60);
+          doc.text(`Score: ${window.quizResults.score}%`, 25, 68);
+          doc.text(`Result: ${window.quizResults.passed ? 'PASSED' : 'FAILED'}`, 25, 76);
+          doc.text(`Date: ${new Date().toLocaleDateString()}`, 25, 84);
+          
+          // Links
+          doc.setFontSize(12);
+          doc.setTextColor(37, 99, 235);
+          doc.text('Related Links:', 20, 110);
+          
+          const links = [
+            { text: 'What is Exposure', url: 'https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography' },
+            { text: 'Aperture', url: 'https://www.alanranger.com/blog-on-photography/aperture' },
+            { text: 'Shutter Speed', url: 'https://www.alanranger.com/blog-on-photography/shutter-speed' },
+            { text: 'ISO', url: 'https://www.alanranger.com/blog-on-photography/iso' },
+            { text: 'Academy site', url: 'https://www.alanranger.com/academy' }
+          ];
+          
+          let linkY = 120;
+          links.forEach(link => {
+            doc.textWithLink(link.text, 20, linkY, { url: link.url });
+            linkY += 8;
+          });
+          
+          // Results
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          doc.text(window.quizResults.results, 20, linkY + 15);
+          
+          doc.save(`assessment-results-${MODULE.moduleId}.pdf`);
+          
+        } catch (err) {
+          showToast('Failed to generate PDF. Please try again.', 'err');
+        }
+      }
+      
+      async function downloadCertificatePDF() {
+        if (!window.quizResults || !window.quizResults.submitted || !window.quizResults.passed) return;
+        
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF('landscape', 'mm', 'a4');
+          
+          // Frames
+          doc.setDrawColor(229, 114, 0);
+          doc.setLineWidth(3);
+          doc.rect(10, 10, 277, 190);
+          
+          doc.setDrawColor(128, 128, 128);
+          doc.setLineWidth(1);
+          doc.rect(15, 15, 267, 180);
+          
+          // Logo
+          const brandLogo = await getBase64Image(ASSETS.logoFull);
+          if (brandLogo) {
+            doc.addImage('data:image/png;base64,' + brandLogo, 'PNG', 240, 25, 40, 20);
+          }
+          
+          // Certificate ID
+          doc.setFontSize(8);
+          doc.setTextColor(128, 128, 128);
+          doc.text('Certificate ID: AR-2024-001', 20, 25);
+          
+          // Main content
+          const pageWidth = 297;
+          const centerX = pageWidth / 2;
+          
+          doc.setFont('times', 'bold');
+          doc.setFontSize(28);
+          doc.setTextColor(0, 0, 0);
+          const titleText = 'Certificate of Achievement';
+          const titleWidth = doc.getTextWidth(titleText);
+          doc.text(titleText, centerX - titleWidth/2, 80);
+          
+          doc.setFont('times', 'normal');
+          doc.setFontSize(16);
+          const studentName = currentUser ? currentUser.email : 'Student';
+          const nameText = `This certifies that ${studentName}`;
+          const nameWidth = doc.getTextWidth(nameText);
+          doc.text(nameText, centerX - nameWidth/2, 100);
+          
+          doc.setFontSize(14);
+          const moduleText = `has successfully completed ${MODULE.title}`;
+          const moduleWidth = doc.getTextWidth(moduleText);
+          doc.text(moduleText, centerX - moduleWidth/2, 120);
+          
+          const scoreText = `with a score of ${window.quizResults.score}%`;
+          const scoreWidth = doc.getTextWidth(scoreText);
+          doc.text(scoreText, centerX - scoreWidth/2, 135);
+          
+          const dateText = `Completed on ${new Date().toLocaleDateString()}`;
+          const dateWidth = doc.getTextWidth(dateText);
+          doc.text(dateText, centerX - dateWidth/2, 150);
+          
+          // Strapline
+          doc.setFontSize(10);
+          doc.setTextColor(107, 114, 128);
+          const straplineText = 'Alan Ranger Photography Academy — Beginners Modules included';
+          const straplineWidth = doc.getTextWidth(straplineText);
+          doc.text(straplineText, centerX - straplineWidth/2, 170);
+          
+          // Signature
+          doc.setDrawColor(229, 114, 0);
+          doc.setLineWidth(1);
+          const ruleStartX = centerX - 50;
+          doc.line(ruleStartX, 180, centerX + 50, 180);
+          
+          const signature = await getBase64Image(ASSETS.signature);
+          if (signature) {
+            doc.addImage('data:image/png;base64,' + signature, 'PNG', ruleStartX, 185, 50, 15);
+          }
+          
+          // Footer
+          doc.setFontSize(8);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Instructor: Alan Ranger', 20, 200);
+          doc.text('Website: www.alanranger.com', 20, 205);
+          
+          doc.save(`certificate-${MODULE.moduleId}.pdf`);
+          
+        } catch (err) {
+          showToast('Failed to generate certificate. Please try again.', 'err');
+        }
+      }
+      
+      // Render function
+      function render() {
+        const root = document.getElementById('ar-assessment');
+        const authStatus = currentUser ? 
+          `<div class="pill ok">Signed in as ${currentUser.email}</div>` : 
+          `<div class="pill warn">Not signed in</div>`;
+        
+        const signInForm = !currentUser ? `
+          <div class="card">
+            <h3 class="qtitle">Sign in to save your progress</h3>
+            <div style="display:flex;gap:8px;align-items:center;margin:12px 0;">
+              <input type="email" id="email-input" placeholder="your@email.com" 
+                     style="flex:1;padding:8px 12px;border:1px solid var(--ar-border);border-radius:6px;">
+              <button class="btn btn-orange" onclick="handleSignIn()">Send magic link</button>
+            </div>
+            <div class="help">We'll send you a secure link to sign in. No password required.</div>
+          </div>
+        ` : '';
+        
+        const signOutButton = currentUser ? 
+          `<button class="btn btn-neutral" onclick="handleSignOut()" style="margin-left:auto;">Force sign out</button>` : '';
+        
+        const quizContent = MODULE.questions && MODULE.questions.length > 0 ? 
+          MODULE.questions.map((q, i) => `
+            <div class="card">
+              <h3 class="qtitle">Question ${i + 1}</h3>
+              <p style="margin:8px 0 16px 0;">${q.question}</p>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${q.options.map((option, j) => `
+                  <label class="radio-option" 
+                         onmouseover="this.style.background='#f9f9f9'" 
+                         onmouseout="this.style.background='transparent'">
+                    <input type="radio" name="q${i}" value="${j}" 
+                           ${quizAnswers[i] === j ? 'checked' : ''}
+                           onchange="handleAnswerChange(${i}, ${j})" 
+                           class="radio-input">
+                    <span class="radio-text">${option}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `).join('') : `
+            <div class="card">
+              <h3 class="qtitle">No questions available</h3>
+              <p>The quiz questions haven't been loaded yet. Please check the module configuration.</p>
+            </div>
+          `;
+        
+        const resultsDisplay = window.quizResults && window.quizResults.submitted ? `
+          <div class="card" style="background:#f8f9fa;border-left:4px solid var(--ar-orange);">
+            <h3 class="qtitle">Quiz Results</h3>
+            <p style="margin:8px 0;font-weight:600;color:${window.quizResults.passed ? '#10b981' : '#ef4444'};">
+              Score: ${window.quizResults.score}% ${window.quizResults.passed ? '✅ Passed' : '❌ Failed'}
+            </p>
+            <p style="margin:8px 0 0 0;font-size:14px;color:var(--ar-muted);">
+              ${window.quizResults.results}
+            </p>
+          </div>
+        ` : '';
+        
+        const score = calculateScore();
+        const answered = Object.keys(quizAnswers).length;
+        const total = MODULE.questions ? MODULE.questions.length : 0;
+        
+        root.innerHTML = `
+          <div class="bar card">
+            ${authStatus}
+            <h2 style="margin:10px 0 0 0">Module: ${MODULE.title}</h2>
+            <div class="help">
+              ${total > 0 ? `Progress: ${answered}/${total} questions answered` : 'Quiz content loading...'}
+              ${score > 0 ? ` • Current score: ${score}%` : ''}
+            </div>
+          </div>
+          
+          ${signInForm}
+          
+          ${quizContent}
+          
+          ${resultsDisplay}
+          
+          <div class="card">
+            <div class="actions">
+              <button class="btn btn-orange" onclick="submitAnswers()" 
+                      ${isSubmitting || answered < total ? 'disabled' : ''}>
+                Submit answers
+              </button>
+              <button class="btn btn-neutral" onclick="resetQuiz()">Reset</button>
+              <button class="btn btn-blue" onclick="downloadResultsPDF()" 
+                      ${!window.quizResults || !window.quizResults.submitted ? 'disabled' : ''}>
+                Download results (PDF)
+              </button>
+              <button class="btn btn-green" onclick="downloadCertificatePDF()" 
+                      ${!window.quizResults || !window.quizResults.submitted || !window.quizResults.passed ? 'disabled' : ''}>
+                Download certificate (PDF)
+              </button>
+              <button class="btn btn-neutral" onclick="saveResults()" 
+                      ${!currentUser ? 'disabled' : ''}>
+                Save to my account
+              </button>
+              ${signOutButton}
+            </div>
+            <div class="help">
+              ${total > 0 ? `Answer all ${total} questions to submit. Pass mark: ${MODULE.passMark}%` : 'Quiz configuration needed.'}
+            </div>
+          </div>
+          
+          <div id="ar-toast" role="status" aria-live="polite"></div>
+        `;
+      }
+      
+      // Global handlers
+      window.handleSignIn = function() {
+        const email = document.getElementById('email-input').value;
+        signInWithEmail(email);
+      };
+      
+      window.handleSignOut = signOut;
+      window.handleAnswerChange = handleAnswerChange;
+      window.submitAnswers = submitAnswers;
+      window.resetQuiz = resetQuiz;
+      window.saveResults = saveResults;
+      window.downloadResultsPDF = downloadResultsPDF;
+      window.downloadCertificatePDF = downloadCertificatePDF;
+      
+      // Initialize
+      async function init() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          currentUser = session.user;
+          await autoSaveQueuedResults();
+        }
+        
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            currentUser = session.user;
+            await autoSaveQueuedResults();
+          } else if (event === 'SIGNED_OUT') {
+            currentUser = null;
+          }
+          render();
+        });
+        
+        render();
+      }
+      
+      init();
+    })();
+  </script>
+</div>
+

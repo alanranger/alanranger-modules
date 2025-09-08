@@ -1,0 +1,1036 @@
+<!-- Alan Ranger — 15 Camera Settings Modules (WORKING VERSION)
+     Paste this single block into a Squarespace Code Block. -->
+
+<div id="ar-container">
+  <style>
+    :root{
+      --ar-orange:#E57200;
+      --ar-green:#10b981;
+      --ar-red:#ef4444;
+      --ar-gray:#eaeaea;
+      --ar-text:#1f2937;
+    }
+    #ar-container{max-width:1120px;margin:32px auto;padding:0 12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ar-text)}
+    #ar-container a{color:#2563eb;text-decoration:none}
+    #ar-container a:hover{text-decoration:underline}
+    
+    #ar-modgrid, #ar-quiz { display: block; }
+    #ar-quiz { display: none; }
+
+    #ar-modgrid .top{
+      display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;margin:8px 0 18px
+    }
+    #ar-modgrid h2{margin:0;font-size:36px;line-height:1.2;font-weight:800}
+
+    #ar-modgrid .summary{
+      min-width:380px;max-width:560px;
+      border:1px solid var(--ar-gray);border-radius:12px;background:#fff;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.06)
+    }
+    #ar-modgrid .summary h3{margin:0 0 6px 0;font-size:18px;font-weight:800}
+    #ar-modgrid .progressline{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px 0}
+    #ar-modgrid .progressline .stat{font-weight:800}
+    #ar-modgrid .track{margin-top:8px;height:10px;border-radius:999px;background:#f2f2f2;overflow:hidden}
+    #ar-modgrid .bar{height:100%;width:0;background:var(--ar-orange);transition:width .4s ease;border-radius:999px}
+
+    #ar-modgrid .auth{
+      display:grid;
+      grid-template-columns:auto 1fr auto auto;
+      align-items:center;gap:8px;margin-top:10px
+    }
+    #ar-modgrid .badge{padding:6px 10px;border:1px solid var(--ar-gray);border-radius:999px;background:#fff;font-weight:600}
+    #ar-modgrid input[type="email"]{
+      width:100%;min-width:180px;padding:8px 10px;border:1px solid #ddd;border-radius:10px
+    }
+    #ar-modgrid .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:10px 14px;border-radius:10px;border:1px solid var(--ar-orange);background:var(--ar-orange);color:#fff;
+      font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap
+    }
+    #ar-modgrid .btn.sm{padding:7px 12px;border-radius:8px;font-size:14px}
+    #ar-modgrid .btn.secondary{background:#fff;color:var(--ar-orange)}
+    #ar-modgrid .hint{margin-top:8px;color:#444;font-size:14px}
+
+    #ar-modgrid .grid{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px
+    }
+    @media (max-width:980px){ #ar-modgrid .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+    @media (max-width:640px){
+      #ar-modgrid .top{grid-template-columns:1fr}
+      #ar-modgrid .grid{grid-template-columns:1fr}
+      #ar-modgrid .summary{max-width:none}
+    }
+
+    #ar-modgrid .card{
+      position:relative;background:#fff;border:1px solid var(--ar-gray);border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);
+      overflow:hidden
+    }
+    #ar-modgrid .card::before{
+      content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--ar-orange)
+    }
+    #ar-modgrid .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    #ar-modgrid .num{min-width:28px;height:28px;border-radius:999px;background:rgba(229,114,0,.12);color:#793d00;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+    #ar-modgrid .title{font-weight:800;font-size:18px}
+
+    #ar-modgrid .chips{
+      display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:4px 0 10px 0;text-align:center
+    }
+    #ar-modgrid .chip{
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      padding:6px 10px;border-radius:999px;border:1px solid var(--ar-gray);background:#fff;font-size:14px
+    }
+    #ar-modgrid .chip.pass{background:#f6fffa;border-color:#b7f0d2;color:#067647}
+    #ar-modgrid .chip.fail{background:#fff5f5;border-color:#fac5c5;color:#b42318}
+
+    #ar-modgrid .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+
+    #ar-modgrid .card.passed{background:#f4fbf7}
+    #ar-modgrid .card.failed{background:#fff7f7}
+    #ar-modgrid .tick{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#e6fff4;border:1px solid #b7f0d2;color:#067647;font-weight:900;display:flex;align-items:center;justify-content:center}
+    #ar-modgrid .xmark{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#ffecec;border:1px solid #f8caca;color:#b42318;font-weight:900;display:flex;align-items:center;justify-content:center}
+
+    #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff;
+      padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
+    #ar-modgrid .toast.ok{background:var(--ar-green)} #ar-modgrid .toast.err{background:var(--ar-red)}
+  </style>
+
+  <!-- Grid Section -->
+  <div id="ar-modgrid">
+    <div class="top">
+      <h2>15 Camera Settings — Modules</h2>
+
+      <!-- Summary / progress / auth -->
+      <div class="summary" id="summary">
+        <div class="progressline">
+          <div class="stat"><span id="passedCount">0</span>/15 Passed</div>
+          <div class="stat"><span id="progressPct">0</span>%</div>
+        </div>
+        <div class="track"><div class="bar" id="progressBar"></div></div>
+
+        <div class="auth">
+          <span class="badge" id="authBadge">Not signed in</span>
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
+          <button class="btn" id="gridBtnMagic">Get magic link</button>
+          <button class="btn secondary" id="gridBtnSignOut" style="display:none">Sign out</button>
+          <button class="btn secondary" id="gridBtnCheck" style="display:none; background:#6b7280; color:#fff;">Check Status</button>
+        </div>
+        <div class="hint">Use "Get magic link" to load your saved progress before taking an exam.</div>
+      </div>
+    </div>
+
+    <!-- Grid container -->
+    <div class="grid" id="grid">
+      <!-- Static grid content -->
+      <div class="card">
+        <div class="head">
+          <div class="num">1</div>
+          <div class="title">What is Exposure</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-01-exposure')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">2</div>
+          <div class="title">Aperture</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-02-aperture')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">3</div>
+          <div class="title">Shutter Speed</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-shutter-speed" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-03-shutter')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">4</div>
+          <div class="title">ISO</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-04-iso')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">5</div>
+          <div class="title">Manual Exposure</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-05-manual')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">6</div>
+          <div class="title">Metering</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-06-metering')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">7</div>
+          <div class="title">Exposure Bracketing</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-07-bracketing')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">8</div>
+          <div class="title">Focusing</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-08-focusing')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">9</div>
+          <div class="title">Depth of Field</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-depth-of-field" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-09-dof')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">10</div>
+          <div class="title">Dynamic Range</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-10-drange')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">11</div>
+          <div class="title">White Balance</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-11-wb')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">12</div>
+          <div class="title">Camera Drive Modes</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-12-drive')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">13</div>
+          <div class="title">JPEG vs RAW</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-13-jpeg-raw')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">14</div>
+          <div class="title">Full Frame vs Crop Sensor</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-14-sensors')">Take exam</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="head">
+          <div class="num">15</div>
+          <div class="title">Focal Length</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        </div>
+        <div class="actions">
+          <a class="btn sm" href="https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="showQuiz('module-15-focal')">Take exam</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- Quiz Section (hidden by default) -->
+  <div id="ar-quiz" style="border:1px solid #eaeaea;border-left:10px solid #F05922;background:#fafafa;padding:24px;border-radius:12px;max-width:820px;margin:28px auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <h2 id="quiz-title" style="margin:0 0 12px;font-weight:700;line-height:1.2;">Module 1 Assessment: What is Exposure</h2>
+    <p style="margin:0 0 16px;color:#333;">Enter your details, answer the questions, then view your score.</p>
+
+    <!-- Learner details -->
+    <form id="learner-form" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;">
+      <div>
+        <label for="name" style="display:block;font-weight:600;margin-bottom:6px;">Name</label>
+        <input id="name" name="name" type="text" required placeholder="Your name"
+               style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
+      </div>
+      <div>
+        <label for="email" style="display:block;font-weight:600;margin-bottom:6px;">Email</label>
+        <input id="email" name="email" type="email" placeholder="you@example.com"
+               style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
+      </div>
+    </form>
+
+    <!-- Assessment -->
+    <form id="quiz-form" novalidate></form>
+
+    <!-- Actions -->
+    <div id="quiz-actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+      <button id="btn-submit" type="button"
+              style="background:#F05922;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">Submit answers</button>
+      <button id="btn-retake" type="button" style="display:none;"
+              style="background:#dc2626;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">Retake test</button>
+    </div>
+
+    <!-- Results -->
+    <div id="results" style="margin-top:20px;display:none;background:#fff;border:1px solid #eaeaea;border-radius:10px;padding:16px;">
+      <h3 style="margin:0 0 10px;font-size:18px;">Your results</h3>
+      <div id="results-summary" style="margin-bottom:12px;"></div>
+    </div>
+    
+    <!-- Back to Modules Button -->
+    <div style="text-align:center; margin-top:24px; padding-top:16px; border-top:1px solid #eaeaea;">
+      <button onclick="showGrid()" 
+         style="display:inline-block; background:#6b7280; color:#fff; text-decoration:none; padding:12px 20px; border-radius:10px; font-weight:700; border:none; cursor:pointer;">
+        ← Back to Modules
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+// Wait for everything to load and avoid Squarespace conflicts
+(function() {
+  // Multiple fallback strategies
+  function initGrid() {
+    try {
+      console.log('🚀 Grid script starting...');
+      
+      /* =============================
+         CONFIG
+      ==============================*/
+      const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk";
+      
+      // Check if Supabase is loaded
+      if (!window.supabase) {
+        console.error('❌ Supabase not loaded!');
+        showToast('Authentication not available. Please refresh the page.', 'err');
+        return;
+      }
+      
+      console.log('✅ Supabase loaded, creating client...');
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      /* =============================
+         DOM refs
+      ==============================*/
+      const gridEl = document.getElementById('grid');
+      const toastEl = document.getElementById('toast');
+      const authBadge = document.getElementById('authBadge');
+      const emailInput = document.getElementById('loginEmail');
+      const gridBtnMagic = document.getElementById('gridBtnMagic');
+      const gridBtnSignOut = document.getElementById('gridBtnSignOut');
+      const gridBtnCheck = document.getElementById('gridBtnCheck');
+      const progressBar = document.getElementById('progressBar');
+      const passedCountEl = document.getElementById('passedCount');
+      const progressPctEl = document.getElementById('progressPct');
+      
+      // Debug DOM elements
+      console.log('🔍 DOM Elements found:', {
+        gridEl: !!gridEl,
+        toastEl: !!toastEl,
+        authBadge: !!authBadge,
+        emailInput: !!emailInput,
+        gridBtnMagic: !!gridBtnMagic,
+        gridBtnCheck: !!gridBtnCheck
+      });
+      
+      if (!gridEl || !authBadge || !gridBtnMagic) {
+        console.error('❌ Critical DOM elements missing!');
+        return;
+      }
+
+      /* =============================
+         Utilities
+      ==============================*/
+      const showToast = (msg, type="ok", ms=3800) => {
+        if (toastEl) {
+          toastEl.textContent = msg;
+          toastEl.className = `toast ${type === "ok" ? "ok" : "err"}`;
+          toastEl.style.display = 'block';
+          clearTimeout(showToast._t);
+          showToast._t = setTimeout(()=> toastEl.style.display='none', ms);
+        }
+      };
+
+      const debounce60 = (() => {
+        let last = 0;
+        return () => {
+          const now = Date.now();
+          if (now - last < 60000) return false;
+          last = now; return true;
+        };
+      })();
+
+      const setAuthUI = (user) => {
+        console.log('🔐 Setting auth UI for user:', user ? user.email : 'No user');
+        if (user) {
+          authBadge.textContent = "Signed in";
+          if (gridBtnSignOut) gridBtnSignOut.style.display = '';
+          if (gridBtnCheck) gridBtnCheck.style.display = 'none';
+          if (emailInput && !emailInput.value) emailInput.value = user.email || '';
+        } else {
+          authBadge.textContent = "Not signed in";
+          if (gridBtnSignOut) gridBtnSignOut.style.display = 'none';
+          if (gridBtnCheck) gridBtnCheck.style.display = '';
+        }
+      };
+
+      /* =============================
+         Auth / Magic Link
+      ==============================*/
+      if (gridBtnMagic) {
+        gridBtnMagic.addEventListener('click', async () => {
+        console.log('🔗 Magic link button clicked');
+        const email = emailInput.value.trim();
+        console.log('📧 Email:', email);
+        
+        if (!email){ 
+          showToast('Enter your email address first.', 'err'); 
+          return; 
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ 
+          showToast('Please enter a valid email address.', 'err'); 
+          return; 
+        }
+        if (!debounce60()){ 
+          showToast('Use the link we just sent, or try again in ~60s.', 'err'); 
+          return; 
+        }
+        
+        console.log('📤 Sending magic link to:', email);
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: window.location.href.split('#')[0] }
+        });
+        
+        if (error){ 
+          console.error('❌ Magic link error:', error);
+          showToast('Could not send sign-in link.', 'err'); 
+        } else { 
+          console.log('✅ Magic link sent successfully');
+          showToast('Magic link sent — check your inbox.', 'ok', 5200); 
+        }
+        });
+      } else {
+        console.error('❌ Magic link button not found!');
+      }
+
+      if (gridBtnSignOut) {
+        gridBtnSignOut.addEventListener('click', async ()=>{
+          await supabase.auth.signOut();
+          setAuthUI(null);
+          showToast('Signed out.', 'ok');
+        });
+      }
+
+      if (gridBtnCheck) {
+        gridBtnCheck.addEventListener('click', async ()=>{
+        console.log('Manual check button clicked');
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.log('Manual check - user:', user ? user.email : 'No user');
+          
+          if (user) {
+            setAuthUI(user);
+            const status = await fetchStatusForUser(user);
+            renderSummary(status);
+            renderGrid(status);
+            showToast('Status updated!', 'ok');
+          } else {
+            showToast('Still not signed in. Try the magic link again.', 'err');
+          }
+        } catch (error) {
+          console.error('Manual check error:', error);
+          showToast('Error checking status.', 'err');
+        }
+        });
+      }
+
+      supabase.auth.onAuthStateChange(async (event, session)=>{
+        console.log('🔄 Auth state changed:', event, session ? 'Has session' : 'No session');
+        const user = session?.user || null;
+        console.log('👤 User:', user ? user.email : 'No user');
+        
+        setAuthUI(user);
+        
+        // Always fetch and render progress when auth state changes
+        const status = await fetchStatusForUser(user);
+        console.log('📊 Status fetched:', status);
+        renderSummary(status);
+        renderGrid(status);
+        
+        // If user just signed in, check for pending results
+        if (event === 'SIGNED_IN' && user) {
+          console.log('🎉 User signed in! Checking for pending results...');
+          const pendingResults = JSON.parse(localStorage.getItem('ar_pending_results') || '[]');
+          console.log('📦 Pending results:', pendingResults);
+          
+          if (pendingResults.length > 0) {
+            showToast('Found saved results. Syncing to your account...', 'ok');
+            // Auto-save pending results
+            for (const result of pendingResults) {
+              await saveQuizResult(result);
+            }
+            localStorage.removeItem('ar_pending_results');
+            // Refresh the grid after syncing
+            const updatedStatus = await fetchStatusForUser(user);
+            renderSummary(updatedStatus);
+            renderGrid(updatedStatus);
+          }
+        }
+      });
+
+      /* =============================
+         Progress fetch & summary
+      ==============================*/
+      async function fetchStatusForUser(user){
+        if(!user) {
+          console.log('No user, returning empty status');
+          return {};
+        }
+        
+        console.log('Fetching status for user:', user.email);
+        
+        const { data, error } = await supabase
+          .from('module_results')
+          .select('module_id, score_percent, passed, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending:false });
+
+        if (error) {
+          console.error('Error fetching status:', error);
+          return {};
+        }
+        
+        if (!data) {
+          console.log('No data returned');
+          return {};
+        }
+
+        console.log('Found results:', data);
+
+        // Reduce to latest per module_id
+        const latest = {};
+        for (const row of data){
+          if (!latest[row.module_id]) latest[row.module_id] = {score: row.score_percent, passed: row.passed, when: row.created_at};
+        }
+        
+        console.log('Processed status:', latest);
+        return latest;
+      }
+
+      function renderSummary(statusByModuleId){
+        const total = 15; // modules.length
+        const passed = Object.values(statusByModuleId).filter(s => s.passed === true).length;
+        passedCountEl.textContent = String(passed);
+        const pct = Math.round((passed/total)*100);
+        progressPctEl.textContent = String(pct);
+        progressBar.style.width = pct + '%';
+      }
+
+      /* =============================
+         Render Grid (dynamic)
+      ==============================*/
+      function renderGrid(statusByModuleId = {}) {
+        gridEl.innerHTML = '';
+        
+        const modules = [
+          {id:"module-01-exposure", n:1, title:"What is Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"},
+          {id:"module-02-aperture", n:2, title:"Aperture", article:"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"},
+          {id:"module-03-shutter", n:3, title:"Shutter Speed", article:"https://www.alanranger.com/blog-on-photography/what-is-shutter-speed"},
+          {id:"module-04-iso", n:4, title:"ISO", article:"https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography"},
+          {id:"module-05-manual", n:5, title:"Manual Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography"},
+          {id:"module-06-metering", n:6, title:"Metering", article:"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography"},
+          {id:"module-07-bracketing", n:7, title:"Exposure Bracketing", article:"https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers"},
+          {id:"module-08-focusing", n:8, title:"Focusing", article:"https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography"},
+          {id:"module-09-dof", n:9, title:"Depth of Field", article:"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field"},
+          {id:"module-10-drange", n:10, title:"Dynamic Range", article:"https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography"},
+          {id:"module-11-wb", n:11, title:"White Balance", article:"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography"},
+          {id:"module-12-drive", n:12, title:"Camera Drive Modes", article:"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes"},
+          {id:"module-13-jpeg-raw", n:13, title:"JPEG vs RAW", article:"https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences"},
+          {id:"module-14-sensors", n:14, title:"Full Frame vs Crop Sensor", article:"https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor"},
+          {id:"module-15-focal", n:15, title:"Focal Length", article:"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography"}
+        ];
+
+        modules.forEach(m => {
+          const st = statusByModuleId[m.id]; // {score, passed}
+          const passed = st?.passed === true;
+          const failed = st && st.passed === false;
+
+          const card = document.createElement('div');
+          card.className = `card${passed ? ' passed' : ''}${failed ? ' failed' : ''}`;
+
+          const head = document.createElement('div');
+          head.className = 'head';
+          head.innerHTML = `<div class="num">${m.n}</div><div class="title">${m.title}</div>`;
+          card.appendChild(head);
+
+          if (passed) {
+            const tick = document.createElement('div'); tick.className='tick'; tick.textContent='✓'; card.appendChild(tick);
+          } else if (failed) {
+            const x = document.createElement('div'); x.className='xmark'; x.textContent='✕'; card.appendChild(x);
+          }
+
+          const chips = document.createElement('div');
+          chips.className = 'chips';
+          const scoreTxt = (typeof st?.score === 'number') ? `${st.score}%` : '—';
+          chips.innerHTML = `
+            <span class="chip">Score: <strong>${scoreTxt}</strong></span>
+            <span class="chip">Pass ≥ <strong>80%</strong></span>
+            ${passed ? `<span class="chip pass">Passed</span>` : (failed ? `<span class="chip fail">Failed</span>` : '')}
+          `;
+          card.appendChild(chips);
+
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          actions.innerHTML = `
+            <a class="btn sm" href="${m.article}" target="_blank" rel="noopener">Open module</a>
+            <button class="btn sm secondary" onclick="showQuiz('${m.id}')">Take exam</button>
+          `;
+          
+          card.appendChild(actions);
+          gridEl.appendChild(card);
+        });
+      }
+
+      // Basic functions
+      function showGrid() {
+        document.getElementById('ar-modgrid').style.display = 'block';
+        document.getElementById('ar-quiz').style.display = 'none';
+        window.history.pushState({}, '', window.location.pathname);
+      }
+
+      function showQuiz(moduleId) {
+        document.getElementById('ar-modgrid').style.display = 'none';
+        document.getElementById('ar-quiz').style.display = 'block';
+        window.history.pushState({}, '', window.location.pathname + '?m=' + encodeURIComponent(moduleId));
+        
+        if (moduleId === 'module-01-exposure') {
+          document.getElementById('quiz-title').textContent = 'Module 1 Assessment: What is Exposure';
+          loadModule1Quiz();
+        } else {
+          alert('Module ' + moduleId + ' is not yet implemented. Only Module 1 (Exposure) is available.');
+          showGrid();
+        }
+      }
+
+      function loadModule1Quiz() {
+        const quizForm = document.getElementById("quiz-form");
+        quizForm.innerHTML = '';
+        
+        const questions = [
+          { id:"q1", text:"What does the term exposure mean in photography?", options:[
+            "Collecting the correct quantity of light for proper image brightness",
+            "Collecting quality of light to capture the image",
+            "Using autofocus to make the image sharp",
+            "Ensuring the colour is right in the image"
+          ], correctIndex:0},
+          { id:"q2", text:"What 3 variables control exposure?", options:[
+            "Aperture, Shutter Speed, ISO","The lens, Colour, Focusing","White Balance, Focus, Metering","Histogram, Composition, Lighting"
+          ], correctIndex:0},
+          { id:"q3", text:"What does the aperture control in photography?", options:[
+            "Colour enhancement","Depth of Field","Shutter Speed","ISO"
+          ], correctIndex:1},
+          { id:"q4", text:"What does the shutter control in photography?", options:[
+            "Colour and saturation","Length of exposure time","Sharpness of moving subjects","ISO"
+          ], correctIndex:1},
+          { id:"q5", text:"What does the ISO control in photography?", options:[
+            "Amount of digital noise (grain)","Image sharpness","Aperture","Shutter speed"
+          ], correctIndex:0},
+          { id:"q6", text:"If an image appears too dark, it is considered:", options:[
+            "Overexposed","Underexposed","Correctly exposed","High contrast"
+          ], correctIndex:1},
+          { id:"q7", text:"If an image appears too bright with lost highlight details, it is:", options:[
+            "Overexposed","Underexposed","Correctly exposed","Low contrast"
+          ], correctIndex:0},
+          { id:"q8", text:"Why might a photographer deliberately over/underexpose?", options:[
+            "To save battery life","To test different metering modes","To achieve a creative effect or mood","To avoid using ISO"
+          ], correctIndex:2},
+          { id:"q9", text:"What is the main purpose of the histogram?", options:[
+            "To show camera battery level","To display image composition","To reveal exposure clipping in highlights/shadows","To show autofocus points"
+          ], correctIndex:2},
+          { id:"q10", text:"Exposure compensation (+/-) is used to:", options:[
+            "Change the camera's metering mode","Quickly correct metering bias","Adjust the ISO setting","Change the aperture size"
+          ], correctIndex:1},
+          { id:"q11", text:"If you increase shutter speed without changing other settings, the image will:", options:[
+            "Become darker","Become brighter","Stay the same brightness","Increase in depth of field"
+          ], correctIndex:0},
+          { id:"q12", text:"The exposure triangle demonstrates that:", options:[
+            "All three settings work independently","Changing one setting requires adjusting others to maintain exposure","Only aperture affects brightness","ISO is the most important setting"
+          ], correctIndex:1}
+        ];
+        
+        questions.forEach((q, idx) => {
+          const field = document.createElement("div"); 
+          field.style.cssText = "border:1px solid #eaeaea;background:#fff;border-radius:10px;padding:14px;margin:12px 0;";
+          
+          const qtxt = document.createElement("div"); 
+          qtxt.style.cssText = "font-weight:800;margin:0 0 8px; color:#F05922;";
+          qtxt.textContent = `Q${idx+1}. ${q.text}`;
+          field.appendChild(qtxt);
+          
+          q.options.forEach((opt, i) => {
+            const id = `${q.id}-${i}`;
+            const label = document.createElement("label"); 
+            label.style.cssText = "display:flex; gap:10px; align-items:flex-start; margin:8px 0; cursor:pointer;";
+            label.setAttribute("for", id);
+            
+            const input = document.createElement("input"); 
+            input.type="radio"; 
+            input.name=q.id; 
+            input.id=id; 
+            input.value=i; 
+            input.required=true; 
+            input.style.cssText="margin-top:4px; accent-color:#F05922;";
+            
+            const span = document.createElement("span"); 
+            span.textContent = opt;
+            
+            label.appendChild(input); 
+            label.appendChild(span); 
+            field.appendChild(label);
+          });
+          quizForm.appendChild(field);
+        });
+        
+        // Add submit handler
+        document.getElementById('btn-submit').onclick = function() {
+          const learnerName = document.getElementById("name").value.trim();
+          if (!learnerName) { 
+            alert("Please enter your name."); 
+            return; 
+          }
+
+          let correct = 0;
+          questions.forEach((q) => {
+            const chosen = document.querySelector(`input[name="${q.id}"]:checked`);
+            if (chosen && +chosen.value === q.correctIndex) correct++;
+          });
+          
+          const total = questions.length;
+          const pct = Math.round((correct / total) * 100);
+          const pass = pct >= 80;
+          
+          const passPill = pass ? `<span style="display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; background:#e8fff4; color:#067647; border:1px solid #b7f0d2;">Pass</span>` 
+                                : `<span style="display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; background:#fff5f5; color:#b42318; border:1px solid #fac5c5;">Fail</span>`;
+          
+          document.getElementById('results-summary').innerHTML = `
+            <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+              <div style="font-size:28px;font-weight:800;">${pct}%</div>
+              <div>${passPill} — ${correct}/${total} correct (Pass mark: 80%)</div>
+            </div>
+            <div style="margin-top:8px;color:#555;">
+              <div><strong>Name:</strong> ${learnerName}</div>
+              <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+              <div><strong>Module:</strong> Module 1: What is Exposure</div>
+            </div>
+          `;
+          
+          document.getElementById('results').style.display = 'block';
+          
+          // Lock radio buttons
+          document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.disabled = true;
+            radio.style.cursor = 'not-allowed';
+          });
+          
+          // Hide submit button and show retake button
+          document.getElementById('btn-submit').style.display = 'none';
+          document.getElementById('btn-retake').style.display = 'inline-block';
+          
+          if (pass) {
+            alert("Congrats! You passed this module.");
+          } else {
+            alert("You didn't pass this time. Review the material and try again.");
+          }
+
+          // Save result to Supabase
+          saveQuizResult({
+            moduleId: 'module-01-exposure',
+            moduleTitle: 'Module 1: What is Exposure',
+            learnerName,
+            learnerEmail: document.getElementById("email").value.trim(),
+            scorePercent: pct,
+            passed: pass,
+            totalQuestions: total,
+            correctAnswers: correct,
+            answers: questions.reduce((acc, q) => {
+              const chosen = document.querySelector(`input[name="${q.id}"]:checked`);
+              if (chosen) acc[q.id] = +chosen.value;
+              return acc;
+            }, {}),
+            submittedAt: new Date().toISOString()
+          });
+        };
+        
+        // Add retake handler
+        document.getElementById('btn-retake').onclick = function() {
+          document.getElementById("quiz-form").reset();
+          document.getElementById('results').style.display = 'none';
+          
+          // Unlock radio buttons
+          document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.disabled = false;
+            radio.style.cursor = 'pointer';
+          });
+          
+          document.getElementById('btn-submit').style.display = 'inline-block';
+          document.getElementById('btn-retake').style.display = 'none';
+        };
+      }
+
+      /* =============================
+         Save Quiz Results
+      ==============================*/
+      async function saveQuizResult(result) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // User is signed in - save to Supabase
+            const { error } = await supabase
+              .from('module_results')
+              .upsert({
+                user_id: user.id,
+                module_id: result.moduleId,
+                learner_name: result.learnerName,
+                learner_email: result.learnerEmail,
+                score_percent: result.scorePercent,
+                passed: result.passed,
+                total_questions: result.totalQuestions,
+                correct_answers: result.correctAnswers,
+                answers: result.answers,
+                submitted_at: result.submittedAt
+              }, { onConflict: 'user_id,module_id' });
+
+            if (error) throw error;
+            
+            showToast('Result saved to your account.', 'ok');
+            
+            // Refresh the grid to show updated status
+            const status = await fetchStatusForUser(user);
+            renderSummary(status);
+            renderGrid(status);
+          } else {
+            // User not signed in - save to localStorage
+            const pendingResults = JSON.parse(localStorage.getItem('ar_pending_results') || '[]');
+            pendingResults.push(result);
+            localStorage.setItem('ar_pending_results', JSON.stringify(pendingResults));
+            
+            showToast('Result saved locally. Sign in to save to your account.', 'info');
+          }
+        } catch (error) {
+          console.error('Error saving result:', error);
+          showToast('Could not save result.', 'err');
+        }
+      }
+
+      // Check URL parameters on load
+      function checkUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const moduleId = urlParams.get('m');
+        
+        if (moduleId) {
+          showQuiz(moduleId);
+        } else {
+          showGrid();
+        }
+      }
+
+      // Make functions global
+      window.showGrid = showGrid;
+      window.showQuiz = showQuiz;
+
+      // Initialize
+      checkUrlParams();
+      
+      // Initialize authentication and grid
+      (async()=>{
+        try {
+          console.log('🚀 Initializing authentication and grid...');
+          
+          // Check for stored session first
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('❌ Session error:', sessionError);
+          }
+          
+          const user = session?.user || null;
+          console.log('👤 Initial user check:', user ? user.email : 'No user');
+          console.log('🔗 Current URL:', window.location.href);
+          console.log('🔗 URL hash:', window.location.hash);
+          
+          setAuthUI(user);
+          
+          // Load user's progress
+          const status = await fetchStatusForUser(user);
+          console.log('📊 Initial status:', status);
+          renderSummary(status);
+          renderGrid(status);
+          
+          // If no user but we have a magic link in URL, try to handle it
+          if (!user && window.location.hash) {
+            console.log('🔗 Found hash in URL, attempting to handle auth...');
+            // The onAuthStateChange should handle this, but let's be explicit
+            setTimeout(async () => {
+              console.log('⏰ Delayed auth check...');
+              const { data: { user: delayedUser } } = await supabase.auth.getUser();
+              if (delayedUser) {
+                console.log('✅ Delayed user found:', delayedUser.email);
+                setAuthUI(delayedUser);
+                const delayedStatus = await fetchStatusForUser(delayedUser);
+                renderSummary(delayedStatus);
+                renderGrid(delayedStatus);
+              } else {
+                console.log('❌ No delayed user found');
+              }
+            }, 2000);
+          }
+          
+        } catch (error) {
+          console.error('❌ Error checking auth:', error);
+          // Fallback: show empty grid
+          renderGrid({});
+        }
+      })();
+      
+      console.log('✅ Grid loaded successfully!');
+      window.arGridInitialized = true;
+      
+    } catch (error) {
+      console.error('❌ Error loading grid:', error);
+    }
+  }
+  
+  // Try multiple initialization strategies
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initGrid, 2000);
+    });
+  } else {
+    setTimeout(initGrid, 2000);
+  }
+  
+  // Fallback: try again after 5 seconds
+  setTimeout(function() {
+    if (!window.arGridInitialized) {
+      console.log('🔄 Fallback initialization...');
+      initGrid();
+    }
+  }, 5000);
+  
+})();
+</script>

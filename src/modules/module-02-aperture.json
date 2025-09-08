@@ -1,0 +1,212 @@
+{
+  "moduleId": "module-02-aperture",
+  "title": "Module 2: Aperture",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"
+  },
+  "questions": [
+    {
+      "question": "What is the primary use of aperture?",
+      "options": [
+        "Depth of field",
+        "Exposure time",
+        "Image sharpness",
+        "Color saturation"
+      ],
+      "correct": 0,
+      "reviewHint": "Aperture primarily controls depth of field - how much of the image is in focus."
+    },
+    {
+      "question": "What is the widest aperture?",
+      "options": [
+        "f/22",
+        "f/16",
+        "f/2.8",
+        "f/11"
+      ],
+      "correct": 2,
+      "reviewHint": "Wide apertures have smaller f-stop numbers (f/1.4, f/2.8, f/4)."
+    },
+    {
+      "question": "How does a wide aperture affect the depth of field?",
+      "options": [
+        "Increases depth of field",
+        "Decreases depth of field",
+        "Has no effect on depth of field",
+        "Improves image sharpness"
+      ],
+      "correct": 1,
+      "reviewHint": "Wide apertures create shallow depth of field - less of the image is in focus."
+    },
+    {
+      "question": "Which aperture setting would you use for a landscape photo to get maximum depth of field?",
+      "options": [
+        "f/2.8",
+        "f/8",
+        "f/16",
+        "f/1.4"
+      ],
+      "correct": 2,
+      "reviewHint": "Small apertures (high f-stop numbers) create greater depth of field for landscapes."
+    },
+    {
+      "question": "What happens when you use a small aperture (higher f-stop number)?",
+      "options": [
+        "It takes longer to collect the same quantity of light",
+        "It takes less time to collect the same quantity of light",
+        "The image becomes overexposed",
+        "The image sharpness decreases"
+      ],
+      "correct": 0,
+      "reviewHint": "Small apertures have narrow openings, so they collect light more slowly."
+    },
+    {
+      "question": "Which f-stop number represents the smallest aperture opening?",
+      "options": [
+        "f/2",
+        "f/5.6",
+        "f/16",
+        "f/22"
+      ],
+      "correct": 3,
+      "reviewHint": "Higher f-stop numbers represent smaller aperture openings."
+    },
+    {
+      "question": "What is the effect of a small aperture on bokeh (background blur)?",
+      "options": [
+        "It makes the background more blurred",
+        "It makes the background more defined",
+        "It eliminates the background completely",
+        "It has no effect on the background"
+      ],
+      "correct": 1,
+      "reviewHint": "Small apertures increase depth of field, making backgrounds more defined."
+    },
+    {
+      "question": "Which of the following would result in the most shallow depth of field?",
+      "options": [
+        "f/11",
+        "f/8",
+        "f/4",
+        "f/2.8"
+      ],
+      "correct": 3,
+      "reviewHint": "The widest aperture (smallest f-stop number) creates the shallowest depth of field."
+    },
+    {
+      "question": "What is the primary purpose of the diaphragm in a camera lens?",
+      "options": [
+        "To focus the image",
+        "To control the aperture opening",
+        "To stabilize the lens",
+        "To filter light colors"
+      ],
+      "correct": 1,
+      "reviewHint": "The diaphragm is the mechanical component that opens and closes to control the aperture size."
+    },
+    {
+      "question": "What is the term used to describe the circular opening that controls the aperture?",
+      "options": [
+        "Diaphragm",
+        "Lens cap",
+        "Shutter",
+        "Filter"
+      ],
+      "correct": 0,
+      "reviewHint": "The diaphragm is the mechanical device that creates the aperture opening."
+    },
+    {
+      "question": "If you change the aperture from f/5.6 to f/16, how does this affect exposure time?",
+      "options": [
+        "Increases exposure time",
+        "Decreases exposure time",
+        "No change to exposure time",
+        "Doubles exposure time"
+      ],
+      "correct": 0,
+      "reviewHint": "Moving to a smaller aperture (higher f-stop) requires longer exposure time to collect the same amount of light."
+    },
+    {
+      "question": "What is the 'sweet spot' of a lens?",
+      "options": [
+        "The widest aperture of the lens",
+        "The aperture at which the lens produces the sharpest image",
+        "The aperture with the most bokeh",
+        "The smallest aperture of the lens"
+      ],
+      "correct": 1,
+      "reviewHint": "The sweet spot is typically 2-3 stops down from the widest aperture, where the lens performs at its sharpest."
+    }
+  ],
+  "feedbackMap": {
+    "topics": [
+      {
+        "key": "aperture-basics",
+        "label": "Aperture basics (definition and function)"
+      },
+      {
+        "key": "f-stop-numbers",
+        "label": "F-stop numbers and aperture sizes"
+      },
+      {
+        "key": "depth-of-field",
+        "label": "Depth of field and aperture"
+      },
+      {
+        "key": "light-collection",
+        "label": "Light collection rate and aperture"
+      },
+      {
+        "key": "bokeh-background",
+        "label": "Bokeh and background blur"
+      },
+      {
+        "key": "photography-applications",
+        "label": "Aperture for different photography types"
+      },
+      {
+        "key": "lens-mechanics",
+        "label": "Lens mechanics and diaphragm"
+      },
+      {
+        "key": "exposure-relationship",
+        "label": "Aperture and exposure relationship"
+      },
+      {
+        "key": "lens-sweet-spot",
+        "label": "Lens sweet spot and optimal sharpness"
+      }
+    ],
+    "questionTopics": {
+      "q1": ["aperture-basics"],
+      "q2": ["f-stop-numbers"],
+      "q3": ["depth-of-field"],
+      "q4": ["depth-of-field", "photography-applications"],
+      "q5": ["light-collection"],
+      "q6": ["f-stop-numbers"],
+      "q7": ["bokeh-background", "depth-of-field"],
+      "q8": ["depth-of-field"],
+      "q9": ["photography-applications", "bokeh-background"],
+      "q10": ["lens-mechanics"],
+      "q11": ["exposure-relationship"],
+      "q12": ["lens-sweet-spot"]
+    },
+    "topicLinks": {
+      "aperture-basics": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "f-stop-numbers": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "depth-of-field": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "light-collection": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "bokeh-background": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "photography-applications": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "lens-mechanics": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "exposure-relationship": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",
+      "lens-sweet-spot": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"
+    }
+  }
+}
+
+
+
+
+

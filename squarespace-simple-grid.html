@@ -1,0 +1,1048 @@
+<!-- Alan Ranger — 15 Camera Settings Modules (Simple Grid First) -->
+<div id="ar-modgrid">
+  <style>
+    :root{
+      --ar-orange:#E57200; /* Brand orange */
+      --ar-green:#10b981; /* Success green */
+      --ar-red:#ef4444; /* Error red */
+      --ar-gray:#eaeaea; /* Soft border gray */
+      --ar-text:#1f2937; /* Primary text */
+    }
+    #ar-modgrid{max-width:1120px;margin:32px auto;padding:0 12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ar-text)}
+    #ar-modgrid a{color:#2563eb;text-decoration:none}
+    #ar-modgrid a:hover{text-decoration:underline}
+    /* Header + Summary row */
+    #ar-modgrid .top{ display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;margin:8px 0 18px }
+    #ar-modgrid h2{margin:0;font-size:36px;line-height:1.2;font-weight:800}
+    /* Summary box */
+    #ar-modgrid .summary{ min-width:380px;max-width:560px; border:1px solid var(--ar-gray);border-radius:12px;background:#fff;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.06) }
+    #ar-modgrid .summary h3{margin:0 0 6px 0;font-size:18px;font-weight:800}
+    #ar-modgrid .progressline{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px 0}
+    #ar-modgrid .progressline .stat{font-weight:800}
+    #ar-modgrid .track{margin-top:8px;height:10px;border-radius:999px;background:#f2f2f2;overflow:hidden}
+    #ar-modgrid .bar{height:100%;width:0;background:var(--ar-orange);transition:width .4s ease;border-radius:999px}
+    /* Auth row stretches horizontally */
+    #ar-modgrid .auth{ display:grid; grid-template-columns:auto 1fr auto auto; /* badge | email grows | magic | sign out */ align-items:center;gap:8px;margin-top:10px }
+    #ar-modgrid .badge{padding:6px 10px;border:1px solid var(--ar-gray);border-radius:999px;background:#fff;font-weight:600}
+    #ar-modgrid input[type="email"]{ width:100%;min-width:180px;padding:8px 10px;border:1px solid #ddd;border-radius:10px }
+    #ar-modgrid .btn{ display:inline-flex;align-items:center;justify-content:center;gap:8px; padding:10px 14px;border-radius:10px;border:1px solid var(--ar-orange);background:var(--ar-orange);color:#fff; font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap }
+    /* smaller buttons used inside each card */
+    #ar-modgrid .btn.sm{padding:7px 12px;border-radius:8px;font-size:14px}
+    #ar-modgrid .btn.secondary{background:#fff;color:var(--ar-orange)}
+    #ar-modgrid .hint{margin-top:8px;color:#444;font-size:14px}
+    /* Masonry grid */
+    #ar-modgrid .grid{ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px }
+    @media (max-width:980px){ #ar-modgrid .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+    @media (max-width:640px){ #ar-modgrid .top{grid-template-columns:1fr} #ar-modgrid .grid{grid-template-columns:1fr} #ar-modgrid .summary{max-width:none} }
+    /* Cards */
+    #ar-modgrid .card{ position:relative;background:#fff;border:1px solid var(--ar-gray);border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.05); overflow:hidden }
+    #ar-modgrid .card::before{ content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--ar-orange) }
+    #ar-modgrid .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    #ar-modgrid .num{min-width:28px;height:28px;border-radius:999px;background:rgba(229,114,0,.12);color:#793d00;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+    #ar-modgrid .title{font-weight:800;font-size:18px}
+    /* CENTER the score/pass chips and place directly above buttons */
+    #ar-modgrid .chips{ display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:4px 0 10px 0;text-align:center }
+    #ar-modgrid .chip{ display:inline-flex;align-items:center;justify-content:center;gap:6px; padding:6px 10px;border-radius:999px;border:1px solid var(--ar-gray);background:#fff;font-size:14px }
+    #ar-modgrid .chip.pass{background:#f6fffa;border-color:#b7f0d2;color:#067647}
+    #ar-modgrid .chip.fail{background:#fff5f5;border-color:#fac5c5;color:#b42318}
+    /* Centered small buttons */
+    #ar-modgrid .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+    /* Status overlays */
+    #ar-modgrid .card.passed{background:#f4fbf7}
+    #ar-modgrid .card.failed{background:#fff7f7}
+    #ar-modgrid .tick{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#e6fff4;border:1px solid #b7f0d2;color:#067647;font-weight:900;display:flex;align-items:center;justify-content:center}
+    #ar-modgrid .xmark{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:999px;background:#ffecec;border:1px solid #f8caca;color:#b42318;font-weight:900;display:flex;align-items:center;justify-content:center}
+    /* Toast */
+    #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff; padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
+    #ar-modgrid .toast.ok{background:var(--ar-green)}
+    #ar-modgrid .toast.err{background:var(--ar-red)}
+  </style>
+
+  <div class="top">
+    <h2>15 Camera Settings — Modules</h2>
+    <!-- Summary / progress / auth -->
+    <div class="summary" id="summary">
+      <div class="progressline">
+        <div class="stat"><span id="passedCount">0</span>/15 Passed</div>
+        <div class="stat"><span id="progressPct">0</span>%</div>
+      </div>
+      <div class="track"><div class="bar" id="progressBar"></div></div>
+
+      <div class="auth">
+        <span class="badge" id="authBadge">Not signed in</span>
+        <input id="loginEmail" type="email" placeholder="you@example.com" />
+        <button class="btn" id="gridBtnMagic">Get magic link</button>
+        <button class="btn secondary" id="gridBtnSignOut" style="display:none">Sign out</button>
+        <button class="btn secondary" id="gridBtnCheck" style="background:#6b7280; color:#fff;">Check Status</button>
+        <button class="btn secondary" id="debugBtn" style="background:#8b5cf6; color:#fff;">Debug Info</button>
+      </div>
+      <div class="hint">Use "Get magic link" to load your saved progress before taking an exam.</div>
+    </div>
+  </div>
+
+  <!-- Grid container -->
+  <div class="grid" id="grid"></div>
+  <div class="toast" id="toast"></div>
+  
+  <!-- Debug Panel -->
+  <div id="debugPanel" style="display:none; position:fixed; top:20px; right:20px; width:400px; max-height:600px; background:#fff; border:2px solid #8b5cf6; border-radius:8px; padding:15px; z-index:99999; overflow-y:auto; font-family:monospace; font-size:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h3 style="margin:0; color:#8b5cf6;">Debug Information</h3>
+      <button onclick="document.getElementById('debugPanel').style.display='none'" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Close</button>
+    </div>
+    <div id="debugContent" style="white-space:pre-wrap; line-height:1.4;"></div>
+    <button onclick="copyDebugInfo()" style="background:#8b5cf6; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; margin-top:10px; width:100%;">Copy Debug Info</button>
+  </div>
+</div>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+// Simple, focused approach - just get the grid working first
+(function() {
+  'use strict';
+  
+  // Debug functions
+  let debugContent = null;
+  
+  function debugLog(message) {
+    try {
+      if (!debugContent) {
+        debugContent = document.getElementById('debugContent');
+      }
+      if (debugContent) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugContent.textContent += `[${timestamp}] ${message}\n`;
+        debugContent.scrollTop = debugContent.scrollHeight;
+      }
+    } catch (error) {
+      // Ignore debug errors
+    }
+  }
+  
+  function showDebugPanel() {
+    try {
+      const panel = document.getElementById('debugPanel');
+      if (panel) {
+        panel.style.display = 'block';
+      }
+    } catch (error) {
+      // Ignore errors
+    }
+  }
+  
+  function copyDebugInfo() {
+    try {
+      const content = document.getElementById('debugContent');
+      if (content) {
+        navigator.clipboard.writeText(content.textContent).then(() => {
+          alert('Debug info copied to clipboard!');
+        }).catch(() => {
+          const textArea = document.createElement('textarea');
+          textArea.value = content.textContent;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          alert('Debug info copied to clipboard!');
+        });
+      }
+    } catch (error) {
+      // Ignore errors
+    }
+  }
+  
+  // Make functions global
+  window.copyDebugInfo = copyDebugInfo;
+  
+  // Supabase configuration
+  const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk";
+  let supabase = null;
+  
+  // Toast function
+  function showToast(msg, type = "ok", ms = 3800) {
+    try {
+      const toastEl = document.getElementById('toast');
+      if (toastEl) {
+        toastEl.textContent = msg;
+        toastEl.className = `toast ${type === "ok" ? "ok" : "err"}`;
+        toastEl.style.display = 'block';
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => toastEl.style.display = 'none', ms);
+      }
+    } catch (error) {
+      debugLog('Toast error: ' + error.message);
+    }
+  }
+  
+  // Auth UI function
+  function setAuthUI(user) {
+    try {
+      const authBadge = document.getElementById('authBadge');
+      const gridBtnSignOut = document.getElementById('gridBtnSignOut');
+      const gridBtnCheck = document.getElementById('gridBtnCheck');
+      const emailInput = document.getElementById('loginEmail');
+      
+      if (!authBadge) return;
+      
+      if (user) {
+        authBadge.textContent = "Signed in";
+        if (gridBtnSignOut) gridBtnSignOut.style.display = '';
+        if (gridBtnCheck) gridBtnCheck.style.display = 'none';
+        if (emailInput && !emailInput.value) emailInput.value = user.email || '';
+        debugLog('🔐 User signed in: ' + user.email);
+      } else {
+        authBadge.textContent = "Not signed in";
+        if (gridBtnSignOut) gridBtnSignOut.style.display = 'none';
+        if (gridBtnCheck) gridBtnCheck.style.display = '';
+        debugLog('🔐 User not signed in');
+      }
+    } catch (error) {
+      debugLog('Auth UI error: ' + error.message);
+    }
+  }
+  
+  // Modules data
+  const modules = [
+    {id:"module-01-exposure", n:1, title:"What is Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"},
+    {id:"module-02-aperture", n:2, title:"Aperture", article:"https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"},
+    {id:"module-03-shutter", n:3, title:"Shutter Speed", article:"https://www.alanranger.com/blog-on-photography/what-is-shutter-speed"},
+    {id:"module-04-iso", n:4, title:"ISO", article:"https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography"},
+    {id:"module-05-manual", n:5, title:"Manual Exposure", article:"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography"},
+    {id:"module-06-metering", n:6, title:"Metering", article:"https://www.alanranger.com/blog-on-photography/what-is-metering-in-photography"},
+    {id:"module-07-bracketing", n:7, title:"Exposure Bracketing", article:"https://www.alanranger.com/blog-on-photography/exposure-bracketing-a-guide-for-photographers"},
+    {id:"module-08-focusing", n:8, title:"Focusing", article:"https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography"},
+    {id:"module-09-dof", n:9, title:"Depth of Field", article:"https://www.alanranger.com/blog-on-photography/what-is-depth-of-field"},
+    {id:"module-10-drange", n:10, title:"Dynamic Range", article:"https://www.alanranger.com/blog-on-photography/what-is-dynamic-range-in-photography"},
+    {id:"module-11-wb", n:11, title:"White Balance", article:"https://www.alanranger.com/blog-on-photography/what-is-white-balance-in-photography"},
+    {id:"module-12-drive", n:12, title:"Camera Drive Modes", article:"https://www.alanranger.com/blog-on-photography/what-are-camera-drive-modes"},
+    {id:"module-13-jpeg-raw", n:13, title:"JPEG vs RAW", article:"https://www.alanranger.com/blog-on-photography/jpeg-vs-raw-the-key-differences"},
+    {id:"module-14-sensors", n:14, title:"Full Frame vs Crop Sensor", article:"https://www.alanranger.com/blog-on-photography/full-frame-vs-cropped-sensor"},
+    {id:"module-15-focal", n:15, title:"Focal Length", article:"https://www.alanranger.com/blog-on-photography/what-is-focal-length-in-photography"},
+  ].map(m => ({...m, exam:`https://www.alanranger.com/academy-course-exam-page-camera-settings?m=${encodeURIComponent(m.id)}`}));
+  
+  // Simple grid render function
+  function renderGrid() {
+    try {
+      const gridEl = document.getElementById('grid');
+      if (!gridEl) {
+        debugLog('❌ Grid element not found');
+        return;
+      }
+      
+      debugLog('🎨 Rendering grid with ' + modules.length + ' modules');
+      gridEl.innerHTML = '';
+      
+      modules.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        const head = document.createElement('div');
+        head.className = 'head';
+        head.innerHTML = `<div class="num">${m.n}</div><div class="title">${m.title}</div>`;
+        card.appendChild(head);
+        
+        const chips = document.createElement('div');
+        chips.className = 'chips';
+        chips.innerHTML = `
+          <span class="chip">Score: <strong>—</strong></span>
+          <span class="chip">Pass ≥ <strong>80%</strong></span>
+        `;
+        card.appendChild(chips);
+        
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.innerHTML = `
+          <a class="btn sm" href="${m.article}" target="_blank" rel="noopener">Open module</a>
+          <button class="btn sm secondary" onclick="loadExam('${m.id}')">Take exam</button>
+        `;
+        card.appendChild(actions);
+        
+        gridEl.appendChild(card);
+      });
+      
+      debugLog('✅ Grid rendering completed');
+    } catch (error) {
+      debugLog('❌ Error rendering grid: ' + error.message);
+    }
+  }
+  
+  // Exam view functions
+  function loadExam(moduleId) {
+    try {
+      debugLog('📝 Loading exam for: ' + moduleId);
+      
+      // Update URL without page reload
+      const newUrl = window.location.pathname + '?m=' + encodeURIComponent(moduleId);
+      window.history.pushState({}, '', newUrl);
+      
+      // Hide grid and show exam
+      const gridEl = document.getElementById('grid');
+      const summaryEl = document.getElementById('summary');
+      
+      if (gridEl) gridEl.style.display = 'none';
+      if (summaryEl) summaryEl.style.display = 'none';
+      
+      // Create exam container if it doesn't exist
+      let examContainer = document.getElementById('examContainer');
+      if (!examContainer) {
+        examContainer = document.createElement('div');
+        examContainer.id = 'examContainer';
+        examContainer.style.cssText = 'max-width:800px; margin:32px auto; padding:0 12px;';
+        document.querySelector('#ar-modgrid').appendChild(examContainer);
+      }
+      
+      examContainer.style.display = 'block';
+      examContainer.innerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <h2 style="margin:0 0 10px 0; font-size:28px;">Module 1: What is Exposure</h2>
+          <button onclick="backToGrid()" class="btn secondary" style="margin-bottom:20px;">← Back to Modules</button>
+        </div>
+        
+        <div id="ar-quiz" style="border:1px solid #eaeaea;border-left:10px solid #F05922;background:#fafafa;padding:24px;border-radius:12px;max-width:820px;margin:28px auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+          <style>
+            #ar-quiz a { color:#2563eb !important; text-decoration:none; }
+            #ar-quiz a:hover { text-decoration:underline; }
+            .ar-field{ border:1px solid #eaeaea;background:#fff;border-radius:10px;padding:14px;margin:12px 0; }
+            .ar-qtxt{ font-weight:800;margin:0 0 8px; color:#F05922; }
+            .ar-opt{ display:flex; gap:10px; align-items:center; margin:8px 0; cursor:pointer; }
+            input[type="radio"] { accent-color:#F05922; }
+            input[type="radio"]:checked { accent-color:#F05922; }
+            .quiz-actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+            .quiz-btn { background:#F05922; color:#fff; border:0; border-radius:10px; padding:12px 16px; font-weight:700; cursor:pointer; }
+            .quiz-btn.secondary { background:#6b7280; }
+            .quiz-btn:disabled { opacity:.6; cursor:not-allowed; }
+          </style>
+          
+          <h2 style="margin:0 0 12px;font-weight:700;line-height:1.2;">Module 1 Assessment: What is Exposure</h2>
+          <p style="margin:0 0 16px;color:#333;">Answer all 12 questions to complete this module. You need 80% or higher to pass.</p>
+          
+          <form id="quizForm" novalidate>
+            <div id="quizQuestions"></div>
+          </form>
+          
+          <div class="quiz-actions">
+            <button id="btn-submit" type="button" class="quiz-btn">Submit answers</button>
+            <button id="btn-retake" type="button" class="quiz-btn secondary" style="display:none;">Retake test</button>
+            <button id="btn-pdf" type="button" class="quiz-btn" style="background:#2563eb; display:none; opacity:.6;" disabled>Download results (PDF)</button>
+            <button id="btn-certificate" type="button" class="quiz-btn" style="background:#10b981; display:none; opacity:.6;" disabled>Download certificate (PDF)</button>
+          </div>
+          
+          <div id="results" style="margin-top:20px;display:none;background:#fff;border:1px solid #eaeaea;border-radius:10px;padding:16px;">
+            <h3 style="margin:0 0 10px;font-size:18px;">Your results</h3>
+            <div id="results-summary" style="margin-bottom:12px;"></div>
+            <div id="results-compact" style="font-size:13px; color:#6b7280;"></div>
+          </div>
+        </div>
+      `;
+      
+      // Load Module 1 questions
+      if (moduleId === 'module-01-exposure') {
+        loadModule1Questions();
+      }
+      
+    } catch (error) {
+      debugLog('❌ Error loading exam: ' + error.message);
+    }
+  }
+  
+  async function backToGrid() {
+    try {
+      debugLog('🔙 Returning to grid');
+      
+      // Update URL
+      const newUrl = window.location.pathname;
+      window.history.pushState({}, '', newUrl);
+      
+      // Show grid and hide exam
+      const gridEl = document.getElementById('grid');
+      const summaryEl = document.getElementById('summary');
+      const examContainer = document.getElementById('examContainer');
+      
+      if (gridEl) gridEl.style.display = 'grid';
+      if (summaryEl) summaryEl.style.display = 'block';
+      if (examContainer) examContainer.style.display = 'none';
+      
+      // Refresh grid with updated results
+      const { data: { user } } = await supabase.auth.getUser();
+      const status = await fetchStatusForUser(user);
+      renderSummary(status);
+      renderGrid(status);
+      
+      debugLog('✅ Grid refreshed with updated results');
+      
+    } catch (error) {
+      debugLog('❌ Error returning to grid: ' + error.message);
+    }
+  }
+  
+  function loadModule1Questions() {
+    try {
+      const questionsContainer = document.getElementById('quizQuestions');
+      if (!questionsContainer) return;
+      
+      const questions = [
+        { id:"q1", text:"What does the term exposure mean in photography?", options:[
+          "Collecting the correct quantity of light for proper image brightness",
+          "Collecting quality of light to capture the image",
+          "Using autofocus to make the image sharp",
+          "Ensuring the colour is right in the image"
+        ], correctIndex:0},
+        { id:"q2", text:"What 3 variables control exposure?", options:[
+          "Aperture, Shutter Speed, ISO","The lens, Colour, Focusing","White Balance, Focus, Metering","Histogram, Composition, Lighting"
+        ], correctIndex:0},
+        { id:"q3", text:"What does the aperture control in photography?", options:[
+          "Colour enhancement","Depth of Field","Shutter Speed","ISO"
+        ], correctIndex:1},
+        { id:"q4", text:"What does the shutter control in photography?", options:[
+          "Colour and saturation","Length of exposure time","Sharpness of moving subjects","ISO"
+        ], correctIndex:1},
+        { id:"q5", text:"What does the ISO control in photography?", options:[
+          "Amount of digital noise (grain)","Image sharpness","Aperture","Shutter speed"
+        ], correctIndex:0},
+        { id:"q6", text:"If an image appears too dark, it is considered:", options:[
+          "Overexposed","Underexposed","Correctly exposed","High contrast"
+        ], correctIndex:1},
+        { id:"q7", text:"If an image appears too bright with lost highlight details, it is:", options:[
+          "Overexposed","Underexposed","Correctly exposed","Low contrast"
+        ], correctIndex:0},
+        { id:"q8", text:"Why might a photographer deliberately over/underexpose?", options:[
+          "To save battery life","To test different metering modes","To achieve a creative effect or mood","To avoid using ISO"
+        ], correctIndex:2},
+        { id:"q9", text:"What is the main purpose of the histogram?", options:[
+          "To show camera battery level","To display image composition","To reveal exposure clipping in highlights/shadows","To show autofocus points"
+        ], correctIndex:2},
+        { id:"q10", text:"Exposure compensation (+/-) is used to:", options:[
+          "Change the camera's metering mode","Quickly correct metering bias","Adjust the ISO setting","Change the aperture size"
+        ], correctIndex:1},
+        { id:"q11", text:"If you increase shutter speed without changing other settings, the image will:", options:[
+          "Become darker","Become brighter","Stay the same brightness","Increase in depth of field"
+        ], correctIndex:0},
+        { id:"q12", text:"The exposure triangle demonstrates that:", options:[
+          "All three settings work independently","Changing one setting requires adjusting others to maintain exposure","Only aperture affects brightness","ISO is the most important setting"
+        ], correctIndex:1}
+      ];
+      
+      questionsContainer.innerHTML = '';
+      
+      questions.forEach((q, index) => {
+        const field = document.createElement('div');
+        field.className = 'ar-field';
+        
+        const qtxt = document.createElement('div');
+        qtxt.className = 'ar-qtxt';
+        qtxt.textContent = `Q${index+1}. ${q.text}`;
+        field.appendChild(qtxt);
+        
+        q.options.forEach((opt, i) => {
+          const id = `${q.id}-${i}`;
+          const label = document.createElement('label');
+          label.className = 'ar-opt';
+          label.setAttribute('for', id);
+          
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = q.id;
+          input.id = id;
+          input.value = i;
+          input.required = true;
+          input.style.cssText = 'margin-top:4px;';
+          
+          const span = document.createElement('span');
+          span.textContent = opt;
+          
+          label.appendChild(input);
+          label.appendChild(span);
+          field.appendChild(label);
+        });
+        
+        questionsContainer.appendChild(field);
+      });
+      
+      // Setup submit button
+      const submitBtn = document.getElementById('btn-submit');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', submitQuiz);
+      }
+      
+      debugLog('✅ Module 1 questions loaded (12 questions)');
+      
+    } catch (error) {
+      debugLog('❌ Error loading questions: ' + error.message);
+    }
+  }
+  
+  function submitQuiz() {
+    try {
+      debugLog('📝 Submitting quiz');
+      
+      const form = document.getElementById('quizForm');
+      const formData = new FormData(form);
+      
+      // Correct answers for the 12 questions
+      const correctAnswers = [0, 0, 1, 1, 0, 1, 0, 2, 2, 1, 0, 1];
+      let correct = 0;
+      let total = 12;
+      
+      // Check each question
+      for (let i = 1; i <= total; i++) {
+        const selected = formData.get(`q${i}`);
+        if (selected !== null && parseInt(selected) === correctAnswers[i-1]) {
+          correct++;
+        }
+      }
+      
+      const score = Math.round((correct / total) * 100);
+      const passed = score >= 80;
+      
+      debugLog(`📊 Quiz result: ${correct}/${total} (${score}%) - ${passed ? 'PASSED' : 'FAILED'}`);
+      
+      // Show results
+      const resultsDiv = document.getElementById('results');
+      const summaryDiv = document.getElementById('results-summary');
+      const compactDiv = document.getElementById('results-compact');
+      
+      if (resultsDiv && summaryDiv && compactDiv) {
+        resultsDiv.style.display = 'block';
+        
+        summaryDiv.innerHTML = `
+          <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+            <span class="pill ${passed ? 'pill-pass' : 'pill-fail'}" style="display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; background:${passed ? '#e8fff4' : '#fff5f5'}; color:${passed ? '#067647' : '#b42318'}; border:1px solid ${passed ? '#b7f0d2' : '#fac5c5'};">
+              ${passed ? 'PASSED' : 'FAILED'}
+            </span>
+            <span style="font-size:18px; font-weight:bold;">Score: ${score}%</span>
+          </div>
+        `;
+        
+        compactDiv.innerHTML = `Q1-Q12: ${correct} correct, ${total - correct} incorrect`;
+      }
+      
+      // Lock the form
+      const inputs = form.querySelectorAll('input[type="radio"]');
+      inputs.forEach(input => {
+        input.disabled = true;
+        input.style.cursor = 'not-allowed';
+      });
+      
+      // Update buttons
+      const submitBtn = document.getElementById('btn-submit');
+      const retakeBtn = document.getElementById('btn-retake');
+      const pdfBtn = document.getElementById('btn-pdf');
+      const certBtn = document.getElementById('btn-certificate');
+      
+      if (submitBtn) {
+        submitBtn.style.display = 'none';
+      }
+      
+      if (retakeBtn) {
+        retakeBtn.style.display = 'inline-block';
+        retakeBtn.addEventListener('click', () => {
+          // Reset form
+          form.reset();
+          inputs.forEach(input => {
+            input.disabled = false;
+            input.style.cursor = 'pointer';
+          });
+          if (submitBtn) submitBtn.style.display = 'inline-block';
+          if (retakeBtn) retakeBtn.style.display = 'none';
+          if (pdfBtn) pdfBtn.style.display = 'none';
+          if (certBtn) certBtn.style.display = 'none';
+          if (resultsDiv) resultsDiv.style.display = 'none';
+        });
+      }
+      
+      // Show PDF buttons if passed
+      if (passed) {
+        if (pdfBtn) {
+          pdfBtn.style.display = 'inline-block';
+          pdfBtn.disabled = false;
+          pdfBtn.style.opacity = '1';
+          pdfBtn.addEventListener('click', () => downloadResultsPDF(score, correct, total));
+        }
+        
+        if (certBtn) {
+          certBtn.style.display = 'inline-block';
+          certBtn.disabled = false;
+          certBtn.style.opacity = '1';
+          certBtn.addEventListener('click', () => downloadCertificatePDF());
+        }
+        
+        // Show confetti
+        if (window.confetti) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      }
+      
+      // Create lastReport object for PDF generation
+      window.lastReport = {
+        moduleId: 'module-01-exposure',
+        moduleTitle: 'Module 1: What is Exposure',
+        name: 'Test User', // You'll need to get this from a form
+        email: 'test@example.com', // You'll need to get this from a form
+        percent: score,
+        pass: passed,
+        correct: correct,
+        total: total,
+        timestamp: new Date().toISOString(),
+        compact: `Q1-Q12: ${correct} correct, ${total - correct} incorrect`
+      };
+      
+      // Save results to update grid
+      saveQuizResult({
+        moduleId: 'module-01-exposure',
+        score: score,
+        passed: passed,
+        correct: correct,
+        total: total
+      });
+      
+    } catch (error) {
+      debugLog('❌ Error submitting quiz: ' + error.message);
+    }
+  }
+  
+  // PDF Helper functions
+  async function toDataURL(url) {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      const blob = await res.blob();
+      return await new Promise(r => {
+        const fr = new FileReader();
+        fr.onload = () => r(fr.result);
+        fr.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  function getImgDims(dataURL) {
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
+      img.src = dataURL;
+    });
+  }
+  
+  function fitWithin(sw, sh, mw, mh) {
+    const t = Math.min(mw / sw, mh / sh);
+    return { w: sw * t, h: sh * t };
+  }
+  
+  function escapeHtml(s = "") {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+  }
+  
+  function slugify(s = "") {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+  
+  function formatDate(d) {
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  
+  function writeWrapped(doc, text, x, y, maxWidth, lineHeight) {
+    const lines = doc.splitTextToSize(text, maxWidth);
+    lines.forEach(l => {
+      doc.text(l, x, y);
+      y += lineHeight;
+    });
+    return y;
+  }
+
+  // Branding configuration
+  const branding = {
+    orange: "#F05922",
+    logoUrl: "https://www.alanranger.com/s/ALAN-RANGER-LOGO-and-Icon-BLACK.png",
+    academyUrl: "https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png",
+    signatureUrl: "https://www.alanranger.com/s/Alan-Ranger-black-high-res.png",
+    courseUrl: "https://www.alanranger.com/online-photography-course",
+    exposureUrl: "https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography",
+    siteUrl: "https://alanranger.com"
+  };
+
+  // PDF Generation functions
+  function downloadResultsPDF(score, correct, total) {
+    if (!window.lastReport) return;
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    
+    // Orange header bar
+    doc.setFillColor(240, 89, 34);
+    doc.rect(0, 0, 210, 24, 'F');
+    
+    // Logo (top left)
+    toDataURL(branding.logoUrl).then(logo => {
+      if (logo) {
+        getImgDims(logo).then(logoDims => {
+          const logoFitted = fitWithin(logoDims.w, logoDims.h, 20, 16);
+          doc.addImage(logo, 'PNG', 8, 4, logoFitted.w, logoFitted.h);
+        });
+      }
+    });
+    
+    // Academy icon (top right)
+    toDataURL(branding.academyUrl).then(academy => {
+      if (academy) {
+        getImgDims(academy).then(academyDims => {
+          const academyFitted = fitWithin(academyDims.w, academyDims.h, 16, 12);
+          doc.addImage(academy, 'PNG', 186, 6, academyFitted.w, academyFitted.h);
+        });
+      }
+    });
+    
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Module 1: What is Exposure', 105, 16, { align: 'center' });
+    
+    // Content
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    
+    let y = 40;
+    doc.text(`Name: ${escapeHtml(window.lastReport.name)}`, 16, y);
+    y += 8;
+    doc.text(`Email: ${escapeHtml(window.lastReport.email || '')}`, 16, y);
+    y += 8;
+    doc.text(`Score: ${window.lastReport.percent}%`, 16, y);
+    y += 8;
+    doc.text(`Result: ${window.lastReport.pass ? 'PASSED' : 'FAILED'}`, 16, y);
+    y += 8;
+    doc.text(`Date: ${formatDate(new Date(window.lastReport.timestamp))}`, 16, y);
+    y += 12;
+    
+    // Compact results
+    doc.setFont('helvetica', 'bold');
+    doc.text('Question Results:', 16, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.text(window.lastReport.compact || '', 16, y);
+    
+    doc.save(`${slugify(window.lastReport.moduleId)}-results-${Date.now()}.pdf`);
+    showToast('Results PDF downloaded!', 'ok');
+  }
+  
+  function downloadCertificatePDF() {
+    if (!window.lastReport || !window.lastReport.pass) return;
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+    
+    // Outer orange frame
+    doc.setDrawColor(240, 89, 34);
+    doc.setLineWidth(3);
+    doc.rect(10, 10, 277, 187);
+    
+    // Inner grey keyline
+    doc.setDrawColor(128, 128, 128);
+    doc.setLineWidth(1);
+    doc.rect(15, 15, 267, 177);
+    
+    // Logo (top left) - full brand logo without distortion
+    toDataURL(branding.logoUrl).then(logo => {
+      if (logo) {
+        getImgDims(logo).then(logoDims => {
+          const logoFitted = fitWithin(logoDims.w, logoDims.h, 40, 30);
+          doc.addImage(logo, 'PNG', 25, 25, logoFitted.w, logoFitted.h);
+        });
+      }
+    });
+    
+    // Academy icon (top right)
+    toDataURL(branding.academyUrl).then(academy => {
+      if (academy) {
+        getImgDims(academy).then(academyDims => {
+          const academyFitted = fitWithin(academyDims.w, academyDims.h, 30, 20);
+          doc.addImage(academy, 'PNG', 252, 30, academyFitted.w, academyFitted.h);
+        });
+      }
+    });
+    
+    // Main typographic block
+    doc.setFont('times', 'bold');
+    doc.setFontSize(24);
+    doc.text('Certificate of Achievement', 148.5, 80, { align: 'center' });
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(16);
+    doc.text('Module 1: What is Exposure', 148.5, 100, { align: 'center' });
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(14);
+    doc.text('Alan Ranger Photography Academy — Beginners Modules included', 148.5, 120, { align: 'center' });
+    
+    // Signature area
+    toDataURL(branding.signatureUrl).then(sign => {
+      if (sign) {
+        getImgDims(sign).then(signDims => {
+          const signFitted = fitWithin(signDims.w, signDims.h, 60, 20);
+          const sigLineY = 140;
+          doc.addImage(sign, 'PNG', 25, sigLineY - 5, signFitted.w, signFitted.h);
+        });
+      }
+    });
+    
+    // Thin orange rule below signature
+    doc.setDrawColor(240, 89, 34);
+    doc.setLineWidth(1);
+    const sigLineY = 140;
+    doc.line(25, sigLineY + 15, 100, sigLineY + 15);
+    
+    // Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Instructor: Alan Ranger', 25, 180);
+    doc.text('Website: alanranger.com', 25, 185);
+    
+    doc.save(`${slugify(window.lastReport.moduleId)}-certificate-${Date.now()}.pdf`);
+    showToast('Certificate PDF downloaded!', 'ok');
+  }
+  
+  // Save quiz result and update grid
+  async function saveQuizResult(result) {
+    try {
+      debugLog('💾 Saving quiz result: ' + JSON.stringify(result));
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Save to Supabase
+        const { error } = await supabase
+          .from('module_results')
+          .upsert({
+            user_id: user.id,
+            module_id: result.moduleId,
+            score_percent: result.score,
+            passed: result.passed,
+            created_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          debugLog('❌ Error saving to Supabase: ' + error.message);
+        } else {
+          debugLog('✅ Result saved to Supabase');
+        }
+      } else {
+        // Queue for later save
+        localStorage.setItem('ar_pending_result', JSON.stringify(result));
+        debugLog('📝 Result queued for later save');
+      }
+      
+      // Update grid display
+      const status = await fetchStatusForUser(user);
+      renderSummary(status);
+      renderGrid(status);
+      
+    } catch (error) {
+      debugLog('❌ Error saving result: ' + error.message);
+    }
+  }
+
+  // Make functions global
+  window.loadExam = loadExam;
+  window.backToGrid = backToGrid;
+  window.submitQuiz = submitQuiz;
+  
+  // Setup authentication
+  function setupAuth() {
+    try {
+      // Check if Supabase is loaded
+      if (!window.supabase) {
+        debugLog('❌ Supabase not loaded');
+        return;
+      }
+      
+      debugLog('✅ Supabase loaded, creating client...');
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      
+      // Setup magic link button
+      const gridBtnMagic = document.getElementById('gridBtnMagic');
+      if (gridBtnMagic) {
+        gridBtnMagic.addEventListener('click', async () => {
+          debugLog('🔗 Magic link button clicked');
+          const emailInput = document.getElementById('loginEmail');
+          const email = emailInput ? emailInput.value.trim() : '';
+          debugLog('📧 Email: ' + email);
+          
+          if (!email) {
+            showToast('Enter your email address first.', 'err');
+            return;
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showToast('Please enter a valid email address.', 'err');
+            return;
+          }
+          
+          debugLog('📤 Sending magic link to: ' + email);
+          try {
+            const { error } = await supabase.auth.signInWithOtp({
+              email,
+              options: { emailRedirectTo: window.location.href.split('#')[0] }
+            });
+            
+            if (error) {
+              debugLog('❌ Magic link error: ' + error.message);
+              showToast('Could not send sign-in link.', 'err');
+            } else {
+              debugLog('✅ Magic link sent successfully');
+              showToast('Magic link sent — check your inbox.', 'ok', 5200);
+            }
+          } catch (error) {
+            debugLog('❌ Magic link exception: ' + error.message);
+            showToast('Could not send sign-in link.', 'err');
+          }
+        });
+      }
+      
+      // Setup sign out button
+      const gridBtnSignOut = document.getElementById('gridBtnSignOut');
+      if (gridBtnSignOut) {
+        gridBtnSignOut.addEventListener('click', async () => {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+          setAuthUI(null);
+          showToast('Signed out.', 'ok');
+        });
+      }
+      
+      // Setup check status button
+      const gridBtnCheck = document.getElementById('gridBtnCheck');
+      if (gridBtnCheck) {
+        gridBtnCheck.addEventListener('click', async () => {
+          debugLog('Manual check button clicked');
+          try {
+            if (!supabase) {
+              showToast('Authentication not available.', 'err');
+              return;
+            }
+            
+            const { data: { user } } = await supabase.auth.getUser();
+            debugLog('Manual check - user: ' + (user ? user.email : 'No user'));
+            
+            if (user) {
+              setAuthUI(user);
+              showToast('Status updated!', 'ok');
+            } else {
+              showToast('Still not signed in. Try the magic link again.', 'err');
+            }
+          } catch (error) {
+            debugLog('Manual check error: ' + error.message);
+            showToast('Error checking status.', 'err');
+          }
+        });
+      }
+      
+      // Setup auth state change listener
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        debugLog('🔄 Auth state changed: ' + event + ' ' + (session ? 'Has session' : 'No session'));
+        const user = session?.user || null;
+        debugLog('👤 User: ' + (user ? user.email : 'No user'));
+        
+        setAuthUI(user);
+      });
+      
+      // Check initial auth state
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const user = session?.user || null;
+          debugLog('👤 Initial user check: ' + (user ? user.email : 'No user'));
+          setAuthUI(user);
+          
+          // If no user but we have a hash (magic link), try to handle it
+          if (!user && window.location.hash) {
+            debugLog('🔗 Found hash in URL, attempting to handle auth...');
+            debugLog('🔗 URL hash: ' + window.location.hash);
+            
+            // Wait a moment for Supabase to process the hash
+            setTimeout(async () => {
+              debugLog('⏰ Delayed auth check after hash...');
+              const { data: { user: delayedUser } } = await supabase.auth.getUser();
+              if (delayedUser) {
+                debugLog('✅ Delayed user found: ' + delayedUser.email);
+                setAuthUI(delayedUser);
+              } else {
+                debugLog('❌ No delayed user found');
+              }
+            }, 2000);
+          }
+        } catch (error) {
+          debugLog('❌ Error checking initial auth: ' + error.message);
+        }
+      })();
+      
+    } catch (error) {
+      debugLog('❌ Error setting up auth: ' + error.message);
+    }
+  }
+  
+  // Check URL parameters
+  function checkUrlParams() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const moduleId = urlParams.get('m');
+      
+      if (moduleId) {
+        debugLog('🔗 URL parameter detected: ' + moduleId);
+        // Small delay to ensure everything is loaded
+        setTimeout(() => {
+          loadExam(moduleId);
+        }, 500);
+      }
+    } catch (error) {
+      debugLog('❌ Error checking URL params: ' + error.message);
+    }
+  }
+  
+  // Simple initialization
+  function init() {
+    try {
+      debugLog('🚀 Simple grid script starting...');
+      
+      // Render grid immediately
+      renderGrid();
+      
+      // Setup authentication
+      setupAuth();
+      
+      // Check URL parameters for exam loading
+      checkUrlParams();
+      
+      // Setup debug button
+      const debugBtn = document.getElementById('debugBtn');
+      if (debugBtn) {
+        debugBtn.addEventListener('click', function() {
+          showDebugPanel();
+          debugLog('=== DEBUG SESSION STARTED ===');
+          debugLog('Script loaded: YES');
+          debugLog('Grid rendered: ' + (document.getElementById('grid').children.length > 0 ? 'YES' : 'NO'));
+          debugLog('Supabase available: ' + (window.supabase ? 'YES' : 'NO'));
+          debugLog('Current URL: ' + window.location.href);
+        });
+      }
+      
+      debugLog('✅ Simple initialization completed');
+    } catch (error) {
+      debugLog('❌ Error in initialization: ' + error.message);
+    }
+  }
+  
+  // Start immediately
+  init();
+  
+})();
+</script>

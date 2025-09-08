@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alan Ranger Photography Academy - Assessment</title>
+</head>
+<body>
+    <div id="ar-assessment">
+        <!-- The assessment engine will render here -->
+    </div>
+
+    <!-- Toast notification -->
+    <div id="ar-toast" class="ar-toast" style="display:none;"></div>
+
+    <!-- Supabase and jsPDF -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+    <!-- Module data will be loaded dynamically -->
+    <script>
+        // Module registry for the grid
+        const moduleRegistry = {
+            "module-01-exposure": {
+                id: "module-01-exposure",
+                title: "Exposure",
+                article: "https://www.alanranger.com/blog-on-photography/what-is-exposure-in-photography"
+            },
+            "module-02-aperture": {
+                id: "module-02-aperture", 
+                title: "Aperture",
+                article: "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography"
+            },
+            "module-03-shutter": {
+                id: "module-03-shutter",
+                title: "Shutter Speed",
+                article: "https://www.alanranger.com/blog-on-photography/shutter-speed"
+            },
+            "module-04-iso": {
+                id: "module-04-iso",
+                title: "ISO",
+                article: "https://www.alanranger.com/blog-on-photography/iso"
+            },
+            "module-05-focus": {
+                id: "module-05-focus",
+                title: "Focus",
+                article: "https://www.alanranger.com/blog-on-photography/focus"
+            },
+            "module-06-composition": {
+                id: "module-06-composition",
+                title: "Composition",
+                article: "https://www.alanranger.com/blog-on-photography/composition"
+            },
+            "module-07-lighting": {
+                id: "module-07-lighting",
+                title: "Lighting",
+                article: "https://www.alanranger.com/blog-on-photography/lighting"
+            },
+            "module-08-color": {
+                id: "module-08-color",
+                title: "Color",
+                article: "https://www.alanranger.com/blog-on-photography/color"
+            },
+            "module-09-white-balance": {
+                id: "module-09-white-balance",
+                title: "White Balance",
+                article: "https://www.alanranger.com/blog-on-photography/white-balance"
+            },
+            "module-10-metering": {
+                id: "module-10-metering",
+                title: "Metering",
+                article: "https://www.alanranger.com/blog-on-photography/metering"
+            },
+            "module-11-exposure-modes": {
+                id: "module-11-exposure-modes",
+                title: "Exposure Modes",
+                article: "https://www.alanranger.com/blog-on-photography/exposure-modes"
+            },
+            "module-12-drive-modes": {
+                id: "module-12-drive-modes",
+                title: "Drive Modes",
+                article: "https://www.alanranger.com/blog-on-photography/drive-modes"
+            },
+            "module-13-autofocus": {
+                id: "module-13-autofocus",
+                title: "Autofocus",
+                article: "https://www.alanranger.com/blog-on-photography/autofocus"
+            },
+            "module-14-image-stabilization": {
+                id: "module-14-image-stabilization",
+                title: "Image Stabilization",
+                article: "https://www.alanranger.com/blog-on-photography/image-stabilization"
+            },
+            "module-15-file-formats": {
+                id: "module-15-file-formats",
+                title: "File Formats",
+                article: "https://www.alanranger.com/blog-on-photography/file-formats"
+            }
+        };
+
+        // Current module being viewed
+        let currentModuleId = null;
+        let currentQuizConfig = null;
+    </script>
+
+    <!-- Assessment Engine -->
+    <script src="/src/engine.js"></script>
+
+    <!-- Main App Logic -->
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk';
+        
+        // Initialize Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // App state
+        let currentUser = null;
+        let userResults = {};
+
+        // Check URL parameters for module
+        function getModuleFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('module');
+        }
+
+        // Load module data dynamically
+        async function loadModuleData(moduleId) {
+            try {
+                // Use GitHub Pages URL for module files
+                const response = await fetch(`https://alanranger.github.io/alanranger-modules/modules/${moduleId}.json`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load module: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error loading module:', error);
+                return null;
+            }
+        }
+
+        // Switch to a specific module
+        async function loadExam(moduleId) {
+            // Only allow modules 1 and 2 for now (we only have JSON files for these)
+            if (moduleId !== 'module-01-exposure' && moduleId !== 'module-02-aperture') {
+                alert('This module is coming soon! Only Module 1 (Exposure) and Module 2 (Aperture) are currently available.');
+                return;
+            }
+            
+            const moduleData = await loadModuleData(moduleId);
+            if (moduleData) {
+                currentModuleId = moduleId;
+                currentQuizConfig = moduleData;
+                
+                // Update the engine's current module
+                window.switchModule(moduleId);
+                
+                // Show the quiz view
+                showQuizView();
+            }
+        }
+
+        // Show the module grid
+        function showGridView() {
+            const container = document.getElementById('ar-assessment');
+            container.innerHTML = `
+                <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+                    <h1 style="text-align: center; color: #E57200; margin-bottom: 30px;">
+                        Alan Ranger Photography Academy
+                    </h1>
+                    <h2 style="text-align: center; color: #333; margin-bottom: 40px;">
+                        15 Camera Settings Modules
+                    </h2>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        ${Object.values(moduleRegistry).map(module => {
+                            const result = userResults[module.id];
+                            const status = result ? (result.passed ? 'passed' : 'failed') : 'not-taken';
+                            const isAvailable = module.id === 'module-01-exposure' || module.id === 'module-02-aperture';
+                            const buttonText = !isAvailable ? 'Coming Soon' : 
+                                             result ? (result.passed ? 'View results' : 'Retake exam') : 'Take exam';
+                            
+                            return `
+                                <div class="module-card" style="
+                                    background: white; 
+                                    border-radius: 12px; 
+                                    padding: 20px; 
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                                    position: relative;
+                                    ${status === 'passed' ? 'background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);' : ''}
+                                    ${status === 'failed' ? 'background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);' : ''}
+                                ">
+                                    <h3 style="color: #E57200; margin: 0 0 10px 0;">${module.title}</h3>
+                                    <p style="color: #666; margin: 0 0 15px 0;">Module ${module.id.split('-')[1]}</p>
+                                    
+                                    ${result ? `
+                                        <div style="margin-bottom: 15px;">
+                                            <span style="
+                                                background: ${result.passed ? '#10b981' : '#ef4444'}; 
+                                                color: white; 
+                                                padding: 4px 8px; 
+                                                border-radius: 4px; 
+                                                font-size: 12px;
+                                            ">
+                                                ${result.passed ? 'PASSED' : 'FAILED'} (${result.score || 0}%)
+                                            </span>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <button onclick="${isAvailable ? `loadExam('${module.id}')` : ''}" style="
+                                        background: ${isAvailable ? '#E57200' : '#9ca3af'}; 
+                                        color: white; 
+                                        border: none; 
+                                        padding: 10px 20px; 
+                                        border-radius: 6px; 
+                                        cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
+                                        width: 100%;
+                                    ">
+                                        ${buttonText}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show the quiz view
+        function showQuizView() {
+            const container = document.getElementById('ar-assessment');
+            container.innerHTML = `
+                <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <button onclick="showGridView()" style="
+                        background: #6b7280; 
+                        color: white; 
+                        border: none; 
+                        padding: 8px 16px; 
+                        border-radius: 6px; 
+                        cursor: pointer;
+                        margin-bottom: 20px;
+                    ">
+                        ← Back to Modules
+                    </button>
+                    
+                    <!-- The engine will render the quiz here -->
+                </div>
+            `;
+        }
+
+        // Load user results
+        async function loadUserResults() {
+            if (!currentUser) return;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('module_results')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+                
+                if (error) throw error;
+                
+                userResults = {};
+                data.forEach(result => {
+                    userResults[result.module_id] = {
+                        score: result.score,
+                        passed: result.passed,
+                        completed_at: result.completed_at
+                    };
+                });
+            } catch (error) {
+                console.error('Error loading results:', error);
+            }
+        }
+
+        // Initialize the app
+        async function init() {
+            // Check for existing auth session
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                await loadUserResults();
+            }
+            
+            // Listen for auth changes
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    currentUser = session.user;
+                    await loadUserResults();
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    userResults = {};
+                }
+                render();
+            });
+            
+            render();
+        }
+
+        // Main render function
+        function render() {
+            const moduleParam = getModuleFromURL();
+            
+            if (moduleParam && moduleRegistry[moduleParam]) {
+                loadExam(moduleParam);
+            } else {
+                showGridView();
+            }
+        }
+
+        // Start the app
+        init();
+    </script>
+
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+        }
+
+        .ar-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .ar-toast.success {
+            background: #10b981;
+        }
+
+        .ar-toast.err {
+            background: #ef4444;
+        }
+
+        .ar-toast.warn {
+            background: #f59e0b;
+        }
+
+        .module-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+    </style>
+</body>
+</html>

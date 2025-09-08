@@ -1,4 +1,142 @@
-// Alan Ranger Photography Academy - Assessment Engine
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Manual Exposure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+  /* Alan Ranger brand */
+  --ar-orange:#E57200;          /* primary brand orange */
+  --ar-orange-700:#cc6500;      /* hover/active (approx. -12%) */
+  --ar-blue:#2563eb;
+  --ar-border:#e9e9e9;
+  --ar-text:#111;
+  --ar-muted:#6b7280;
+}
+
+/* Page container with brand bar + left gutter spacing */
+#ar-assessment{
+  border-left:12px solid var(--ar-orange);  /* strong page accent */
+  padding-left:18px;                        /* <-- gutter between bar and cards */
+  max-width:880px;
+  margin:28px auto;
+  background:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ar-text);
+}
+
+/* Cards (matches your CTA card style) */
+.card{
+  background:#fff;
+  border:1px solid var(--ar-border);
+  border-radius:12px;
+  padding:18px 20px;
+  margin:24px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+
+/* Pale info bar (matches blog snippet blocks) */
+.bar{
+  border-left:6px solid var(--ar-orange);
+  background:#fafafa;
+  padding:18px 20px;
+  margin:24px 0;
+  border-radius:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+
+/* Titles */
+.qtitle{
+  color:var(--ar-orange);
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+/* Buttons */
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.1;
+  transition:background .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-orange{background:var(--ar-orange);color:#fff}
+.btn-orange:hover{background:var(--ar-orange-700)}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-neutral{background:#fff;border:1px solid var(--ar-orange);color:var(--ar-orange)}
+.btn-neutral:hover{box-shadow:0 0 0 2px rgba(229,114,0,.2) inset}
+
+/* Button row spacing */
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Helper text */
+.help{
+  font-size:12px;
+  color:var(--ar-muted);
+  margin:8px 0 0 0;
+}
+
+/* Status pill */
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:12px
+}
+.pill.ok{background:#e8fff4;border-color:#b7f0d2;color:#067647;font-weight:700}
+.pill.warn{background:#fff5f5;border-color:#fac5c5;color:#b42318;font-weight:700}
+
+/* Radio button styling */
+.radio-option{
+  display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;transition:background 0.15s ease;
+}
+.radio-input{
+  margin:0;width:16px;height:16px;accent-color:var(--ar-orange);
+}
+.radio-text{
+  font-weight:400;color:var(--ar-text);
+}
+
+/* Toast (for later steps) */
+#ar-toast{
+  position:fixed;left:50%;top:22px;transform:translateX(-50%);
+  z-index:99999;background:#111;color:#fff;border-radius:10px;
+  padding:10px 14px;display:none;box-shadow:0 10px 24px rgba(0,0,0,.18)
+}
+#ar-toast.ok{background:#10b981}
+#ar-toast.err{background:#ef4444}
+#ar-toast.info{background:#2563eb}
+
+  </style>
+</head>
+<body>
+  <div id="ar-assessment">
+    <!-- The app will render inside this container -->
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    // Embedded module definition
+    const MODULE = {"moduleId":"module-05-manual","title":"Manual Exposure","passMark":80,"questions":[{"question":"What does Manual (M) mode mean?","options":["The camera chooses shutter and aperture, you choose ISO","You choose shutter, aperture, and ISO","Only ISO is manual, the rest is automatic","The camera uses exposure compensation to set brightness"],"correct":1,"reviewHint":"Review Manual mode overview—you control shutter, aperture, and ISO (not the camera)."},{"question":"When is Manual mode most helpful?","options":["Rapidly changing stage lights where every shot is different","Very steady lighting and a series of similar shots","Random street scenes where each frame varies","When you want the camera to adjust each shot for you"],"correct":1,"reviewHint":"See When to use Manual—steady light + consistent results across shots."},{"question":"You want shallow background blur for portraits but consistent brightness. What should you set first in Manual?","options":["Aperture to the f-number you want for the look","ISO to the lowest number","Shutter to 1/1000s","White balance"],"correct":0,"reviewHint":"Start with your creative priority—set aperture first, then match exposure."},{"question":"In pure Manual with Auto ISO OFF, what does Exposure Compensation (±) do?","options":["It changes brightness by itself","It changes ISO automatically","Nothing—it's ignored","It changes white balance"],"correct":2,"reviewHint":"Exposure compensation in Manual only has effect if Auto ISO is ON."},{"question":"Your test shot is too dark by about one stop. You need to keep the same depth of field and your shutter is still safe. What's the easiest fix?","options":["Open the aperture (changes your DOF)","Slow the shutter by one stop","Lower ISO","Change white balance"],"correct":1,"reviewHint":"Stops & shutter—add one stop of light by slowing the shutter one stop."},{"question":"What mainly freezes motion?","options":["Lower ISO","Faster shutter speed","Smaller aperture (higher f-number)","Image stabilization alone"],"correct":1,"reviewHint":"See Freezing motion—fast shutter speed is the key."},{"question":"Which setting gives more background blur?","options":["f/5.6","f/8","f/2.8","f/16"],"correct":2,"reviewHint":"Aperture & depth of field—lower f-number = more blur."},{"question":"You've set f/2.8 and 1/250s for the look you want, but the photo is still too dark. What keeps the same DOF and motion while brightening?","options":["Raise ISO","Open to f/2.0","Slow to 1/60s","Turn on HDR"],"correct":0,"reviewHint":"ISO & exposure—raise ISO to brighten without changing DOF or motion."},{"question":"Your subject is backlit and their face is dark. In Manual, what should you do?","options":["Keep the meter centered; it will be fine","Open up / slow shutter / raise ISO until the subject is correctly exposed","Use AE-Lock only","Only lower ISO"],"correct":1,"reviewHint":"Backlit subjects—expose for the subject, not the bright background."},{"question":"Manual with Auto ISO ON and +1 EC: what happens?","options":["The camera ignores exposure compensation","ISO goes lower to darken","ISO increases to brighten by ~1 stop","Shutter speeds get slower automatically"],"correct":2,"reviewHint":"Manual + Auto ISO—EC biases the ISO brighter/darker."},{"question":"You change from f/4 → f/5.6 (one stop less light) but want motion blur to stay similar. What compensates?","options":["Slow shutter one stop (adds blur)","Raise ISO one stop (e.g., 100 → 200)","Speed up shutter one stop","Close aperture another stop"],"correct":1,"reviewHint":"Equivalent exposures—to keep shutter (motion) the same, raise ISO one stop."},{"question":"Sunny 16: On a sunny day at ISO 100, a typical starting exposure near f/16 is:","options":["1/100s at f/16","1/1000s at f/16","1/100s at f/2.8","1/30s at f/16"],"correct":0,"reviewHint":"Sunny 16—start around 1/ISO at f/16 (≈1/100s at ISO 100)."}],"feedbackMap":{"topics":[{"key":"manual-overview","label":"Manual mode overview"},{"key":"when-to-use","label":"When to use Manual"},{"key":"shutter-brightness","label":"Shutter & brightness"},{"key":"ec-autoiso","label":"Exposure compensation & Auto ISO"},{"key":"stops","label":"Stops & exposure"},{"key":"freeze-motion","label":"Freezing motion"},{"key":"aperture-dof","label":"Aperture & depth of field"},{"key":"iso-exposure","label":"ISO & exposure"},{"key":"backlit","label":"Backlit subjects"},{"key":"equivalents","label":"Equivalent exposures"},{"key":"sunny16","label":"Sunny 16 rule"}],"questionTopics":{"q1":["manual-overview"],"q2":["when-to-use"],"q3":["aperture-dof"],"q4":["ec-autoiso"],"q5":["stops"],"q6":["freeze-motion"],"q7":["aperture-dof"],"q8":["iso-exposure"],"q9":["backlit"],"q10":["ec-autoiso"],"q11":["equivalents"],"q12":["sunny16"]},"topicLinks":{"manual-overview":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography","when-to-use":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#when","shutter-brightness":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#shutter","ec-autoiso":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#autoiso-ec","stops":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#stops","freeze-motion":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#motion","aperture-dof":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#aperture","iso-exposure":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#iso","backlit":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#backlit","equivalents":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#equivalents","sunny16":"https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography#sunny16"}}};
+  </script>
+
+  <script>
+  // Bundled app logic (engine, auth, pdf generators etc.)
+  // Alan Ranger Photography Academy - Assessment Engine
 (function(){
   // Supabase configuration
   const SUPABASE_URL = 'https://dqrtcsvqsfgbqmnonkpt.supabase.co';
@@ -606,3 +744,7 @@
   // Start the app
   init();
 })();
+
+  </script>
+</body>
+</html>
