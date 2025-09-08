@@ -7,54 +7,114 @@
   },
   "questions": [
     {
-      "question": "What is exposure in photography?",
+      "question": "What is “exposure” in photography?",
       "options": [
         "The amount of light that reaches the camera sensor",
-        "The time it takes to take a photo",
-        "The distance between the camera and subject",
-        "The type of lens used"
+        "The distance to your subject",
+        "The strength of your flash",
+        "The color of the light"
       ],
-      "correct": 0
+      "correct": 0,
+      "reviewHint": "Exposure = brightness recorded by the sensor."
     },
     {
-      "question": "Which three elements control exposure?",
+      "question": "The exposure triangle is made of…",
       "options": [
-        "ISO, Shutter Speed, and Aperture",
-        "Focus, Zoom, and Flash",
-        "White Balance, Contrast, and Saturation",
-        "Resolution, Format, and Compression"
+        "Aperture, shutter speed, ISO",
+        "Aperture, focal length, zoom",
+        "White balance, focus, ISO",
+        "Metering, autofocus, flash"
       ],
-      "correct": 0
+      "correct": 0,
+      "reviewHint": "Only these three directly change brightness."
     },
     {
-      "question": "What happens when you increase the ISO setting?",
+      "question": "Which setting controls how long light hits the sensor?",
       "options": [
-        "The image becomes more sensitive to light but may have more noise",
-        "The image becomes less sensitive to light",
-        "The image becomes sharper",
-        "The image becomes more colorful"
+        "Aperture",
+        "Shutter speed",
+        "ISO",
+        "White balance"
       ],
-      "correct": 0
+      "correct": 1,
+      "reviewHint": "Shutter speed = time."
     },
     {
-      "question": "A faster shutter speed will:",
+      "question": "Which change makes a photo brighter by one stop?",
       "options": [
-        "Freeze motion and let in less light",
-        "Blur motion and let in more light",
-        "Increase depth of field",
-        "Decrease image quality"
+        "f/8 → f/11",
+        "1/125s → 1/250s",
+        "ISO 100 → ISO 200",
+        "ISO 400 → ISO 200"
       ],
-      "correct": 0
+      "correct": 2,
+      "reviewHint": "One stop brighter = double the light."
     },
     {
-      "question": "What does a larger aperture (smaller f-number) do?",
+      "question": "Your picture looks too dark. Which single change will brighten it?",
       "options": [
-        "Lets in more light and creates a shallower depth of field",
-        "Lets in less light and creates a deeper depth of field",
-        "Makes the image sharper",
-        "Reduces camera shake"
+        "1/250s → 1/125s",
+        "f/5.6 → f/8",
+        "ISO 400 → ISO 200",
+        "Add –1 EV exposure compensation"
       ],
-      "correct": 0
+      "correct": 0,
+      "reviewHint": "Slower shutter lets in more light."
+    },
+    {
+      "question": "Your indoor photo is blurry from hand shake. What’s the simplest fix?",
+      "options": [
+        "Use a faster shutter speed",
+        "Lower the ISO",
+        "Close the aperture (higher f-number)",
+        "Switch to daylight white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Faster shutter freezes movement."
+    },
+    {
+      "question": "In bright sun at ISO 100, which is a good starting point?",
+      "options": [
+        "1/125s, f/16",
+        "1/125s, f/2.8",
+        "1/15s, f/16",
+        "1/1000s, f/2"
+      ],
+      "correct": 0,
+      "reviewHint": "“Sunny 16”: ~1/ISO at f/16."
+    },
+    {
+      "question": "You want a blurry background on a portrait. What helps most?",
+      "options": [
+        "Use f/2.8",
+        "Use f/16",
+        "Use a slower shutter",
+        "Lower the ISO"
+      ],
+      "correct": 0,
+      "reviewHint": "Wider aperture (smaller f-number) = shallower depth of field."
+    },
+    {
+      "question": "Which histogram suggests underexposure?",
+      "options": [
+        "Most of the graph pushed to the left",
+        "Most of the graph pushed to the right",
+        "A spike only in the middle",
+        "A perfectly flat line"
+      ],
+      "correct": 0,
+      "reviewHint": "Left = dark; right = bright."
+    },
+    {
+      "question": "Which pair is an equivalent exposure to 1/125s at f/5.6 (ISO 100)?",
+      "options": [
+        "1/250s at f/4",
+        "1/60s at f/8",
+        "1/250s at f/8",
+        "1/60s at f/4"
+      ],
+      "correct": 0,
+      "reviewHint": "One stop faster shutter + one stop wider aperture = same brightness."
     }
   ]
 }
