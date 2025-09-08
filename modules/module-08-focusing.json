@@ -1,217 +1,287 @@
 {
-  "moduleId": "module-08-focusing",
-  "title": "Focusing",
-  "passMark": 80,
-  "questions": [
-    {
-      "question": "AF-S / One-Shot AF is best for:",
-      "options": [
-        "Fast action moving toward you",
-        "Still subjects (locks focus once, then beeps)",
-        "Panning with cars",
-        "Macro only"
-      ],
-      "correct": 1,
-      "reviewHint": "AF-S/One-Shot = lock focus once for static subjects."
-    },
-    {
-      "question": "AF-C / AI-Servo is designed to:",
-      "options": [
-        "Lock and hold focus after the first press",
-        "Continuously adjust focus while the subject moves",
-        "Disable the shutter if focus isn't perfect",
-        "Change aperture automatically"
-      ],
-      "correct": 1,
-      "reviewHint": "AF-C/AI-Servo = tracks moving subjects."
-    },
-    {
-      "question": "AF-A / AI-Focus usually:",
-      "options": [
-        "Is manual focus with peaking",
-        "Auto-switches between Single and Continuous",
-        "Only works in Manual mode",
-        "Ignores subject movement"
-      ],
-      "correct": 1,
-      "reviewHint": "AF-A can switch modes but can misjudge motion."
-    },
-    {
-      "question": "For a static portrait, which focus area gives the most precise control?",
-      "options": [
-        "Wide/Whole area",
-        "Zone/Large area",
-        "Single-point (place on the eye)",
-        "Tracking"
-      ],
-      "correct": 2,
-      "reviewHint": "Single-point = most precise; aim at the eye."
-    },
-    {
-      "question": "For children running erratically outdoors, a good starting setup is:",
-      "options": [
-        "AF-S + Single-point",
-        "AF-C + Zone/Dynamic area",
-        "AF-A + Single-point",
-        "Manual focus only"
-      ],
-      "correct": 1,
-      "reviewHint": "Moving subjects → AF-C and a slightly larger area."
-    },
-    {
-      "question": "Face/Eye Detect AF is most helpful when:",
-      "options": [
-        "Photographing landscapes at infinity",
-        "Shooting portraits; it can prioritize eyes automatically",
-        "Doing long exposure night shots",
-        "Using manual lenses only"
-      ],
-      "correct": 1,
-      "reviewHint": "Use Face/Eye AF for people; it finds eyes for you."
-    },
-    {
-      "question": "A risk of focus-and-recompose at wide apertures is:",
-      "options": [
-        "Overexposure",
-        "Color shift",
-        "Focus plane shift (subject goes soft)",
-        "Distortion"
-      ],
-      "correct": 2,
-      "reviewHint": "Reframing changes the distance/angle → may miss focus."
-    },
-    {
-      "question": "Back-Button Focus (BBF) mainly helps you:",
-      "options": [
-        "Change ISO faster",
-        "Separate focusing from the shutter—no refocus every shot",
-        "Lock white balance",
-        "Use Auto ISO"
-      ],
-      "correct": 1,
-      "reviewHint": "BBF = thumb focuses, shutter just takes the photo."
-    },
-    {
-      "question": "When might manual focus be the better choice?",
-      "options": [
-        "Bright sunny sports",
-        "Astrophotography or very low light",
-        "Group photo in daylight",
-        "Panning race cars at noon"
-      ],
-      "correct": 1,
-      "reviewHint": "For stars/very low light, use manual and magnify."
-    },
-    {
-      "question": "If the lens won't focus because the subject is too close, you should:",
-      "options": [
-        "Raise ISO",
-        "Use AF-C",
-        "Step back (beyond minimum focus distance) or use a macro lens",
-        "Turn on flash"
-      ],
-      "correct": 2,
-      "reviewHint": "Every lens has a minimum focus distance."
-    },
-    {
-      "question": "The focus limiter switch on some lenses:",
-      "options": [
-        "Changes focal length",
-        "Restricts the focus range to speed up AF",
-        "Turns off stabilization",
-        "Enables manual override"
-      ],
-      "correct": 1,
-      "reviewHint": "Limiting range = faster focus hunts less."
-    },
-    {
-      "question": "In Continuous AF, choosing Focus Priority (vs Release Priority) means:",
-      "options": [
-        "Camera fires as fast as possible even if out of focus",
-        "Camera prefers in-focus shots, may slow the burst",
-        "Shutter is locked completely",
-        "ISO drops automatically"
-      ],
-      "correct": 1,
-      "reviewHint": "Focus priority = higher keeper rate, slower speed."
-    },
-    {
-      "question": "The AF-assist lamp is used to:",
-      "options": [
-        "Stabilize the camera",
-        "Help AF lock in low light (can be distracting/can be turned off)",
-        "Meter exposure",
-        "Reduce red-eye"
-      ],
-      "correct": 1,
-      "reviewHint": "AF-assist helps in dim light; disable for candid work."
-    },
-    {
-      "question": "A subject walking toward you in a busy street—best area mode to start with?",
-      "options": [
-        "Single-point only",
-        "Spot metering",
-        "Wide/Tracking area with AF-C",
-        "Manual focus"
-      ],
-      "correct": 2,
-      "reviewHint": "Movement toward camera → AF-C + tracking is forgiving."
-    }
-  ],
-  "feedbackMap": {
-    "topics": [
-      {"key":"af-modes","label":"AF modes overview"},
-      {"key":"af-s","label":"AF-S / One-Shot"},
-      {"key":"af-c","label":"AF-C / AI-Servo"},
-      {"key":"af-a","label":"AF-A / AI-Focus"},
-      {"key":"focus-areas","label":"Focus area modes"},
-      {"key":"single-point","label":"Single-point AF"},
-      {"key":"zone-area","label":"Zone/Dynamic area"},
-      {"key":"tracking-area","label":"Wide/Tracking area"},
-      {"key":"face-eye","label":"Face/Eye Detect"},
-      {"key":"back-button","label":"Back-Button Focus"},
-      {"key":"manual-focus","label":"Manual focus & peaking"},
-      {"key":"min-distance","label":"Minimum focus distance"},
-      {"key":"focus-limiter","label":"Focus limiter switch"},
-      {"key":"priority-settings","label":"Focus vs Release priority"},
-      {"key":"af-assist","label":"AF assist in low light"},
-      {"key":"focus-recompose","label":"Focus & recompose"},
-      {"key":"dof-focus","label":"Depth of field & focus"}
-    ],
-    "questionTopics": {
-      "q1":["af-modes","af-s"],
-      "q2":["af-modes","af-c"],
-      "q3":["af-modes","af-a"],
-      "q4":["focus-areas","single-point","dof-focus"],
-      "q5":["focus-areas","zone-area","af-c"],
-      "q6":["face-eye","focus-areas"],
-      "q7":["focus-recompose","dof-focus"],
-      "q8":["back-button"],
-      "q9":["manual-focus"],
-      "q10":["min-distance"],
-      "q11":["focus-limiter"],
-      "q12":["priority-settings","af-c"],
-      "q13":["af-assist","low-light"],
-      "q14":["tracking-area","af-c","focus-areas"]
-    },
-    "topicLinks": {
-      "af-modes": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-modes",
-      "af-s": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-s",
-      "af-c": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-c",
-      "af-a": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-a",
-      "focus-areas": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-areas",
-      "single-point": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#single-point",
-      "zone-area": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#zone",
-      "tracking-area": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#tracking",
-      "face-eye": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#face-eye",
-      "back-button": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#bbf",
-      "manual-focus": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#manual",
-      "min-distance": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#minimum-distance",
-      "focus-limiter": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-limiter",
-      "priority-settings": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#priority",
-      "af-assist": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-assist",
-      "focus-recompose": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-recompose",
-      "dof-focus": "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#dof"
-    }
-  }
+    "moduleId":  "module-08-focusing",
+    "title":  "Focusing",
+    "passMark":  80,
+    "questions":  [
+                      {
+                          "question":  "AF-S / One-Shot AF is best for:",
+                          "options":  [
+                                          "Fast action moving toward you",
+                                          "Still subjects (locks focus once, then beeps)",
+                                          "Panning with cars",
+                                          "Macro only"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "AF-S/One-Shot = lock focus once for static subjects."
+                      },
+                      {
+                          "question":  "AF-C / AI-Servo is designed to:",
+                          "options":  [
+                                          "Lock and hold focus after the first press",
+                                          "Continuously adjust focus while the subject moves",
+                                          "Disable the shutter if focus isn\u0027t perfect",
+                                          "Change aperture automatically"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "AF-C/AI-Servo = tracks moving subjects."
+                      },
+                      {
+                          "question":  "AF-A / AI-Focus usually:",
+                          "options":  [
+                                          "Is manual focus with peaking",
+                                          "Auto-switches between Single and Continuous",
+                                          "Only works in Manual mode",
+                                          "Ignores subject movement"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "AF-A can switch modes but can misjudge motion."
+                      },
+                      {
+                          "question":  "For a static portrait, which focus area gives the most precise control?",
+                          "options":  [
+                                          "Wide/Whole area",
+                                          "Zone/Large area",
+                                          "Single-point (place on the eye)",
+                                          "Tracking"
+                                      ],
+                          "correct":  2,
+                          "reviewHint":  "Single-point = most precise; aim at the eye."
+                      },
+                      {
+                          "question":  "For children running erratically outdoors, a good starting setup is:",
+                          "options":  [
+                                          "AF-S + Single-point",
+                                          "AF-C + Zone/Dynamic area",
+                                          "AF-A + Single-point",
+                                          "Manual focus only"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "Moving subjects → AF-C and a slightly larger area."
+                      },
+                      {
+                          "question":  "Face/Eye Detect AF is most helpful when:",
+                          "options":  [
+                                          "Photographing landscapes at infinity",
+                                          "Shooting portraits; it can prioritize eyes automatically",
+                                          "Doing long exposure night shots",
+                                          "Using manual lenses only"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "Use Face/Eye AF for people; it finds eyes for you."
+                      },
+                      {
+                          "question":  "A risk of focus-and-recompose at wide apertures is:",
+                          "options":  [
+                                          "Overexposure",
+                                          "Color shift",
+                                          "Focus plane shift (subject goes soft)",
+                                          "Distortion"
+                                      ],
+                          "correct":  2,
+                          "reviewHint":  "Reframing changes the distance/angle → may miss focus."
+                      },
+                      {
+                          "question":  "Back-Button Focus (BBF) mainly helps you:",
+                          "options":  [
+                                          "Change ISO faster",
+                                          "Separate focusing from the shutter—no refocus every shot",
+                                          "Lock white balance",
+                                          "Use Auto ISO"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "BBF = thumb focuses, shutter just takes the photo."
+                      },
+                      {
+                          "question":  "When might manual focus be the better choice?",
+                          "options":  [
+                                          "Bright sunny sports",
+                                          "Astrophotography or very low light",
+                                          "Group photo in daylight",
+                                          "Panning race cars at noon"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "For stars/very low light, use manual and magnify."
+                      },
+                      {
+                          "question":  "If the lens won\u0027t focus because the subject is too close, you should:",
+                          "options":  [
+                                          "Raise ISO",
+                                          "Use AF-C",
+                                          "Step back (beyond minimum focus distance) or use a macro lens",
+                                          "Turn on flash"
+                                      ],
+                          "correct":  2,
+                          "reviewHint":  "Every lens has a minimum focus distance."
+                      },
+                      {
+                          "question":  "The focus limiter switch on some lenses:",
+                          "options":  [
+                                          "Changes focal length",
+                                          "Restricts the focus range to speed up AF",
+                                          "Turns off stabilization",
+                                          "Enables manual override"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "Limiting range = faster focus hunts less."
+                      },
+                      {
+                          "question":  "In Continuous AF, choosing Focus Priority (vs Release Priority) means:",
+                          "options":  [
+                                          "Camera fires as fast as possible even if out of focus",
+                                          "Camera prefers in-focus shots, may slow the burst",
+                                          "Shutter is locked completely",
+                                          "ISO drops automatically"
+                                      ],
+                          "correct":  1,
+                          "reviewHint":  "Focus priority = higher keeper rate, slower speed."
+                      }
+                  ],
+    "feedbackMap":  {
+                        "topics":  [
+                                       {
+                                           "key":  "af-modes",
+                                           "label":  "AF modes overview"
+                                       },
+                                       {
+                                           "key":  "af-s",
+                                           "label":  "AF-S / One-Shot"
+                                       },
+                                       {
+                                           "key":  "af-c",
+                                           "label":  "AF-C / AI-Servo"
+                                       },
+                                       {
+                                           "key":  "af-a",
+                                           "label":  "AF-A / AI-Focus"
+                                       },
+                                       {
+                                           "key":  "focus-areas",
+                                           "label":  "Focus area modes"
+                                       },
+                                       {
+                                           "key":  "single-point",
+                                           "label":  "Single-point AF"
+                                       },
+                                       {
+                                           "key":  "zone-area",
+                                           "label":  "Zone/Dynamic area"
+                                       },
+                                       {
+                                           "key":  "tracking-area",
+                                           "label":  "Wide/Tracking area"
+                                       },
+                                       {
+                                           "key":  "face-eye",
+                                           "label":  "Face/Eye Detect"
+                                       },
+                                       {
+                                           "key":  "back-button",
+                                           "label":  "Back-Button Focus"
+                                       },
+                                       {
+                                           "key":  "manual-focus",
+                                           "label":  "Manual focus \u0026 peaking"
+                                       },
+                                       {
+                                           "key":  "min-distance",
+                                           "label":  "Minimum focus distance"
+                                       },
+                                       {
+                                           "key":  "focus-limiter",
+                                           "label":  "Focus limiter switch"
+                                       },
+                                       {
+                                           "key":  "priority-settings",
+                                           "label":  "Focus vs Release priority"
+                                       },
+                                       {
+                                           "key":  "af-assist",
+                                           "label":  "AF assist in low light"
+                                       },
+                                       {
+                                           "key":  "focus-recompose",
+                                           "label":  "Focus \u0026 recompose"
+                                       },
+                                       {
+                                           "key":  "dof-focus",
+                                           "label":  "Depth of field \u0026 focus"
+                                       }
+                                   ],
+                        "questionTopics":  {
+                                               "q1":  [
+                                                          "af-modes",
+                                                          "af-s"
+                                                      ],
+                                               "q2":  [
+                                                          "af-modes",
+                                                          "af-c"
+                                                      ],
+                                               "q3":  [
+                                                          "af-modes",
+                                                          "af-a"
+                                                      ],
+                                               "q4":  [
+                                                          "focus-areas",
+                                                          "single-point",
+                                                          "dof-focus"
+                                                      ],
+                                               "q5":  [
+                                                          "focus-areas",
+                                                          "zone-area",
+                                                          "af-c"
+                                                      ],
+                                               "q6":  [
+                                                          "face-eye",
+                                                          "focus-areas"
+                                                      ],
+                                               "q7":  [
+                                                          "focus-recompose",
+                                                          "dof-focus"
+                                                      ],
+                                               "q8":  [
+                                                          "back-button"
+                                                      ],
+                                               "q9":  [
+                                                          "manual-focus"
+                                                      ],
+                                               "q10":  [
+                                                           "min-distance"
+                                                       ],
+                                               "q11":  [
+                                                           "focus-limiter"
+                                                       ],
+                                               "q12":  [
+                                                           "priority-settings",
+                                                           "af-c"
+                                                       ],
+                                               "q13":  [
+                                                           "af-assist",
+                                                           "low-light"
+                                                       ],
+                                               "q14":  [
+                                                           "tracking-area",
+                                                           "af-c",
+                                                           "focus-areas"
+                                                       ]
+                                           },
+                        "topicLinks":  {
+                                           "af-modes":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-modes",
+                                           "af-s":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-s",
+                                           "af-c":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-c",
+                                           "af-a":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-a",
+                                           "focus-areas":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-areas",
+                                           "single-point":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#single-point",
+                                           "zone-area":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#zone",
+                                           "tracking-area":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#tracking",
+                                           "face-eye":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#face-eye",
+                                           "back-button":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#bbf",
+                                           "manual-focus":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#manual",
+                                           "min-distance":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#minimum-distance",
+                                           "focus-limiter":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-limiter",
+                                           "priority-settings":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#priority",
+                                           "af-assist":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#af-assist",
+                                           "focus-recompose":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#focus-recompose",
+                                           "dof-focus":  "https://www.alanranger.com/blog-on-photography/what-is-focus-in-photography#dof"
+                                       }
+                    }
 }
