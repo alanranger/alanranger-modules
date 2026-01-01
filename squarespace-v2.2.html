@@ -2235,8 +2235,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         debugLog('📊 Fetched status for modules:', Object.keys(statusByModule).length);
-        renderSummary(statusByModule);
-        renderGrid(statusByModule);
+        debugLog('📊 Status data keys:', Object.keys(statusByModule));
+        debugLog('📊 Status data sample:', JSON.stringify(Object.entries(statusByModule).slice(0, 3), null, 2));
+        
+        // Only render if we have data - don't clear existing grid
+        if (Object.keys(statusByModule).length > 0) {
+          renderSummary(statusByModule);
+          renderGrid(statusByModule);
+          debugLog('✅ Grid rendered with Memberstack data');
+        } else {
+          debugLog('⚠️ No status data to render - keeping existing grid');
+        }
         
         // Show the grid element
         const gridEl = document.getElementById('grid');
@@ -2246,13 +2255,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           debugLog('❌ Grid element not found!');
         }
-        
-        debugLog('✅ Grid rendered with Memberstack data');
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
-        // Still render empty grid
-        renderSummary({});
-        renderGrid({});
+        // Don't clear grid on error - keep what's there
+        debugLog('⚠️ Error occurred but keeping existing grid data');
         
         // Show the grid element even with no data
         const gridEl = document.getElementById('grid');
