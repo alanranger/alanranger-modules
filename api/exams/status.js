@@ -48,6 +48,8 @@ module.exports = async (req, res) => {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     console.log("[status] Querying module_results_ms for memberId:", memberId, "moduleId:", moduleId);
+    
+    // Get the latest attempt (regardless of pass/fail) - this shows the most recent activity
     const { data, error } = await supabase
       .from("module_results_ms")
       .select("score_percent,passed,attempt,created_at")
