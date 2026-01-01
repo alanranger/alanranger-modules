@@ -1352,7 +1352,16 @@ async function getLatestStatusViaMemberstack(moduleId) {
     }
     
     const j = await r.json();
-    return j.latest || null;
+    const result = j.latest || null;
+    
+    // Debug logging
+    if (result) {
+      debugLog(`✅ Status for ${moduleId}: score=${result.score_percent}, passed=${result.passed}, attempt=${result.attempt}`);
+    } else {
+      debugLog(`⚠️ No status found for ${moduleId}`);
+    }
+    
+    return result;
   } catch (e) {
     logError(`getLatestStatusViaMemberstack error for ${moduleId}: ${e.message}`);
     console.error("[getLatestStatusViaMemberstack] Error:", e);
