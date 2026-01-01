@@ -3,7 +3,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
-const { setCorsHeaders, handlePreflight, getMemberstackToken } = require("./_cors");
+const { setCorsHeaders, handlePreflight, getMemberstackToken, getMemberstackMemberId } = require("./_cors");
 
 module.exports = async (req, res) => {
   // Handle OPTIONS preflight
@@ -14,12 +14,38 @@ module.exports = async (req, res) => {
 
   try {
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+    
+    // Try token-based auth first
+    let memberId = null;
+    
     const token = getMemberstackToken(req);
-    if (!token) {
+    if (token) {
+      try {
+        const { id } = await memberstack.verifyToken({ token });
+        memberId = id;
+      } catch (e) {
+        console.error("[status] Token verification failed:", e.message);
+        // Fall through to member ID fallback
+      }
+    }
+    
+    // Fallback: Use member ID header
+    if (!memberId) {
+      memberId = getMemberstackMemberId(req);
+      if (memberId) {
+        // Verify member exists
+        try {
+          await memberstack.members.retrieve({ id: memberId });
+        } catch (e) {
+          console.error("[status] Member ID retrieval failed:", e.message);
+          return res.status(401).json({ error: "Invalid member ID" });
+        }
+      }
+    }
+    
+    if (!memberId) {
       return res.status(401).json({ error: "Not logged in" });
     }
-
-    const { id: memberId } = await memberstack.verifyToken({ token });
 
     const moduleId = req.query.moduleId;
     if (!moduleId) {
