@@ -796,53 +796,48 @@ function resetMasteryCelebration() {
 const EXAMS_API_BASE = "https://alanranger-modules.vercel.app"; // Update if different
 
 /**
- * Get Memberstack token from document.cookie
- * @returns {string|null} - Token or null
+ * Get Memberstack token using client-side API (preferred) or cookie fallback
+ * @returns {Promise<string|null>} - Token or null
  */
-function getMemberstackTokenFromCookie() {
+async function getMemberstackToken() {
   try {
-    const allCookies = document.cookie;
-    console.log("[getMemberstackTokenFromCookie] All cookies:", allCookies ? "Present" : "None");
-    console.log("[getMemberstackTokenFromCookie] Full cookie string:", allCookies);
+    // Method 1: Use Memberstack client-side API (if available)
+    if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
+      try {
+        const member = await window.$memberstackDom.getCurrentMember();
+        if (member && member.data && member.data.id) {
+          console.log("[getMemberstackToken] Got member ID from client API:", member.data.id);
+          // Memberstack client API doesn't expose token directly, but we can use the member ID
+          // For now, fall back to cookie method for the actual token
+        }
+      } catch (e) {
+        console.warn("[getMemberstackToken] Client API error:", e);
+      }
+    }
     
+    // Method 2: Try to get token from cookie (fallback)
+    const allCookies = document.cookie;
     if (!allCookies) {
-      console.log("[getMemberstackTokenFromCookie] No cookies found - user may need to log into Academy dashboard");
-      console.log("[getMemberstackTokenFromCookie] Current domain:", window.location.hostname);
-      console.log("[getMemberstackTokenFromCookie] Current path:", window.location.pathname);
+      console.log("[getMemberstackToken] No cookies found");
       return null;
     }
     
     const cookies = allCookies.split(';').map(c => c.trim());
-    console.log("[getMemberstackTokenFromCookie] Cookie count:", cookies.length);
-    console.log("[getMemberstackTokenFromCookie] All cookie names:", cookies.map(c => c.split('=')[0]).join(', '));
-    
-    // Try different variations of the cookie name
     const variations = ['_ms-mid', '_ms_mid', 'ms-mid', 'ms_mid'];
-    let found = null;
     
     for (const varName of variations) {
-      found = cookies.find(c => c.startsWith(varName + '='));
+      const found = cookies.find(c => c.startsWith(varName + '='));
       if (found) {
-        console.log("[getMemberstackTokenFromCookie] Found cookie with name:", varName);
-        break;
+        const token = decodeURIComponent(found.split('=').slice(1).join('='));
+        console.log("[getMemberstackToken] Token found from cookie:", varName, "length:", token.length);
+        return token;
       }
     }
     
-    if (!found) {
-      console.log("[getMemberstackTokenFromCookie] _ms-mid cookie not found in any variation");
-      console.log("[getMemberstackTokenFromCookie] Available cookies:", cookies.map(c => {
-        const parts = c.split('=');
-        return parts[0] + (parts.length > 1 ? '=' + parts[1].substring(0, 20) + '...' : '');
-      }).join(', '));
-      return null;
-    }
-    
-    const token = decodeURIComponent(found.split('=').slice(1).join('='));
-    console.log("[getMemberstackTokenFromCookie] Token found, length:", token.length);
-    console.log("[getMemberstackTokenFromCookie] Token preview:", token.substring(0, 20) + '...');
-    return token;
+    console.log("[getMemberstackToken] No token found in cookies");
+    return null;
   } catch (e) {
-    console.error("[getMemberstackTokenFromCookie] Error:", e);
+    console.error("[getMemberstackToken] Error:", e);
     return null;
   }
 }
@@ -852,13 +847,13 @@ function getMemberstackTokenFromCookie() {
  * @param {object} additionalHeaders - Additional headers to include
  * @returns {object} - Headers object
  */
-function getApiHeaders(additionalHeaders = {}) {
+async function getApiHeaders(additionalHeaders = {}) {
   const headers = {
     "Content-Type": "application/json",
     ...additionalHeaders
   };
   
-  const token = getMemberstackTokenFromCookie();
+  const token = await getMemberstackToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -878,10 +873,31 @@ async function getExamIdentity() {
     console.log("[getExamIdentity] Starting...");
     console.log("[getExamIdentity] EXAMS_API_BASE:", EXAMS_API_BASE);
     
-    const headers = getApiHeaders();
+    // Check if Memberstack client API is available
+    if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
+      try {
+        console.log("[getExamIdentity] Using Memberstack client API...");
+        const member = await window.$memberstackDom.getCurrentMember();
+        if (member && member.data) {
+          console.log("[getExamIdentity] Member from client API:", member.data.id, member.data.auth?.email);
+          // Use client API member data directly
+          memberstackIdentity = {
+            memberstack_id: member.data.id,
+            email: member.data.auth?.email || null,
+            permissions: member.data.permissions || [],
+            planConnections: member.data.planConnections || []
+          };
+          return memberstackIdentity;
+        }
+      } catch (e) {
+        console.warn("[getExamIdentity] Client API failed, falling back to server API:", e);
+      }
+    }
+    
+    // Fallback: Use server API with token
+    console.log("[getExamIdentity] Using server API...");
+    const headers = await getApiHeaders();
     console.log("[getExamIdentity] Headers:", JSON.stringify(headers, null, 2));
-    const token = getMemberstackTokenFromCookie();
-    console.log("[getExamIdentity] Token from cookie:", token ? `Found (${token.length} chars)` : "Not found");
     
     const url = `${EXAMS_API_BASE}/api/exams/whoami`;
     console.log("[getExamIdentity] Fetching:", url);
@@ -931,7 +947,7 @@ async function saveResultsViaMemberstack(report) {
     details: { misses: report.misses || [] }
   };
   
-  const headers = getApiHeaders();
+  const headers = await getApiHeaders();
   const r = await fetch(`${EXAMS_API_BASE}/api/exams/save`, {
     method: "POST",
     headers: headers,
@@ -954,7 +970,7 @@ async function getLatestStatusViaMemberstack(moduleId) {
   if (!memberstackIdentity) return null;
   
   try {
-    const headers = getApiHeaders();
+    const headers = await getApiHeaders();
     const r = await fetch(`${EXAMS_API_BASE}/api/exams/status?moduleId=${encodeURIComponent(moduleId)}`, {
       headers: headers,
       credentials: "include"
@@ -1006,7 +1022,7 @@ async function migrateLegacyResults() {
   try {
     showToast('Migrating legacy results...', 'info');
     
-    const headers = getApiHeaders();
+    const headers = await getApiHeaders();
     const r = await fetch(`${EXAMS_API_BASE}/api/exams/migrate`, {
       method: "POST",
       headers: headers,
