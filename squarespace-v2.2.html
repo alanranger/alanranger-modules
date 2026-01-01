@@ -2302,13 +2302,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           debugLog('⚠️ Grid rendered with no data - showing empty state');
         }
         
-        // Show the grid element
+        // Show the grid element - ALWAYS show it
         const gridEl = document.getElementById('grid');
         if (gridEl) {
           gridEl.style.display = 'grid';
           debugLog('✅ Grid element displayed');
         } else {
           debugLog('❌ Grid element not found!');
+        }
+        
+        // Also ensure grid container is visible
+        if (gridContainer) {
+          gridContainer.style.display = 'block';
+          debugLog('✅ Grid container displayed');
         }
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
