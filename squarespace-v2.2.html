@@ -168,25 +168,26 @@
     }
   </style>
     
-    <!-- Debug Panel - VISIBLE BY DEFAULT (Press Ctrl+Shift+D to toggle) -->
-    <div id="debugPanel">
-      <div id="debugHeader">
-        <span>🔍 Exam Debug Panel</span>
-        <div style="display:flex; gap:4px;">
-          <button id="debugCopy" onclick="copyDebugInfo()" title="Copy all debug info to clipboard">📋 Copy</button>
-          <button id="debugToggle" onclick="document.getElementById('debugPanel').style.display = document.getElementById('debugPanel').style.display === 'none' ? 'block' : 'none';" title="Toggle panel">✕ Close</button>
-        </div>
-      </div>
-      <div id="debugContent">
-        <div class="debug-section">
-          <div class="debug-section-title">⏳ Initializing...</div>
-        </div>
+  </div>
+  
+  <!-- Debug Panel - VISIBLE BY DEFAULT (Press Ctrl+Shift+D to toggle) - Outside containers so it stays visible in quiz view -->
+  <div id="debugPanel">
+    <div id="debugHeader">
+      <span>🔍 Exam Debug Panel</span>
+      <div style="display:flex; gap:4px;">
+        <button id="debugCopy" onclick="copyDebugInfo()" title="Copy all debug info to clipboard">📋 Copy</button>
+        <button id="debugToggle" onclick="document.getElementById('debugPanel').style.display = document.getElementById('debugPanel').style.display === 'none' ? 'block' : 'none';" title="Toggle panel">✕ Close</button>
       </div>
     </div>
-    
-    <!-- Small debug toggle button (hidden by default, show with Ctrl+Shift+D) -->
-    <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:none; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
+    <div id="debugContent">
+      <div class="debug-section">
+        <div class="debug-section-title">⏳ Initializing...</div>
+      </div>
+    </div>
   </div>
+  
+  <!-- Small debug toggle button (hidden by default, show with Ctrl+Shift+D) -->
+  <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:none; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
 
   <!-- Quiz View -->
   <div id="quiz-container" style="display:none;">
