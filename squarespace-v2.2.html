@@ -2205,8 +2205,9 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
       renderGrid({});
     }
   }, 100); // 100ms debounce
-  
-    if (!session?.user) return;
+    }); // End of onAuthStateChange callback
+  } // End of else block (memberstackAvailable check)
+} // End of supabase check
 
     const pending = localStorage.getItem('ar_pending_result');
   const pendingEmail = localStorage.getItem('ar_pending_email');
