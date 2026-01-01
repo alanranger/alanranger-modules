@@ -168,13 +168,20 @@
     }
   </style>
     
-    <!-- Debug Panel -->
-    <button id="debugBtn" style="display: none;">Debug Info</button>
+    <!-- Debug Panel - ALWAYS VISIBLE -->
     <div id="debugPanel">
-      <div style="padding:12px; border-bottom:1px solid #ddd; font-weight:bold;">Debug Information</div>
-      <div id="debugContent" style="white-space:pre-wrap; line-height:1.4;"></div>
-      <button onclick="copyDebugInfo()" style="background:#8b5cf6; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; margin:10px; width:calc(100% - 20px);">Copy Debug Info</button>
-      <button onclick="resetMasteryCelebration()" style="background:#f59e0b; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; margin:0 10px 10px 10px; width:calc(100% - 20px);">Reset Mastery Celebration</button>
+      <div id="debugHeader">
+        <span>🔍 Exam Debug Panel</span>
+        <div style="display:flex; gap:4px;">
+          <button id="debugCopy" onclick="copyDebugInfo()" title="Copy all debug info to clipboard">📋 Copy</button>
+          <button id="debugToggle" onclick="document.getElementById('debugContent').style.display = document.getElementById('debugContent').style.display === 'none' ? 'block' : 'none';" title="Toggle panel visibility">Toggle</button>
+        </div>
+      </div>
+      <div id="debugContent">
+        <div class="debug-section">
+          <div class="debug-section-title">⏳ Initializing...</div>
+        </div>
+      </div>
     </div>
   </div>
 
