@@ -2140,6 +2140,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show exam UI
       if (gridContainer) gridContainer.style.display = 'block';
       
+      // Fetch exam status from Memberstack API and render grid
+      try {
+        debugLog('🔄 Fetching exam status from Memberstack API...');
+        const statusByModule = {};
+        
+        // Fetch status for all modules
+        for (const module of modules) {
+          try {
+            const status = await getLatestStatusViaMemberstack(module.id);
+            if (status) {
+              statusByModule[module.id] = {
+                score: status.score_percent,
+                passed: status.passed,
+                when: status.created_at
+              };
+            }
+          } catch (err) {
+            debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+          }
+        }
+        
+        debugLog('📊 Fetched status for modules:', Object.keys(statusByModule).length);
+        renderSummary(statusByModule);
+        renderGrid(statusByModule);
+        debugLog('✅ Grid rendered with Memberstack data');
+      } catch (err) {
+        debugLog('❌ Error loading exam status:', err);
+        // Still render empty grid
+        renderSummary({});
+        renderGrid({});
+      }
+      
       // Check if migration is needed
       await checkMigrationNeeded();
       
@@ -2148,6 +2180,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnMigrateLegacy.addEventListener('click', async () => {
           try {
             await migrateLegacyResults();
+            // Refresh grid after migration
+            const statusByModule = {};
+            for (const module of modules) {
+              try {
+                const status = await getLatestStatusViaMemberstack(module.id);
+                if (status) {
+                  statusByModule[module.id] = {
+                    score: status.score_percent,
+                    passed: status.passed,
+                    when: status.created_at
+                  };
+                }
+              } catch (err) {
+                // Ignore individual module errors
+              }
+            }
+            renderSummary(statusByModule);
+            renderGrid(statusByModule);
           } catch (err) {
             console.error('Migration failed:', err);
           }
