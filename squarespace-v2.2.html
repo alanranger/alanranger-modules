@@ -2198,12 +2198,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('📊 Fetched status for modules:', Object.keys(statusByModule).length);
         renderSummary(statusByModule);
         renderGrid(statusByModule);
+        
+        // Show the grid element
+        const gridEl = document.getElementById('grid');
+        if (gridEl) {
+          gridEl.style.display = 'grid';
+          debugLog('✅ Grid element displayed');
+        } else {
+          debugLog('❌ Grid element not found!');
+        }
+        
         debugLog('✅ Grid rendered with Memberstack data');
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
         // Still render empty grid
         renderSummary({});
         renderGrid({});
+        
+        // Show the grid element even with no data
+        const gridEl = document.getElementById('grid');
+        if (gridEl) {
+          gridEl.style.display = 'grid';
+        }
       }
       
       // Check if migration is needed
@@ -2397,9 +2413,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   
-  // Initial render
+  // Initial render - show grid even if no data
   debugLog('🎨 Rendering initial grid');
   renderGrid({});
+  const gridEl = document.getElementById('grid');
+  if (gridEl) {
+    gridEl.style.display = 'grid';
+    debugLog('✅ Grid element displayed');
+  }
   checkUrlParams();
   debugLog('✅ Grid initialization completed');
 });
