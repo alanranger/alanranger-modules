@@ -2613,6 +2613,81 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// Refresh grid when page becomes visible (user navigates back)
+document.addEventListener('visibilitychange', async function() {
+  if (document.visibilityState === 'visible') {
+    // Only refresh if we're on the grid view and have Memberstack identity
+    const gridContainer = document.getElementById('grid-container');
+    if (gridContainer && gridContainer.style.display !== 'none' && memberstackIdentity) {
+      debugLog('🔄 Page became visible - refreshing grid...');
+      
+      // Reset flag to allow refresh
+      memberstackDataLoaded = false;
+      
+      try {
+        const statusByModule = {};
+        for (const module of modules) {
+          try {
+            const status = await getLatestStatusViaMemberstack(module.id);
+            if (status) {
+              statusByModule[module.id] = {
+                score: status.score_percent,
+                passed: status.passed,
+                when: status.created_at
+              };
+            }
+          } catch (err) {
+            debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+          }
+        }
+        
+        renderSummary(statusByModule);
+        renderGrid(statusByModule);
+        memberstackDataLoaded = true;
+        debugLog('✅ Grid refreshed on page visibility');
+      } catch (err) {
+        debugLog('❌ Error refreshing grid on visibility:', err.message);
+      }
+    }
+  }
+});
+
+// Also refresh on window focus (when user clicks back to tab)
+window.addEventListener('focus', async function() {
+  const gridContainer = document.getElementById('grid-container');
+  if (gridContainer && gridContainer.style.display !== 'none' && memberstackIdentity) {
+    debugLog('🔄 Window focused - refreshing grid...');
+    
+    // Reset flag to allow refresh
+    memberstackDataLoaded = false;
+    
+    try {
+      const statusByModule = {};
+      for (const module of modules) {
+        try {
+          const status = await getLatestStatusViaMemberstack(module.id);
+          if (status) {
+            statusByModule[module.id] = {
+              score: status.score_percent,
+              passed: status.passed,
+              when: status.created_at
+            };
+          }
+        } catch (err) {
+          debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+        }
+      }
+      
+      renderSummary(statusByModule);
+      renderGrid(statusByModule);
+      memberstackDataLoaded = true;
+      debugLog('✅ Grid refreshed on window focus');
+    } catch (err) {
+      debugLog('❌ Error refreshing grid on focus:', err.message);
+    }
+  }
+});
+
 // Grid authentication setup
 document.addEventListener('DOMContentLoaded', async () => {
   debugLog('🚀 Grid script starting...');
