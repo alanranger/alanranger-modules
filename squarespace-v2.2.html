@@ -1427,7 +1427,8 @@ async function migrateLegacyResults() {
       throw new Error(error.error || "Migration failed");
     }
     
-    const result = await r.json();
+    // Parse the response text as JSON (we already read it as text above)
+    const result = responseText ? JSON.parse(responseText) : { ok: true, count: 0 };
     logError(`Migration successful: ${result.message || `Migrated ${result.count || 0} results`}`);
     showToast(result.message || `Migrated ${result.count || 0} results`, 'success');
     
