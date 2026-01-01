@@ -81,54 +81,21 @@ module.exports = async (req, res) => {
       if (memberId) {
         try {
           console.log("[migrate] Attempting to retrieve member with ID:", memberId);
-          const result = await memberstack.members.retrieve({ id: memberId });
-          console.log("[migrate] Memberstack API response type:", typeof result);
-          console.log("[migrate] Memberstack API response keys:", result ? Object.keys(result) : "null");
-          console.log("[migrate] Memberstack API response (stringified):", JSON.stringify(result, null, 2));
+          // Use same pattern as whoami.js and save.js
+          const { data } = await memberstack.members.retrieve({ id: memberId });
+          console.log("[migrate] Memberstack API response - data type:", typeof data);
+          console.log("[migrate] Memberstack API response - data value:", data ? "EXISTS" : "NULL/UNDEFINED");
           
-          // Handle different response structures
-          if (result) {
-            // Try result.data first (standard structure)
-            // Check if data exists (even if it's null/undefined, we need to check its properties)
-            if ('data' in result) {
-              const data = result.data;
-              // Check if data has member properties (id or auth)
-              if (data && (data.id || data.auth)) {
-                member = data;
-                console.log("[migrate] ✅ Member retrieved successfully (via result.data):", member?.auth?.email);
-              } else if (data === null || data === undefined) {
-                console.error("[migrate] ❌ result.data is null/undefined. Member may not exist in Memberstack.");
-                console.error("[migrate] ❌ Full result object:", JSON.stringify(result, null, 2));
-                // Try to get member by email as fallback (if we have email from whoami)
-                console.error("[migrate] ❌ Cannot proceed without member data. Member ID may be invalid or member may not exist.");
-                return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataValue: data, fullResult: result } });
-              } else {
-                console.error("[migrate] ❌ result.data exists but has no id/auth properties:", JSON.stringify(data, null, 2));
-                return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataKeys: Object.keys(data || {}) } });
-              }
-            }
-            // Try result directly (if API returns member directly)
-            else if (result.id || result.auth) {
-              member = result;
-              console.log("[migrate] ✅ Member retrieved successfully (via result directly):", member?.auth?.email);
-            }
-            // Try result.member (alternative structure)
-            else if (result.member) {
-              member = result.member;
-              console.log("[migrate] ✅ Member retrieved successfully (via result.member):", member?.auth?.email);
-            }
-            else {
-              console.error("[migrate] ❌ Memberstack returned unexpected structure. Full response:", JSON.stringify(result, null, 2));
-              return res.status(401).json({ error: "Member not found in Memberstack", debug: { responseType: typeof result, responseKeys: Object.keys(result || {}), memberId } });
-            }
+          if (data && (data.id || data.auth)) {
+            member = data;
+            console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
           } else {
-            console.error("[migrate] ❌ Memberstack returned null/undefined");
-            return res.status(401).json({ error: "Member not found in Memberstack" });
+            console.error("[migrate] ❌ Member not found or invalid. data:", data);
+            return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataType: typeof data, dataValue: data } });
           }
         } catch (e) {
           console.error("[migrate] ❌ Member ID retrieval failed:", e.message);
           console.error("[migrate] ❌ Error stack:", e.stack);
-          console.error("[migrate] ❌ Error details:", JSON.stringify(e, Object.getOwnPropertyNames(e)));
           return res.status(401).json({ error: "Invalid member ID", details: e.message });
         }
       } else {
