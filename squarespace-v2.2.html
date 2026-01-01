@@ -1003,10 +1003,17 @@ async function migrateLegacyResults() {
 /* ---------- SUPABASE (your live values) ---------- */
 const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk";
-// Only create supabase client if it doesn't already exist (prevents duplicate declaration errors)
-if (typeof supabase === 'undefined') {
-  var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
+// Initialize Supabase client - wait for library to load if needed
+var supabase;
+(function initSupabase() {
+  if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[initSupabase] Supabase client initialized');
+  } else {
+    console.warn('[initSupabase] Supabase library not loaded yet, retrying...');
+    setTimeout(initSupabase, 100);
+  }
+})();
 
 /* ---------- BRANDING & LINKS ---------- */
 const branding = {
@@ -1582,7 +1589,9 @@ function renderResultsFromReport(rpt){
   btnCert.disabled = !rpt.pass; btnCert.style.opacity = rpt.pass ? 1 : .6;
 }
 
-supabase.auth.onAuthStateChange(async (_event, session) => {
+// Only set up auth state listener if supabase is initialized
+if (typeof supabase !== 'undefined' && supabase.auth) {
+  supabase.auth.onAuthStateChange(async (_event, session) => {
   // Clear any pending auth state change
   if (authStateChangeTimeout) {
     clearTimeout(authStateChangeTimeout);
