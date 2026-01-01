@@ -41,7 +41,7 @@
       #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff; padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
       #ar-modgrid .toast.ok{background:var(--ar-green)} #ar-modgrid .toast.err{background:var(--ar-red)}
       
-      /* Debug panel styles - ALWAYS VISIBLE */
+      /* Debug panel styles - HIDDEN BY DEFAULT */
       #debugPanel{ 
         position:fixed; 
         top:10px; 
@@ -53,7 +53,7 @@
         border-radius:8px; 
         box-shadow:0 8px 32px rgba(0,0,0,.5); 
         z-index:99999; 
-        display:block;
+        display:none; /* Hidden by default */
         font-family:monospace;
         color:#fff;
         overflow:hidden;
@@ -168,13 +168,13 @@
     }
   </style>
     
-    <!-- Debug Panel - ALWAYS VISIBLE -->
+    <!-- Debug Panel - HIDDEN BY DEFAULT (Press Ctrl+Shift+D to show) -->
     <div id="debugPanel">
       <div id="debugHeader">
         <span>🔍 Exam Debug Panel</span>
         <div style="display:flex; gap:4px;">
           <button id="debugCopy" onclick="copyDebugInfo()" title="Copy all debug info to clipboard">📋 Copy</button>
-          <button id="debugToggle" onclick="document.getElementById('debugContent').style.display = document.getElementById('debugContent').style.display === 'none' ? 'block' : 'none';" title="Toggle panel visibility">Toggle</button>
+          <button id="debugToggle" onclick="document.getElementById('debugPanel').style.display = 'none';" title="Hide panel">✕ Close</button>
         </div>
       </div>
       <div id="debugContent">
@@ -183,6 +183,9 @@
         </div>
       </div>
     </div>
+    
+    <!-- Small debug toggle button (hidden by default, show with Ctrl+Shift+D) -->
+    <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:none; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
   </div>
 
   <!-- Quiz View -->
