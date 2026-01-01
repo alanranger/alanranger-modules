@@ -55,19 +55,19 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: "Not logged in - no member ID" });
     }
     
-    // Get email from member object OR request body (fallback)
+    // Parse request body once
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const { module_id, score_percent, passed, attempt, details, email: bodyEmail } = body || {};
+    
+    // Get email from member object OR request body (fallback)
     let email = null;
     if (member && member.auth && member.auth.email) {
       email = member.auth.email;
       console.log("[save] Using email from member object:", email);
-    } else if (body && body.email) {
-      email = body.email;
+    } else if (bodyEmail) {
+      email = bodyEmail;
       console.log("[save] Using email from request body (fallback):", email);
     }
-
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const { module_id, score_percent, passed, attempt, details } = body || {};
 
     if (!module_id || typeof score_percent !== "number" || typeof passed !== "boolean" || typeof attempt !== "number") {
       return res.status(400).json({ error: "Invalid payload" });
