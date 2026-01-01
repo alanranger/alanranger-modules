@@ -323,29 +323,36 @@ console.log('🔍 Modules array test:', modules);
 console.log('🔍 Modules length:', modules ? modules.length : 'undefined');
 
 function renderGrid(statusByModuleId = {}) {
-  // PROTECT: If Memberstack data has been loaded and we're trying to clear it, block it
-  if (memberstackDataLoaded && Object.keys(statusByModuleId).length === 0) {
-    debugLog('🛡️ BLOCKED: Attempt to clear grid after Memberstack data loaded - ignoring');
-    debugLog('🛡️ Stack trace:', new Error().stack);
-    return; // Don't clear the grid
-  }
-  
-  debugLog('🎨 renderGrid called with: ' + JSON.stringify(statusByModuleId));
-  debugLog('🎨 modules array length: ' + (modules ? modules.length : 'undefined'));
-  debugLog('🎨 modules type: ' + typeof modules);
-  debugLog('🎨 first module: ' + JSON.stringify(modules ? modules[0] : 'undefined'));
-  
-  const gridEl = document.getElementById('grid');
-  if (!gridEl) {
-    debugLog('❌ Grid element not found');
-    return;
-  }
-  
-  gridEl.innerHTML = '';
-  if (!modules || modules.length === 0) {
-    debugLog('❌ Modules array is empty or undefined');
-    return;
-  }
+  try {
+    // PROTECT: If Memberstack data has been loaded and we're trying to clear it, block it
+    if (memberstackDataLoaded && Object.keys(statusByModuleId).length === 0) {
+      debugLog('🛡️ BLOCKED: Attempt to clear grid after Memberstack data loaded - ignoring');
+      debugLog('🛡️ Stack trace:', new Error().stack);
+      return; // Don't clear the grid
+    }
+    
+    debugLog('🎨 renderGrid called with: ' + JSON.stringify(statusByModuleId));
+    debugLog('🎨 modules array length: ' + (modules ? modules.length : 'undefined'));
+    debugLog('🎨 modules type: ' + typeof modules);
+    debugLog('🎨 first module: ' + JSON.stringify(modules ? modules[0] : 'undefined'));
+    
+    const gridEl = document.getElementById('grid');
+    if (!gridEl) {
+      console.error('❌ Grid element not found in renderGrid');
+      debugLog('❌ Grid element not found');
+      return;
+    }
+    
+    console.log('🎨 Grid element found, clearing and rendering...');
+    gridEl.innerHTML = '';
+    
+    if (!modules || modules.length === 0) {
+      console.error('❌ Modules array is empty or undefined');
+      debugLog('❌ Modules array is empty or undefined');
+      return;
+    }
+    
+    console.log(`🎨 Rendering ${modules.length} modules...`);
   
   modules.forEach(m => {
     debugLog(`🔍 Processing module: ${JSON.stringify(m)}`);
@@ -434,10 +441,27 @@ function renderGrid(statusByModuleId = {}) {
     gridEl.appendChild(card);
   });
   
-  // Debug: Log the final grid state
-  debugLog(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
-  debugLog(`🎨 Grid HTML preview: ${gridEl.innerHTML.substring(0, 200)}...`);
-  
+    // Debug: Log the final grid state
+    console.log(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
+    debugLog(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
+    if (gridEl.children.length > 0) {
+      debugLog(`🎨 Grid HTML preview: ${gridEl.innerHTML.substring(0, 200)}...`);
+    } else {
+      console.error('❌ Grid has no children after rendering!');
+      debugLog('❌ Grid has no children after rendering!');
+    }
+  } catch (err) {
+    console.error('❌ CRITICAL ERROR in renderGrid:', err);
+    console.error('❌ Error stack:', err.stack);
+    debugLog('❌ CRITICAL ERROR in renderGrid:', err.message);
+    debugLog('❌ Error stack:', err.stack);
+    // Try to at least show something
+    const gridEl = document.getElementById('grid');
+    if (gridEl && modules && modules.length > 0) {
+      gridEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">Error rendering grid. Please refresh the page.</div>';
+    }
+    throw err; // Re-throw so caller knows it failed
+  }
 }
 
 function renderSummary(statusByModuleId) {
@@ -2749,32 +2773,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Always render - even if empty, show the grid
         debugLog('🎨 Rendering grid with fetched data...');
-        renderSummary(statusByModule);
-        renderGrid(statusByModule);
+        debugLog('🎨 Status data:', JSON.stringify(statusByModule));
+        
+        try {
+          renderSummary(statusByModule);
+        } catch (err) {
+          console.error('❌ Error in renderSummary:', err);
+          debugLog('❌ Error in renderSummary:', err.message);
+        }
+        
+        try {
+          renderGrid(statusByModule);
+        } catch (err) {
+          console.error('❌ Error in renderGrid:', err);
+          debugLog('❌ Error in renderGrid:', err.message);
+          // Force render empty grid if there's an error
+          try {
+            const gridEl = document.getElementById('grid');
+            if (gridEl && gridEl.children.length === 0) {
+              debugLog('⚠️ Grid is empty after renderGrid error - forcing basic render');
+              // At least show the modules even without status
+              if (modules && modules.length > 0) {
+                modules.forEach(m => {
+                  const card = document.createElement('div');
+                  card.className = 'card';
+                  card.innerHTML = `<div class="head"><div class="num">${m.n}</div><div class="title">${m.title}</div></div>`;
+                  gridEl.appendChild(card);
+                });
+              }
+            }
+          } catch (e) {
+            console.error('❌ Error in fallback render:', e);
+          }
+        }
         
         // Mark that Memberstack data has been loaded - prevent any clearing AFTER rendering
         memberstackDataLoaded = true;
         debugLog('✅ Memberstack data loaded flag set - grid protected from clearing');
         
-        if (Object.keys(statusByModule).length > 0) {
-          debugLog('✅ Grid rendered with Memberstack data');
-        } else {
-          debugLog('⚠️ Grid rendered with no data - showing empty state');
-        }
-        
-        // Show the grid element - ALWAYS show it
+        // FORCE show the grid element - ALWAYS show it
         const gridEl = document.getElementById('grid');
         if (gridEl) {
           gridEl.style.display = 'grid';
-          debugLog('✅ Grid element displayed');
+          gridEl.style.visibility = 'visible';
+          gridEl.style.opacity = '1';
+          debugLog(`✅ Grid element displayed. Children count: ${gridEl.children.length}`);
+          console.log('✅ Grid element:', gridEl);
+          console.log('✅ Grid children:', gridEl.children.length);
         } else {
+          console.error('❌ Grid element not found!');
           debugLog('❌ Grid element not found!');
         }
         
         // Also ensure grid container is visible
         if (gridContainer) {
           gridContainer.style.display = 'block';
+          gridContainer.style.visibility = 'visible';
           debugLog('✅ Grid container displayed');
+        } else {
+          console.error('❌ Grid container not found!');
         }
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
