@@ -1282,6 +1282,16 @@ async function getExamIdentity() {
           };
           debugData.memberstackIdentity = memberstackIdentity;
           updateDebugPanel();
+          
+          // Update email field with Memberstack email
+          if (memberstackIdentity.email) {
+            const emailField = document.getElementById('email');
+            if (emailField) {
+              emailField.value = memberstackIdentity.email;
+              debugLog('✅ Updated email field with Memberstack email:', memberstackIdentity.email);
+            }
+          }
+          
           return memberstackIdentity;
         }
       } catch (e) {
@@ -1319,6 +1329,16 @@ async function getExamIdentity() {
       memberstackIdentity = data;
       debugData.memberstackIdentity = data;
       updateDebugPanel();
+      
+      // Update email field with Memberstack email
+      if (memberstackIdentity && memberstackIdentity.email) {
+        const emailField = document.getElementById('email');
+        if (emailField) {
+          emailField.value = memberstackIdentity.email;
+          debugLog('✅ Updated email field with Memberstack email:', memberstackIdentity.email);
+        }
+      }
+      
       return data;
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -1348,13 +1368,22 @@ async function saveResultsViaMemberstack(report) {
   const latestStatus = await getLatestStatusViaMemberstack(report.moduleId);
   const attempt = latestStatus ? (latestStatus.attempt || 0) + 1 : 1;
   
+  // ALWAYS use Memberstack identity email, never the form field
+  const emailToUse = memberstackIdentity?.email || null;
+  if (!emailToUse) {
+    debugLog('⚠️ WARNING: No email in memberstackIdentity, cannot save');
+    throw new Error("No email in Memberstack identity");
+  }
+  
+  debugLog('💾 Saving with Memberstack email:', emailToUse);
+  
   const payload = {
     module_id: report.moduleId,
     score_percent: report.percent || report.score,
     passed: report.pass || report.passed,
     attempt: attempt,
     details: { misses: report.misses || [] },
-    email: memberstackIdentity?.email || null // Include email as fallback
+    email: emailToUse // Always use Memberstack identity email
   };
   
   const headers = await getApiHeaders();
