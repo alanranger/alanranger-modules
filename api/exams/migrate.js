@@ -72,12 +72,22 @@ module.exports = async (req, res) => {
       
       if (memberId) {
         try {
-          const { data } = await memberstack.members.retrieve({ id: memberId });
-          member = data;
-          console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
+          console.log("[migrate] Attempting to retrieve member with ID:", memberId);
+          const result = await memberstack.members.retrieve({ id: memberId });
+          console.log("[migrate] Memberstack API response:", JSON.stringify(result, null, 2));
+          
+          if (result && result.data) {
+            member = result.data;
+            console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
+          } else {
+            console.error("[migrate] ❌ Memberstack returned no data. Full response:", result);
+            return res.status(401).json({ error: "Member not found in Memberstack" });
+          }
         } catch (e) {
           console.error("[migrate] ❌ Member ID retrieval failed:", e.message);
-          return res.status(401).json({ error: "Invalid member ID" });
+          console.error("[migrate] ❌ Error stack:", e.stack);
+          console.error("[migrate] ❌ Error details:", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+          return res.status(401).json({ error: "Invalid member ID", details: e.message });
         }
       } else {
         console.error("[migrate] ❌ No token and no member ID header found");
