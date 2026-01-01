@@ -2930,9 +2930,20 @@ btnSubmit.addEventListener("click", async () => {
     percent: pct, pass, correct, total, misses, compact: compactLine, timestamp: new Date().toISOString()
   };
   
+  // Log the report data for debugging
+  debugLog('📊 Exam results calculated:', {
+    correct: correct,
+    total: total,
+    percent: pct,
+    pass: pass,
+    moduleId: currentQuizConfig.moduleId
+  });
+  debugLog('📊 lastReport object:', lastReport);
+  
   // Auto-save if Memberstack is authenticated
   if (memberstackIdentity && memberstackIdentity.email) {
     debugLog('💾 Auto-saving exam results...');
+    debugLog('💾 lastReport before save:', JSON.stringify(lastReport));
     setTimeout(async () => {
       try {
         await saveResultToDB(lastReport);
