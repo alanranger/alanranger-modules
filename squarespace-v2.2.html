@@ -868,9 +868,13 @@ function updateDebugPanel() {
       return;
     }
     
-    // Update debugData with current values
+    // Update debugData with current values (safe access)
     debugData.pageUrl = window.location.href;
-    debugData.apiBase = typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : 'UNDEFINED';
+    try {
+      debugData.apiBase = typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : 'NOT_LOADED_YET';
+    } catch (e) {
+      debugData.apiBase = 'ERROR: ' + e.message;
+    }
     
     let html = '';
     
