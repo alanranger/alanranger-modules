@@ -47,13 +47,21 @@ module.exports = async (req, res) => {
     console.log("[migrate] Token from getMemberstackToken:", token ? "FOUND (length: " + token.length + ")" : "NOT FOUND");
     if (token) {
       try {
-        const { id } = await memberstack.verifyToken({ token });
-        memberId = id;
-        const { data } = await memberstack.members.retrieve({ id });
-        member = data;
-        console.log("[migrate] Token auth successful, member ID:", memberId);
+        const verifyResult = await memberstack.verifyToken({ token });
+        console.log("[migrate] Token verification result:", JSON.stringify(verifyResult, null, 2));
+        memberId = verifyResult.id;
+        
+        const retrieveResult = await memberstack.members.retrieve({ id: memberId });
+        console.log("[migrate] Member retrieve result (token path):", retrieveResult ? "SUCCESS" : "FAILED");
+        if (retrieveResult && retrieveResult.data) {
+          member = retrieveResult.data;
+          console.log("[migrate] Token auth successful, member ID:", memberId, "email:", member?.auth?.email);
+        } else {
+          console.error("[migrate] Member retrieve returned no data (token path)");
+        }
       } catch (e) {
         console.error("[migrate] Token verification failed:", e.message);
+        console.error("[migrate] Token error stack:", e.stack);
         // Fall through to member ID fallback
       }
     }
