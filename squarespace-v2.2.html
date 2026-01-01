@@ -2843,9 +2843,19 @@ btnSubmit.addEventListener("click", async () => {
   btnSave.disabled = false; btnSave.style.opacity = 1;
   btnCert.disabled = !pass; btnCert.style.opacity = pass ? 1 : .6;
 
+  // Use Memberstack email if available, otherwise fall back to form field
+  let emailForReport = null;
+  if (memberstackIdentity && memberstackIdentity.email) {
+    emailForReport = memberstackIdentity.email;
+    debugLog('📝 Using Memberstack email for report:', emailForReport);
+  } else {
+    emailForReport = document.getElementById("email").value.trim();
+    debugLog('📝 Using form field email for report:', emailForReport);
+  }
+
   lastReport = {
     moduleId: currentQuizConfig.moduleId, moduleTitle: currentQuizConfig.moduleTitle,
-    name: learnerName, email: document.getElementById("email").value.trim(),
+    name: learnerName, email: emailForReport,
     percent: pct, pass, correct, total, misses, compact: compactLine, timestamp: new Date().toISOString()
   };
 
