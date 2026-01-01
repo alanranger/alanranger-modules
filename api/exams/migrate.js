@@ -39,18 +39,24 @@ module.exports = async (req, res) => {
     // Fallback: Use member ID header
     if (!memberId) {
       memberId = getMemberstackMemberId(req);
+      console.log("[migrate] Member ID from header:", memberId);
+      console.log("[migrate] Request headers:", JSON.stringify(req.headers, null, 2));
       if (memberId) {
         try {
           const { data } = await memberstack.members.retrieve({ id: memberId });
           member = data;
+          console.log("[migrate] Member retrieved successfully:", member?.auth?.email);
         } catch (e) {
           console.error("[migrate] Member ID retrieval failed:", e.message);
           return res.status(401).json({ error: "Invalid member ID" });
         }
+      } else {
+        console.error("[migrate] No token and no member ID header found");
       }
     }
     
     if (!memberId || !member) {
+      console.error("[migrate] Authentication failed - no memberId or member");
       return res.status(401).json({ error: "Not logged in" });
     }
 
