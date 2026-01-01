@@ -1185,13 +1185,16 @@ async function getApiHeaders(additionalHeaders = {}) {
     headers["Authorization"] = `Bearer ${token}`;
     console.log("[getApiHeaders] Added Authorization header with token (length:", token.length, ")");
   } else {
-    console.warn("[getApiHeaders] No token available - API calls may fail");
-    // Still try without token - server might accept member ID from client API
-    // We'll include member ID as a fallback header if available
-    if (memberstackIdentity && memberstackIdentity.memberstack_id) {
-      headers["X-Memberstack-Id"] = memberstackIdentity.memberstack_id;
-      console.log("[getApiHeaders] Added X-Memberstack-Id header as fallback");
-    }
+    console.warn("[getApiHeaders] No token available - using member ID fallback");
+  }
+  
+  // ALWAYS include member ID header as fallback (even if we have a token)
+  // This ensures migration works even if token verification fails
+  if (memberstackIdentity && memberstackIdentity.memberstack_id) {
+    headers["X-Memberstack-Id"] = memberstackIdentity.memberstack_id;
+    console.log("[getApiHeaders] Added X-Memberstack-Id header:", memberstackIdentity.memberstack_id);
+  } else {
+    console.error("[getApiHeaders] WARNING: No memberstackIdentity available!");
   }
   
   return headers;
