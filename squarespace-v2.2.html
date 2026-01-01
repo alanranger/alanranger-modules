@@ -2918,6 +2918,24 @@ btnSubmit.addEventListener("click", async () => {
     name: learnerName, email: emailForReport,
     percent: pct, pass, correct, total, misses, compact: compactLine, timestamp: new Date().toISOString()
   };
+  
+  // Auto-save if Memberstack is authenticated
+  if (memberstackIdentity && memberstackIdentity.email) {
+    debugLog('💾 Auto-saving exam results...');
+    setTimeout(async () => {
+      try {
+        await saveResultToDB(lastReport);
+        debugLog('✅ Auto-save successful');
+        showToast("Results automatically saved to your account.", "success", 3000);
+      } catch (err) {
+        console.error("[Auto-save] Failed:", err);
+        debugLog('❌ Auto-save failed:', err.message);
+        showToast("Auto-save failed. Please click 'Save to my account' manually.", "warning", 5000);
+      }
+    }, 500); // Small delay to ensure UI is updated
+  } else {
+    debugLog('⚠️ Auto-save skipped - no Memberstack identity');
+  }
 
   // Lock all radio buttons after submission
   document.querySelectorAll('input[type="radio"]').forEach(radio => {
