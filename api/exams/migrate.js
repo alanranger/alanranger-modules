@@ -132,25 +132,49 @@ module.exports = async (req, res) => {
       }
     }
     
-    if (!memberId || !member) {
-      console.error("[migrate] ❌ Authentication failed - no memberId or member");
-      console.error("[migrate] memberId:", memberId);
-      console.error("[migrate] member:", member ? "EXISTS" : "NULL");
-      console.error("[migrate] Final check - all headers:", JSON.stringify(req.headers, null, 2));
-      return res.status(401).json({ 
-        error: "Not logged in",
-        debug: {
-          hasMemberId: !!memberId,
-          hasMember: !!member,
-          headerKeys: Object.keys(req.headers || {}),
-          xHeaders: Object.keys(req.headers || {}).filter(k => k.toLowerCase().startsWith('x-'))
+    // If member retrieval failed but we have memberId, try to get email from whoami endpoint
+    let email = null;
+    if (member && member.auth && member.auth.email) {
+      email = member.auth.email;
+      console.log("[migrate] Using email from member object:", email);
+    } else if (memberId) {
+      // Fallback: Try to get email by calling whoami internally or use memberId to look up
+      // Since whoami works, let's try calling it or use a workaround
+      console.log("[migrate] ⚠️ Member object not available, but memberId exists:", memberId);
+      console.log("[migrate] Attempting to proceed with memberId only - will need email from request or whoami");
+      
+      // Check if email is in request body (frontend could send it)
+      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      if (body && body.email) {
+        email = body.email;
+        console.log("[migrate] Using email from request body:", email);
+      } else {
+        // Last resort: try whoami endpoint pattern to get email
+        try {
+          const whoamiResult = await memberstack.members.retrieve({ id: memberId });
+          const whoamiData = whoamiResult?.data !== undefined ? whoamiResult.data : whoamiResult;
+          if (whoamiData && whoamiData.auth && whoamiData.auth.email) {
+            email = whoamiData.auth.email;
+            member = whoamiData; // Set member for consistency
+            console.log("[migrate] ✅ Got email from whoami pattern:", email);
+          }
+        } catch (whoamiErr) {
+          console.error("[migrate] ❌ Whoami fallback also failed:", whoamiErr.message);
         }
-      });
+      }
     }
 
-    const email = member?.auth?.email;
+    if (!memberId) {
+      console.error("[migrate] ❌ No memberId available");
+      return res.status(401).json({ error: "Not logged in - no member ID" });
+    }
+
     if (!email) {
-      return res.status(400).json({ error: "No email found for member" });
+      console.error("[migrate] ❌ No email found for member. memberId:", memberId);
+      return res.status(400).json({ 
+        error: "No email found for member",
+        debug: { memberId, hasMember: !!member, memberKeys: member ? Object.keys(member) : [] }
+      });
     }
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
