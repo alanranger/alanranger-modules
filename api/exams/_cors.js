@@ -65,7 +65,8 @@ function getMemberstackToken(req) {
  * @returns {string|null} - Member ID or null
  */
 function getMemberstackMemberId(req) {
-  return req.headers["x-memberstack-id"] || null;
+  // Check both lowercase and original case (Node.js lowercases headers)
+  return req.headers["x-memberstack-id"] || req.headers["X-Memberstack-Id"] || null;
 }
 
 module.exports = {
