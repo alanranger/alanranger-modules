@@ -2522,6 +2522,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const gridContainer = document.getElementById('grid-container');
   const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
   
+  // Update auth badge immediately to show we're checking
+  if (authBadge) {
+    authBadge.textContent = "Checking authentication...";
+    authBadge.style.background = '#f59e0b';
+    authBadge.style.color = '#fff';
+  }
+  
   // Initialize debug panel immediately
   try {
     updateDebugPanel();
@@ -2540,19 +2547,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // CRITICAL: Render grid immediately with empty status to prevent blank page
   // This ensures the page is visible even if authentication is slow or fails
-  debugLog('🎨 Rendering initial grid (empty state)...');
-  renderSummary({});
-  renderGrid({});
-  if (gridContainer) gridContainer.style.display = 'block';
-  const gridEl = document.getElementById('grid');
-  if (gridEl) gridEl.style.display = 'grid';
-  debugLog('✅ Initial grid rendered - page is no longer blank');
+  try {
+    debugLog('🎨 Rendering initial grid (empty state)...');
+    renderSummary({});
+    renderGrid({});
+    if (gridContainer) gridContainer.style.display = 'block';
+    const gridEl = document.getElementById('grid');
+    if (gridEl) {
+      gridEl.style.display = 'grid';
+      debugLog('✅ Initial grid rendered - page is no longer blank');
+    } else {
+      debugLog('⚠️ Grid element not found during initial render');
+    }
+  } catch (err) {
+    console.error('❌ Error rendering initial grid:', err);
+    debugLog('❌ Error rendering initial grid:', err.message);
+    // Still try to show the container
+    if (gridContainer) gridContainer.style.display = 'block';
+  }
   
   // Check Memberstack identity first (primary authentication)
+  // Use a shorter timeout to fail faster and update UI
   try {
-    // Add timeout to prevent hanging
+    debugLog('🔐 Starting authentication check...');
+    // Add timeout to prevent hanging - reduced to 8 seconds
     const identityPromise = getExamIdentity();
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 10000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => {
+      debugLog('⏱️ Authentication timeout after 8 seconds');
+      resolve(null);
+    }, 8000));
     memberstackIdentity = await Promise.race([identityPromise, timeoutPromise]);
     
     // Update email field immediately when identity loads
