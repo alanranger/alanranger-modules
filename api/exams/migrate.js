@@ -80,21 +80,49 @@ module.exports = async (req, res) => {
       if (memberId) {
         try {
           console.log("[migrate] Attempting to retrieve member with ID:", memberId);
+          console.log("[migrate] Memberstack secret key exists:", !!process.env.MEMBERSTACK_SECRET_KEY);
+          console.log("[migrate] Memberstack secret key length:", process.env.MEMBERSTACK_SECRET_KEY?.length);
+          
           // Use same pattern as whoami.js and save.js
-          const { data } = await memberstack.members.retrieve({ id: memberId });
-          console.log("[migrate] Memberstack API response - data type:", typeof data);
-          console.log("[migrate] Memberstack API response - data value:", data ? "EXISTS" : "NULL/UNDEFINED");
+          const result = await memberstack.members.retrieve({ id: memberId });
+          console.log("[migrate] Full API response:", JSON.stringify(result, null, 2));
+          
+          // Handle response - could be { data: {...} } or direct member object
+          const data = result?.data !== undefined ? result.data : result;
+          console.log("[migrate] Extracted data:", data ? "EXISTS" : "NULL/UNDEFINED");
+          console.log("[migrate] Data type:", typeof data);
+          console.log("[migrate] Data keys:", data ? Object.keys(data) : "N/A");
           
           if (data && (data.id || data.auth)) {
             member = data;
             console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
+          } else if (data === null) {
+            // If data is explicitly null, the member doesn't exist - but let's try whoami endpoint as verification
+            console.error("[migrate] ❌ Member data is null. Member may not exist or API key may be wrong.");
+            console.error("[migrate] ❌ Attempting to verify member exists via whoami pattern...");
+            
+            // Try alternative: use the member ID directly if it matches the pattern
+            // Since whoami works, maybe we can proceed with just the memberId and email from whoami
+            // But we need member object for email, so this won't work
+            
+            return res.status(401).json({ 
+              error: "Member not found in Memberstack", 
+              debug: { 
+                memberId, 
+                dataType: typeof data, 
+                dataValue: data,
+                resultStructure: Object.keys(result || {}),
+                suggestion: "Verify MEMBERSTACK_SECRET_KEY is correct and member exists"
+              } 
+            });
           } else {
-            console.error("[migrate] ❌ Member not found or invalid. data:", data);
+            console.error("[migrate] ❌ Member data is invalid:", data);
             return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataType: typeof data, dataValue: data } });
           }
         } catch (e) {
           console.error("[migrate] ❌ Member ID retrieval failed:", e.message);
           console.error("[migrate] ❌ Error stack:", e.stack);
+          console.error("[migrate] ❌ Error name:", e.name);
           return res.status(401).json({ error: "Invalid member ID", details: e.message });
         }
       } else {
