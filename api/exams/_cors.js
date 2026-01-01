@@ -65,12 +65,19 @@ function getMemberstackToken(req) {
  * @returns {string|null} - Member ID or null
  */
 function getMemberstackMemberId(req) {
-  // Node.js/Express lowercases all header names, so "X-Memberstack-Id" becomes "x-memberstack-id"
-  const memberId = req.headers["x-memberstack-id"] || null;
+  // Vercel serverless functions: headers are lowercased
+  // Try multiple variations to be absolutely sure
+  const memberId = req.headers["x-memberstack-id"] 
+    || req.headers["x-memberstackid"]
+    || (req.headers["X-Memberstack-Id"] && req.headers["X-Memberstack-Id"]) // Original case (unlikely but possible)
+    || null;
+    
   if (memberId) {
-    console.log("[getMemberstackMemberId] Found member ID in header:", memberId);
+    console.log("[getMemberstackMemberId] ✅ Found member ID in header:", memberId);
   } else {
-    console.log("[getMemberstackMemberId] No member ID header found. Available headers:", Object.keys(req.headers).filter(h => h.toLowerCase().includes('member')));
+    console.log("[getMemberstackMemberId] ❌ No member ID header found");
+    console.log("[getMemberstackMemberId] All header keys:", Object.keys(req.headers || {}));
+    console.log("[getMemberstackMemberId] Headers starting with 'x':", Object.keys(req.headers || {}).filter(h => h.toLowerCase().startsWith('x-')));
   }
   return memberId;
 }
