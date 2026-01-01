@@ -850,6 +850,10 @@ async function backToGrid() {
   // Wait a moment for DOM to update
   await new Promise(resolve => setTimeout(resolve, 500));
   
+  // CRITICAL: Reset the protection flag so we can refresh the grid
+  memberstackDataLoaded = false;
+  debugLog('🔄 Reset memberstackDataLoaded flag to allow grid refresh');
+  
   // Refresh grid with updated results
   // PRIORITY: Use Memberstack if available, fallback to Supabase legacy
   try {
@@ -859,7 +863,7 @@ async function backToGrid() {
     }
     
     if (memberstackIdentity) {
-      debugLog('🔄 Refreshing grid with Memberstack data...');
+      debugLog('🔄 Refreshing grid with Memberstack data after exam...');
       const statusByModule = {};
       
       // Fetch status for all modules
@@ -872,6 +876,7 @@ async function backToGrid() {
               passed: status.passed,
               when: status.created_at
             };
+            debugLog(`✅ Fetched status for ${module.id}: ${status.score_percent}%, passed=${status.passed}`);
           }
         } catch (err) {
           debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
@@ -879,9 +884,15 @@ async function backToGrid() {
       }
       
       debugLog('📊 Refreshed status for modules:', Object.keys(statusByModule).length);
+      debugLog('📊 Status data:', JSON.stringify(statusByModule));
+      
+      // Force render with fresh data
       renderSummary(statusByModule);
       renderGrid(statusByModule);
-      debugLog('✅ Grid refreshed with Memberstack data');
+      
+      // Set flag after rendering
+      memberstackDataLoaded = true;
+      debugLog('✅ Grid refreshed with Memberstack data after exam');
     } else {
       // Fallback to Supabase legacy
       debugLog('🔍 Getting current user (Supabase legacy)...');
