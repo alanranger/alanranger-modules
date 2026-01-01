@@ -1333,14 +1333,25 @@ async function getLatestStatusViaMemberstack(moduleId) {
   
   try {
     const headers = await getApiHeaders();
-    const r = await fetch(`${EXAMS_API_BASE}/api/exams/status?moduleId=${encodeURIComponent(moduleId)}`, {
+    const url = `${EXAMS_API_BASE}/api/exams/status?moduleId=${encodeURIComponent(moduleId)}`;
+    
+    const r = await fetch(url, {
       headers: headers,
       credentials: "include"
     });
-    if (!r.ok) return null;
+    
+    logApiCall('GET', url, r.status, r.statusText, r.ok ? null : await r.text().catch(() => ''));
+    
+    if (!r.ok) {
+      const errorText = await r.text().catch(() => '');
+      logError(`Status API failed for ${moduleId}: ${r.status} ${errorText}`);
+      return null;
+    }
+    
     const j = await r.json();
     return j.latest || null;
   } catch (e) {
+    logError(`getLatestStatusViaMemberstack error for ${moduleId}: ${e.message}`);
     console.error("[getLatestStatusViaMemberstack] Error:", e);
     return null;
   }
