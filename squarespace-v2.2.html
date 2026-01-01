@@ -1643,9 +1643,9 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
     }
   }, 100); // 100ms debounce
   
-  if (!session?.user) return;
+    if (!session?.user) return;
 
-  const pending = localStorage.getItem('ar_pending_result');
+    const pending = localStorage.getItem('ar_pending_result');
   const pendingEmail = localStorage.getItem('ar_pending_email');
 
   if (pending){
@@ -1662,7 +1662,10 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
   } else {
     renderProgressBadge();
   }
-});
+  });
+} else {
+  console.warn('[onAuthStateChange] Supabase not initialized, skipping auth state listener');
+}
 // Grid authentication setup
 document.addEventListener('DOMContentLoaded', async () => {
   debugLog('🚀 Grid script starting...');
