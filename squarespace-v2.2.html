@@ -1185,13 +1185,15 @@ async function getApiHeaders(additionalHeaders = {}) {
     headers["Authorization"] = `Bearer ${token}`;
     console.log("[getApiHeaders] Added Authorization header with token (length:", token.length, ")");
   } else {
-    console.warn("[getApiHeaders] No token available - API calls may fail");
-    // Still try without token - server might accept member ID from client API
-    // We'll include member ID as a fallback header if available
-    if (memberstackIdentity && memberstackIdentity.memberstack_id) {
-      headers["X-Memberstack-Id"] = memberstackIdentity.memberstack_id;
-      console.log("[getApiHeaders] Added X-Memberstack-Id header as fallback");
-    }
+    console.warn("[getApiHeaders] No token available - using member ID fallback");
+  }
+  
+  // Always include member ID header as fallback (even if we have a token, in case token fails)
+  if (memberstackIdentity && memberstackIdentity.memberstack_id) {
+    headers["X-Memberstack-Id"] = memberstackIdentity.memberstack_id;
+    console.log("[getApiHeaders] Added X-Memberstack-Id header:", memberstackIdentity.memberstack_id);
+  } else {
+    console.warn("[getApiHeaders] No memberstackIdentity available!");
   }
   
   return headers;
@@ -1395,8 +1397,11 @@ async function migrateLegacyResults() {
   try {
     showToast('Migrating legacy results...', 'info');
     logError('Starting migration for: ' + memberstackIdentity.email);
+    logError('Member ID: ' + memberstackIdentity.memberstack_id);
     
     const headers = await getApiHeaders();
+    logError('Headers being sent: ' + JSON.stringify(headers, null, 2));
+    
     const url = `${EXAMS_API_BASE}/api/exams/migrate`;
     
     const r = await fetch(url, {
@@ -1406,12 +1411,13 @@ async function migrateLegacyResults() {
       body: JSON.stringify({})
     });
     
-    logApiCall('POST', url, r.status, r.statusText, r.ok ? null : await r.text().catch(() => ''));
+    const responseText = await r.text().catch(() => '');
+    logApiCall('POST', url, r.status, r.statusText, r.ok ? null : responseText);
     
     if (!r.ok) {
-      const errorText = await r.text().catch(() => '');
-      const error = errorText ? JSON.parse(errorText) : { error: "Migration failed" };
-      logError(`Migration failed: ${r.status} ${error.error || errorText}`);
+      const error = responseText ? JSON.parse(responseText) : { error: "Migration failed" };
+      logError(`Migration failed: ${r.status} ${error.error || responseText}`);
+      logError('Response headers: ' + JSON.stringify([...r.headers.entries()], null, 2));
       throw new Error(error.error || "Migration failed");
     }
     
