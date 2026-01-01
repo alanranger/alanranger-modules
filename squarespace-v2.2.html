@@ -2331,17 +2331,19 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
   }
 })();
 
-// Keyboard shortcut to show/hide debug panel (Ctrl+Shift+D)
+// Keyboard shortcut to toggle debug panel (Ctrl+Shift+D) - Panel is visible by default
 document.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.shiftKey && e.key === 'D') {
     e.preventDefault();
     const panel = document.getElementById('debugPanel');
     const btn = document.getElementById('debugShowBtn');
     if (panel) {
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    }
-    if (btn) {
-      btn.style.display = panel && panel.style.display === 'block' ? 'none' : 'block';
+      const isVisible = panel.style.display !== 'none';
+      panel.style.display = isVisible ? 'none' : 'block';
+      if (btn) {
+        btn.style.display = isVisible ? 'block' : 'none';
+      }
+      debugLog('Debug panel toggled via keyboard shortcut (Ctrl+Shift+D).');
     }
   }
 });
