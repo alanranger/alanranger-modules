@@ -1382,10 +1382,21 @@ async function saveResultsViaMemberstack(report) {
   
   debugLog('💾 Saving with Memberstack email:', emailToUse);
   
+  // Ensure all required fields are present and correct types
+  const scorePercent = typeof report.percent === 'number' ? report.percent : (typeof report.score === 'number' ? report.score : null);
+  const passed = typeof report.pass === 'boolean' ? report.pass : (typeof report.passed === 'boolean' ? report.passed : null);
+  
+  if (scorePercent === null || passed === null || !report.moduleId || typeof attempt !== 'number') {
+    const errorMsg = `Invalid report data: scorePercent=${scorePercent} (${typeof scorePercent}), passed=${passed} (${typeof passed}), moduleId=${report.moduleId}, attempt=${attempt} (${typeof attempt})`;
+    debugLog('❌ Invalid report data:', errorMsg);
+    debugLog('❌ Full report object:', report);
+    throw new Error(`Invalid report data: ${errorMsg}`);
+  }
+  
   const payload = {
     module_id: report.moduleId,
-    score_percent: report.percent || report.score,
-    passed: report.pass || report.passed,
+    score_percent: scorePercent,
+    passed: passed,
     attempt: attempt,
     details: { misses: report.misses || [] },
     email: emailToUse // Always use Memberstack identity email
