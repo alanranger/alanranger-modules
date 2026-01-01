@@ -800,10 +800,32 @@ const EXAMS_API_BASE = "https://alanranger-modules.vercel.app"; // Update if dif
  * @returns {string|null} - Token or null
  */
 function getMemberstackTokenFromCookie() {
-  const cookies = document.cookie.split(';').map(c => c.trim());
-  const found = cookies.find(c => c.startsWith('_ms-mid='));
-  if (!found) return null;
-  return decodeURIComponent(found.split('=').slice(1).join('='));
+  try {
+    const allCookies = document.cookie;
+    console.log("[getMemberstackTokenFromCookie] All cookies:", allCookies ? "Present" : "None");
+    
+    if (!allCookies) {
+      console.log("[getMemberstackTokenFromCookie] No cookies found");
+      return null;
+    }
+    
+    const cookies = allCookies.split(';').map(c => c.trim());
+    console.log("[getMemberstackTokenFromCookie] Cookie count:", cookies.length);
+    
+    const found = cookies.find(c => c.startsWith('_ms-mid='));
+    if (!found) {
+      console.log("[getMemberstackTokenFromCookie] _ms-mid cookie not found");
+      console.log("[getMemberstackTokenFromCookie] Available cookies:", cookies.map(c => c.split('=')[0]).join(', '));
+      return null;
+    }
+    
+    const token = decodeURIComponent(found.split('=').slice(1).join('='));
+    console.log("[getMemberstackTokenFromCookie] Token found, length:", token.length);
+    return token;
+  } catch (e) {
+    console.error("[getMemberstackTokenFromCookie] Error:", e);
+    return null;
+  }
 }
 
 /**
@@ -838,8 +860,9 @@ async function getExamIdentity() {
     console.log("[getExamIdentity] EXAMS_API_BASE:", EXAMS_API_BASE);
     
     const headers = getApiHeaders();
-    console.log("[getExamIdentity] Headers:", headers);
-    console.log("[getExamIdentity] Token from cookie:", getMemberstackTokenFromCookie() ? "Found" : "Not found");
+    console.log("[getExamIdentity] Headers:", JSON.stringify(headers, null, 2));
+    const token = getMemberstackTokenFromCookie();
+    console.log("[getExamIdentity] Token from cookie:", token ? `Found (${token.length} chars)` : "Not found");
     
     const url = `${EXAMS_API_BASE}/api/exams/whoami`;
     console.log("[getExamIdentity] Fetching:", url);
