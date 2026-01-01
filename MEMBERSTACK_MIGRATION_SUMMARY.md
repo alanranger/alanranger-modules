@@ -1,7 +1,7 @@
-# Memberstack-Only Authentication Migration Summary
+# Memberstack-Only Authentication Migration Summary v2.2.0
 
 ## Overview
-Removed Supabase magic-link authentication from exam UX and replaced with Memberstack session-based authentication via API.
+Removed Supabase magic-link authentication from exam UX and replaced with Memberstack session-based authentication via API. System now uses Memberstack as primary authentication with Supabase as fallback for legacy migration only.
 
 ---
 
@@ -9,134 +9,100 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 
 ### 1. Frontend Files
 
-#### `squarespace-v2.2.html`
+#### `squarespace-v2.2.html` (v2.2.0)
 **Changes:**
-- Added `EXAMS_API_BASE` constant: `"https://api.alanranger.com"`
-- Replaced all `fetch("/api/exams/...")` with `fetch(\`${EXAMS_API_BASE}/api/exams/...\`, { credentials: "include" })`
-- **Hidden magic-link UI elements:**
-  - Email input field (`#loginEmail`) - `display:none`
-  - "Get magic link" button (`#btnMagic`) - `display:none`
-  - "Sign in" button (`#btnSignIn`) - `display:none`
-  - Magic-link hints and tips - `display:none`
-  - Quiz view magic-link button (`#btn-magic`) - `display:none`
-- **Added Memberstack authentication check on page load:**
-  - Calls `whoami()` API on DOMContentLoaded
-  - If logged in → shows exam UI
-  - If not logged in → shows message: "Please sign in to the Academy dashboard to use exams."
-- **Added migration button:**
-  - Button: "Link my existing exam progress"
-  - Only shown when Memberstack authenticated but no results found
-  - Calls `POST /api/exams/migrate`
-- **Updated functions to use Memberstack API first:**
-  - `getLatestStatus()` - tries Memberstack API, falls back to Supabase
-  - `saveResultToDB()` - tries Memberstack API, falls back to Supabase
-- **Added Memberstack API functions:**
-  - `getExamIdentity()` - calls `${EXAMS_API_BASE}/api/exams/whoami`
-  - `saveResultsViaMemberstack()` - calls `${EXAMS_API_BASE}/api/exams/save`
-  - `getLatestStatusViaMemberstack()` - calls `${EXAMS_API_BASE}/api/exams/status`
-  - `migrateLegacyResults()` - calls `${EXAMS_API_BASE}/api/exams/migrate`
-  - `checkMigrationNeeded()` - checks if migration button should be shown
+- ✅ Memberstack authentication via `getExamIdentity()` function
+- ✅ Auto-save functionality after exam submission
+- ✅ Grid auto-refresh on page visibility/focus
+- ✅ Debug panel (hidden by default, Ctrl+Shift+D to show)
+- ✅ Grid status tracking in debug panel
+- ✅ Enhanced error handling and validation
+- ✅ Blank page prevention on initial load
+- ✅ Email synchronization with Memberstack identity
+- ✅ Protection flag to prevent grid clearing after data loaded
 
-**Old Supabase functions preserved (for rollback):**
-- `sendMagicLink()` - still in code but unreachable (UI hidden)
-- `currentUser()` - still available for fallback
-- All Supabase queries - still functional as fallback
+**API Base:**
+- `EXAMS_API_BASE = "https://alanranger-modules.vercel.app"`
+
+**Hidden UI Elements:**
+- Email input field (`#loginEmail`) - `display:none`
+- "Get magic link" button (`#btnMagic`) - `display:none`
+- "Sign in" button (`#btnSignIn`) - `display:none`
+- Magic-link hints and tips - `display:none`
+
+**Memberstack API Functions:**
+- `getExamIdentity()` - Gets Memberstack identity via client API or server API
+- `saveResultsViaMemberstack()` - Saves exam results via API
+- `getLatestStatusViaMemberstack()` - Gets latest exam status via API
+- `migrateLegacyResults()` - Migrates legacy results via API
+- `refreshGridModuleStatus()` - Refreshes single module in grid after save
+
+**Auto-Refresh Features:**
+- Page visibility listener - refreshes grid when page becomes visible
+- Window focus listener - refreshes grid when window regains focus
+- `backToGrid()` function - refreshes grid when returning from quiz
+
+#### `academy-dashboard-squarespace-snippet-v1.html`
+**Changes:**
+- ✅ Exam progress display with granular badges
+- ✅ Auto-refresh every 30 seconds
+- ✅ Page visibility change refresh
+- ✅ Page load refresh (1 second delay)
+- ✅ Refresh button (clickable, positioned outside hover tip)
 
 ---
 
 ### 2. API Endpoints (Vercel Serverless Functions)
 
-#### New/Updated Endpoints:
+#### Updated Endpoints:
 
 **`GET /api/exams/whoami`**
-- **Path:** `api/exams/whoami.js`
-- **Method:** GET
-- **Auth:** Reads `_ms-mid` cookie from request
-- **Verification:** Uses Memberstack Admin API to verify token
-- **Returns:** 
-  - `200 OK`: `{ memberstack_id, email, permissions, planConnections }`
-  - `401 Unauthorized`: `{ error: "Not logged in" }`
-- **CORS:** Enabled for `https://www.alanranger.com`
+- Supports `X-Memberstack-Id` header as fallback
+- Returns Memberstack identity or null
 
 **`POST /api/exams/save`**
-- **Path:** `api/exams/save.js`
-- **Method:** POST
-- **Auth:** Verifies member via `_ms-mid` cookie
-- **Body:** `{ module_id, score_percent, passed, attempt, details }`
-- **Action:** Writes result to Supabase `module_results_ms` table using service role
-- **Returns:**
-  - `200 OK`: `{ ok: true }`
-  - `401 Unauthorized`: `{ error: "Not logged in" }`
-  - `400 Bad Request`: `{ error: "Invalid payload" }`
-- **CORS:** Enabled
+- Enhanced payload validation with detailed error messages
+- Supports `X-Memberstack-Id` header
+- Email fallback from request body
+- Detailed logging for debugging
 
 **`GET /api/exams/status?moduleId=...`**
-- **Path:** `api/exams/status.js`
-- **Method:** GET
-- **Auth:** Verifies member via `_ms-mid` cookie
-- **Query:** `moduleId` (required)
-- **Action:** Returns latest exam status for that memberId from `module_results_ms`
-- **Returns:**
-  - `200 OK`: `{ latest: { score_percent, passed, attempt, created_at } | null }`
-  - `401 Unauthorized`: `{ error: "Not logged in" }`
-  - `400 Bad Request`: `{ error: "Missing moduleId" }`
-- **CORS:** Enabled
+- Supports `X-Memberstack-Id` header
+- Returns latest exam status for module
 
-**`POST /api/exams/migrate`** (NEW)
-- **Path:** `api/exams/migrate.js`
-- **Method:** POST
-- **Auth:** Verifies member via `_ms-mid` cookie
-- **Body:** `{}` (empty - uses member email from token)
-- **Action:** 
-  1. Gets member email + memberId from Memberstack
-  2. Finds existing `module_results` rows for that email
-  3. Copies them to `module_results_ms` with memberId (idempotent - skips duplicates)
-- **Returns:**
-  - `200 OK`: `{ ok: true, count: <number>, total: <number>, message: "..." }`
-  - `401 Unauthorized`: `{ error: "Not logged in" }`
-  - `400 Bad Request`: `{ error: "No email found for member" }`
-- **CORS:** Enabled
+**`POST /api/exams/migrate`**
+- Supports `X-Memberstack-Id` header
+- Email fallback from request body
+- Comprehensive logging
 
-**`POST /api/exams/migrate-legacy`** (Existing - kept for compatibility)
-- **Path:** `api/exams/migrate-legacy.js`
-- **Method:** POST
-- **Note:** Still exists but not used by new frontend (uses `/migrate` instead)
-
----
-
-## API Endpoint Files
-
-### New Files Created:
-- `api/exams/migrate.js` - New simplified migration endpoint
-
-### Existing Files (Updated):
-- `api/exams/whoami.js` - Already had CORS, verified working
-- `api/exams/save.js` - Already had CORS, verified working
-- `api/exams/status.js` - Already had CORS, verified working
-- `api/exams/_cors.js` - Shared CORS middleware (already created)
+**`api/exams/_cors.js`**
+- Updated to include `X-Memberstack-Id` in allowed headers
+- Improved header detection (case-insensitive)
 
 ---
 
 ## Authentication Flow
 
-### Before (Legacy):
-1. User enters email → Supabase magic link sent
-2. User clicks link → Supabase session created
-3. Results saved to `module_results` table with `user_id`
-
-### After (Memberstack):
+### Current (Memberstack):
 1. User already logged into Academy (Memberstack session)
-2. Page loads → calls `whoami()` API
-3. If authenticated → shows exam UI
+2. Page loads → calls `getExamIdentity()` (client API or server API)
+3. If authenticated → shows exam UI with Memberstack email
 4. If not authenticated → shows "Please sign in to Academy dashboard" message
 5. Results saved to `module_results_ms` table with `memberstack_id`
+
+### Legacy (Supabase - Migration Only):
+1. User clicks "Link my existing exam progress"
+2. Enters email → Supabase magic link sent
+3. User clicks link → Supabase session created
+4. Migration API copies results from `module_results` → `module_results_ms`
+5. Future exams use Memberstack
 
 ---
 
 ## Migration Flow
 
 1. User logs into Academy (Memberstack)
-2. Opens exam page → `whoami()` succeeds
+2. Opens exam page → `getExamIdentity()` succeeds
 3. System checks if user has results in `module_results_ms`
 4. If no results but legacy results exist (by email) → shows "Link my existing exam progress" button
 5. User clicks button → calls `POST /api/exams/migrate`
@@ -146,68 +112,89 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 
 ---
 
-## Confirmation Checklist
+## Key Features (v2.2.0)
 
-✅ **No Supabase magic-link UI accessible:**
-- Email input hidden (`display:none`)
-- "Get magic link" button hidden
-- "Sign in" button hidden
-- All magic-link hints hidden
-- Quiz view magic-link button hidden
+### Auto-Save
+- Exam results automatically saved after submission
+- Manual save button available as backup
+- Grid refreshes automatically after save
 
-✅ **Memberstack-only authentication:**
-- `whoami()` called on page load
-- Exam UI only shown if `whoami()` succeeds
-- Message shown if not authenticated: "Please sign in to the Academy dashboard to use exams."
+### Auto-Refresh
+- Grid refreshes when navigating back to page (visibility/focus listeners)
+- Dashboard refreshes every 30 seconds and on visibility change
+- Page load refresh on dashboard
 
-✅ **All API calls use explicit domain:**
-- `EXAMS_API_BASE = "https://api.alanranger.com"`
-- All fetch calls use `${EXAMS_API_BASE}/api/exams/...`
-- All fetch calls include `{ credentials: "include" }`
+### Debug Panel
+- Hidden by default (press Ctrl+Shift+D to show)
+- Shows: authentication status, API calls, grid status, errors, cookies
+- Copy button to export debug information
 
-✅ **Old functions preserved for rollback:**
-- `sendMagicLink()` - still in code
-- `currentUser()` - still available
-- Supabase queries - still functional as fallback
+### Error Handling
+- Comprehensive error logging
+- Grid status tracking in debug panel
+- Graceful fallbacks
+- Detailed validation error messages
 
 ---
 
 ## Endpoints Summary
 
-| Endpoint | Method | Path | Purpose |
-|----------|--------|------|---------|
-| whoami | GET | `/api/exams/whoami` | Get Memberstack identity |
-| save | POST | `/api/exams/save` | Save exam results |
-| status | GET | `/api/exams/status?moduleId=...` | Get latest exam status |
-| migrate | POST | `/api/exams/migrate` | Migrate legacy results (email-based) |
-| migrate-legacy | POST | `/api/exams/migrate-legacy` | Migrate legacy results (user_id-based) |
+| Endpoint | Method | Path | Purpose | Auth |
+|----------|--------|------|---------|------|
+| whoami | GET | `/api/exams/whoami` | Get Memberstack identity | Cookie or X-Memberstack-Id |
+| save | POST | `/api/exams/save` | Save exam results | Cookie or X-Memberstack-Id |
+| status | GET | `/api/exams/status?moduleId=...` | Get latest exam status | Cookie or X-Memberstack-Id |
+| migrate | POST | `/api/exams/migrate` | Migrate legacy results | Cookie or X-Memberstack-Id |
 
 All endpoints:
-- Require `_ms-mid` cookie (Memberstack session)
 - Support CORS from `https://www.alanranger.com`
+- Accept `X-Memberstack-Id` header as authentication fallback
 - Handle OPTIONS preflight requests
-- Return appropriate error codes
+- Return appropriate error codes with detailed messages
 
 ---
 
-## Next Steps
+## Testing Checklist
 
-1. **Deploy to Vercel:**
-   - Upload `/api/exams/` folder
-   - Set environment variables (see `VERCEL_ENV_SETUP.md`)
+✅ **Authentication:**
+- [ ] Logged into Academy → exam page shows Memberstack email
+- [ ] Not logged in → shows "Please sign in" message
+- [ ] Debug panel shows authentication status
 
-2. **Update Squarespace:**
-   - Replace `squarespace-v2.2.html` code block with updated version
+✅ **Exam Functionality:**
+- [ ] Complete exam → auto-saves successfully
+- [ ] Manual save button works as backup
+- [ ] Grid refreshes after save (no F5 needed)
 
-3. **Test:**
-   - Log into Academy dashboard
-   - Open exam page
-   - Verify `whoami()` call succeeds
-   - Verify exam UI shows
-   - Test migration button (if legacy results exist)
-   - Verify results save to `module_results_ms`
+✅ **Grid Refresh:**
+- [ ] Navigate back to page → grid refreshes automatically
+- [ ] Switch tabs → grid refreshes on visibility change
+- [ ] Window focus → grid refreshes
 
-4. **Monitor:**
-   - Check Vercel logs for API errors
-   - Verify CORS headers in Network tab
-   - Confirm `_ms-mid` cookie is sent with requests
+✅ **Dashboard:**
+- [ ] Shows exam progress correctly
+- [ ] Auto-refreshes every 30 seconds
+- [ ] Refreshes on page visibility change
+- [ ] Refresh button works
+
+✅ **Migration:**
+- [ ] Legacy users see "Link my existing exam progress" button
+- [ ] Migration copies results correctly
+- [ ] Button hidden after successful migration
+
+---
+
+## Version History
+
+### v2.2.0 (Current)
+- Grid refresh fixes (after exam, on page visibility/focus)
+- Auto-save functionality
+- Debug panel hidden by default
+- Grid status tracking in debug panel
+- Enhanced error handling and validation
+- Blank page prevention
+- Dashboard auto-refresh improvements
+
+### Previous Versions
+- v2.1.x - Memberstack integration
+- v2.0.x - Supabase-only system

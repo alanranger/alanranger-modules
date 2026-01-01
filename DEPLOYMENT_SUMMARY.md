@@ -1,38 +1,47 @@
-# Deployment Summary - Memberstack Exam Integration
+# Deployment Summary - Memberstack Exam Integration v2.2.0
 
 ## ✅ Completed Files
 
 ### 1. Database Migration
 - **File**: `supabase-migration.sql`
 - **Action**: Run in Supabase SQL Editor
-- **Creates**: `module_results_ms` table and `exam_member_links` table
+- **Creates**: `module_results_ms` table for Memberstack-linked exam results
 
 ### 2. API Endpoints (Vercel Serverless Functions)
 All files in `/api/exams/`:
-- ✅ `_cors.js` - Shared CORS middleware (handles preflight + headers)
-- ✅ `whoami.js` - Get Memberstack identity
-- ✅ `save.js` - Save exam results
-- ✅ `status.js` - Get exam status
-- ✅ `migrate-legacy.js` - Migrate legacy results
+- ✅ `_cors.js` - Shared CORS middleware (handles preflight + headers, supports X-Memberstack-Id)
+- ✅ `whoami.js` - Get Memberstack identity (supports X-Memberstack-Id header)
+- ✅ `save.js` - Save exam results (with enhanced validation and error logging)
+- ✅ `status.js` - Get exam status (supports X-Memberstack-Id header)
+- ✅ `migrate.js` - Migrate legacy results (supports X-Memberstack-Id header)
 - ✅ All endpoints support CORS for cross-origin requests from `https://www.alanranger.com`
 
-### 3. Frontend Engine
-- **File**: `src/engine-memberstack.js`
-- **Status**: Complete with Memberstack auth + migration UI
-- **Action**: Replace `engine.js` or update `squarespace-v2.2.html` to use this
+### 3. Frontend Files
+- **`squarespace-v2.2.html`** - Exams & Certification page code block
+  - Memberstack authentication
+  - Auto-save functionality
+  - Grid auto-refresh on page visibility/focus
+  - Debug panel (hidden by default, Ctrl+Shift+D to show)
+  - Grid status tracking in debug panel
+  
+- **`academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block
+  - Exam progress display
+  - Auto-refresh every 30 seconds
+  - Page load refresh (1 second delay)
+  - Visibility change refresh
 
 ### 4. Configuration
 - ✅ `package.json` - API dependencies
 - ✅ `VERCEL_ENV_SETUP.md` - Environment variables guide
 - ✅ `IMPLEMENTATION_NOTES.md` - Full implementation details
 
-## 🔄 Next Steps
+## 🔄 Deployment Steps
 
 ### Step 1: Supabase Setup
 1. Open Supabase Dashboard → SQL Editor
 2. Copy contents of `supabase-migration.sql`
 3. Run the SQL script
-4. Verify tables created: `module_results_ms` and `exam_member_links`
+4. Verify table created: `module_results_ms`
 
 ### Step 2: Vercel Environment Variables
 1. Go to Vercel project → Settings → Environment Variables
@@ -48,62 +57,83 @@ All files in `/api/exams/`:
 2. Ensure `package.json` includes dependencies
 3. Vercel will auto-detect and deploy serverless functions
 
-### Step 4: Update Frontend
-**Option A: Replace engine.js**
-- Replace `src/engine.js` with `src/engine-memberstack.js`
-- Rebuild/regenerate dist files if using a build process
-
-**Option B: Update squarespace-v2.2.html directly**
-- Find the Supabase auth initialization code
-- Replace with Memberstack auth calls
-- Add migration UI (already included in engine-memberstack.js)
+### Step 4: Update Squarespace Code Blocks
+1. **Exams & Certification page**: Copy entire contents of `squarespace-v2.2.html` to code block
+2. **Dashboard page**: Copy entire contents of `academy-dashboard-squarespace-snippet-v1.html` to code block
 
 ### Step 5: Test
-Follow the testing checklist in `IMPLEMENTATION_NOTES.md`
+1. Log into Academy dashboard
+2. Open exam page - should show Memberstack email
+3. Take an exam - should auto-save
+4. Navigate back to grid - should refresh automatically
+5. Check dashboard - should show updated progress
 
-## Key Changes from Legacy
+## Key Features (v2.2.0)
 
-### Before (Legacy)
-- User enters email → Supabase magic link
-- Results saved to `module_results` table
-- User ID = Supabase `user_id`
+### Authentication
+- Memberstack-only authentication (no Supabase magic links)
+- Uses `X-Memberstack-Id` header as fallback
+- Client-side Memberstack API support
 
-### After (Memberstack)
-- User already logged into Academy (Memberstack)
-- Results saved to `module_results_ms` table
-- User ID = Memberstack `memberstack_id`
-- No email sign-in needed (seamless)
+### Auto-Save
+- Exam results automatically saved after submission
+- No manual "Save" button required (but available as backup)
 
-### Migration Path
-- Legacy users click "Import previous exam progress"
-- One-time Supabase magic link flow
-- Results copied from `module_results` → `module_results_ms`
-- Future exams use Memberstack
+### Auto-Refresh
+- Grid refreshes when navigating back to page
+- Dashboard refreshes every 30 seconds and on visibility change
+- Page load refresh on dashboard (1 second delay)
 
-## Files Modified/Created
+### Debug Panel
+- Hidden by default (press Ctrl+Shift+D to show)
+- Shows authentication status, API calls, grid status, errors
+- Copy button to export debug information
 
-**New Files:**
-- `api/exams/_cors.js` - CORS middleware
-- `api/exams/whoami.js`
-- `api/exams/save.js`
-- `api/exams/status.js`
-- `api/exams/migrate-legacy.js`
-- `api/exams/CORS_DEPLOYMENT.md` - CORS deployment guide
-- `src/engine-memberstack.js`
-- `supabase-migration.sql`
-- `package.json`
-- `VERCEL_ENV_SETUP.md`
-- `IMPLEMENTATION_NOTES.md`
-- `DEPLOYMENT_SUMMARY.md` (this file)
+### Error Handling
+- Comprehensive error logging
+- Grid status tracking
+- Graceful fallbacks
 
-**Files to Update:**
-- `squarespace-v2.2.html` (replace engine.js reference or inline code)
-- Any compiled `dist/module-*.html` files (if using build process)
+## Database Schema
+
+### `module_results_ms` Table
+- `memberstack_id` (text) - Memberstack member ID
+- `email` (text) - User email
+- `module_id` (text) - Module identifier
+- `score_percent` (numeric) - Exam score (0-100)
+- `passed` (boolean) - Pass/fail status
+- `attempt` (integer) - Attempt number
+- `details` (jsonb) - Additional exam details
+- `created_at` (timestamp) - When result was saved
+
+## API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/exams/whoami` | GET | Get Memberstack identity |
+| `/api/exams/save` | POST | Save exam results |
+| `/api/exams/status` | GET | Get latest exam status for module |
+| `/api/exams/migrate` | POST | Migrate legacy exam results |
+
+All endpoints:
+- Support CORS from `https://www.alanranger.com`
+- Accept `X-Memberstack-Id` header as authentication fallback
+- Return appropriate error codes with detailed messages
+
+## Recent Updates (v2.2.0)
+
+- ✅ Grid refresh fixes (after exam, on page visibility/focus)
+- ✅ Auto-save functionality
+- ✅ Debug panel hidden by default
+- ✅ Grid status tracking in debug panel
+- ✅ Enhanced error handling and validation
+- ✅ Blank page prevention
+- ✅ Dashboard auto-refresh improvements
 
 ## Rollback
 
 If issues occur:
 1. Legacy system still works (`module_results` table untouched)
-2. Can revert to original `engine.js`
+2. Can revert to previous version using git tag `v2.2.0`
 3. Migration is idempotent (safe to re-run)
 4. No data loss
