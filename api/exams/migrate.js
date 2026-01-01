@@ -82,13 +82,33 @@ module.exports = async (req, res) => {
         try {
           console.log("[migrate] Attempting to retrieve member with ID:", memberId);
           const result = await memberstack.members.retrieve({ id: memberId });
-          console.log("[migrate] Memberstack API response:", JSON.stringify(result, null, 2));
+          console.log("[migrate] Memberstack API response type:", typeof result);
+          console.log("[migrate] Memberstack API response keys:", result ? Object.keys(result) : "null");
+          console.log("[migrate] Memberstack API response (stringified):", JSON.stringify(result, null, 2));
           
-          if (result && result.data) {
-            member = result.data;
-            console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
+          // Handle different response structures
+          if (result) {
+            // Try result.data first (standard structure)
+            if (result.data) {
+              member = result.data;
+              console.log("[migrate] ✅ Member retrieved successfully (via result.data):", member?.auth?.email);
+            }
+            // Try result directly (if API returns member directly)
+            else if (result.id || result.auth) {
+              member = result;
+              console.log("[migrate] ✅ Member retrieved successfully (via result directly):", member?.auth?.email);
+            }
+            // Try result.member (alternative structure)
+            else if (result.member) {
+              member = result.member;
+              console.log("[migrate] ✅ Member retrieved successfully (via result.member):", member?.auth?.email);
+            }
+            else {
+              console.error("[migrate] ❌ Memberstack returned unexpected structure. Full response:", JSON.stringify(result, null, 2));
+              return res.status(401).json({ error: "Member not found in Memberstack", debug: { responseType: typeof result, responseKeys: Object.keys(result || {}) } });
+            }
           } else {
-            console.error("[migrate] ❌ Memberstack returned no data. Full response:", result);
+            console.error("[migrate] ❌ Memberstack returned null/undefined");
             return res.status(401).json({ error: "Member not found in Memberstack" });
           }
         } catch (e) {
