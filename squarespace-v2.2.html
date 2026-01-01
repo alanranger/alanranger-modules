@@ -2358,17 +2358,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   
   // Check for existing session on page load (Supabase legacy fallback)
-  checkExistingSession();
+  // Wait a bit to ensure Memberstack identity is set first
+  setTimeout(() => {
+    checkExistingSession();
+  }, 500);
   
   
   
   // Function to check for existing session and auto-sign in
   async function checkExistingSession() {
-    // SKIP if Memberstack is already authenticated
-    if (memberstackIdentity) {
+    // SKIP if Memberstack is already authenticated - check both variable and API
+    const hasMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
+    
+    if (hasMemberstack) {
       debugLog('🔍 Skipping Supabase session check - Memberstack is active');
       return;
     }
+    
+    debugLog('🔍 checkExistingSession - memberstackIdentity:', !!memberstackIdentity, 'hasMemberstack:', !!hasMemberstack);
     
     try {
       debugLog('🔍 Checking for existing session...');
@@ -2380,6 +2387,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       if (session && session.user) {
+        // Double-check Memberstack wasn't set while we were waiting
+        const currentMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
+        if (currentMemberstack) {
+          debugLog('🔍 Memberstack detected during session check - skipping Supabase grid update');
+          return;
+        }
+        
         debugLog('✅ Found existing session for:', session.user.email);
         // User is already signed in, update UI
         const { data: { user } } = await supabase.auth.getUser();
@@ -2387,8 +2401,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           debugLog('🔄 Auto-signing in existing user:', user.email);
           // Trigger auth state change to load progress
           const status = await fetchStatusForUser(user);
-          renderSummary(status);
-          renderGrid(status);
+          
+          // Only render if we have data - don't clear existing Memberstack data
+          if (Object.keys(status).length > 0) {
+            renderSummary(status);
+            renderGrid(status);
+          } else {
+            debugLog('⚠️ No Supabase status data - keeping existing grid');
+          }
         }
       } else {
         debugLog('ℹ️ No existing session found');
