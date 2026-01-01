@@ -2359,9 +2359,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Check for existing session on page load (Supabase legacy fallback)
   // Wait a bit to ensure Memberstack identity is set first
-  setTimeout(() => {
-    checkExistingSession();
-  }, 500);
+  // Only run if Memberstack is NOT authenticated
+  setTimeout(async () => {
+    // Double-check Memberstack before running
+    const hasMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
+    if (!hasMemberstack) {
+      checkExistingSession();
+    } else {
+      debugLog('🔍 Skipping checkExistingSession - Memberstack is active');
+    }
+  }, 1000);
   
   
   
