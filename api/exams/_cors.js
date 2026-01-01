@@ -11,7 +11,7 @@ function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Memberstack-Id");
   res.setHeader("Vary", "Origin");
 }
 
@@ -59,10 +59,20 @@ function getMemberstackToken(req) {
   return getCookie(cookieHeader, "_ms-mid");
 }
 
+/**
+ * Get Memberstack member ID from request (header fallback when token is missing)
+ * @param {object} req - Request object
+ * @returns {string|null} - Member ID or null
+ */
+function getMemberstackMemberId(req) {
+  return req.headers["x-memberstack-id"] || null;
+}
+
 module.exports = {
   setCorsHeaders,
   handlePreflight,
   getCookie,
   getMemberstackToken,
+  getMemberstackMemberId,
   ALLOWED_ORIGIN
 };
