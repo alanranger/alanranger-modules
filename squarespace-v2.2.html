@@ -1170,7 +1170,16 @@ async function getExamIdentity() {
     // Check if Memberstack client API is available
     if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
       try {
-        const member = await window.$memberstackDom.getCurrentMember();
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Memberstack API timeout after 5s')), 5000)
+        );
+        
+        const member = await Promise.race([
+          window.$memberstackDom.getCurrentMember(),
+          timeoutPromise
+        ]);
+        
         if (member && member.data) {
           debugData.memberstackClient = {
             id: member.data.id,
@@ -1189,33 +1198,52 @@ async function getExamIdentity() {
         }
       } catch (e) {
         logError(`Client API failed: ${e.message}`);
+        updateDebugPanel();
       }
     }
     
     // Fallback: Use server API with token
-    const headers = await getApiHeaders();
-    const url = `${EXAMS_API_BASE}/api/exams/whoami`;
-    
-    const r = await fetch(url, {
-      headers: headers,
-      credentials: "include"
-    });
-    
-    logApiCall('GET', url, r.status, r.statusText);
-    
-    if (!r.ok) {
-      const errorText = await r.text().catch(() => "Could not read error");
-      logApiCall('GET', url, r.status, r.statusText, errorText);
+    try {
+      const headers = await getApiHeaders();
+      const url = `${EXAMS_API_BASE}/api/exams/whoami`;
+      
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const r = await fetch(url, {
+        headers: headers,
+        credentials: "include",
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      logApiCall('GET', url, r.status, r.statusText);
+      
+      if (!r.ok) {
+        const errorText = await r.text().catch(() => "Could not read error");
+        logApiCall('GET', url, r.status, r.statusText, errorText);
+        updateDebugPanel();
+        return null;
+      }
+      
+      const data = await r.json();
+      memberstackIdentity = data;
+      debugData.memberstackIdentity = data;
+      updateDebugPanel();
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        logError(`Server API timeout: Request took longer than 5s`);
+      } else {
+        logError(`Server API failed: ${e.message}`);
+      }
+      updateDebugPanel();
       return null;
     }
-    
-    const data = await r.json();
-    memberstackIdentity = data;
-    debugData.memberstackIdentity = data;
-    updateDebugPanel();
-    return data;
   } catch (e) {
     logError(`getExamIdentity exception: ${e.message}`);
+    updateDebugPanel();
     return null;
   }
 }
