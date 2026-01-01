@@ -861,18 +861,26 @@ let debugData = {
 };
 
 function updateDebugPanel() {
-  const content = document.getElementById('debugContent');
-  if (!content) return;
-  
-  let html = '';
-  
-  // API Configuration
-  html += '<div class="debug-section">';
-  html += '<div class="debug-section-title">🔧 API Configuration</div>';
-  html += `<div class="debug-item"><span class="debug-label">API Base:</span><span class="debug-value ${!debugData.apiBase || debugData.apiBase === 'UNDEFINED' ? 'error' : 'info'}">${debugData.apiBase || 'UNDEFINED'}</span></div>`;
-  html += `<div class="debug-item"><span class="debug-label">Page URL:</span><span class="debug-value info">${debugData.pageUrl}</span></div>`;
-  html += `<div class="debug-item"><span class="debug-label">Timestamp:</span><span class="debug-value info">${new Date().toLocaleTimeString()}</span></div>`;
-  html += '</div>';
+  try {
+    const content = document.getElementById('debugContent');
+    if (!content) {
+      console.warn('Debug panel content not found');
+      return;
+    }
+    
+    // Update debugData with current values
+    debugData.pageUrl = window.location.href;
+    debugData.apiBase = typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : 'UNDEFINED';
+    
+    let html = '';
+    
+    // API Configuration
+    html += '<div class="debug-section">';
+    html += '<div class="debug-section-title">🔧 API Configuration</div>';
+    html += `<div class="debug-item"><span class="debug-label">API Base:</span><span class="debug-value ${!debugData.apiBase || debugData.apiBase === 'UNDEFINED' ? 'error' : 'info'}">${debugData.apiBase || 'UNDEFINED'}</span></div>`;
+    html += `<div class="debug-item"><span class="debug-label">Page URL:</span><span class="debug-value info">${debugData.pageUrl}</span></div>`;
+    html += `<div class="debug-item"><span class="debug-label">Timestamp:</span><span class="debug-value info">${new Date().toLocaleTimeString()}</span></div>`;
+    html += '</div>';
   
   // Memberstack Client API
   html += '<div class="debug-section">';
@@ -954,7 +962,14 @@ function updateDebugPanel() {
   html += `<div class="debug-item"><span class="debug-label">Initialized:</span><span class="debug-value ${supabaseReady ? 'info' : 'error'}">${supabaseReady ? 'YES' : 'NO'}</span></div>`;
   html += '</div>';
   
-  content.innerHTML = html;
+    content.innerHTML = html;
+  } catch (e) {
+    console.error('updateDebugPanel error:', e);
+    const content = document.getElementById('debugContent');
+    if (content) {
+      content.innerHTML = '<div class="debug-section"><div class="debug-section-title">❌ Error</div><div class="debug-item"><span class="debug-value error">Failed to update debug panel: ' + e.message + '</span></div></div>';
+    }
+  }
 }
 
 function logApiCall(method, url, status, statusText, error) {
