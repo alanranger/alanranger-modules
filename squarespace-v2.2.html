@@ -1343,11 +1343,21 @@ async function saveResultsViaMemberstack(report) {
  * Get latest exam status via Memberstack API
  */
 async function getLatestStatusViaMemberstack(moduleId) {
-  if (!memberstackIdentity) return null;
+  // Try to get identity if not set
+  if (!memberstackIdentity) {
+    debugLog(`⚠️ memberstackIdentity not set, attempting to get it...`);
+    memberstackIdentity = await getExamIdentity();
+    if (!memberstackIdentity) {
+      debugLog(`❌ Cannot fetch status - no Memberstack identity`);
+      return null;
+    }
+  }
   
   try {
     const headers = await getApiHeaders();
     const url = `${EXAMS_API_BASE}/api/exams/status?moduleId=${encodeURIComponent(moduleId)}`;
+    
+    debugLog(`🔍 Fetching status for ${moduleId} with member ID: ${memberstackIdentity?.memberstack_id || 'N/A'}`);
     
     const r = await fetch(url, {
       headers: headers,
@@ -1369,7 +1379,7 @@ async function getLatestStatusViaMemberstack(moduleId) {
     if (result) {
       debugLog(`✅ Status for ${moduleId}: score=${result.score_percent}, passed=${result.passed}, attempt=${result.attempt}`);
     } else {
-      debugLog(`⚠️ No status found for ${moduleId}`);
+      debugLog(`⚠️ No status found for ${moduleId} (API returned null)`);
     }
     
     return result;
@@ -2240,9 +2250,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Small delay to ensure spinner is visible
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // Ensure memberstackIdentity is set before fetching
+      if (!memberstackIdentity) {
+        debugLog('⚠️ memberstackIdentity not set, re-fetching...');
+        memberstackIdentity = await getExamIdentity();
+        if (!memberstackIdentity) {
+          debugLog('❌ Cannot load exam status - no Memberstack identity');
+          hideLoadingSpinner();
+          return;
+        }
+      }
+      
       // Fetch exam status from Memberstack API and render grid
       try {
         debugLog('🔄 Fetching exam status from Memberstack API...');
+        debugLog('🔄 Using member ID:', memberstackIdentity.memberstack_id);
         const statusByModule = {};
         
         // Fetch status for all modules (with progress updates)
@@ -2258,6 +2280,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 passed: status.passed,
                 when: status.created_at
               };
+              debugLog(`✅ Added status for ${module.id}: score=${status.score_percent}, passed=${status.passed}`);
+            } else {
+              debugLog(`⚠️ No status returned for ${module.id}`);
             }
           } catch (err) {
             debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
@@ -2268,13 +2293,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('📊 Status data keys:', Object.keys(statusByModule));
         debugLog('📊 Status data sample:', JSON.stringify(Object.entries(statusByModule).slice(0, 3), null, 2));
         
-        // Only render if we have data - don't clear existing grid
+        // Always render - even if empty, show the grid
+        renderSummary(statusByModule);
+        renderGrid(statusByModule);
         if (Object.keys(statusByModule).length > 0) {
-          renderSummary(statusByModule);
-          renderGrid(statusByModule);
           debugLog('✅ Grid rendered with Memberstack data');
         } else {
-          debugLog('⚠️ No status data to render - keeping existing grid');
+          debugLog('⚠️ Grid rendered with no data - showing empty state');
         }
         
         // Show the grid element
