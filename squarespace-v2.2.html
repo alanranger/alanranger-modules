@@ -2243,6 +2243,22 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
     renderProgressBadge();
   }
 })();
+
+// Keyboard shortcut to show/hide debug panel (Ctrl+Shift+D)
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    e.preventDefault();
+    const panel = document.getElementById('debugPanel');
+    const btn = document.getElementById('debugShowBtn');
+    if (panel) {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+    if (btn) {
+      btn.style.display = panel && panel.style.display === 'block' ? 'none' : 'block';
+    }
+  }
+});
+
 // Grid authentication setup
 document.addEventListener('DOMContentLoaded', async () => {
   debugLog('🚀 Grid script starting...');
