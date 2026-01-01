@@ -1857,11 +1857,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (gridContainer) gridContainer.style.display = 'none';
   }
   
-  // Setup debug button
-  const debugBtn = document.getElementById('debugBtn');
-  if (debugBtn) {
-    debugBtn.addEventListener('click', showDebugPanel);
-  }
+  // Debug panel is always visible, no button needed
+  updateDebugPanel();
   
   
   // Check for existing session on page load (Supabase legacy fallback)
