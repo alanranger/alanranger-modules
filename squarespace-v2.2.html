@@ -2059,6 +2059,13 @@ function renderResultsFromReport(rpt){
 // Only set up auth state listener if supabase is initialized
 if (typeof supabase !== 'undefined' && supabase.auth) {
   supabase.auth.onAuthStateChange(async (_event, session) => {
+  // SKIP Supabase auth handling if Memberstack is authenticated
+  // Memberstack takes priority and has its own loading logic
+  if (memberstackIdentity) {
+    debugLog('🔄 Supabase auth state change ignored - Memberstack is active');
+    return;
+  }
+  
   // Clear any pending auth state change
   if (authStateChangeTimeout) {
     clearTimeout(authStateChangeTimeout);
