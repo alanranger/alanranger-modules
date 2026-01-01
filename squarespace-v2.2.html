@@ -2557,8 +2557,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // CRITICAL: Render grid immediately with empty status to prevent blank page
   // This ensures the page is visible even if authentication is slow or fails
+  // BUT: Don't set memberstackDataLoaded flag yet - we want to allow updates when auth succeeds
   try {
     debugLog('🎨 Rendering initial grid (empty state)...');
+    // Ensure memberstackDataLoaded is false so we can update later
+    memberstackDataLoaded = false;
     renderSummary({});
     renderGrid({});
     if (gridContainer) gridContainer.style.display = 'block';
@@ -2740,11 +2743,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('📊 Status data keys:', Object.keys(statusByModule));
         debugLog('📊 Status data sample:', JSON.stringify(Object.entries(statusByModule).slice(0, 3), null, 2));
         
+        // CRITICAL: Reset the protection flag before rendering with actual data
+        // This allows the grid to be updated with the fetched data
+        memberstackDataLoaded = false;
+        
         // Always render - even if empty, show the grid
+        debugLog('🎨 Rendering grid with fetched data...');
         renderSummary(statusByModule);
         renderGrid(statusByModule);
         
-        // Mark that Memberstack data has been loaded - prevent any clearing
+        // Mark that Memberstack data has been loaded - prevent any clearing AFTER rendering
         memberstackDataLoaded = true;
         debugLog('✅ Memberstack data loaded flag set - grid protected from clearing');
         
