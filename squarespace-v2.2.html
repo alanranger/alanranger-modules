@@ -53,7 +53,7 @@
         border-radius:8px; 
         box-shadow:0 8px 32px rgba(0,0,0,.5); 
         z-index:99999; 
-        display:block; /* Visible by default for debugging */
+        display:none; /* Hidden by default - press Ctrl+Shift+D to show */
         font-family:monospace;
         color:#fff;
         overflow:hidden;
@@ -186,8 +186,8 @@
     </div>
   </div>
   
-  <!-- Small debug toggle button (hidden by default, show with Ctrl+Shift+D) -->
-  <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:none; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
+  <!-- Small debug toggle button (shown when panel is hidden, press Ctrl+Shift+D to toggle) -->
+  <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:block; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
 
   <!-- Quiz View -->
   <div id="quiz-container" style="display:none;">
@@ -2596,7 +2596,7 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
   }
 })();
 
-// Keyboard shortcut to toggle debug panel (Ctrl+Shift+D) - Panel is visible by default
+// Keyboard shortcut to toggle debug panel (Ctrl+Shift+D) - Panel is hidden by default
 document.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.shiftKey && e.key === 'D') {
     e.preventDefault();
