@@ -18,12 +18,20 @@ module.exports = async (req, res) => {
     }
 
     // Log all headers for debugging (Vercel serverless functions)
+    // Note: Vercel lowercases all header names
     console.log("[migrate] === REQUEST DEBUG ===");
     console.log("[migrate] Method:", req.method);
     console.log("[migrate] All header keys:", Object.keys(req.headers || {}));
-    console.log("[migrate] Authorization header:", req.headers.authorization || req.headers.Authorization || "NOT FOUND");
-    console.log("[migrate] x-memberstack-id (lowercase):", req.headers["x-memberstack-id"] || "NOT FOUND");
-    console.log("[migrate] X-Memberstack-Id (original case):", req.headers["X-Memberstack-Id"] || "NOT FOUND");
+    console.log("[migrate] Authorization header:", req.headers.authorization || "NOT FOUND");
+    console.log("[migrate] x-memberstack-id (lowercase, Vercel standard):", req.headers["x-memberstack-id"] || "NOT FOUND");
+    
+    // Try multiple header name variations (Vercel might handle differently)
+    const memberIdFromHeader = req.headers["x-memberstack-id"] 
+      || req.headers["X-Memberstack-Id"] 
+      || req.headers["x-memberstackid"]
+      || req.headers["X-MemberstackId"]
+      || null;
+    console.log("[migrate] Member ID from header (all variations checked):", memberIdFromHeader || "NOT FOUND");
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     
@@ -48,23 +56,29 @@ module.exports = async (req, res) => {
     
     // Fallback: Use member ID header
     if (!memberId) {
+      // Try getMemberstackMemberId helper first
       memberId = getMemberstackMemberId(req);
-      console.log("[migrate] Member ID from header:", memberId);
-      console.log("[migrate] All request headers:", Object.keys(req.headers));
-      console.log("[migrate] x-memberstack-id header:", req.headers["x-memberstack-id"]);
-      console.log("[migrate] X-Memberstack-Id header:", req.headers["X-Memberstack-Id"]);
+      console.log("[migrate] Member ID from getMemberstackMemberId():", memberId || "NOT FOUND");
+      
+      // If helper didn't find it, try direct header access (Vercel lowercases headers)
+      if (!memberId) {
+        memberId = req.headers["x-memberstack-id"] || null;
+        console.log("[migrate] Member ID from direct header access:", memberId || "NOT FOUND");
+      }
+      
       if (memberId) {
         try {
           const { data } = await memberstack.members.retrieve({ id: memberId });
           member = data;
-          console.log("[migrate] Member retrieved successfully:", member?.auth?.email);
+          console.log("[migrate] ✅ Member retrieved successfully:", member?.auth?.email);
         } catch (e) {
-          console.error("[migrate] Member ID retrieval failed:", e.message);
+          console.error("[migrate] ❌ Member ID retrieval failed:", e.message);
           return res.status(401).json({ error: "Invalid member ID" });
         }
       } else {
-        console.error("[migrate] No token and no member ID header found");
-        console.error("[migrate] Available headers with 'member' or 'x':", Object.keys(req.headers).filter(h => h.toLowerCase().includes('member') || h.toLowerCase().startsWith('x-')));
+        console.error("[migrate] ❌ No token and no member ID header found");
+        console.error("[migrate] All headers:", JSON.stringify(req.headers, null, 2));
+        return res.status(401).json({ error: "Not logged in - no token or member ID" });
       }
     }
     

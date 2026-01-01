@@ -2178,17 +2178,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show exam UI
       if (gridContainer) gridContainer.style.display = 'block';
       
-      // Show loading spinner while fetching
+      // Show loading spinner while fetching (show immediately)
       showLoadingSpinner('Loading your exam progress...');
+      debugLog('⏳ Loading spinner shown');
+      
+      // Small delay to ensure spinner is visible
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Fetch exam status from Memberstack API and render grid
       try {
         debugLog('🔄 Fetching exam status from Memberstack API...');
         const statusByModule = {};
         
-        // Fetch status for all modules
-        for (const module of modules) {
+        // Fetch status for all modules (with progress updates)
+        const totalModules = modules.length;
+        for (let i = 0; i < modules.length; i++) {
+          const module = modules[i];
           try {
+            showLoadingSpinner(`Loading progress... (${i + 1}/${totalModules})`);
             const status = await getLatestStatusViaMemberstack(module.id);
             if (status) {
               statusByModule[module.id] = {
@@ -2230,6 +2237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } finally {
         // Always hide loading spinner
         hideLoadingSpinner();
+        debugLog('✅ Loading spinner hidden');
       }
       
       // Check if migration is needed
