@@ -442,19 +442,34 @@ function renderGrid(statusByModuleId = {}) {
   });
   
     // Debug: Log the final grid state
-    console.log(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
-    debugLog(`🎨 Grid rendering complete. Total cards: ${gridEl.children.length}`);
-    if (gridEl.children.length > 0) {
+    const cardsCount = gridEl.children.length;
+    debugLog(`🎨 Grid rendering complete. Total cards: ${cardsCount}`);
+    
+    // Update debug panel with grid status
+    debugData.gridStatus.rendered = true;
+    debugData.gridStatus.modulesCount = modules ? modules.length : 0;
+    debugData.gridStatus.cardsCount = cardsCount;
+    debugData.gridStatus.lastRenderTime = new Date().toLocaleTimeString();
+    debugData.gridStatus.lastError = null;
+    updateDebugPanel();
+    
+    if (cardsCount > 0) {
       debugLog(`🎨 Grid HTML preview: ${gridEl.innerHTML.substring(0, 200)}...`);
     } else {
-      console.error('❌ Grid has no children after rendering!');
       debugLog('❌ Grid has no children after rendering!');
+      logError('Grid rendered but has no cards');
     }
   } catch (err) {
-    console.error('❌ CRITICAL ERROR in renderGrid:', err);
-    console.error('❌ Error stack:', err.stack);
     debugLog('❌ CRITICAL ERROR in renderGrid:', err.message);
     debugLog('❌ Error stack:', err.stack);
+    
+    // Update debug panel with error
+    debugData.gridStatus.rendered = false;
+    debugData.gridStatus.lastError = err.message;
+    debugData.gridStatus.lastRenderTime = new Date().toLocaleTimeString();
+    updateDebugPanel();
+    logError(`renderGrid failed: ${err.message}`);
+    
     // Try to at least show something
     const gridEl = document.getElementById('grid');
     if (gridEl && modules && modules.length > 0) {
@@ -1035,6 +1050,20 @@ function updateDebugPanel() {
     debugData.errors.slice(-3).reverse().forEach(err => {
       html += `<div class="debug-item"><span class="debug-value error">${err}</span></div>`;
     });
+  }
+  html += '</div>';
+  
+  // Grid Status
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🎨 Grid Status</div>';
+  html += `<div class="debug-item"><span class="debug-label">Rendered:</span><span class="debug-value ${debugData.gridStatus.rendered ? 'info' : 'error'}">${debugData.gridStatus.rendered ? 'YES' : 'NO'}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Modules:</span><span class="debug-value info">${debugData.gridStatus.modulesCount}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Cards:</span><span class="debug-value info">${debugData.gridStatus.cardsCount}</span></div>`;
+  if (debugData.gridStatus.lastRenderTime) {
+    html += `<div class="debug-item"><span class="debug-label">Last Render:</span><span class="debug-value info">${debugData.gridStatus.lastRenderTime}</span></div>`;
+  }
+  if (debugData.gridStatus.lastError) {
+    html += `<div class="debug-item"><span class="debug-label">Last Error:</span><span class="debug-value error">${debugData.gridStatus.lastError}</span></div>`;
   }
   html += '</div>';
   
@@ -2817,12 +2846,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           gridEl.style.display = 'grid';
           gridEl.style.visibility = 'visible';
           gridEl.style.opacity = '1';
-          debugLog(`✅ Grid element displayed. Children count: ${gridEl.children.length}`);
-          console.log('✅ Grid element:', gridEl);
-          console.log('✅ Grid children:', gridEl.children.length);
+          const childrenCount = gridEl.children.length;
+          debugLog(`✅ Grid element displayed. Children count: ${childrenCount}`);
+          
+          // Update debug panel
+          debugData.gridStatus.cardsCount = childrenCount;
+          updateDebugPanel();
         } else {
-          console.error('❌ Grid element not found!');
           debugLog('❌ Grid element not found!');
+          logError('Grid element not found after rendering');
         }
         
         // Also ensure grid container is visible
@@ -2831,7 +2863,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           gridContainer.style.visibility = 'visible';
           debugLog('✅ Grid container displayed');
         } else {
-          console.error('❌ Grid container not found!');
+          debugLog('❌ Grid container not found!');
+          logError('Grid container not found');
         }
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
