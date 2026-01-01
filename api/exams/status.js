@@ -47,6 +47,7 @@ module.exports = async (req, res) => {
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+    console.log("[status] Querying module_results_ms for memberId:", memberId, "moduleId:", moduleId);
     const { data, error } = await supabase
       .from("module_results_ms")
       .select("score_percent,passed,attempt,created_at")
@@ -59,6 +60,14 @@ module.exports = async (req, res) => {
       console.error("[status] Supabase error:", error);
       return res.status(500).json({ error: error.message });
     }
+    
+    console.log("[status] Query result - found", data?.length || 0, "results for", moduleId);
+    if (data && data.length > 0) {
+      console.log("[status] Returning latest result:", JSON.stringify(data[0]));
+    } else {
+      console.log("[status] No results found for memberId:", memberId, "moduleId:", moduleId);
+    }
+    
     return res.status(200).json({ latest: data?.[0] || null });
   } catch (e) {
     console.error("[status] Error:", e);
