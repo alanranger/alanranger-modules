@@ -17,6 +17,14 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
+    // Log all headers for debugging (Vercel serverless functions)
+    console.log("[migrate] === REQUEST DEBUG ===");
+    console.log("[migrate] Method:", req.method);
+    console.log("[migrate] All header keys:", Object.keys(req.headers || {}));
+    console.log("[migrate] Authorization header:", req.headers.authorization || req.headers.Authorization || "NOT FOUND");
+    console.log("[migrate] x-memberstack-id (lowercase):", req.headers["x-memberstack-id"] || "NOT FOUND");
+    console.log("[migrate] X-Memberstack-Id (original case):", req.headers["X-Memberstack-Id"] || "NOT FOUND");
+
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     
     // Try token-based auth first
@@ -24,12 +32,14 @@ module.exports = async (req, res) => {
     let member = null;
     
     const token = getMemberstackToken(req);
+    console.log("[migrate] Token from getMemberstackToken:", token ? "FOUND (length: " + token.length + ")" : "NOT FOUND");
     if (token) {
       try {
         const { id } = await memberstack.verifyToken({ token });
         memberId = id;
         const { data } = await memberstack.members.retrieve({ id });
         member = data;
+        console.log("[migrate] Token auth successful, member ID:", memberId);
       } catch (e) {
         console.error("[migrate] Token verification failed:", e.message);
         // Fall through to member ID fallback
