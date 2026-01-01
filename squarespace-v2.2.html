@@ -67,8 +67,9 @@
         display:flex;
         justify-content:space-between;
         align-items:center;
+        gap:8px;
       }
-      #debugToggle{ 
+      #debugToggle, #debugCopy{ 
         background:rgba(255,255,255,.2); 
         border:none; 
         color:#fff; 
@@ -76,6 +77,13 @@
         border-radius:4px; 
         cursor:pointer; 
         font-size:11px;
+        transition:background 0.2s;
+      }
+      #debugToggle:hover, #debugCopy:hover{ 
+        background:rgba(255,255,255,.3);
+      }
+      #debugCopy.copied{
+        background:#10b981;
       }
       #debugContent{ 
         max-height:calc(90vh - 50px); 
@@ -832,13 +840,226 @@ function showDebugPanel() {
   }
 }
 
-function copyDebugInfo() {
+// Comprehensive debug panel that collects all diagnostic data
+let debugData = {
+  timestamp: new Date().toISOString(),
+  pageUrl: window.location.href,
+  apiBase: typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : 'UNDEFINED',
+  memberstackClient: null,
+  memberstackIdentity: null,
+  cookies: {},
+  apiCalls: [],
+  errors: [],
+  supabaseStatus: null
+};
+
+function updateDebugPanel() {
   const content = document.getElementById('debugContent');
-  if (content) {
-    navigator.clipboard.writeText(content.textContent).then(() => {
-      alert('Debug info copied to clipboard!');
+  if (!content) return;
+  
+  let html = '';
+  
+  // API Configuration
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🔧 API Configuration</div>';
+  html += `<div class="debug-item"><span class="debug-label">API Base:</span><span class="debug-value ${!debugData.apiBase || debugData.apiBase === 'UNDEFINED' ? 'error' : 'info'}">${debugData.apiBase || 'UNDEFINED'}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Page URL:</span><span class="debug-value info">${debugData.pageUrl}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Timestamp:</span><span class="debug-value info">${new Date().toLocaleTimeString()}</span></div>`;
+  html += '</div>';
+  
+  // Memberstack Client API
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">👤 Memberstack Client API</div>';
+  const msAvailable = window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function';
+  html += `<div class="debug-item"><span class="debug-label">Available:</span><span class="debug-value ${msAvailable ? 'info' : 'error'}">${msAvailable ? 'YES' : 'NO'}</span></div>`;
+  if (debugData.memberstackClient) {
+    html += `<div class="debug-item"><span class="debug-label">Member ID:</span><span class="debug-value info">${debugData.memberstackClient.id || 'N/A'}</span></div>`;
+    html += `<div class="debug-item"><span class="debug-label">Email:</span><span class="debug-value info">${debugData.memberstackClient.email || 'N/A'}</span></div>`;
+  } else {
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value warning">Not checked yet</span></div>`;
+  }
+  html += '</div>';
+  
+  // Memberstack Identity (from API)
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🔐 Memberstack Identity (API)</div>';
+  if (debugData.memberstackIdentity) {
+    html += `<div class="debug-item"><span class="debug-label">Member ID:</span><span class="debug-value info">${debugData.memberstackIdentity.memberstack_id || 'N/A'}</span></div>`;
+    html += `<div class="debug-item"><span class="debug-label">Email:</span><span class="debug-value info">${debugData.memberstackIdentity.email || 'N/A'}</span></div>`;
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value info">✅ Authenticated</span></div>`;
+  } else {
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value error">❌ Not authenticated</span></div>`;
+  }
+  html += '</div>';
+  
+  // Cookies
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🍪 Cookies</div>';
+  const allCookies = document.cookie;
+  if (allCookies) {
+    const cookies = allCookies.split(';').map(c => c.trim());
+    html += `<div class="debug-item"><span class="debug-label">Total Cookies:</span><span class="debug-value info">${cookies.length}</span></div>`;
+    const msCookie = cookies.find(c => c.startsWith('_ms-mid='));
+    if (msCookie) {
+      const token = decodeURIComponent(msCookie.split('=').slice(1).join('='));
+      html += `<div class="debug-item"><span class="debug-label">_ms-mid:</span><span class="debug-value info">Found (${token.length} chars)</span></div>`;
+    } else {
+      html += `<div class="debug-item"><span class="debug-label">_ms-mid:</span><span class="debug-value error">NOT FOUND</span></div>`;
+    }
+    html += `<div class="debug-item"><span class="debug-label">All Cookie Names:</span><span class="debug-value info">${cookies.map(c => c.split('=')[0]).join(', ')}</span></div>`;
+  } else {
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value error">No cookies found</span></div>`;
+  }
+  html += '</div>';
+  
+  // API Calls
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">📡 API Calls</div>';
+  if (debugData.apiCalls.length === 0) {
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value warning">No API calls yet</span></div>`;
+  } else {
+    debugData.apiCalls.slice(-5).reverse().forEach(call => {
+      const statusClass = call.status >= 200 && call.status < 300 ? 'info' : call.status === 401 ? 'warning' : 'error';
+      html += `<div class="debug-item"><span class="debug-label">${call.method} ${call.url}:</span><span class="debug-value ${statusClass}">${call.status} ${call.statusText || ''}</span></div>`;
+      if (call.error) {
+        html += `<div class="debug-item" style="padding-left:20px;"><span class="debug-value error">${call.error}</span></div>`;
+      }
     });
   }
+  html += '</div>';
+  
+  // Errors
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">❌ Errors</div>';
+  if (debugData.errors.length === 0) {
+    html += `<div class="debug-item"><span class="debug-label">Status:</span><span class="debug-value info">No errors</span></div>`;
+  } else {
+    debugData.errors.slice(-3).reverse().forEach(err => {
+      html += `<div class="debug-item"><span class="debug-value error">${err}</span></div>`;
+    });
+  }
+  html += '</div>';
+  
+  // Supabase Status
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🗄️ Supabase</div>';
+  const supabaseReady = typeof supabase !== 'undefined' && supabase && supabase.auth;
+  html += `<div class="debug-item"><span class="debug-label">Initialized:</span><span class="debug-value ${supabaseReady ? 'info' : 'error'}">${supabaseReady ? 'YES' : 'NO'}</span></div>`;
+  html += '</div>';
+  
+  content.innerHTML = html;
+}
+
+function logApiCall(method, url, status, statusText, error) {
+  debugData.apiCalls.push({
+    method,
+    url,
+    status,
+    statusText,
+    error,
+    timestamp: new Date().toISOString()
+  });
+  if (debugData.apiCalls.length > 20) debugData.apiCalls.shift();
+  updateDebugPanel();
+}
+
+function logError(message) {
+  debugData.errors.push(`${new Date().toLocaleTimeString()}: ${message}`);
+  if (debugData.errors.length > 10) debugData.errors.shift();
+  updateDebugPanel();
+}
+
+function copyDebugInfo() {
+  // Collect all debug data into a formatted string
+  let text = '=== EXAM DEBUG INFORMATION ===\n\n';
+  text += `Timestamp: ${new Date().toISOString()}\n`;
+  text += `Page URL: ${debugData.pageUrl}\n`;
+  text += `API Base: ${debugData.apiBase}\n\n`;
+  
+  text += '--- Memberstack Client API ---\n';
+  const msAvailable = window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function';
+  text += `Available: ${msAvailable ? 'YES' : 'NO'}\n`;
+  if (debugData.memberstackClient) {
+    text += `Member ID: ${debugData.memberstackClient.id || 'N/A'}\n`;
+    text += `Email: ${debugData.memberstackClient.email || 'N/A'}\n`;
+  } else {
+    text += 'Status: Not checked yet\n';
+  }
+  text += '\n';
+  
+  text += '--- Memberstack Identity (API) ---\n';
+  if (debugData.memberstackIdentity) {
+    text += `Member ID: ${debugData.memberstackIdentity.memberstack_id || 'N/A'}\n`;
+    text += `Email: ${debugData.memberstackIdentity.email || 'N/A'}\n`;
+    text += 'Status: ✅ Authenticated\n';
+  } else {
+    text += 'Status: ❌ Not authenticated\n';
+  }
+  text += '\n';
+  
+  text += '--- Cookies ---\n';
+  const allCookies = document.cookie;
+  if (allCookies) {
+    const cookies = allCookies.split(';').map(c => c.trim());
+    text += `Total Cookies: ${cookies.length}\n`;
+    const msCookie = cookies.find(c => c.startsWith('_ms-mid='));
+    if (msCookie) {
+      const token = decodeURIComponent(msCookie.split('=').slice(1).join('='));
+      text += `_ms-mid: Found (${token.length} chars)\n`;
+    } else {
+      text += '_ms-mid: NOT FOUND\n';
+    }
+    text += `All Cookie Names: ${cookies.map(c => c.split('=')[0]).join(', ')}\n`;
+  } else {
+    text += 'Status: No cookies found\n';
+  }
+  text += '\n';
+  
+  text += '--- API Calls (Last 10) ---\n';
+  if (debugData.apiCalls.length === 0) {
+    text += 'No API calls yet\n';
+  } else {
+    debugData.apiCalls.slice(-10).reverse().forEach(call => {
+      text += `${call.method} ${call.url}: ${call.status} ${call.statusText || ''}\n`;
+      if (call.error) {
+        text += `  Error: ${call.error}\n`;
+      }
+      text += `  Time: ${new Date(call.timestamp).toLocaleTimeString()}\n`;
+    });
+  }
+  text += '\n';
+  
+  text += '--- Errors (Last 10) ---\n';
+  if (debugData.errors.length === 0) {
+    text += 'No errors\n';
+  } else {
+    debugData.errors.slice(-10).reverse().forEach(err => {
+      text += `${err}\n`;
+    });
+  }
+  text += '\n';
+  
+  text += '--- Supabase ---\n';
+  const supabaseReady = typeof supabase !== 'undefined' && supabase && supabase.auth;
+  text += `Initialized: ${supabaseReady ? 'YES' : 'NO'}\n`;
+  text += '\n';
+  
+  text += '=== END DEBUG INFO ===\n';
+  
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('debugCopy');
+    if (btn) {
+      const originalText = btn.textContent;
+      btn.textContent = '✅ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(err => {
+    alert('Failed to copy: ' + err.message);
+  });
 }
 
 // Debug function to reset mastery celebration (for testing)
