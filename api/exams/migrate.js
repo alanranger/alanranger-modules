@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     console.log("[migrate] === REQUEST DEBUG ===");
     console.log("[migrate] Method:", req.method);
     console.log("[migrate] All header keys:", Object.keys(req.headers || {}));
-    console.log("[migrate] Authorization header:", req.headers.authorization || "NOT FOUND");
+    console.log("[migrate] Authorization header:", req.headers.authorization ? "FOUND (length: " + req.headers.authorization.length + ")" : "NOT FOUND");
     console.log("[migrate] x-memberstack-id (lowercase, Vercel standard):", req.headers["x-memberstack-id"] || "NOT FOUND");
     
     // Try multiple header name variations (Vercel might handle differently)
@@ -32,6 +32,10 @@ module.exports = async (req, res) => {
       || req.headers["X-MemberstackId"]
       || null;
     console.log("[migrate] Member ID from header (all variations checked):", memberIdFromHeader || "NOT FOUND");
+    
+    // Log all headers that start with 'x-' to see what's available
+    const xHeaders = Object.keys(req.headers || {}).filter(k => k.toLowerCase().startsWith('x-'));
+    console.log("[migrate] All X- headers:", xHeaders);
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     
