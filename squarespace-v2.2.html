@@ -57,19 +57,27 @@
         </div>
         <div class="track"><div class="bar" id="progressBar"></div></div>
         <div class="auth">
-          <span class="badge" id="authBadge">Not signed in</span>
-          <input id="loginEmail" type="email" placeholder="you@example.com" />
-          <button class="btn" id="btnMagic">Get magic link</button>
-          <button class="btn secondary" id="btnSignIn" style="background:#10b981; color:#fff;">Sign in</button>
+          <span class="badge" id="authBadge">Checking authentication...</span>
+          <!-- Magic-link UI hidden - Memberstack-only authentication -->
+          <input id="loginEmail" type="email" placeholder="you@example.com" style="display:none;" />
+          <button class="btn" id="btnMagic" style="display:none;">Get magic link</button>
+          <button class="btn secondary" id="btnSignIn" style="display:none;">Sign in</button>
           <button class="btn secondary" id="btnSignOut" style="display:none">Sign out</button>
+          <div id="memberstackAuthMessage" style="display:none; padding:12px; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; margin-top:8px;">
+            <strong>Please sign in to the Academy dashboard to use exams.</strong>
+            <br><a href="/academy/login" style="color:#E57200; text-decoration:underline;">Go to Academy Login →</a>
+          </div>
+          <button id="btnMigrateLegacy" class="btn secondary" style="display:none; background:#10b981; color:#fff; margin-top:8px;">
+            Link my existing exam progress
+          </button>
         </div>
-        <div class="hint">New users: "Get magic link" | Returning users: "Sign in" to access your saved progress.</div>
-        <div class="hint" style="margin-top: 4px; font-size: 12px; color: #666;">
+        <div class="hint" id="authHint" style="display:none;">New users: "Get magic link" | Returning users: "Sign in" to access your saved progress.</div>
+        <div class="hint" id="authTip" style="display:none; margin-top: 4px; font-size: 12px; color: #666;">
           💡 Tip: Once signed in, you'll stay signed in on this device until you sign out. If you sign out, you'll need a new magic link to sign back in.
         </div>
       </div>
     </div>
-    <div class="grid" id="grid"></div>
+    <div class="grid" id="grid" style="display:none;"></div>
     <div class="toast" id="toast"></div>
   
   <!-- Loading spinner for sign-in process -->
@@ -123,10 +131,15 @@
   <div id="ar-auth">
     <span id="ar-auth-status" class="badge">Not signed in</span>
     <span id="ar-auth-email"></span>
-    <button id="btn-magic" type="button" class="mini-btn" style="background:#F05922;color:#fff;border-color:#F05922;">Send magic link</button>
-    <button id="btn-clear" type="button" class="mini-btn" style="background:#6b7280;color:#fff;border-color:#6b7280;">Clear results / Sign out</button>
+    <!-- Magic-link UI hidden - Memberstack-only authentication -->
+    <button id="btn-magic" type="button" class="mini-btn" style="display:none; background:#F05922;color:#fff;border-color:#F05922;">Send magic link</button>
+    <button id="btn-clear" type="button" class="mini-btn" style="display:none; background:#6b7280;color:#fff;border-color:#6b7280;">Clear results / Sign out</button>
   </div>
-  <div style="font-size:12px;color:#6b7280;margin:8px 0 16px 0;padding:8px;background:#f9f9f9;border-radius:6px;">
+  <div id="quizAuthMessage" style="display:none; font-size:12px;color:#6b7280;margin:8px 0 16px 0;padding:8px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;">
+    <strong>Please sign in to the Academy dashboard to use exams.</strong>
+    <br><a href="/academy/login" style="color:#E57200; text-decoration:underline;">Go to Academy Login →</a>
+  </div>
+  <div style="display:none; font-size:12px;color:#6b7280;margin:8px 0 16px 0;padding:8px;background:#f9f9f9;border-radius:6px;">
     <strong>Magic link:</strong> Enter your email and click "Send magic link" to receive a secure login link. No password needed. 
     <strong>Clear results:</strong> Use this to sign out and reset the quiz so you can retake it.
   </div>
@@ -575,6 +588,26 @@ async function fetchStatusForUser(user, forceRefresh = false) {
 window.loadExam = async function(moduleId) {
   debugLog('🔍 loadExam called with moduleId:', moduleId);
   
+  // Check Memberstack authentication first
+  if (!memberstackIdentity) {
+    // Try to get identity
+    memberstackIdentity = await getExamIdentity();
+  }
+  
+  if (!memberstackIdentity) {
+    // Show auth message in quiz view
+    const quizAuthMessage = document.getElementById('quizAuthMessage');
+    const quizContainer = document.getElementById('quiz-container');
+    if (quizAuthMessage) quizAuthMessage.style.display = 'block';
+    if (quizContainer) quizContainer.style.display = 'none';
+    showToast('Please sign in to the Academy dashboard to use exams.', 'error');
+    return;
+  }
+  
+  // Hide auth message if authenticated
+  const quizAuthMessage = document.getElementById('quizAuthMessage');
+  if (quizAuthMessage) quizAuthMessage.style.display = 'none';
+  
   // Close any existing modal
   const existingModal = document.querySelector('.modal');
   if (existingModal) {
@@ -750,6 +783,194 @@ function resetMasteryCelebration() {
 // Bulletproof event delegation using data attributes
 // Simplified event handling - all buttons now use direct onclick handlers
 // No complex event delegation needed
+
+/* ---------- API CONFIGURATION ---------- */
+const EXAMS_API_BASE = "https://api.alanranger.com";
+
+/**
+ * Get Memberstack token from document.cookie
+ * @returns {string|null} - Token or null
+ */
+function getMemberstackTokenFromCookie() {
+  const cookies = document.cookie.split(';').map(c => c.trim());
+  const found = cookies.find(c => c.startsWith('_ms-mid='));
+  if (!found) return null;
+  return decodeURIComponent(found.split('=').slice(1).join('='));
+}
+
+/**
+ * Get headers for API requests (includes Authorization if token available)
+ * @param {object} additionalHeaders - Additional headers to include
+ * @returns {object} - Headers object
+ */
+function getApiHeaders(additionalHeaders = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...additionalHeaders
+  };
+  
+  const token = getMemberstackTokenFromCookie();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
+  return headers;
+}
+
+/* ---------- MEMBERSTACK API FUNCTIONS ---------- */
+let memberstackIdentity = null; // { memberstack_id, email, permissions, planConnections }
+
+/**
+ * Get Memberstack identity via API
+ * Returns { memberstack_id, email, permissions, planConnections } or null
+ */
+async function getExamIdentity() {
+  try {
+    const headers = getApiHeaders();
+    const r = await fetch(`${EXAMS_API_BASE}/api/exams/whoami`, {
+      headers: headers,
+      credentials: "include"
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    memberstackIdentity = data;
+    return data;
+  } catch (e) {
+    console.error("[getExamIdentity] Error:", e);
+    return null;
+  }
+}
+
+/**
+ * Save results via Memberstack API
+ */
+async function saveResultsViaMemberstack(report) {
+  if (!memberstackIdentity) {
+    throw new Error("Not authenticated");
+  }
+  
+  // Calculate attempt number
+  const latestStatus = await getLatestStatusViaMemberstack(report.moduleId);
+  const attempt = latestStatus ? (latestStatus.attempt || 0) + 1 : 1;
+  
+  const payload = {
+    module_id: report.moduleId,
+    score_percent: report.percent || report.score,
+    passed: report.pass || report.passed,
+    attempt: attempt,
+    details: { misses: report.misses || [] }
+  };
+  
+  const headers = getApiHeaders();
+  const r = await fetch(`${EXAMS_API_BASE}/api/exams/save`, {
+    method: "POST",
+    headers: headers,
+    credentials: "include",
+    body: JSON.stringify(payload)
+  });
+  
+  if (!r.ok) {
+    const error = await r.json().catch(() => ({ error: "Failed to save" }));
+    throw new Error(error.error || "Failed to save");
+  }
+  
+  return await r.json();
+}
+
+/**
+ * Get latest exam status via Memberstack API
+ */
+async function getLatestStatusViaMemberstack(moduleId) {
+  if (!memberstackIdentity) return null;
+  
+  try {
+    const headers = getApiHeaders();
+    const r = await fetch(`${EXAMS_API_BASE}/api/exams/status?moduleId=${encodeURIComponent(moduleId)}`, {
+      headers: headers,
+      credentials: "include"
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.latest || null;
+  } catch (e) {
+    console.error("[getLatestStatusViaMemberstack] Error:", e);
+    return null;
+  }
+}
+
+/**
+ * Check if migration is needed (legacy results exist for this email)
+ */
+async function checkMigrationNeeded() {
+  if (!memberstackIdentity) return false;
+  
+  try {
+    // Check status for one module to see if we have Memberstack results
+    const status = await getLatestStatusViaMemberstack('module-01-exposure');
+    
+    // If no Memberstack results, check if we should show migration button
+    // We'll show it if user has no results in module_results_ms
+    // For now, we'll show it if status is null (no results yet)
+    const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
+    if (btnMigrateLegacy && !status) {
+      // Could have legacy results - show button
+      btnMigrateLegacy.style.display = 'inline-block';
+    }
+    
+    return !status;
+  } catch (e) {
+    console.error("[checkMigrationNeeded] Error:", e);
+    return false;
+  }
+}
+
+/**
+ * Migrate legacy exam results to Memberstack
+ */
+async function migrateLegacyResults() {
+  if (!memberstackIdentity) {
+    showToast('Please sign in to Academy first', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Migrating legacy results...', 'info');
+    
+    const headers = getApiHeaders();
+    const r = await fetch(`${EXAMS_API_BASE}/api/exams/migrate`, {
+      method: "POST",
+      headers: headers,
+      credentials: "include",
+      body: JSON.stringify({})
+    });
+    
+    if (!r.ok) {
+      const error = await r.json().catch(() => ({ error: "Migration failed" }));
+      throw new Error(error.error || "Migration failed");
+    }
+    
+    const result = await r.json();
+    showToast(result.message || `Migrated ${result.count || 0} results`, 'success');
+    
+    // Hide migration button
+    const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
+    if (btnMigrateLegacy) btnMigrateLegacy.style.display = 'none';
+    
+    // Refresh status
+    const user = await currentUser();
+    if (user) {
+      const status = await fetchStatusForUser(user, true);
+      renderSummary(status);
+      renderGrid(status);
+    }
+    
+    return result;
+  } catch (e) {
+    console.error("[migrateLegacyResults] Error:", e);
+    showToast('Migration failed: ' + e.message, 'error');
+    throw e;
+  }
+}
 
 /* ---------- SUPABASE (your live values) ---------- */
 const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
@@ -1204,6 +1425,19 @@ async function clearForRetest(){
 btnClear.addEventListener("click", clearForRetest);
 
 async function getLatestStatus(moduleId){
+  // Try Memberstack first
+  if (memberstackIdentity) {
+    const status = await getLatestStatusViaMemberstack(moduleId);
+    if (status) {
+      return {
+        score_percent: status.score_percent,
+        passed: status.passed,
+        created_at: status.created_at
+      };
+    }
+  }
+  
+  // Fallback to Supabase (legacy)
   const user = await currentUser(); if (!user) return null;
   const { data, error } = await supabase.from('module_results')
     .select('score_percent, passed, created_at').eq('user_id', user.id).eq('module_id', moduleId)
@@ -1213,6 +1447,20 @@ async function getLatestStatus(moduleId){
 }
 
 async function saveResultToDB(report){
+  // Try Memberstack first
+  if (memberstackIdentity) {
+    try {
+      await saveResultsViaMemberstack(report);
+      showToast("Progress saved to your account.", "success");
+      renderProgressBadge();
+      return;
+    } catch (err) {
+      console.error("[saveResultToDB] Memberstack save failed:", err);
+      // Fall through to Supabase fallback
+    }
+  }
+  
+  // Fallback to Supabase (legacy)
   const user = await currentUser();
   if (!user){
     const email = document.getElementById('email').value.trim();
@@ -1376,8 +1624,68 @@ supabase.auth.onAuthStateChange(async (_event, session) => {
   }
 });
 // Grid authentication setup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   debugLog('🚀 Grid script starting...');
+  
+  const authBadge = document.getElementById('authBadge');
+  const authMessage = document.getElementById('memberstackAuthMessage');
+  const authHint = document.getElementById('authHint');
+  const authTip = document.getElementById('authTip');
+  const gridContainer = document.getElementById('grid-container');
+  const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
+  
+  // Check Memberstack identity first (primary authentication)
+  try {
+    memberstackIdentity = await getExamIdentity();
+    if (memberstackIdentity) {
+      debugLog('✅ Memberstack user authenticated:', memberstackIdentity.email);
+      
+      // Update auth badge
+      if (authBadge) {
+        authBadge.textContent = `Signed in as ${memberstackIdentity.email}`;
+        authBadge.style.background = '#10b981';
+        authBadge.style.color = '#fff';
+      }
+      
+      // Hide "not signed in" message
+      if (authMessage) authMessage.style.display = 'none';
+      
+      // Show exam UI
+      if (gridContainer) gridContainer.style.display = 'block';
+      
+      // Check if migration is needed
+      await checkMigrationNeeded();
+      
+      // Setup migration button handler
+      if (btnMigrateLegacy) {
+        btnMigrateLegacy.addEventListener('click', async () => {
+          try {
+            await migrateLegacyResults();
+          } catch (err) {
+            console.error('Migration failed:', err);
+          }
+        });
+      }
+      
+    } else {
+      debugLog('ℹ️ No Memberstack session - user must sign in to Academy');
+      
+      // Show "not signed in" message
+      if (authMessage) authMessage.style.display = 'block';
+      if (authBadge) {
+        authBadge.textContent = 'Not signed in';
+        authBadge.style.background = '#ef4444';
+        authBadge.style.color = '#fff';
+      }
+      
+      // Hide exam UI
+      if (gridContainer) gridContainer.style.display = 'none';
+    }
+  } catch (err) {
+    debugLog('⚠️ Memberstack check failed:', err);
+    if (authMessage) authMessage.style.display = 'block';
+    if (gridContainer) gridContainer.style.display = 'none';
+  }
   
   // Setup debug button
   const debugBtn = document.getElementById('debugBtn');
@@ -1386,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   
-  // Check for existing session on page load
+  // Check for existing session on page load (Supabase legacy fallback)
   checkExistingSession();
   
   
