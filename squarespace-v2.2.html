@@ -1115,17 +1115,29 @@ const EXAMS_API_BASE = "https://alanranger-modules.vercel.app"; // Update if dif
  */
 async function getMemberstackToken() {
   try {
-    // Method 1: Use Memberstack client-side API (if available)
-    if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
+    // Method 1: Try to get token from Memberstack client API session
+    if (window.$memberstackDom) {
       try {
+        // Check if there's a getSessionToken or similar method
+        if (typeof window.$memberstackDom.getSessionToken === 'function') {
+          const token = await window.$memberstackDom.getSessionToken();
+          if (token) {
+            console.log("[getMemberstackToken] Token from getSessionToken()");
+            return token;
+          }
+        }
+        // Check if member object has a token property
         const member = await window.$memberstackDom.getCurrentMember();
-        if (member && member.data && member.data.id) {
-          console.log("[getMemberstackToken] Got member ID from client API:", member.data.id);
-          // Memberstack client API doesn't expose token directly, but we can use the member ID
-          // For now, fall back to cookie method for the actual token
+        if (member && member.token) {
+          console.log("[getMemberstackToken] Token from member object");
+          return member.token;
+        }
+        if (member && member.data && member.data.token) {
+          console.log("[getMemberstackToken] Token from member.data");
+          return member.data.token;
         }
       } catch (e) {
-        console.warn("[getMemberstackToken] Client API error:", e);
+        console.warn("[getMemberstackToken] Client API token check error:", e);
       }
     }
     
@@ -1137,7 +1149,7 @@ async function getMemberstackToken() {
     }
     
     const cookies = allCookies.split(';').map(c => c.trim());
-    const variations = ['_ms-mid', '_ms_mid', 'ms-mid', 'ms_mid'];
+    const variations = ['_ms-mid', '_ms_mid', 'ms-mid', 'ms_mid', 'memberstack-token', 'ms_token'];
     
     for (const varName of variations) {
       const found = cookies.find(c => c.startsWith(varName + '='));
@@ -1148,7 +1160,8 @@ async function getMemberstackToken() {
       }
     }
     
-    console.log("[getMemberstackToken] No token found in cookies");
+    console.log("[getMemberstackToken] No token found - cookie _ms-mid is missing");
+    console.log("[getMemberstackToken] Available cookies:", cookies.map(c => c.split('=')[0]).join(', '));
     return null;
   } catch (e) {
     console.error("[getMemberstackToken] Error:", e);
