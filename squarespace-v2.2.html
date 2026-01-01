@@ -1884,7 +1884,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   debugLog('✅ Grid initialization completed');
 });
 
-(async ()=>{ const { data:{user} } = await supabase.auth.getUser(); setAuthUI(user||null); renderProgressBadge(); })();
+// Initialize auth UI only if supabase is ready
+(async ()=>{
+  if (typeof supabase !== 'undefined' && supabase.auth) {
+    try {
+      const { data:{user} } = await supabase.auth.getUser();
+      setAuthUI(user||null);
+      renderProgressBadge();
+    } catch (e) {
+      console.warn('[initAuthUI] Error getting user:', e);
+    }
+  } else {
+    console.warn('[initAuthUI] Supabase not initialized yet');
+  }
+})();
 
 /* ---------- TOAST & CONFETTI ---------- */
 function fireConfetti(){ confetti({ particleCount: 140, spread: 80, origin: { x: 0.5, y: 0.5 } }); setTimeout(()=>confetti({ particleCount:100, spread:100, origin:{x:0.5,y:0.5}}),250); }
