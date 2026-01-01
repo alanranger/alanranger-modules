@@ -2559,6 +2559,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!memberstackIdentity) {
       logError('getExamIdentity timed out or returned null');
       updateDebugPanel();
+      
+      // Even if authentication fails, render the grid with empty status
+      // This prevents a blank page and allows retry
+      debugLog('⚠️ Authentication failed - rendering grid with empty status');
+      renderSummary({});
+      renderGrid({});
+      
+      // Show grid container even if not authenticated
+      if (gridContainer) gridContainer.style.display = 'block';
+      const gridEl = document.getElementById('grid');
+      if (gridEl) gridEl.style.display = 'grid';
+      
+      // Retry authentication after a delay
+      setTimeout(async () => {
+        debugLog('🔄 Retrying authentication...');
+        try {
+          memberstackIdentity = await getExamIdentity();
+          if (memberstackIdentity) {
+            debugLog('✅ Authentication successful on retry');
+            // Reload the page data
+            location.reload();
+          }
+        } catch (e) {
+          debugLog('❌ Authentication retry failed:', e.message);
+        }
+      }, 3000);
+      
+      return; // Exit early if not authenticated
     }
     if (memberstackIdentity) {
       debugLog('✅ Memberstack user authenticated:', memberstackIdentity.email);
@@ -2590,6 +2618,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!memberstackIdentity) {
           debugLog('❌ Cannot load exam status - no Memberstack identity');
           hideLoadingSpinner();
+          
+          // Render grid with empty status so page isn't blank
+          renderSummary({});
+          renderGrid({});
+          if (gridContainer) gridContainer.style.display = 'block';
+          const gridEl = document.getElementById('grid');
+          if (gridEl) gridEl.style.display = 'grid';
+          
           return;
         }
       }
@@ -2656,7 +2692,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } catch (err) {
         debugLog('❌ Error loading exam status:', err);
-        // Don't clear grid on error - keep what's there
+        // Render grid with empty status if there's an error
+        // This ensures the page isn't blank
+        renderSummary({});
+        renderGrid({});
+        
+        // Show grid container even on error
+        if (gridContainer) gridContainer.style.display = 'block';
+        const gridEl = document.getElementById('grid');
+        if (gridEl) gridEl.style.display = 'grid';
         debugLog('⚠️ Error occurred but keeping existing grid data');
         
         // Show the grid element even with no data
