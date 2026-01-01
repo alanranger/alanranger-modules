@@ -785,7 +785,15 @@ function resetMasteryCelebration() {
 // No complex event delegation needed
 
 /* ---------- API CONFIGURATION ---------- */
-const EXAMS_API_BASE = "https://api.alanranger.com";
+// ⚠️ CRITICAL: This must point to your Vercel deployment URL
+// 
+// Your Vercel project URL is likely one of these:
+// - https://alanranger-modules.vercel.app (default Vercel domain)
+// - https://api.alanranger.com (if you've set up a custom domain in Vercel)
+//
+// To verify: Go to Vercel Dashboard → Your Project → Check the deployment URL
+// If the domain below doesn't work, update it to your actual Vercel URL
+const EXAMS_API_BASE = "https://alanranger-modules.vercel.app"; // Update if different
 
 /**
  * Get Memberstack token from document.cookie
