@@ -1,11 +1,21 @@
 {
-  "name": "alanranger-academy-assessment",
-  "private": true,
-  "type": "module",
+  "name": "alanranger-academy-exams-api",
+  "version": "1.0.0",
+  "description": "API routes for Memberstack-authenticated exam system",
+  "main": "index.js",
   "scripts": {
-    "build": "node tools/build.mjs module-01",
-    "watch": "npx nodemon -e js,css,json,html -w src -x \"npm run build\"",
-    "serve": "npx live-server dist --port=5173 --open=module-01.html --no-css-inject",
-    "dev": "npm run build && npx npm-run-all --parallel watch serve"
-  }
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@memberstack/admin": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "keywords": [
+    "memberstack",
+    "supabase",
+    "exams",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC"
 }
