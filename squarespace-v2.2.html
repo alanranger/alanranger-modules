@@ -1457,6 +1457,129 @@ async function saveResultsViaMemberstack(report) {
 /**
  * Get latest exam status via Memberstack API
  */
+/**
+ * Refresh a single module's status in the grid after saving
+ */
+async function refreshGridModuleStatus(moduleId) {
+  // Only refresh if we're on the grid view
+  const gridContainer = document.getElementById('grid-container');
+  if (!gridContainer || gridContainer.style.display === 'none') {
+    debugLog('⏭️ Skipping grid refresh - not on grid view');
+    return;
+  }
+  
+  debugLog(`🔄 Refreshing grid status for module: ${moduleId}`);
+  
+  try {
+    if (!memberstackIdentity) {
+      memberstackIdentity = await getExamIdentity();
+    }
+    
+    if (memberstackIdentity) {
+      const status = await getLatestStatusViaMemberstack(moduleId);
+      if (status) {
+        // Find the module card in the grid and update it
+        const moduleCard = document.querySelector(`[data-module-id="${moduleId}"]`)?.closest('.card');
+        if (moduleCard) {
+          debugLog(`✅ Found module card for ${moduleId}, updating status`);
+          
+          // Update the card classes
+          moduleCard.classList.remove('passed', 'failed');
+          if (status.passed) {
+            moduleCard.classList.add('passed');
+            // Add or update tick
+            let tick = moduleCard.querySelector('.tick');
+            if (!tick) {
+              tick = document.createElement('div');
+              tick.className = 'tick';
+              tick.textContent = '✓';
+              moduleCard.appendChild(tick);
+            }
+            // Remove xmark if present
+            const xmark = moduleCard.querySelector('.xmark');
+            if (xmark) xmark.remove();
+          } else {
+            moduleCard.classList.add('failed');
+            // Add or update xmark
+            let xmark = moduleCard.querySelector('.xmark');
+            if (!xmark) {
+              xmark = document.createElement('div');
+              xmark.className = 'xmark';
+              xmark.textContent = '✕';
+              moduleCard.appendChild(xmark);
+            }
+            // Remove tick if present
+            const tick = moduleCard.querySelector('.tick');
+            if (tick) tick.remove();
+          }
+          
+          // Update chips
+          const chips = moduleCard.querySelector('.chips');
+          if (chips) {
+            const scoreTxt = `${status.score_percent}%`;
+            const dateTxt = new Date(status.created_at).toLocaleDateString();
+            chips.innerHTML = `
+              <span class="chip">Score: <strong>${scoreTxt}</strong></span>
+              <span class="chip">${dateTxt}</span>
+              ${status.passed ? `<span class="chip pass">Passed</span>` : `<span class="chip fail">Failed</span>`}
+            `;
+          }
+          
+          // Update button text
+          const examButton = moduleCard.querySelector('[data-module-id]');
+          if (examButton) {
+            examButton.textContent = status.passed ? 'View results' : 'Retake exam';
+            examButton.className = status.passed ? 'btn sm' : 'btn sm secondary';
+          }
+          
+          // Update summary
+          renderSummary(await getAllModuleStatuses());
+          
+          debugLog(`✅ Successfully updated grid status for ${moduleId}`);
+        } else {
+          debugLog(`⚠️ Module card not found in grid for ${moduleId}`);
+        }
+      } else {
+        debugLog(`⚠️ No status found for module ${moduleId}`);
+      }
+    } else {
+      debugLog(`⚠️ Cannot refresh grid - no Memberstack identity`);
+    }
+  } catch (err) {
+    console.error(`[refreshGridModuleStatus] Error refreshing module ${moduleId}:`, err);
+    debugLog(`❌ Error refreshing grid status for ${moduleId}:`, err.message);
+  }
+}
+
+/**
+ * Get all module statuses for summary calculation
+ */
+async function getAllModuleStatuses() {
+  const statusByModule = {};
+  if (!memberstackIdentity) {
+    memberstackIdentity = await getExamIdentity();
+  }
+  
+  if (memberstackIdentity && modules) {
+    for (const module of modules) {
+      try {
+        const status = await getLatestStatusViaMemberstack(module.id);
+        if (status) {
+          statusByModule[module.id] = {
+            score: status.score_percent,
+            passed: status.passed,
+            when: status.created_at
+          };
+        }
+      } catch (err) {
+        debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+      }
+    }
+  }
+  
+  return statusByModule;
+}
+
 async function getLatestStatusViaMemberstack(moduleId) {
   // Try to get identity if not set
   if (!memberstackIdentity) {
@@ -2113,6 +2236,8 @@ async function saveResultToDB(report){
       await saveResultsViaMemberstack(report);
       showToast("Progress saved to your account.", "success");
       renderProgressBadge();
+      // Refresh grid to show updated status
+      await refreshGridModuleStatus(report.moduleId);
       return;
     } catch (err) {
       console.error("[saveResultToDB] Memberstack save failed:", err);
@@ -2147,7 +2272,12 @@ async function saveResultToDB(report){
   };
   const { error } = await supabase.from('module_results').insert(payload);
   if (error){ showToast("Save failed.", "error"); console.error(error); }
-  else { showToast("Progress saved to your account.", "success"); renderProgressBadge(); }
+  else { 
+    showToast("Progress saved to your account.", "success"); 
+    renderProgressBadge();
+    // Refresh grid to show updated status
+    await refreshGridModuleStatus(report.moduleId);
+  }
 }
 
 async function renderProgressBadge(){
@@ -2965,6 +3095,8 @@ btnSubmit.addEventListener("click", async () => {
         await saveResultToDB(lastReport);
         debugLog('✅ Auto-save successful');
         showToast("Results automatically saved to your account.", "success", 3000);
+        // Refresh grid to show updated status (if on grid view)
+        await refreshGridModuleStatus(lastReport.moduleId);
       } catch (err) {
         console.error("[Auto-save] Failed:", err);
         debugLog('❌ Auto-save failed:', err.message);
