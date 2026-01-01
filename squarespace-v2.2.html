@@ -319,6 +319,13 @@ console.log('🔍 Modules array test:', modules);
 console.log('🔍 Modules length:', modules ? modules.length : 'undefined');
 
 function renderGrid(statusByModuleId = {}) {
+  // PROTECT: If Memberstack data has been loaded and we're trying to clear it, block it
+  if (memberstackDataLoaded && Object.keys(statusByModuleId).length === 0) {
+    debugLog('🛡️ BLOCKED: Attempt to clear grid after Memberstack data loaded - ignoring');
+    debugLog('🛡️ Stack trace:', new Error().stack);
+    return; // Don't clear the grid
+  }
+  
   debugLog('🎨 renderGrid called with: ' + JSON.stringify(statusByModuleId));
   debugLog('🎨 modules array length: ' + (modules ? modules.length : 'undefined'));
   debugLog('🎨 modules type: ' + typeof modules);
@@ -1235,6 +1242,7 @@ async function getApiHeaders(additionalHeaders = {}) {
 
 /* ---------- MEMBERSTACK API FUNCTIONS ---------- */
 let memberstackIdentity = null; // { memberstack_id, email, permissions, planConnections }
+let memberstackDataLoaded = false; // Flag to prevent clearing grid after Memberstack data is loaded
 
 /**
  * Get Memberstack identity via API
@@ -2339,6 +2347,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Always render - even if empty, show the grid
         renderSummary(statusByModule);
         renderGrid(statusByModule);
+        
+        // Mark that Memberstack data has been loaded - prevent any clearing
+        memberstackDataLoaded = true;
+        debugLog('✅ Memberstack data loaded flag set - grid protected from clearing');
+        
         if (Object.keys(statusByModule).length > 0) {
           debugLog('✅ Grid rendered with Memberstack data');
         } else {
@@ -2433,16 +2446,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Check for existing session on page load (Supabase legacy fallback)
   // Wait a bit to ensure Memberstack identity is set first
-  // Only run if Memberstack is NOT authenticated
+  // Only run if Memberstack is NOT authenticated AND data hasn't been loaded
   setTimeout(async () => {
     // Double-check Memberstack before running
     const hasMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
-    if (!hasMemberstack) {
+    if (!hasMemberstack && !memberstackDataLoaded) {
       checkExistingSession();
     } else {
-      debugLog('🔍 Skipping checkExistingSession - Memberstack is active');
+      debugLog('🔍 Skipping checkExistingSession - Memberstack is active or data already loaded');
     }
-  }, 1000);
+  }, 2000); // Increased delay to 2 seconds
   
   
   
@@ -2476,6 +2489,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         debugLog('✅ Found existing session for:', session.user.email);
+        
+        // FINAL CHECK: If Memberstack data is loaded, DO NOT touch the grid
+        if (memberstackDataLoaded) {
+          debugLog('🛡️ BLOCKED: checkExistingSession - Memberstack data already loaded, skipping Supabase update');
+          return;
+        }
+        
         // User is already signed in, update UI
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
