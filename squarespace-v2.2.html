@@ -41,11 +41,78 @@
       #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff; padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
       #ar-modgrid .toast.ok{background:var(--ar-green)} #ar-modgrid .toast.err{background:var(--ar-red)}
       
-      /* Debug panel styles */
-      #debugPanel{ position:fixed; top:20px; right:20px; width:300px; max-height:400px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.15); z-index:10000; display:none; }
-      #debugContent{ max-height:300px; overflow-y:auto; padding:12px; font-family:monospace; font-size:12px; line-height:1.4; }
-      #debugBtn{ position:fixed; top:20px; right:20px; background:#8b5cf6; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; z-index:10001; }
-      #testModalBtn{ position:fixed; top:60px; right:20px; background:#10b981; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; z-index:10001; }
+      /* Debug panel styles - ALWAYS VISIBLE */
+      #debugPanel{ 
+        position:fixed; 
+        top:10px; 
+        right:10px; 
+        width:450px; 
+        max-height:90vh; 
+        background:#1a1a1a; 
+        border:2px solid #8b5cf6; 
+        border-radius:8px; 
+        box-shadow:0 8px 32px rgba(0,0,0,.5); 
+        z-index:99999; 
+        display:block;
+        font-family:monospace;
+        color:#fff;
+        overflow:hidden;
+      }
+      #debugHeader{ 
+        padding:12px 16px; 
+        background:#8b5cf6; 
+        color:#fff; 
+        font-weight:bold; 
+        font-size:14px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+      }
+      #debugToggle{ 
+        background:rgba(255,255,255,.2); 
+        border:none; 
+        color:#fff; 
+        padding:4px 8px; 
+        border-radius:4px; 
+        cursor:pointer; 
+        font-size:11px;
+      }
+      #debugContent{ 
+        max-height:calc(90vh - 50px); 
+        overflow-y:auto; 
+        padding:16px; 
+        font-size:11px; 
+        line-height:1.6;
+      }
+      .debug-section{ 
+        margin-bottom:16px; 
+        padding-bottom:12px; 
+        border-bottom:1px solid #333; 
+      }
+      .debug-section:last-child{ border-bottom:none; }
+      .debug-section-title{ 
+        color:#8b5cf6; 
+        font-weight:bold; 
+        margin-bottom:8px; 
+        font-size:12px;
+        text-transform:uppercase;
+      }
+      .debug-item{ 
+        margin:4px 0; 
+        padding:4px 0;
+      }
+      .debug-label{ 
+        color:#aaa; 
+        display:inline-block; 
+        min-width:140px; 
+      }
+      .debug-value{ 
+        color:#0f0; 
+        word-break:break-all;
+      }
+      .debug-value.error{ color:#f44; }
+      .debug-value.warning{ color:#ffa500; }
+      .debug-value.info{ color:#4af; }
     </style>
     
     <div class="top">
@@ -870,16 +937,17 @@ let memberstackIdentity = null; // { memberstack_id, email, permissions, planCon
  */
 async function getExamIdentity() {
   try {
-    console.log("[getExamIdentity] Starting...");
-    console.log("[getExamIdentity] EXAMS_API_BASE:", EXAMS_API_BASE);
+    updateDebugPanel();
     
     // Check if Memberstack client API is available
     if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
       try {
-        console.log("[getExamIdentity] Using Memberstack client API...");
         const member = await window.$memberstackDom.getCurrentMember();
         if (member && member.data) {
-          console.log("[getExamIdentity] Member from client API:", member.data.id, member.data.auth?.email);
+          debugData.memberstackClient = {
+            id: member.data.id,
+            email: member.data.auth?.email || null
+          };
           // Use client API member data directly
           memberstackIdentity = {
             memberstack_id: member.data.id,
@@ -887,42 +955,39 @@ async function getExamIdentity() {
             permissions: member.data.permissions || [],
             planConnections: member.data.planConnections || []
           };
+          debugData.memberstackIdentity = memberstackIdentity;
+          updateDebugPanel();
           return memberstackIdentity;
         }
       } catch (e) {
-        console.warn("[getExamIdentity] Client API failed, falling back to server API:", e);
+        logError(`Client API failed: ${e.message}`);
       }
     }
     
     // Fallback: Use server API with token
-    console.log("[getExamIdentity] Using server API...");
     const headers = await getApiHeaders();
-    console.log("[getExamIdentity] Headers:", JSON.stringify(headers, null, 2));
-    
     const url = `${EXAMS_API_BASE}/api/exams/whoami`;
-    console.log("[getExamIdentity] Fetching:", url);
     
     const r = await fetch(url, {
       headers: headers,
       credentials: "include"
     });
     
-    console.log("[getExamIdentity] Response status:", r.status, r.statusText);
-    console.log("[getExamIdentity] Response ok:", r.ok);
+    logApiCall('GET', url, r.status, r.statusText);
     
     if (!r.ok) {
       const errorText = await r.text().catch(() => "Could not read error");
-      console.error("[getExamIdentity] Error response:", errorText);
+      logApiCall('GET', url, r.status, r.statusText, errorText);
       return null;
     }
     
     const data = await r.json();
-    console.log("[getExamIdentity] Success! Data:", data);
     memberstackIdentity = data;
+    debugData.memberstackIdentity = data;
+    updateDebugPanel();
     return data;
   } catch (e) {
-    console.error("[getExamIdentity] Exception:", e);
-    console.error("[getExamIdentity] Error stack:", e.stack);
+    logError(`getExamIdentity exception: ${e.message}`);
     return null;
   }
 }
@@ -1735,14 +1800,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const gridContainer = document.getElementById('grid-container');
   const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
   
-  // Check Memberstack identity first (primary authentication)
-  console.log("[DOMContentLoaded] Starting Memberstack check...");
-  console.log("[DOMContentLoaded] EXAMS_API_BASE:", typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : "UNDEFINED!");
+  // Initialize debug panel
+  updateDebugPanel();
+  setInterval(updateDebugPanel, 2000); // Update every 2 seconds
   
+  // Check Memberstack identity first (primary authentication)
   try {
-    console.log("[DOMContentLoaded] Calling getExamIdentity()...");
     memberstackIdentity = await getExamIdentity();
-    console.log("[DOMContentLoaded] getExamIdentity() returned:", memberstackIdentity ? "Success" : "null");
     if (memberstackIdentity) {
       debugLog('✅ Memberstack user authenticated:', memberstackIdentity.email);
       
