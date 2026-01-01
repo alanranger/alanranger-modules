@@ -1003,7 +1003,10 @@ async function migrateLegacyResults() {
 /* ---------- SUPABASE (your live values) ---------- */
 const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTA4MjUsImV4cCI6MjA3MjU2NjgyNX0.e19j8NOUK5HWoTGZv4B62U_n0je_19Tp-F20qKGbWDk";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Only create supabase client if it doesn't already exist (prevents duplicate declaration errors)
+if (typeof supabase === 'undefined') {
+  var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 /* ---------- BRANDING & LINKS ---------- */
 const branding = {
