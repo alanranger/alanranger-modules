@@ -87,8 +87,19 @@ module.exports = async (req, res) => {
     }
     
     if (!memberId || !member) {
-      console.error("[migrate] Authentication failed - no memberId or member");
-      return res.status(401).json({ error: "Not logged in" });
+      console.error("[migrate] ❌ Authentication failed - no memberId or member");
+      console.error("[migrate] memberId:", memberId);
+      console.error("[migrate] member:", member ? "EXISTS" : "NULL");
+      console.error("[migrate] Final check - all headers:", JSON.stringify(req.headers, null, 2));
+      return res.status(401).json({ 
+        error: "Not logged in",
+        debug: {
+          hasMemberId: !!memberId,
+          hasMember: !!member,
+          headerKeys: Object.keys(req.headers || {}),
+          xHeaders: Object.keys(req.headers || {}).filter(k => k.toLowerCase().startsWith('x-'))
+        }
+      });
     }
 
     const email = member?.auth?.email;
