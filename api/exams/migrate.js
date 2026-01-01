@@ -40,7 +40,9 @@ module.exports = async (req, res) => {
     if (!memberId) {
       memberId = getMemberstackMemberId(req);
       console.log("[migrate] Member ID from header:", memberId);
-      console.log("[migrate] Request headers:", JSON.stringify(req.headers, null, 2));
+      console.log("[migrate] All request headers:", Object.keys(req.headers));
+      console.log("[migrate] x-memberstack-id header:", req.headers["x-memberstack-id"]);
+      console.log("[migrate] X-Memberstack-Id header:", req.headers["X-Memberstack-Id"]);
       if (memberId) {
         try {
           const { data } = await memberstack.members.retrieve({ id: memberId });
@@ -52,6 +54,7 @@ module.exports = async (req, res) => {
         }
       } else {
         console.error("[migrate] No token and no member ID header found");
+        console.error("[migrate] Available headers with 'member' or 'x':", Object.keys(req.headers).filter(h => h.toLowerCase().includes('member') || h.toLowerCase().startsWith('x-')));
       }
     }
     
