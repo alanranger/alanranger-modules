@@ -1283,12 +1283,14 @@ async function getExamIdentity() {
           debugData.memberstackIdentity = memberstackIdentity;
           updateDebugPanel();
           
-          // Update email field with Memberstack email
+          // Update email field with Memberstack email (ALWAYS, even if already set)
           if (memberstackIdentity.email) {
             const emailField = document.getElementById('email');
             if (emailField) {
               emailField.value = memberstackIdentity.email;
               debugLog('✅ Updated email field with Memberstack email:', memberstackIdentity.email);
+              // Clear any pending email from localStorage since we have Memberstack auth
+              localStorage.removeItem('ar_pending_email');
             }
           }
           
@@ -1330,12 +1332,14 @@ async function getExamIdentity() {
       debugData.memberstackIdentity = data;
       updateDebugPanel();
       
-      // Update email field with Memberstack email
+      // Update email field with Memberstack email (ALWAYS, even if already set)
       if (memberstackIdentity && memberstackIdentity.email) {
         const emailField = document.getElementById('email');
         if (emailField) {
           emailField.value = memberstackIdentity.email;
           debugLog('✅ Updated email field with Memberstack email:', memberstackIdentity.email);
+          // Clear any pending email from localStorage since we have Memberstack auth
+          localStorage.removeItem('ar_pending_email');
         }
       }
       
@@ -2212,7 +2216,14 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
       debugLog('🔄 Auth state change: User signed in - ' + session.user.email);
       if (authBadge) authBadge.textContent = "Signed in";
       if (btnSignOut) btnSignOut.style.display = '';
-      if (emailInput && !emailInput.value) emailInput.value = session.user.email || '';
+      // Only set email from Supabase if we don't have Memberstack identity
+      if (emailInput && !memberstackIdentity) {
+        if (!emailInput.value) emailInput.value = session.user.email || '';
+      } else if (memberstackIdentity && memberstackIdentity.email && emailInput) {
+        // Use Memberstack email instead
+        emailInput.value = memberstackIdentity.email;
+        debugLog('✅ Using Memberstack email instead of Supabase email');
+      }
       
       // Show loading spinner while fetching progress
       showLoadingSpinner("Loading your progress...");
@@ -2263,14 +2274,30 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
 
 // Handle pending results from localStorage (wrapped in async IIFE)
 (async () => {
+  // Wait for Memberstack identity to load first
+  if (!memberstackIdentity) {
+    try {
+      memberstackIdentity = await getExamIdentity();
+    } catch (e) {
+      console.error('Error getting Memberstack identity:', e);
+    }
+  }
+  
   const pending = localStorage.getItem('ar_pending_result');
   const pendingEmail = localStorage.getItem('ar_pending_email');
 
   if (pending){
     const rpt = JSON.parse(pending);
-    if (pendingEmail) {
+    
+    // Only use pendingEmail if we don't have Memberstack identity
+    if (pendingEmail && !memberstackIdentity) {
       const emailEl = document.getElementById('email');
       if (emailEl) emailEl.value = pendingEmail;
+    } else if (memberstackIdentity && memberstackIdentity.email) {
+      // Use Memberstack email instead
+      const emailEl = document.getElementById('email');
+      if (emailEl) emailEl.value = memberstackIdentity.email;
+      debugLog('✅ Using Memberstack email for pending result:', memberstackIdentity.email);
     }
 
     await saveResultToDB(rpt);
@@ -2282,6 +2309,15 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
     localStorage.removeItem('ar_pending_email');
   } else {
     renderProgressBadge();
+  }
+  
+  // Final check: ensure email field matches Memberstack identity
+  if (memberstackIdentity && memberstackIdentity.email) {
+    const emailField = document.getElementById('email');
+    if (emailField && emailField.value !== memberstackIdentity.email) {
+      emailField.value = memberstackIdentity.email;
+      debugLog('✅ Final sync: Updated email field to match Memberstack identity:', memberstackIdentity.email);
+    }
   }
 })();
 
@@ -2333,6 +2369,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const identityPromise = getExamIdentity();
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 10000));
     memberstackIdentity = await Promise.race([identityPromise, timeoutPromise]);
+    
+    // Update email field immediately when identity loads
+    if (memberstackIdentity && memberstackIdentity.email) {
+      const emailField = document.getElementById('email');
+      if (emailField) {
+        emailField.value = memberstackIdentity.email;
+        debugLog('✅ DOMContentLoaded: Updated email field with Memberstack email:', memberstackIdentity.email);
+        // Clear any stale localStorage email
+        localStorage.removeItem('ar_pending_email');
+      }
+    }
     
     if (!memberstackIdentity) {
       logError('getExamIdentity timed out or returned null');
