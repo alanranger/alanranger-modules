@@ -851,7 +851,7 @@ function showDebugPanel() {
 let debugData = {
   timestamp: new Date().toISOString(),
   pageUrl: window.location.href,
-  apiBase: typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : 'UNDEFINED',
+  apiBase: 'NOT_LOADED_YET',
   memberstackClient: null,
   memberstackIdentity: null,
   cookies: {},
