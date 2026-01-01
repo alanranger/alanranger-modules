@@ -359,6 +359,7 @@ function renderGrid(statusByModuleId = {}) {
     
     const card = document.createElement('div');
     card.className = `card${passed ? ' passed' : ''}${failed ? ' failed' : ''}`;
+    card.setAttribute('data-module-id', moduleId); // Add data attribute for easy lookup
     
     const head = document.createElement('div');
     head.className = 'head';
@@ -1479,7 +1480,11 @@ async function refreshGridModuleStatus(moduleId) {
       const status = await getLatestStatusViaMemberstack(moduleId);
       if (status) {
         // Find the module card in the grid and update it
-        const moduleCard = document.querySelector(`[data-module-id="${moduleId}"]`)?.closest('.card');
+        // Try finding by card's data-module-id first, then fallback to button's data-module-id
+        let moduleCard = document.querySelector(`.card[data-module-id="${moduleId}"]`);
+        if (!moduleCard) {
+          moduleCard = document.querySelector(`[data-module-id="${moduleId}"]`)?.closest('.card');
+        }
         if (moduleCard) {
           debugLog(`✅ Found module card for ${moduleId}, updating status`);
           
@@ -3878,6 +3883,8 @@ btnSave.addEventListener("click", async () => {
   debugLog('💾 Save button clicked, saving report:', lastReport);
   try {
     await saveResultToDB(lastReport);
+    // Refresh grid to show updated status (if on grid view)
+    await refreshGridModuleStatus(lastReport.moduleId);
   } catch (err) {
     console.error("[btnSave] Save failed:", err);
     showToast("Failed to save results: " + (err.message || "Unknown error"), "error");
