@@ -790,25 +790,58 @@ async function backToGrid() {
   await new Promise(resolve => setTimeout(resolve, 500));
   
   // Refresh grid with updated results
+  // PRIORITY: Use Memberstack if available, fallback to Supabase legacy
   try {
-    debugLog('🔍 Getting current user...');
-    const { data: { user } } = await supabase.auth.getUser();
-    debugLog('👤 Current user: ' + (user ? user.email : 'None'));
+    // Check for Memberstack first
+    if (!memberstackIdentity) {
+      memberstackIdentity = await getExamIdentity();
+    }
     
-    if (user) {
-      debugLog('🔄 Fetching user status...');
-      const status = await fetchStatusForUser(user);
-      debugLog('📊 Fetched status: ' + JSON.stringify(status));
+    if (memberstackIdentity) {
+      debugLog('🔄 Refreshing grid with Memberstack data...');
+      const statusByModule = {};
       
-      debugLog('🎨 Rendering summary and grid...');
-      renderSummary(status);
-      renderGrid(status);
+      // Fetch status for all modules
+      for (const module of modules) {
+        try {
+          const status = await getLatestStatusViaMemberstack(module.id);
+          if (status) {
+            statusByModule[module.id] = {
+              score: status.score_percent,
+              passed: status.passed,
+              when: status.created_at
+            };
+          }
+        } catch (err) {
+          debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+        }
+      }
       
-      debugLog('✅ Grid refreshed with updated results');
+      debugLog('📊 Refreshed status for modules:', Object.keys(statusByModule).length);
+      renderSummary(statusByModule);
+      renderGrid(statusByModule);
+      debugLog('✅ Grid refreshed with Memberstack data');
     } else {
-      debugLog('⚠️ No user found, clearing grid');
-      renderSummary({});
-      renderGrid({});
+      // Fallback to Supabase legacy
+      debugLog('🔍 Getting current user (Supabase legacy)...');
+      const { data: { user } } = await supabase.auth.getUser();
+      debugLog('👤 Current user: ' + (user ? user.email : 'None'));
+      
+      if (user) {
+        debugLog('🔄 Fetching user status (Supabase legacy)...');
+        const status = await fetchStatusForUser(user);
+        debugLog('📊 Fetched status: ' + JSON.stringify(status));
+        
+        debugLog('🎨 Rendering summary and grid...');
+        renderSummary(status);
+        renderGrid(status);
+        
+        debugLog('✅ Grid refreshed with updated results');
+      } else {
+        debugLog('⚠️ No user found, clearing grid');
+        renderSummary({});
+        renderGrid({});
+      }
     }
   } catch (error) {
     debugLog('❌ Error refreshing grid: ' + error.message);
