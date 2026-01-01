@@ -51,10 +51,9 @@ module.exports = async (req, res) => {
         console.log("[migrate] Token verification result:", JSON.stringify(verifyResult, null, 2));
         memberId = verifyResult.id;
         
-        const retrieveResult = await memberstack.members.retrieve({ id: memberId });
-        console.log("[migrate] Member retrieve result (token path):", retrieveResult ? "SUCCESS" : "FAILED");
-        if (retrieveResult && retrieveResult.data) {
-          member = retrieveResult.data;
+        const { data } = await memberstack.members.retrieve({ id: memberId });
+        if (data && (data.id || data.auth)) {
+          member = data;
           console.log("[migrate] Token auth successful, member ID:", memberId, "email:", member?.auth?.email);
         } else {
           console.error("[migrate] Member retrieve returned no data (token path)");
