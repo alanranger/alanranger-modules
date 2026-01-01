@@ -893,6 +893,13 @@ async function backToGrid() {
       // Set flag after rendering
       memberstackDataLoaded = true;
       debugLog('✅ Grid refreshed with Memberstack data after exam');
+      
+      // Update debug panel
+      debugData.gridStatus.rendered = true;
+      debugData.gridStatus.modulesCount = modules ? modules.length : 0;
+      debugData.gridStatus.cardsCount = document.getElementById('grid')?.children.length || 0;
+      debugData.gridStatus.lastRenderTime = new Date().toLocaleTimeString();
+      updateDebugPanel();
     } else {
       // Fallback to Supabase legacy
       debugLog('🔍 Getting current user (Supabase legacy)...');
