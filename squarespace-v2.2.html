@@ -41,7 +41,7 @@
       #ar-modgrid .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff; padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
       #ar-modgrid .toast.ok{background:var(--ar-green)} #ar-modgrid .toast.err{background:var(--ar-red)}
       
-      /* Debug panel styles - HIDDEN BY DEFAULT */
+      /* Debug panel styles - VISIBLE BY DEFAULT */
       #debugPanel{ 
         position:fixed; 
         top:10px; 
@@ -53,7 +53,7 @@
         border-radius:8px; 
         box-shadow:0 8px 32px rgba(0,0,0,.5); 
         z-index:99999; 
-        display:none; /* Hidden by default */
+        display:block; /* Visible by default for debugging */
         font-family:monospace;
         color:#fff;
         overflow:hidden;
@@ -168,13 +168,13 @@
     }
   </style>
     
-    <!-- Debug Panel - HIDDEN BY DEFAULT (Press Ctrl+Shift+D to show) -->
+    <!-- Debug Panel - VISIBLE BY DEFAULT (Press Ctrl+Shift+D to toggle) -->
     <div id="debugPanel">
       <div id="debugHeader">
         <span>🔍 Exam Debug Panel</span>
         <div style="display:flex; gap:4px;">
           <button id="debugCopy" onclick="copyDebugInfo()" title="Copy all debug info to clipboard">📋 Copy</button>
-          <button id="debugToggle" onclick="document.getElementById('debugPanel').style.display = 'none';" title="Hide panel">✕ Close</button>
+          <button id="debugToggle" onclick="document.getElementById('debugPanel').style.display = document.getElementById('debugPanel').style.display === 'none' ? 'block' : 'none';" title="Toggle panel">✕ Close</button>
         </div>
       </div>
       <div id="debugContent">
