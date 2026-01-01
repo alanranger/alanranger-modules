@@ -1322,11 +1322,21 @@ async function saveResultsViaMemberstack(report) {
   });
   
   if (!r.ok) {
-    const error = await r.json().catch(() => ({ error: "Failed to save" }));
-    throw new Error(error.error || "Failed to save");
+    const errorText = await r.text().catch(() => "Failed to save");
+    let errorObj;
+    try {
+      errorObj = JSON.parse(errorText);
+    } catch {
+      errorObj = { error: errorText };
+    }
+    logError(`Save failed: ${r.status} ${errorObj.error || errorText}`);
+    debugLog(`❌ Save failed: ${r.status}`, errorObj);
+    throw new Error(errorObj.error || "Failed to save");
   }
   
-  return await r.json();
+  const result = await r.json();
+  debugLog(`✅ Save successful for ${report.moduleId}:`, result);
+  return result;
 }
 
 /**
@@ -2106,17 +2116,31 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
       showLoadingSpinner("Loading your progress...");
       
       try {
+        // Double-check Memberstack wasn't set while we were waiting
+        const currentMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
+        if (currentMemberstack) {
+          debugLog('🔄 Memberstack detected during Supabase auth - skipping Supabase grid update');
+          hideLoadingSpinner();
+          return;
+        }
+        
         // Update grid with user's progress
         debugLog('🔄 Auth state change: Fetching user status...');
         const status = await fetchStatusForUser(session.user);
         debugLog('🔄 Auth state change: Status fetched, rendering...');
-        renderSummary(status);
-        renderGrid(status);
+        debugLog('🔄 Status keys:', Object.keys(status).length);
+        
+        // Only render if we have data - don't clear existing Memberstack data
+        if (Object.keys(status).length > 0) {
+          renderSummary(status);
+          renderGrid(status);
+        } else {
+          debugLog('⚠️ No Supabase status data - keeping existing grid');
+        }
       } catch (error) {
         debugLog('❌ Error in auth state change:', error);
-        // Still render grid with empty status
-        renderSummary({});
-        renderGrid({});
+        // Don't clear grid on error - keep existing data
+        debugLog('⚠️ Error occurred but keeping existing grid data');
       } finally {
         // Always hide loading spinner
         hideLoadingSpinner();
