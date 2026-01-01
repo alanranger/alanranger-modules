@@ -1391,12 +1391,21 @@ async function saveResultsViaMemberstack(report) {
   };
   
   const headers = await getApiHeaders();
+  debugLog('💾 Sending save request:', {
+    url: `${EXAMS_API_BASE}/api/exams/save`,
+    method: 'POST',
+    headers: Object.keys(headers),
+    payload: { ...payload, details: '[object]' } // Don't log full details
+  });
+  
   const r = await fetch(`${EXAMS_API_BASE}/api/exams/save`, {
     method: "POST",
     headers: headers,
     credentials: "include",
     body: JSON.stringify(payload)
   });
+  
+  debugLog(`💾 Save response status: ${r.status} ${r.statusText}`);
   
   if (!r.ok) {
     const errorText = await r.text().catch(() => "Failed to save");
@@ -1408,11 +1417,12 @@ async function saveResultsViaMemberstack(report) {
     }
     logError(`Save failed: ${r.status} ${errorObj.error || errorText}`);
     debugLog(`❌ Save failed: ${r.status}`, errorObj);
-    throw new Error(errorObj.error || "Failed to save");
+    throw new Error(errorObj.error || `Failed to save (${r.status})`);
   }
   
   const result = await r.json();
   debugLog(`✅ Save successful for ${report.moduleId}:`, result);
+  console.log(`[saveResultsViaMemberstack] Successfully saved exam result for ${emailToUse}`);
   return result;
 }
 
@@ -3652,8 +3662,35 @@ document.getElementById('btn-retake').addEventListener("click", () => {
 // Test button handlers will be set up when quiz loads
 
 btnSave.addEventListener("click", async () => {
-  if (!lastReport) { alert("Please complete the assessment first."); return; }
-  await saveResultToDB(lastReport);
+  if (!lastReport) { 
+    alert("Please complete the assessment first."); 
+    return; 
+  }
+  
+  // Ensure memberstackIdentity is set before saving
+  if (!memberstackIdentity) {
+    debugLog('⚠️ memberstackIdentity not set, attempting to get it...');
+    try {
+      memberstackIdentity = await getExamIdentity();
+      if (!memberstackIdentity) {
+        showToast("Please sign in to save results.", "error");
+        console.error("[btnSave] No Memberstack identity available");
+        return;
+      }
+    } catch (err) {
+      console.error("[btnSave] Failed to get Memberstack identity:", err);
+      showToast("Failed to authenticate. Please refresh the page and try again.", "error");
+      return;
+    }
+  }
+  
+  debugLog('💾 Save button clicked, saving report:', lastReport);
+  try {
+    await saveResultToDB(lastReport);
+  } catch (err) {
+    console.error("[btnSave] Save failed:", err);
+    showToast("Failed to save results: " + (err.message || "Unknown error"), "error");
+  }
 });
 
 /* ---------- PDF HELPERS ---------- */
