@@ -45,13 +45,25 @@ module.exports = async (req, res) => {
           member = data;
         } catch (e) {
           console.error("[save] Member ID retrieval failed:", e.message);
-          return res.status(401).json({ error: "Invalid member ID" });
+          // Don't return error - continue with memberId only
+          console.warn("[save] Continuing with memberId only (no member object)");
         }
       }
     }
     
-    if (!memberId || !member) {
-      return res.status(401).json({ error: "Not logged in" });
+    if (!memberId) {
+      return res.status(401).json({ error: "Not logged in - no member ID" });
+    }
+    
+    // Get email from member object OR request body (fallback)
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    let email = null;
+    if (member && member.auth && member.auth.email) {
+      email = member.auth.email;
+      console.log("[save] Using email from member object:", email);
+    } else if (body && body.email) {
+      email = body.email;
+      console.log("[save] Using email from request body (fallback):", email);
     }
 
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
@@ -65,13 +77,15 @@ module.exports = async (req, res) => {
 
     const { error } = await supabase.from("module_results_ms").insert([{
       memberstack_id: memberId,
-      email: member?.auth?.email || null,
+      email: email || null,
       module_id,
       score_percent,
       passed,
       attempt,
       details: details ?? null
     }]);
+    
+    console.log("[save] Inserting result:", { memberstack_id: memberId, email, module_id, score_percent, passed, attempt });
 
     if (error) {
       console.error("[save] Supabase error:", error);

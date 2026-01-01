@@ -1309,7 +1309,8 @@ async function saveResultsViaMemberstack(report) {
     score_percent: report.percent || report.score,
     passed: report.pass || report.passed,
     attempt: attempt,
-    details: { misses: report.misses || [] }
+    details: { misses: report.misses || [] },
+    email: memberstackIdentity?.email || null // Include email as fallback
   };
   
   const headers = await getApiHeaders();
