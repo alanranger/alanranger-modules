@@ -65,8 +65,14 @@ function getMemberstackToken(req) {
  * @returns {string|null} - Member ID or null
  */
 function getMemberstackMemberId(req) {
-  // Check both lowercase and original case (Node.js lowercases headers)
-  return req.headers["x-memberstack-id"] || req.headers["X-Memberstack-Id"] || null;
+  // Node.js/Express lowercases all header names, so "X-Memberstack-Id" becomes "x-memberstack-id"
+  const memberId = req.headers["x-memberstack-id"] || null;
+  if (memberId) {
+    console.log("[getMemberstackMemberId] Found member ID in header:", memberId);
+  } else {
+    console.log("[getMemberstackMemberId] No member ID header found. Available headers:", Object.keys(req.headers).filter(h => h.toLowerCase().includes('member')));
+  }
+  return memberId;
 }
 
 module.exports = {
