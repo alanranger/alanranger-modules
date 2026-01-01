@@ -2071,10 +2071,15 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
   supabase.auth.onAuthStateChange(async (_event, session) => {
   // SKIP Supabase auth handling if Memberstack is authenticated
   // Memberstack takes priority and has its own loading logic
-  if (memberstackIdentity) {
+  // Check both memberstackIdentity and window.$memberstackDom to be safe
+  const hasMemberstack = memberstackIdentity || (window.$memberstackDom && await window.$memberstackDom.getCurrentMember().then(m => m?.data).catch(() => null));
+  
+  if (hasMemberstack) {
     debugLog('🔄 Supabase auth state change ignored - Memberstack is active');
     return;
   }
+  
+  debugLog('🔄 Supabase auth state change - memberstackIdentity:', !!memberstackIdentity, 'hasMemberstack:', !!hasMemberstack);
   
   // Clear any pending auth state change
   if (authStateChangeTimeout) {
