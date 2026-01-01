@@ -119,35 +119,33 @@ module.exports = async (req, res) => {
       }
     }
     
-    // If member retrieval failed but we have memberId, try to get email from whoami endpoint
+    // Parse request body first (needed for email fallback)
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    console.log("[migrate] Request body:", JSON.stringify(body, null, 2));
+    
+    // Get email from member object OR request body (fallback)
     let email = null;
     if (member && member.auth && member.auth.email) {
       email = member.auth.email;
-      console.log("[migrate] Using email from member object:", email);
+      console.log("[migrate] ✅ Using email from member object:", email);
+    } else if (body && body.email) {
+      email = body.email;
+      console.log("[migrate] ✅ Using email from request body (fallback):", email);
     } else if (memberId) {
-      // Fallback: Try to get email by calling whoami internally or use memberId to look up
-      // Since whoami works, let's try calling it or use a workaround
-      console.log("[migrate] ⚠️ Member object not available, but memberId exists:", memberId);
-      console.log("[migrate] Attempting to proceed with memberId only - will need email from request or whoami");
-      
-      // Check if email is in request body (frontend could send it)
-      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-      if (body && body.email) {
-        email = body.email;
-        console.log("[migrate] Using email from request body:", email);
-      } else {
-        // Last resort: try whoami endpoint pattern to get email
-        try {
-          const whoamiResult = await memberstack.members.retrieve({ id: memberId });
-          const whoamiData = whoamiResult?.data !== undefined ? whoamiResult.data : whoamiResult;
-          if (whoamiData && whoamiData.auth && whoamiData.auth.email) {
-            email = whoamiData.auth.email;
-            member = whoamiData; // Set member for consistency
-            console.log("[migrate] ✅ Got email from whoami pattern:", email);
-          }
-        } catch (whoamiErr) {
-          console.error("[migrate] ❌ Whoami fallback also failed:", whoamiErr.message);
+      // Last resort: try whoami endpoint pattern to get email
+      console.log("[migrate] ⚠️ Trying whoami pattern as last resort...");
+      try {
+        const whoamiResult = await memberstack.members.retrieve({ id: memberId });
+        const whoamiData = whoamiResult?.data !== undefined ? whoamiResult.data : whoamiResult;
+        if (whoamiData && whoamiData.auth && whoamiData.auth.email) {
+          email = whoamiData.auth.email;
+          member = whoamiData; // Set member for consistency
+          console.log("[migrate] ✅ Got email from whoami pattern:", email);
+        } else {
+          console.error("[migrate] ❌ Whoami pattern also returned null data");
         }
+      } catch (whoamiErr) {
+        console.error("[migrate] ❌ Whoami fallback also failed:", whoamiErr.message);
       }
     }
 
