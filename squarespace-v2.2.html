@@ -441,20 +441,30 @@ function renderGrid(statusByModuleId = {}) {
 }
 
 function renderSummary(statusByModuleId) {
-  const total = modules.length;
-  const passed = Object.values(statusByModuleId).filter(s => s.passed === true).length;
-  const passedCountEl = document.getElementById('passedCount');
-  const progressPctEl = document.getElementById('progressPct');
-  const progressBar = document.getElementById('progressBar');
-  
-  if (passedCountEl) passedCountEl.textContent = String(passed);
-  if (progressPctEl) {
-    const pct = Math.round((passed/total)*100);
-    progressPctEl.textContent = String(pct);
-  }
-  if (progressBar) {
-    const pct = Math.round((passed/total)*100);
-    progressBar.style.width = pct + '%';
+  try {
+    if (!modules || modules.length === 0) {
+      debugLog('⚠️ renderSummary: modules array is empty or undefined');
+      return;
+    }
+    
+    const total = modules.length;
+    const passed = Object.values(statusByModuleId).filter(s => s && s.passed === true).length;
+    const passedCountEl = document.getElementById('passedCount');
+    const progressPctEl = document.getElementById('progressPct');
+    const progressBar = document.getElementById('progressBar');
+    
+    if (passedCountEl) passedCountEl.textContent = String(passed);
+    if (progressPctEl) {
+      const pct = Math.round((passed/total)*100);
+      progressPctEl.textContent = String(pct);
+    }
+    if (progressBar) {
+      const pct = Math.round((passed/total)*100);
+      progressBar.style.width = pct + '%';
+    }
+  } catch (err) {
+    console.error('❌ Error in renderSummary:', err);
+    debugLog('❌ Error in renderSummary:', err.message);
   }
 
   // NEW: mastery button & celebration
