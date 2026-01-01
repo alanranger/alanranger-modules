@@ -2538,6 +2538,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, 2000);
   
+  // CRITICAL: Render grid immediately with empty status to prevent blank page
+  // This ensures the page is visible even if authentication is slow or fails
+  debugLog('🎨 Rendering initial grid (empty state)...');
+  renderSummary({});
+  renderGrid({});
+  if (gridContainer) gridContainer.style.display = 'block';
+  const gridEl = document.getElementById('grid');
+  if (gridEl) gridEl.style.display = 'grid';
+  debugLog('✅ Initial grid rendered - page is no longer blank');
+  
   // Check Memberstack identity first (primary authentication)
   try {
     // Add timeout to prevent hanging
@@ -2560,26 +2570,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       logError('getExamIdentity timed out or returned null');
       updateDebugPanel();
       
-      // Even if authentication fails, render the grid with empty status
-      // This prevents a blank page and allows retry
-      debugLog('⚠️ Authentication failed - rendering grid with empty status');
-      renderSummary({});
-      renderGrid({});
-      
-      // Show grid container even if not authenticated
-      if (gridContainer) gridContainer.style.display = 'block';
-      const gridEl = document.getElementById('grid');
-      if (gridEl) gridEl.style.display = 'grid';
-      
+      // Grid is already rendered above, so page is not blank
       // Retry authentication after a delay
+      debugLog('⚠️ Authentication failed - will retry in 3 seconds');
       setTimeout(async () => {
         debugLog('🔄 Retrying authentication...');
         try {
           memberstackIdentity = await getExamIdentity();
           if (memberstackIdentity) {
-            debugLog('✅ Authentication successful on retry');
-            // Reload the page data
-            location.reload();
+            debugLog('✅ Authentication successful on retry - loading exam data...');
+            // Load exam data now that we're authenticated
+            const statusByModule = {};
+            for (const module of modules) {
+              try {
+                const status = await getLatestStatusViaMemberstack(module.id);
+                if (status) {
+                  statusByModule[module.id] = {
+                    score: status.score_percent,
+                    passed: status.passed,
+                    when: status.created_at
+                  };
+                }
+              } catch (err) {
+                debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+              }
+            }
+            renderSummary(statusByModule);
+            renderGrid(statusByModule);
+            memberstackDataLoaded = true;
+            debugLog('✅ Grid updated with exam data after retry');
           }
         } catch (e) {
           debugLog('❌ Authentication retry failed:', e.message);
