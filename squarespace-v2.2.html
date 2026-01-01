@@ -2570,6 +2570,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       logError('getExamIdentity timed out or returned null');
       updateDebugPanel();
       
+      // Update auth badge to show not authenticated
+      if (authBadge) {
+        authBadge.textContent = "Not signed in";
+        authBadge.style.background = '#ef4444';
+        authBadge.style.color = '#fff';
+      }
+      
+      // Show auth message
+      if (authMessage) authMessage.style.display = 'block';
+      
       // Grid is already rendered above, so page is not blank
       // Retry authentication after a delay
       debugLog('⚠️ Authentication failed - will retry in 3 seconds');
@@ -2579,6 +2589,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           memberstackIdentity = await getExamIdentity();
           if (memberstackIdentity) {
             debugLog('✅ Authentication successful on retry - loading exam data...');
+            
+            // Update auth badge
+            if (authBadge) {
+              authBadge.textContent = `Signed in as ${memberstackIdentity.email}`;
+              authBadge.style.background = '#10b981';
+              authBadge.style.color = '#fff';
+            }
+            if (authMessage) authMessage.style.display = 'none';
+            
+            // Show loading spinner
+            showLoadingSpinner('Loading your exam progress...');
+            
             // Load exam data now that we're authenticated
             const statusByModule = {};
             for (const module of modules) {
@@ -2598,10 +2620,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderSummary(statusByModule);
             renderGrid(statusByModule);
             memberstackDataLoaded = true;
+            hideLoadingSpinner();
             debugLog('✅ Grid updated with exam data after retry');
+          } else {
+            debugLog('❌ Authentication retry still failed');
           }
         } catch (e) {
           debugLog('❌ Authentication retry failed:', e.message);
+          hideLoadingSpinner();
         }
       }, 3000);
       
@@ -2719,14 +2745,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Show grid container even on error
         if (gridContainer) gridContainer.style.display = 'block';
         const gridEl = document.getElementById('grid');
-        if (gridEl) gridEl.style.display = 'grid';
-        debugLog('⚠️ Error occurred but keeping existing grid data');
-        
-        // Show the grid element even with no data
-        const gridEl = document.getElementById('grid');
         if (gridEl) {
           gridEl.style.display = 'grid';
+          debugLog('✅ Grid element displayed after error');
         }
+        debugLog('⚠️ Error occurred but grid is visible');
       } finally {
         // Always hide loading spinner
         hideLoadingSpinner();
