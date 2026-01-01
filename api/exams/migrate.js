@@ -98,7 +98,10 @@ module.exports = async (req, res) => {
                 console.log("[migrate] ✅ Member retrieved successfully (via result.data):", member?.auth?.email);
               } else if (data === null || data === undefined) {
                 console.error("[migrate] ❌ result.data is null/undefined. Member may not exist in Memberstack.");
-                return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataValue: data } });
+                console.error("[migrate] ❌ Full result object:", JSON.stringify(result, null, 2));
+                // Try to get member by email as fallback (if we have email from whoami)
+                console.error("[migrate] ❌ Cannot proceed without member data. Member ID may be invalid or member may not exist.");
+                return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataValue: data, fullResult: result } });
               } else {
                 console.error("[migrate] ❌ result.data exists but has no id/auth properties:", JSON.stringify(data, null, 2));
                 return res.status(401).json({ error: "Member not found in Memberstack", debug: { memberId, dataKeys: Object.keys(data || {}) } });
