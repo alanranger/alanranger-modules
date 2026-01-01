@@ -2056,13 +2056,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   const gridContainer = document.getElementById('grid-container');
   const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
   
-  // Initialize debug panel
-  updateDebugPanel();
-  setInterval(updateDebugPanel, 2000); // Update every 2 seconds
+  // Initialize debug panel immediately
+  try {
+    updateDebugPanel();
+  } catch (e) {
+    console.error('Debug panel init error:', e);
+  }
+  
+  // Update debug panel every 2 seconds
+  setInterval(() => {
+    try {
+      updateDebugPanel();
+    } catch (e) {
+      console.error('Debug panel update error:', e);
+    }
+  }, 2000);
   
   // Check Memberstack identity first (primary authentication)
   try {
-    memberstackIdentity = await getExamIdentity();
+    // Add timeout to prevent hanging
+    const identityPromise = getExamIdentity();
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 10000));
+    memberstackIdentity = await Promise.race([identityPromise, timeoutPromise]);
+    
+    if (!memberstackIdentity) {
+      logError('getExamIdentity timed out or returned null');
+      updateDebugPanel();
+    }
     if (memberstackIdentity) {
       debugLog('✅ Memberstack user authenticated:', memberstackIdentity.email);
       
