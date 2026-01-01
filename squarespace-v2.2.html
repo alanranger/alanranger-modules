@@ -1394,38 +1394,61 @@ async function migrateLegacyResults() {
   
   try {
     showToast('Migrating legacy results...', 'info');
+    logError('Starting migration for: ' + memberstackIdentity.email);
     
     const headers = await getApiHeaders();
-    const r = await fetch(`${EXAMS_API_BASE}/api/exams/migrate`, {
+    const url = `${EXAMS_API_BASE}/api/exams/migrate`;
+    
+    const r = await fetch(url, {
       method: "POST",
       headers: headers,
       credentials: "include",
       body: JSON.stringify({})
     });
     
+    logApiCall('POST', url, r.status, r.statusText, r.ok ? null : await r.text().catch(() => ''));
+    
     if (!r.ok) {
-      const error = await r.json().catch(() => ({ error: "Migration failed" }));
+      const errorText = await r.text().catch(() => '');
+      const error = errorText ? JSON.parse(errorText) : { error: "Migration failed" };
+      logError(`Migration failed: ${r.status} ${error.error || errorText}`);
       throw new Error(error.error || "Migration failed");
     }
     
     const result = await r.json();
+    logError(`Migration successful: ${result.message || `Migrated ${result.count || 0} results`}`);
     showToast(result.message || `Migrated ${result.count || 0} results`, 'success');
     
     // Hide migration button
     const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
     if (btnMigrateLegacy) btnMigrateLegacy.style.display = 'none';
     
-    // Refresh status
-    const user = await currentUser();
-    if (user) {
-      const status = await fetchStatusForUser(user, true);
-      renderSummary(status);
-      renderGrid(status);
+    // Refresh status from Memberstack API
+    debugLog('🔄 Refreshing exam status after migration...');
+    const statusByModule = {};
+    for (const module of modules) {
+      try {
+        const status = await getLatestStatusViaMemberstack(module.id);
+        if (status) {
+          statusByModule[module.id] = {
+            score: status.score_percent,
+            passed: status.passed,
+            when: status.created_at
+          };
+        }
+      } catch (err) {
+        debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+      }
     }
+    
+    renderSummary(statusByModule);
+    renderGrid(statusByModule);
+    debugLog('✅ Grid refreshed after migration');
     
     return result;
   } catch (e) {
     console.error("[migrateLegacyResults] Error:", e);
+    logError(`Migration exception: ${e.message}`);
     showToast('Migration failed: ' + e.message, 'error');
     throw e;
   }
