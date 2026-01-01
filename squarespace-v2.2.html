@@ -2208,9 +2208,6 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
     }); // End of onAuthStateChange callback
   } // End of else block (memberstackAvailable check)
 } // End of supabase check
-} else {
-  console.warn('[onAuthStateChange] Supabase not initialized, skipping auth state listener');
-}
 
 // Handle pending results from localStorage (wrapped in async IIFE)
 (async () => {
