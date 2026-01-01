@@ -834,17 +834,37 @@ let memberstackIdentity = null; // { memberstack_id, email, permissions, planCon
  */
 async function getExamIdentity() {
   try {
+    console.log("[getExamIdentity] Starting...");
+    console.log("[getExamIdentity] EXAMS_API_BASE:", EXAMS_API_BASE);
+    
     const headers = getApiHeaders();
-    const r = await fetch(`${EXAMS_API_BASE}/api/exams/whoami`, {
+    console.log("[getExamIdentity] Headers:", headers);
+    console.log("[getExamIdentity] Token from cookie:", getMemberstackTokenFromCookie() ? "Found" : "Not found");
+    
+    const url = `${EXAMS_API_BASE}/api/exams/whoami`;
+    console.log("[getExamIdentity] Fetching:", url);
+    
+    const r = await fetch(url, {
       headers: headers,
       credentials: "include"
     });
-    if (!r.ok) return null;
+    
+    console.log("[getExamIdentity] Response status:", r.status, r.statusText);
+    console.log("[getExamIdentity] Response ok:", r.ok);
+    
+    if (!r.ok) {
+      const errorText = await r.text().catch(() => "Could not read error");
+      console.error("[getExamIdentity] Error response:", errorText);
+      return null;
+    }
+    
     const data = await r.json();
+    console.log("[getExamIdentity] Success! Data:", data);
     memberstackIdentity = data;
     return data;
   } catch (e) {
-    console.error("[getExamIdentity] Error:", e);
+    console.error("[getExamIdentity] Exception:", e);
+    console.error("[getExamIdentity] Error stack:", e.stack);
     return null;
   }
 }
@@ -1643,8 +1663,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
   
   // Check Memberstack identity first (primary authentication)
+  console.log("[DOMContentLoaded] Starting Memberstack check...");
+  console.log("[DOMContentLoaded] EXAMS_API_BASE:", typeof EXAMS_API_BASE !== 'undefined' ? EXAMS_API_BASE : "UNDEFINED!");
+  
   try {
+    console.log("[DOMContentLoaded] Calling getExamIdentity()...");
     memberstackIdentity = await getExamIdentity();
+    console.log("[DOMContentLoaded] getExamIdentity() returned:", memberstackIdentity ? "Success" : "null");
     if (memberstackIdentity) {
       debugLog('✅ Memberstack user authenticated:', memberstackIdentity.email);
       
