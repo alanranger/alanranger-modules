@@ -1183,6 +1183,15 @@ async function getApiHeaders(additionalHeaders = {}) {
   const token = await getMemberstackToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+    console.log("[getApiHeaders] Added Authorization header with token (length:", token.length, ")");
+  } else {
+    console.warn("[getApiHeaders] No token available - API calls may fail");
+    // Still try without token - server might accept member ID from client API
+    // We'll include member ID as a fallback header if available
+    if (memberstackIdentity && memberstackIdentity.memberstack_id) {
+      headers["X-Memberstack-Id"] = memberstackIdentity.memberstack_id;
+      console.log("[getApiHeaders] Added X-Memberstack-Id header as fallback");
+    }
   }
   
   return headers;
