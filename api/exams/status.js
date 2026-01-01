@@ -32,15 +32,8 @@ module.exports = async (req, res) => {
     // Fallback: Use member ID header
     if (!memberId) {
       memberId = getMemberstackMemberId(req);
-      if (memberId) {
-        // Verify member exists
-        try {
-          await memberstack.members.retrieve({ id: memberId });
-        } catch (e) {
-          console.error("[status] Member ID retrieval failed:", e.message);
-          return res.status(401).json({ error: "Invalid member ID" });
-        }
-      }
+      // Don't verify member exists - just use the memberId to query results
+      // If memberId is invalid, the query will just return empty results
     }
     
     if (!memberId) {
