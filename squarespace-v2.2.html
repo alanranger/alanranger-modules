@@ -951,7 +951,14 @@ let debugData = {
   cookies: {},
   apiCalls: [],
   errors: [],
-  supabaseStatus: null
+  supabaseStatus: null,
+  gridStatus: {
+    rendered: false,
+    modulesCount: 0,
+    cardsCount: 0,
+    lastRenderTime: null,
+    lastError: null
+  }
 };
 
 function updateDebugPanel() {
@@ -1050,6 +1057,20 @@ function updateDebugPanel() {
     debugData.errors.slice(-3).reverse().forEach(err => {
       html += `<div class="debug-item"><span class="debug-value error">${err}</span></div>`;
     });
+  }
+  html += '</div>';
+  
+  // Grid Status
+  html += '<div class="debug-section">';
+  html += '<div class="debug-section-title">🎨 Grid Status</div>';
+  html += `<div class="debug-item"><span class="debug-label">Rendered:</span><span class="debug-value ${debugData.gridStatus.rendered ? 'info' : 'error'}">${debugData.gridStatus.rendered ? 'YES' : 'NO'}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Modules:</span><span class="debug-value info">${debugData.gridStatus.modulesCount}</span></div>`;
+  html += `<div class="debug-item"><span class="debug-label">Cards:</span><span class="debug-value info">${debugData.gridStatus.cardsCount}</span></div>`;
+  if (debugData.gridStatus.lastRenderTime) {
+    html += `<div class="debug-item"><span class="debug-label">Last Render:</span><span class="debug-value info">${debugData.gridStatus.lastRenderTime}</span></div>`;
+  }
+  if (debugData.gridStatus.lastError) {
+    html += `<div class="debug-item"><span class="debug-label">Last Error:</span><span class="debug-value error">${debugData.gridStatus.lastError}</span></div>`;
   }
   html += '</div>';
   
