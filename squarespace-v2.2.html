@@ -2026,20 +2026,32 @@ async function getLatestStatus(moduleId){
 }
 
 async function saveResultToDB(report){
-  // Try Memberstack first
+  // Try Memberstack first - always attempt to get identity if not set
+  if (!memberstackIdentity) {
+    debugLog('⚠️ memberstackIdentity not set, attempting to get it before save...');
+    try {
+      memberstackIdentity = await getExamIdentity();
+    } catch (err) {
+      console.error("[saveResultToDB] Failed to get Memberstack identity:", err);
+    }
+  }
+  
   if (memberstackIdentity) {
     try {
+      debugLog('💾 Saving via Memberstack API...');
       await saveResultsViaMemberstack(report);
       showToast("Progress saved to your account.", "success");
       renderProgressBadge();
       return;
     } catch (err) {
       console.error("[saveResultToDB] Memberstack save failed:", err);
+      showToast("Failed to save via Memberstack. Trying fallback...", "warning");
       // Fall through to Supabase fallback
     }
   }
   
-  // Fallback to Supabase (legacy)
+  // Fallback to Supabase (legacy) - only if Memberstack is not available
+  debugLog('⚠️ Falling back to legacy Supabase save (Memberstack not available)');
   const user = await currentUser();
   if (!user){
     const email = document.getElementById('email').value.trim();
