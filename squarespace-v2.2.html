@@ -2319,6 +2319,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Function to check for existing session and auto-sign in
   async function checkExistingSession() {
+    // SKIP if Memberstack is already authenticated
+    if (memberstackIdentity) {
+      debugLog('🔍 Skipping Supabase session check - Memberstack is active');
+      return;
+    }
+    
     try {
       debugLog('🔍 Checking for existing session...');
       const { data: { session }, error } = await supabase.auth.getSession();
