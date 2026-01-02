@@ -1,4 +1,4 @@
-# Deployment Summary - Memberstack Exam Integration v2.2.0
+# Deployment Summary - Memberstack Exam Integration v2.2.1
 
 ## ✅ Completed Files
 

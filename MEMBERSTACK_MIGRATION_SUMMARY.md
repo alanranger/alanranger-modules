@@ -1,4 +1,4 @@
-# Memberstack-Only Authentication Migration Summary v2.2.0
+# Memberstack-Only Authentication Migration Summary v2.2.1
 
 ## Overview
 Removed Supabase magic-link authentication from exam UX and replaced with Memberstack session-based authentication via API. System now uses Memberstack as primary authentication with Supabase as fallback for legacy migration only.
@@ -9,7 +9,7 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 
 ### 1. Frontend Files
 
-#### `squarespace-v2.2.html` (v2.2.0)
+#### `squarespace-v2.2.html` (v2.2.1)
 **Changes:**
 - ✅ Memberstack authentication via `getExamIdentity()` function
 - ✅ Auto-save functionality after exam submission
@@ -115,7 +115,7 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 
 ---
 
-## Key Features (v2.2.0)
+## Key Features (v2.2.1)
 
 ### Certificate Downloads
 - **Master Certificate**: Generates PDF with all passed modules
