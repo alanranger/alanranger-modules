@@ -50,9 +50,10 @@ module.exports = async (req, res) => {
     console.log("[status] Querying module_results_ms for memberId:", memberId, "moduleId:", moduleId);
     
     // Get the latest attempt (regardless of pass/fail) - this shows the most recent activity
+    // Include details field for results modal and PDF generation
     const { data, error } = await supabase
       .from("module_results_ms")
-      .select("score_percent,passed,attempt,created_at")
+      .select("score_percent,passed,attempt,created_at,details")
       .eq("memberstack_id", memberId)
       .eq("module_id", moduleId)
       .order("attempt", { ascending: false })

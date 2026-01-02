@@ -8,6 +8,8 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 - **Progress Tracking**: Real-time progress tracking with pass/fail status
 - **Auto-save**: Exam results automatically saved to Memberstack-linked accounts
 - **Certificates**: Download PDF certificates for passed modules and master certification
+  - Master Certificate: Complete certification for all passed modules
+  - Module Results: Detailed transcript with all exam attempts and scores
 - **Dashboard Integration**: Progress displayed on academy dashboard
 - **Memberstack Authentication**: Secure authentication via Memberstack
 
@@ -27,10 +29,15 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 ### API Endpoints
 Located in `api/exams/`:
 - **`whoami.js`** - Get Memberstack member identity
-- **`status.js`** - Get latest exam status for a module
+- **`status.js`** - Get latest exam status for a module (includes `details` field)
 - **`save.js`** - Save exam results
 - **`migrate.js`** - Migrate legacy exam results to Memberstack-linked table
 - **`_cors.js`** - CORS configuration
+
+All endpoints support:
+- Memberstack authentication (cookie-based or `X-Memberstack-Id` header)
+- CORS from `https://www.alanranger.com`
+- Enhanced error logging
 
 ## Database
 - **`module_results_ms`** - Memberstack-linked exam results table
@@ -45,14 +52,17 @@ API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 1. Copy contents of `squarespace-v2.2.html` to Exams & Certification page code block
 2. Copy contents of `academy-dashboard-squarespace-snippet-v1.html` to Dashboard page code block
 
-## Recent Updates (v2.2)
-- Fixed grid refresh after taking exams
-- Added page visibility/focus listeners for auto-refresh
-- Improved error handling and logging
-- Added grid status to debug panel
-- Fixed blank page issue on initial load
-- Auto-save functionality after exam submission
-- Debug panel hidden by default (Ctrl+Shift+D to show)
+## Recent Updates (v2.2.1)
+- ✅ Fixed Master Certificate download (now uses Memberstack authentication)
+- ✅ Fixed Module Results download (now includes complete details field)
+- ✅ Updated API endpoint `/api/exams/status` to include `details` field in response
+- ✅ Fixed grid refresh after taking exams (full page reload on backToGrid)
+- ✅ Added page visibility/focus listeners for auto-refresh
+- ✅ Improved error handling and logging
+- ✅ Added grid status to debug panel
+- ✅ Fixed blank page issue on initial load
+- ✅ Auto-save functionality after exam submission
+- ✅ Debug panel hidden by default (Ctrl+Shift+D to show)
 
 ## Debug Panel
 The debug panel is hidden by default. Press **Ctrl+Shift+D** (or Cmd+Shift+D on Mac) to toggle visibility. The panel shows:

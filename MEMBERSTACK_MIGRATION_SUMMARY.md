@@ -13,13 +13,15 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 **Changes:**
 - ✅ Memberstack authentication via `getExamIdentity()` function
 - ✅ Auto-save functionality after exam submission
-- ✅ Grid auto-refresh on page visibility/focus
+- ✅ Grid auto-refresh on page visibility/focus (full page reload)
 - ✅ Debug panel (hidden by default, Ctrl+Shift+D to show)
 - ✅ Grid status tracking in debug panel
 - ✅ Enhanced error handling and validation
 - ✅ Blank page prevention on initial load
 - ✅ Email synchronization with Memberstack identity
 - ✅ Protection flag to prevent grid clearing after data loaded
+- ✅ **Master Certificate download** (uses Memberstack auth, queries `module_results_ms`)
+- ✅ **Module Results download** (includes complete `details` field)
 
 **API Base:**
 - `EXAMS_API_BASE = "https://alanranger-modules.vercel.app"`
@@ -69,6 +71,7 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 **`GET /api/exams/status?moduleId=...`**
 - Supports `X-Memberstack-Id` header
 - Returns latest exam status for module
+- **Includes `details` field** (JSONB) with complete exam information for PDF generation and results display
 
 **`POST /api/exams/migrate`**
 - Supports `X-Memberstack-Id` header
@@ -114,13 +117,23 @@ Removed Supabase magic-link authentication from exam UX and replaced with Member
 
 ## Key Features (v2.2.0)
 
+### Certificate Downloads
+- **Master Certificate**: Generates PDF with all passed modules
+  - Uses Memberstack authentication
+  - Queries `module_results_ms` table
+  - Includes user name and completion date
+- **Module Results**: Generates detailed transcript with all attempts
+  - Includes complete `details` field with all exam information
+  - Shows missed questions and detailed scores
+  - Uses Memberstack authentication
+
 ### Auto-Save
 - Exam results automatically saved after submission
 - Manual save button available as backup
 - Grid refreshes automatically after save
 
 ### Auto-Refresh
-- Grid refreshes when navigating back to page (visibility/focus listeners)
+- Grid refreshes when navigating back to page (full page reload via `backToGrid()`)
 - Dashboard refreshes every 30 seconds and on visibility change
 - Page load refresh on dashboard
 
@@ -165,6 +178,8 @@ All endpoints:
 - [ ] Complete exam → auto-saves successfully
 - [ ] Manual save button works as backup
 - [ ] Grid refreshes after save (no F5 needed)
+- [ ] Master Certificate download works (generates PDF)
+- [ ] Module Results download works (includes complete details)
 
 ✅ **Grid Refresh:**
 - [ ] Navigate back to page → grid refreshes automatically
@@ -186,7 +201,19 @@ All endpoints:
 
 ## Version History
 
-### v2.2.0 (Current)
+### v2.2.1 (Current)
+- ✅ **Master Certificate Download Fix**: Now uses Memberstack authentication, queries `module_results_ms` table
+- ✅ **Module Results Download Fix**: Now includes complete `details` field with all exam information
+- ✅ **API Endpoint Update**: `/api/exams/status` now includes `details` field in response
+- Grid refresh fixes (after exam, on page visibility/focus - full page reload)
+- Auto-save functionality
+- Debug panel hidden by default
+- Grid status tracking in debug panel
+- Enhanced error handling and validation
+- Blank page prevention
+- Dashboard auto-refresh improvements
+
+### v2.2.0
 - Grid refresh fixes (after exam, on page visibility/focus)
 - Auto-save functionality
 - Debug panel hidden by default

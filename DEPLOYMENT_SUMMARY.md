@@ -68,19 +68,24 @@ All files in `/api/exams/`:
 4. Navigate back to grid - should refresh automatically
 5. Check dashboard - should show updated progress
 
-## Key Features (v2.2.0)
+## Key Features (v2.2.1)
 
 ### Authentication
 - Memberstack-only authentication (no Supabase magic links)
 - Uses `X-Memberstack-Id` header as fallback
 - Client-side Memberstack API support
 
+### Certificate Downloads
+- **Master Certificate**: Generates PDF with all passed modules (requires Memberstack auth)
+- **Module Results**: Generates detailed transcript with all attempts and scores (includes `details` field)
+- Both downloads query `module_results_ms` table using Memberstack authentication
+
 ### Auto-Save
 - Exam results automatically saved after submission
 - No manual "Save" button required (but available as backup)
 
 ### Auto-Refresh
-- Grid refreshes when navigating back to page
+- Grid refreshes when navigating back to page (full page reload)
 - Dashboard refreshes every 30 seconds and on visibility change
 - Page load refresh on dashboard (1 second delay)
 
@@ -103,7 +108,7 @@ All files in `/api/exams/`:
 - `score_percent` (numeric) - Exam score (0-100)
 - `passed` (boolean) - Pass/fail status
 - `attempt` (integer) - Attempt number
-- `details` (jsonb) - Additional exam details
+- `details` (jsonb) - **Complete exam details** (questions, answers, missed questions, etc.) - **Required for PDF generation**
 - `created_at` (timestamp) - When result was saved
 
 ## API Endpoints
@@ -112,17 +117,23 @@ All files in `/api/exams/`:
 |----------|--------|---------|
 | `/api/exams/whoami` | GET | Get Memberstack identity |
 | `/api/exams/save` | POST | Save exam results |
-| `/api/exams/status` | GET | Get latest exam status for module |
+| `/api/exams/status` | GET | Get latest exam status for module (includes `details` field) |
 | `/api/exams/migrate` | POST | Migrate legacy exam results |
 
 All endpoints:
 - Support CORS from `https://www.alanranger.com`
 - Accept `X-Memberstack-Id` header as authentication fallback
 - Return appropriate error codes with detailed messages
+- Enhanced error logging for debugging
 
-## Recent Updates (v2.2.0)
+**Note**: The `/api/exams/status` endpoint now includes the `details` field (JSONB) in its response, which contains complete exam information needed for PDF generation and results display.
 
-- ✅ Grid refresh fixes (after exam, on page visibility/focus)
+## Recent Updates (v2.2.1)
+
+- ✅ **Master Certificate Download Fix**: Now uses Memberstack authentication and queries `module_results_ms` table
+- ✅ **Module Results Download Fix**: Now includes complete `details` field with all exam information
+- ✅ **API Endpoint Update**: `/api/exams/status` now includes `details` field in response
+- ✅ Grid refresh fixes (after exam, on page visibility/focus - full page reload)
 - ✅ Auto-save functionality
 - ✅ Debug panel hidden by default
 - ✅ Grid status tracking in debug panel

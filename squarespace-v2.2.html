@@ -186,8 +186,8 @@
     </div>
   </div>
   
-  <!-- Small debug toggle button (shown when panel is hidden, press Ctrl+Shift+D to toggle) -->
-  <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:block; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
+  <!-- Small debug toggle button (hidden when panel is visible) -->
+  <button id="debugShowBtn" onclick="document.getElementById('debugPanel').style.display = 'block';" style="display:none; position:fixed; bottom:20px; right:20px; z-index:99998; background:#8b5cf6; color:#fff; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; box-shadow:0 4px 12px rgba(0,0,0,.3);" title="Show Debug Panel (Ctrl+Shift+D)">🔍</button>
 
   <!-- Quiz View -->
   <div id="quiz-container" style="display:none;">
@@ -480,25 +480,29 @@ function renderGrid(statusByModuleId = {}) {
 }
 
 function renderSummary(statusByModuleId) {
+  // Declare variables outside try block so they're available everywhere
+  let total = 0;
+  let passed = 0;
+  
   try {
     if (!modules || modules.length === 0) {
       debugLog('⚠️ renderSummary: modules array is empty or undefined');
       return;
     }
     
-    const total = modules.length;
-    const passed = Object.values(statusByModuleId).filter(s => s && s.passed === true).length;
+    total = modules.length;
+    passed = Object.values(statusByModuleId || {}).filter(s => s && s.passed === true).length;
     const passedCountEl = document.getElementById('passedCount');
     const progressPctEl = document.getElementById('progressPct');
     const progressBar = document.getElementById('progressBar');
     
     if (passedCountEl) passedCountEl.textContent = String(passed);
     if (progressPctEl) {
-      const pct = Math.round((passed/total)*100);
+      const pct = total > 0 ? Math.round((passed/total)*100) : 0;
       progressPctEl.textContent = String(pct);
     }
     if (progressBar) {
-      const pct = Math.round((passed/total)*100);
+      const pct = total > 0 ? Math.round((passed/total)*100) : 0;
       progressBar.style.width = pct + '%';
     }
   } catch (err) {
@@ -507,15 +511,20 @@ function renderSummary(statusByModuleId) {
   }
 
   // NEW: mastery button & celebration
-  ensureMasteryButton();
-  const masterBtn = document.getElementById('btnMasterCertificate');
-  if (masterBtn) {
-    masterBtn.disabled = passed !== total;
-    masterBtn.style.opacity = passed === total ? '1' : '.6';
-    masterBtn.title = passed === total ? 'Download your Master Certificate' : `Pass all ${total} modules to unlock`;
-  }
+  try {
+    ensureMasteryButton();
+    const masterBtn = document.getElementById('btnMasterCertificate');
+    if (masterBtn && total > 0) {
+      masterBtn.disabled = passed !== total;
+      masterBtn.style.opacity = passed === total ? '1' : '.6';
+      masterBtn.title = passed === total ? 'Download your Master Certificate' : `Pass all ${total} modules to unlock`;
+    }
 
-  if (passed === total) maybeCelebrateMastery(); // confetti + modal (once)
+    if (total > 0 && passed === total) maybeCelebrateMastery(); // confetti + modal (once)
+  } catch (err) {
+    console.error('❌ Error in mastery button setup:', err);
+    debugLog('❌ Error in mastery button setup:', err.message);
+  }
 }
 
 // NEW: Mastery UI and celebration functions
@@ -617,13 +626,27 @@ function showMasteryModal(){
   const masterCertBtn = modal.querySelector('#btn-modal-master-cert');
   const transcriptBtn = modal.querySelector('#btn-modal-transcript');
   
-  masterCertBtn?.addEventListener('click', () => {
+  masterCertBtn?.addEventListener('click', async () => {
     debugLog('🔍 Modal Master Certificate button clicked');
     // Capture the name from the input field before generating PDF
     const nameInput = document.getElementById('masterCertificateName');
     const capturedName = nameInput?.value?.trim() || '';
     debugLog('🔍 Captured name from input:', capturedName);
-    window.downloadMasterCertificatePDF(capturedName);
+    
+    // Disable button to prevent multiple clicks
+    masterCertBtn.disabled = true;
+    masterCertBtn.textContent = 'Generating PDF...';
+    
+    try {
+      await window.downloadMasterCertificatePDF(capturedName);
+      // Close modal after successful download
+      modal.remove();
+    } catch (err) {
+      debugLog('❌ Error generating certificate:', err.message);
+      masterCertBtn.disabled = false;
+      masterCertBtn.textContent = 'Download Master Certificate';
+      showToast('Failed to generate certificate. Check console for details.', 'error');
+    }
   });
   
   transcriptBtn?.addEventListener('click', () => {
@@ -634,11 +657,13 @@ function showMasteryModal(){
   // Populate the name field with user's name (only if empty)
   setTimeout(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (!memberstackIdentity) {
+        memberstackIdentity = await getExamIdentity();
+      }
+      if (memberstackIdentity && memberstackIdentity.email) {
         const nameInput = document.getElementById('masterCertificateName');
         if (nameInput && !nameInput.value.trim()) {
-          const defaultName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] || '';
+          const defaultName = memberstackIdentity.email.split('@')[0] || '';
           nameInput.value = defaultName;
           debugLog('🔍 Populated name field with:', defaultName);
         }
@@ -842,90 +867,11 @@ window.loadExam = async function(moduleId) {
 }
 
 async function backToGrid() {
-  debugLog('🔙 Returning to grid from quiz');
+  debugLog('🔙 Returning to grid from quiz - FORCING FULL PAGE RELOAD');
   
-  document.getElementById('quiz-container').style.display = 'none';
-  document.getElementById('grid-container').style.display = 'block';
-  
-  // Wait a moment for DOM to update
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // CRITICAL: Reset the protection flag so we can refresh the grid
-  memberstackDataLoaded = false;
-  debugLog('🔄 Reset memberstackDataLoaded flag to allow grid refresh');
-  
-  // Refresh grid with updated results
-  // PRIORITY: Use Memberstack if available, fallback to Supabase legacy
-  try {
-    // Check for Memberstack first
-    if (!memberstackIdentity) {
-      memberstackIdentity = await getExamIdentity();
-    }
-    
-    if (memberstackIdentity) {
-      debugLog('🔄 Refreshing grid with Memberstack data after exam...');
-      const statusByModule = {};
-      
-      // Fetch status for all modules
-      for (const module of modules) {
-        try {
-          const status = await getLatestStatusViaMemberstack(module.id);
-          if (status) {
-            statusByModule[module.id] = {
-              score: status.score_percent,
-              passed: status.passed,
-              when: status.created_at
-            };
-            debugLog(`✅ Fetched status for ${module.id}: ${status.score_percent}%, passed=${status.passed}`);
-          }
-        } catch (err) {
-          debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
-        }
-      }
-      
-      debugLog('📊 Refreshed status for modules:', Object.keys(statusByModule).length);
-      debugLog('📊 Status data:', JSON.stringify(statusByModule));
-      
-      // Force render with fresh data
-      renderSummary(statusByModule);
-      renderGrid(statusByModule);
-      
-      // Set flag after rendering
-      memberstackDataLoaded = true;
-      debugLog('✅ Grid refreshed with Memberstack data after exam');
-      
-      // Update debug panel
-      debugData.gridStatus.rendered = true;
-      debugData.gridStatus.modulesCount = modules ? modules.length : 0;
-      debugData.gridStatus.cardsCount = document.getElementById('grid')?.children.length || 0;
-      debugData.gridStatus.lastRenderTime = new Date().toLocaleTimeString();
-      updateDebugPanel();
-    } else {
-      // Fallback to Supabase legacy
-      debugLog('🔍 Getting current user (Supabase legacy)...');
-      const { data: { user } } = await supabase.auth.getUser();
-      debugLog('👤 Current user: ' + (user ? user.email : 'None'));
-      
-      if (user) {
-        debugLog('🔄 Fetching user status (Supabase legacy)...');
-        const status = await fetchStatusForUser(user);
-        debugLog('📊 Fetched status: ' + JSON.stringify(status));
-        
-        debugLog('🎨 Rendering summary and grid...');
-        renderSummary(status);
-        renderGrid(status);
-        
-        debugLog('✅ Grid refreshed with updated results');
-      } else {
-        debugLog('⚠️ No user found, clearing grid');
-        renderSummary({});
-        renderGrid({});
-      }
-    }
-  } catch (error) {
-    debugLog('❌ Error refreshing grid: ' + error.message);
-    debugLog('❌ Error stack: ' + error.stack);
-  }
+  // SIMPLE SOLUTION: Just reload the page to force a complete refresh
+  // This ensures all data is fresh from the database
+  window.location.reload();
 }
 
 // Check URL parameters for direct exam access
@@ -1564,13 +1510,8 @@ async function saveResultsViaMemberstack(report) {
  * Refresh a single module's status in the grid after saving
  */
 async function refreshGridModuleStatus(moduleId) {
-  // Only refresh if we're on the grid view
-  const gridContainer = document.getElementById('grid-container');
-  if (!gridContainer || gridContainer.style.display === 'none') {
-    debugLog('⏭️ Skipping grid refresh - not on grid view');
-    return;
-  }
-  
+  // Refresh even if grid is hidden - we can still update DOM elements
+  // This ensures the grid is updated when user returns to it
   debugLog(`🔄 Refreshing grid status for module: ${moduleId}`);
   
   try {
@@ -1579,76 +1520,28 @@ async function refreshGridModuleStatus(moduleId) {
     }
     
     if (memberstackIdentity) {
-      const status = await getLatestStatusViaMemberstack(moduleId);
-      if (status) {
-        // Find the module card in the grid and update it
-        // Try finding by card's data-module-id first, then fallback to button's data-module-id
-        let moduleCard = document.querySelector(`.card[data-module-id="${moduleId}"]`);
-        if (!moduleCard) {
-          moduleCard = document.querySelector(`[data-module-id="${moduleId}"]`)?.closest('.card');
+      // Refresh the entire grid to ensure summary is also updated
+      const statusByModule = {};
+      for (const module of modules) {
+        try {
+          const status = await getLatestStatusViaMemberstack(module.id);
+          if (status) {
+            statusByModule[module.id] = {
+              score: status.score_percent,
+              passed: status.passed,
+              when: status.created_at
+            };
+          }
+        } catch (err) {
+          debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
         }
-        if (moduleCard) {
-          debugLog(`✅ Found module card for ${moduleId}, updating status`);
-          
-          // Update the card classes
-          moduleCard.classList.remove('passed', 'failed');
-          if (status.passed) {
-            moduleCard.classList.add('passed');
-            // Add or update tick
-            let tick = moduleCard.querySelector('.tick');
-            if (!tick) {
-              tick = document.createElement('div');
-              tick.className = 'tick';
-              tick.textContent = '✓';
-              moduleCard.appendChild(tick);
-            }
-            // Remove xmark if present
-            const xmark = moduleCard.querySelector('.xmark');
-            if (xmark) xmark.remove();
-          } else {
-            moduleCard.classList.add('failed');
-            // Add or update xmark
-            let xmark = moduleCard.querySelector('.xmark');
-            if (!xmark) {
-              xmark = document.createElement('div');
-              xmark.className = 'xmark';
-              xmark.textContent = '✕';
-              moduleCard.appendChild(xmark);
-            }
-            // Remove tick if present
-            const tick = moduleCard.querySelector('.tick');
-            if (tick) tick.remove();
-          }
-          
-          // Update chips
-          const chips = moduleCard.querySelector('.chips');
-          if (chips) {
-            const scoreTxt = `${status.score_percent}%`;
-            const dateTxt = new Date(status.created_at).toLocaleDateString();
-            chips.innerHTML = `
-              <span class="chip">Score: <strong>${scoreTxt}</strong></span>
-              <span class="chip">${dateTxt}</span>
-              ${status.passed ? `<span class="chip pass">Passed</span>` : `<span class="chip fail">Failed</span>`}
-            `;
-          }
-          
-          // Update button text
-          const examButton = moduleCard.querySelector('[data-module-id]');
-          if (examButton) {
-            examButton.textContent = status.passed ? 'View results' : 'Retake exam';
-            examButton.className = status.passed ? 'btn sm' : 'btn sm secondary';
-          }
-          
-          // Update summary
-          renderSummary(await getAllModuleStatuses());
-          
-          debugLog(`✅ Successfully updated grid status for ${moduleId}`);
-        } else {
-          debugLog(`⚠️ Module card not found in grid for ${moduleId}`);
-        }
-      } else {
-        debugLog(`⚠️ No status found for module ${moduleId}`);
       }
+      
+      // Re-render the entire grid with updated status
+      renderSummary(statusByModule);
+      renderGrid(statusByModule);
+      
+      debugLog(`✅ Successfully refreshed entire grid with updated status for ${moduleId}`);
     } else {
       debugLog(`⚠️ Cannot refresh grid - no Memberstack identity`);
     }
@@ -2616,38 +2509,66 @@ document.addEventListener('keydown', function(e) {
 // Refresh grid when page becomes visible (user navigates back)
 document.addEventListener('visibilitychange', async function() {
   if (document.visibilityState === 'visible') {
-    // Only refresh if we're on the grid view and have Memberstack identity
     const gridContainer = document.getElementById('grid-container');
-    if (gridContainer && gridContainer.style.display !== 'none' && memberstackIdentity) {
-      debugLog('🔄 Page became visible - refreshing grid...');
+    // Always ensure grid is visible when page becomes visible
+    if (gridContainer) {
+      gridContainer.style.display = 'block';
+      gridContainer.style.visibility = 'visible';
+    }
+    
+    // Check if grid refresh is needed (exam was just saved)
+    const needsRefresh = window._needsGridRefresh || false;
+    
+    // If we have Memberstack identity, refresh the data
+    if (memberstackIdentity || needsRefresh) {
+      debugLog('🔄 Page became visible - refreshing grid...', needsRefresh ? '(refresh needed)' : '');
       
       // Reset flag to allow refresh
       memberstackDataLoaded = false;
       
+      // Clear refresh flag
+      if (needsRefresh) {
+        window._needsGridRefresh = false;
+        window._lastSavedModuleId = null;
+      }
+      
       try {
-        const statusByModule = {};
-        for (const module of modules) {
-          try {
-            const status = await getLatestStatusViaMemberstack(module.id);
-            if (status) {
-              statusByModule[module.id] = {
-                score: status.score_percent,
-                passed: status.passed,
-                when: status.created_at
-              };
-            }
-          } catch (err) {
-            debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
-          }
+        if (!memberstackIdentity) {
+          memberstackIdentity = await getExamIdentity();
         }
         
-        renderSummary(statusByModule);
-        renderGrid(statusByModule);
-        memberstackDataLoaded = true;
-        debugLog('✅ Grid refreshed on page visibility');
+        if (memberstackIdentity) {
+          // Add a small delay to ensure any pending saves are complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const statusByModule = {};
+          for (const module of modules) {
+            try {
+              const status = await getLatestStatusViaMemberstack(module.id);
+              if (status) {
+                statusByModule[module.id] = {
+                  score: status.score_percent,
+                  passed: status.passed,
+                  when: status.created_at
+                };
+              }
+            } catch (err) {
+              debugLog(`⚠️ Error fetching status for ${module.id}:`, err.message);
+            }
+          }
+          
+          renderSummary(statusByModule);
+          renderGrid(statusByModule);
+          memberstackDataLoaded = true;
+          debugLog('✅ Grid refreshed on page visibility');
+        }
       } catch (err) {
         debugLog('❌ Error refreshing grid on visibility:', err.message);
       }
+    } else {
+      // If no identity yet, try to initialize
+      debugLog('🔄 Page became visible but no identity - initializing...');
+      await initializeGrid();
     }
   }
 });
@@ -2655,7 +2576,14 @@ document.addEventListener('visibilitychange', async function() {
 // Also refresh on window focus (when user clicks back to tab)
 window.addEventListener('focus', async function() {
   const gridContainer = document.getElementById('grid-container');
-  if (gridContainer && gridContainer.style.display !== 'none' && memberstackIdentity) {
+  // Always ensure grid is visible when window gets focus
+  if (gridContainer) {
+    gridContainer.style.display = 'block';
+    gridContainer.style.visibility = 'visible';
+  }
+  
+  // If we have Memberstack identity, refresh the data
+  if (memberstackIdentity) {
     debugLog('🔄 Window focused - refreshing grid...');
     
     // Reset flag to allow refresh
@@ -2685,12 +2613,50 @@ window.addEventListener('focus', async function() {
     } catch (err) {
       debugLog('❌ Error refreshing grid on focus:', err.message);
     }
+  } else {
+    // If no identity yet, try to initialize
+    debugLog('🔄 Window focused but no identity - initializing...');
+    await initializeGrid();
   }
 });
 
-// Grid authentication setup
-document.addEventListener('DOMContentLoaded', async () => {
-  debugLog('🚀 Grid script starting...');
+// Handle browser back/forward navigation (pageshow event)
+window.addEventListener('pageshow', async function(event) {
+  // event.persisted is true if page was loaded from cache (back/forward)
+  if (event.persisted) {
+    debugLog('🔄 Page loaded from cache (back/forward navigation) - initializing grid...');
+    await initializeGrid();
+  }
+});
+
+// Grid initialization function (called on multiple events)
+let gridInitialized = false;
+async function initializeGrid() {
+  // Prevent multiple simultaneous initializations
+  if (gridInitialized) {
+    debugLog('⏭️ Grid initialization already in progress, skipping...');
+    return;
+  }
+  gridInitialized = true;
+  
+  debugLog('🚀 Grid initialization starting...');
+  
+  // Check if modules are loaded
+  if (!modules || modules.length === 0) {
+    debugLog('⚠️ Modules not loaded yet, waiting 500ms and retrying...');
+    gridInitialized = false; // Reset flag
+    setTimeout(() => {
+      if (modules && modules.length > 0) {
+        initializeGrid();
+      } else {
+        debugLog('❌ Modules still not loaded after wait - checking if modules array exists');
+        console.error('Modules array:', modules);
+      }
+    }, 500);
+    return;
+  }
+  
+  debugLog(`✅ Modules loaded: ${modules.length} modules found`);
   
   const authBadge = document.getElementById('authBadge');
   const authMessage = document.getElementById('memberstackAuthMessage');
@@ -2698,6 +2664,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authTip = document.getElementById('authTip');
   const gridContainer = document.getElementById('grid-container');
   const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
+  
+  // Ensure grid container is visible immediately
+  if (gridContainer) {
+    gridContainer.style.display = 'block';
+    gridContainer.style.visibility = 'visible';
+    debugLog('✅ Grid container made visible');
+  } else {
+    debugLog('⚠️ Grid container not found!');
+  }
   
   // Update auth badge immediately to show we're checking
   if (authBadge) {
@@ -2713,15 +2688,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Debug panel init error:', e);
   }
   
-  // Update debug panel every 2 seconds
-  setInterval(() => {
-    try {
-      updateDebugPanel();
-    } catch (e) {
-      console.error('Debug panel update error:', e);
-    }
-  }, 2000);
-  
   // CRITICAL: Render grid immediately with empty status to prevent blank page
   // This ensures the page is visible even if authentication is slow or fails
   // BUT: Don't set memberstackDataLoaded flag yet - we want to allow updates when auth succeeds
@@ -2731,20 +2697,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     memberstackDataLoaded = false;
     renderSummary({});
     renderGrid({});
-    if (gridContainer) gridContainer.style.display = 'block';
+    if (gridContainer) {
+      gridContainer.style.display = 'block';
+      gridContainer.style.visibility = 'visible';
+    }
     const gridEl = document.getElementById('grid');
     if (gridEl) {
       gridEl.style.display = 'grid';
+      gridEl.style.visibility = 'visible';
+      gridEl.style.opacity = '1';
       debugLog('✅ Initial grid rendered - page is no longer blank');
     } else {
-      debugLog('⚠️ Grid element not found during initial render');
+      debugLog('⚠️ Grid element not found during initial render - will retry');
+      // Retry after a short delay
+      setTimeout(() => {
+        const retryGridEl = document.getElementById('grid');
+        if (retryGridEl) {
+          retryGridEl.style.display = 'grid';
+          retryGridEl.style.visibility = 'visible';
+          retryGridEl.style.opacity = '1';
+          debugLog('✅ Grid element found and displayed on retry');
+        }
+      }, 500);
     }
   } catch (err) {
     console.error('❌ Error rendering initial grid:', err);
     debugLog('❌ Error rendering initial grid:', err.message);
     // Still try to show the container
-    if (gridContainer) gridContainer.style.display = 'block';
+    if (gridContainer) {
+      gridContainer.style.display = 'block';
+      gridContainer.style.visibility = 'visible';
+    }
   }
+  
+  // Reset flag after a delay to allow re-initialization if needed
+  setTimeout(() => {
+    gridInitialized = false;
+  }, 1000);
+}
+
+// Immediate initialization if DOM is already ready (for navigation scenarios)
+if (document.readyState === 'loading') {
+  // DOM is still loading, wait for DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', async () => {
+    await initializeGrid();
+  });
+} else {
+  // DOM is already ready, initialize immediately
+  debugLog('🚀 DOM already ready - initializing grid immediately...');
+  initializeGrid();
+}
+
+// Grid authentication setup
+document.addEventListener('DOMContentLoaded', async () => {
+  // Only initialize if not already done
+  if (!gridInitialized) {
+    await initializeGrid();
+  }
+  
+  const authBadge = document.getElementById('authBadge');
+  const authMessage = document.getElementById('memberstackAuthMessage');
+  const authHint = document.getElementById('authHint');
+  const authTip = document.getElementById('authTip');
+  const gridContainer = document.getElementById('grid-container');
+  const btnMigrateLegacy = document.getElementById('btnMigrateLegacy');
+  
+  // Update debug panel every 2 seconds
+  setInterval(() => {
+    try {
+      updateDebugPanel();
+    } catch (e) {
+      console.error('Debug panel update error:', e);
+    }
+  }, 2000);
   
   // Check Memberstack identity first (primary authentication)
   // Use a shorter timeout to fail faster and update UI
@@ -3422,27 +3447,6 @@ btnSubmit.addEventListener("click", async () => {
   });
   debugLog('📊 lastReport object:', lastReport);
   
-  // Auto-save if Memberstack is authenticated
-  if (memberstackIdentity && memberstackIdentity.email) {
-    debugLog('💾 Auto-saving exam results...');
-    debugLog('💾 lastReport before save:', JSON.stringify(lastReport));
-    setTimeout(async () => {
-      try {
-        await saveResultToDB(lastReport);
-        debugLog('✅ Auto-save successful');
-        showToast("Results automatically saved to your account.", "success", 3000);
-        // Refresh grid to show updated status (if on grid view)
-        await refreshGridModuleStatus(lastReport.moduleId);
-      } catch (err) {
-        console.error("[Auto-save] Failed:", err);
-        debugLog('❌ Auto-save failed:', err.message);
-        showToast("Auto-save failed. Please click 'Save to my account' manually.", "warning", 5000);
-      }
-    }, 500); // Small delay to ensure UI is updated
-  } else {
-    debugLog('⚠️ Auto-save skipped - no Memberstack identity');
-  }
-
   // Lock all radio buttons after submission
   document.querySelectorAll('input[type="radio"]').forEach(radio => {
     radio.disabled = true;
@@ -3457,7 +3461,37 @@ btnSubmit.addEventListener("click", async () => {
   else { showToast("You didn't pass this time. Review the linked topics, then use the 'Retake test' button to try again.", "error", 6000); }
   
   // Save results and refresh grid
-  await saveResultToDB(lastReport);
+  if (memberstackIdentity && memberstackIdentity.email) {
+    debugLog('💾 Auto-saving exam results...');
+    debugLog('💾 lastReport before save:', JSON.stringify(lastReport));
+    try {
+      await saveResultToDB(lastReport);
+      debugLog('✅ Auto-save successful');
+      showToast("Results automatically saved to your account.", "success", 3000);
+      
+      // Mark that we need to refresh the grid when returning to it
+      window._needsGridRefresh = true;
+      window._lastSavedModuleId = lastReport.moduleId;
+      window._lastSaveTime = Date.now(); // Track when save completed
+      debugLog('✅ Marked grid for refresh when returning');
+      
+      // Force immediate refresh of the grid (even if hidden)
+      // This ensures the grid is updated when user returns to it
+      setTimeout(async () => {
+        debugLog('🔄 Forcing grid refresh after save...');
+        await refreshGridModuleStatus(lastReport.moduleId);
+        debugLog('✅ Grid refreshed after save (background)');
+      }, 3000); // Wait 3 seconds to ensure save is fully committed
+    } catch (err) {
+      console.error("[Auto-save] Failed:", err);
+      debugLog('❌ Auto-save failed:', err.message);
+      showToast("Auto-save failed. Please click 'Save to my account' manually.", "warning", 5000);
+    }
+  } else {
+    debugLog('⚠️ Auto-save skipped - no Memberstack identity');
+    // Fallback to legacy save
+    await saveResultToDB(lastReport);
+  }
   
   // Clear cache to force refresh of user status
   userStatusCache = {};
@@ -3506,34 +3540,32 @@ window.showResultsModal = async function(moduleId) {
   debugLog('🔍 showResultsModal called with moduleId:', moduleId);
   debugLog('🔍 moduleId type:', typeof moduleId, 'length:', moduleId ? moduleId.length : 'undefined');
   try {
-    // Get the user's results for this module
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      showToast('Please sign in to view your results', 'error');
-      return;
+    // Get Memberstack identity
+    if (!memberstackIdentity) {
+      debugLog('⚠️ memberstackIdentity not set, attempting to get it...');
+      memberstackIdentity = await getExamIdentity();
+      if (!memberstackIdentity) {
+        showToast('Please sign in to view your results', 'error');
+        return;
+      }
     }
     
-    // Fetch the latest result for this module
-    const { data, error } = await supabase
-      .from('module_results')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('module_id', moduleId)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Fetch the latest result for this module via API
+    const status = await getLatestStatusViaMemberstack(moduleId);
     
-    if (error) {
-      console.error('Error fetching results:', error);
-      showToast('Error loading results', 'error');
-      return;
-    }
-    
-    if (!data || data.length === 0) {
+    if (!status) {
       showToast('No results found for this module', 'error');
       return;
     }
     
-    const result = data[0];
+    // Convert status to result format (for compatibility with existing modal code)
+    const result = {
+      score_percent: status.score_percent,
+      passed: status.passed,
+      created_at: status.created_at,
+      attempt: status.attempt || 1,
+      details: status.details || null
+    };
     
     // Find the module info
     const module = modules.find(m => m.id === moduleId);
@@ -3603,7 +3635,7 @@ window.showResultsModal = async function(moduleId) {
             </label>
             <input type="text" id="certificateName" placeholder="Enter your full name" 
                    style="width: 100%; padding: 8px 12px; border: 1px solid #b7f0d2; border-radius: 6px; background: #fff;"
-                   value="${user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] || ''}">
+                   value="${memberstackIdentity?.email?.split('@')[0] || ''}">
             <div style="font-size: 12px; color: #666; margin-top: 4px;">
               💡 This name will appear on your certificate
             </div>
@@ -3674,21 +3706,31 @@ window.showResultsModal = async function(moduleId) {
 // --- Hardened Results PDF (works even if certificate fails) ---
 window.downloadResultsPDF = async function(moduleId){
   try{
-    const { data:{ user } } = await supabase.auth.getUser();
-    if (!user){ showToast('Please sign in to download results', 'error'); return; }
+    // Get Memberstack identity
+    if (!memberstackIdentity) {
+      debugLog('⚠️ memberstackIdentity not set, attempting to get it...');
+      memberstackIdentity = await getExamIdentity();
+      if (!memberstackIdentity) {
+        showToast('Please sign in to download results', 'error');
+        return;
+      }
+    }
 
-    const { data, error } = await supabase
-      .from('module_results')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('module_id', moduleId)
-      .order('created_at', { ascending:false })
-      .limit(1);
+    // Fetch the latest result for this module via API
+    const status = await getLatestStatusViaMemberstack(moduleId);
+    
+    if (!status) {
+      throw new Error('No results found for this module');
+    }
 
-    if (error) throw error;
-    if (!data?.length) throw new Error('No results found for this module');
-
-    const result = data[0];
+    // Convert status to result format
+    const result = {
+      score_percent: status.score_percent,
+      passed: status.passed,
+      created_at: status.created_at,
+      attempt: status.attempt || 1,
+      details: status.details || null
+    };
     const module = (window.modules || []).find(m=>m.id===moduleId);
     const modTitle = module?.title || moduleId;
 
@@ -3743,7 +3785,7 @@ window.downloadResultsPDF = async function(moduleId){
     // Body with enhanced information
     doc.setFont('helvetica','normal'); doc.setFontSize(12);
     doc.text(`Module: ${modTitle}`, 40, 96);
-    doc.text(`Email: ${user.email}`, 40, 116);
+    doc.text(`Email: ${memberstackIdentity.email}`, 40, 116);
     doc.text(`Score: ${result.score_percent}%`, 40, 136);
     doc.text(`Questions: ${questionsRatio}`, 40, 156);
     doc.text(`Status: ${result.passed ? 'Passed' : 'Failed'}`, 40, 176);
@@ -3768,20 +3810,37 @@ window.downloadResultsPDF = async function(moduleId){
 window.downloadCertificatePDF = async function(moduleId, attemptId = null, userName = null){
   try{
     debugLog('🔍 downloadCertificatePDF called with:', moduleId, attemptId, userName);
-    const { data:{ user } } = await supabase.auth.getUser();
-    if (!user){ showToast('Please sign in to download the certificate', 'error'); return; }
+    
+    // Get Memberstack identity
+    if (!memberstackIdentity) {
+      debugLog('⚠️ memberstackIdentity not set, attempting to get it...');
+      memberstackIdentity = await getExamIdentity();
+      if (!memberstackIdentity) {
+        showToast('Please sign in to download the certificate', 'error');
+        return;
+      }
+    }
 
-    const { data, error } = await supabase
-      .from('module_results')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('module_id', moduleId)
-      .order('created_at', { ascending:false })
-      .limit(1);
-
-    if (error) throw error;
-    if (!data?.length) throw new Error('No results found for this module');
-    const result = data[0];
+    // Fetch the latest result for this module via API
+    const status = await getLatestStatusViaMemberstack(moduleId);
+    
+    if (!status) {
+      throw new Error('No results found for this module');
+    }
+    
+    if (!status.passed) {
+      showToast('You need a passing result for a certificate', 'error');
+      return;
+    }
+    
+    // Convert status to result format
+    const result = {
+      score_percent: status.score_percent,
+      passed: status.passed,
+      created_at: status.created_at,
+      attempt: status.attempt || 1,
+      details: status.details || null
+    };
     debugLog('🔍 Found result:', result);
     if (!result.passed) { showToast('You need a passing result for a certificate', 'error'); return; }
 
@@ -3924,19 +3983,41 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
 // Master Certificate generator
 window.downloadMasterCertificatePDF = async function(capturedName = null){
   try{
-    const { data:{ user } } = await supabase.auth.getUser();
-    if (!user){ showToast('Please sign in to download the Master Certificate', 'error'); return; }
+    debugLog('🎓 Starting Master Certificate generation...');
+    
+    // Use Memberstack authentication
+    if (!memberstackIdentity) {
+      debugLog('🔍 No memberstackIdentity, fetching...');
+      memberstackIdentity = await getExamIdentity();
+    }
+    if (!memberstackIdentity || !memberstackIdentity.email) {
+      debugLog('❌ No memberstack identity or email');
+      showToast('Please sign in to download the Master Certificate', 'error');
+      return;
+    }
+    
+    debugLog('✅ Memberstack identity found:', memberstackIdentity.email);
 
-    // Get latest passed result per module
+    // Get latest passed result per module from module_results_ms
+    debugLog('📊 Querying module_results_ms for passed modules...');
     const { data, error } = await supabase
-      .from('module_results')
+      .from('module_results_ms')
       .select('module_id, score_percent, passed, created_at')
-      .eq('user_id', user.id)
+      .eq('email', memberstackIdentity.email)
       .eq('passed', true)
       .order('created_at', { ascending:false });
 
-    if (error) throw error;
-    if (!data?.length) throw new Error('No passed modules found');
+    if (error) {
+      debugLog('❌ Supabase query error:', error.message);
+      throw error;
+    }
+    
+    debugLog('📊 Query result:', data?.length || 0, 'passed modules found');
+    
+    if (!data?.length) {
+      debugLog('❌ No passed modules found');
+      throw new Error('No passed modules found');
+    }
 
     // Deduplicate to latest pass per module
     const latestPass = {};
@@ -3944,13 +4025,23 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
 
     const total = modules.length;
     const passedCount = Object.keys(latestPass).length;
+    debugLog(`📊 Passed count: ${passedCount}/${total}`);
+    
     if (passedCount < total){
+      debugLog(`❌ Not all modules passed: ${passedCount}/${total}`);
       showToast(`You've passed ${passedCount}/${total}. Finish all to unlock the Master Certificate.`, 'info');
       return;
     }
 
+    debugLog('✅ All modules passed, generating PDF...');
+    
     const jsp = (window.jspdf || {}).jsPDF;
-    if (!jsp) throw new Error('jsPDF not loaded');
+    if (!jsp) {
+      debugLog('❌ jsPDF not loaded');
+      throw new Error('jsPDF not loaded');
+    }
+    
+    debugLog('✅ jsPDF loaded, creating document...');
 
     const doc = new jsp({ orientation:'l', unit:'mm', format:'a4' });
 
@@ -3976,15 +4067,14 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     doc.setFont('times','normal'); doc.setFontSize(14);
     doc.text('This certifies that', 148.5, 88, {align:'center'});
     
-    // Get the learner name - prefer captured name, fallback to user metadata
-    const displayName = capturedName || user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] || 'Student';
+    // Get the learner name - prefer captured name, fallback to email username
+    const displayName = capturedName || memberstackIdentity.email?.split('@')[0] || 'Student';
     
     // Debug logging to UI
     debugLog('🔍 Master Certificate name debug:');
     debugLog('  - Captured name:', capturedName);
-    debugLog('  - User metadata full_name:', user.user_metadata?.full_name);
-    debugLog('  - User metadata name:', user.user_metadata?.name);
-    debugLog('  - Email username:', user.email.split('@')[0]);
+    debugLog('  - Memberstack email:', memberstackIdentity.email);
+    debugLog('  - Email username:', memberstackIdentity.email?.split('@')[0]);
     debugLog('  - Final displayName:', displayName);
     
     doc.setFont('times','bold'); doc.setFontSize(26); doc.setTextColor(0,0,139);
@@ -4024,24 +4114,35 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     doc.text(`Certificate ID: ${certId}`, 290-16, 46, {align:'right'});
 
+    debugLog('💾 Saving PDF...');
     doc.save(`master-certificate-${displayName ? slugify(displayName) : 'student'}.pdf`);
+    debugLog('✅ Master Certificate PDF saved successfully');
     showToast('Master Certificate downloaded.', 'success');
   }catch(err){
-    console.error(err);
+    console.error('❌ Master Certificate error:', err);
+    debugLog('❌ Master Certificate generation failed:', err.message);
+    debugLog('❌ Error stack:', err.stack);
     showToast(err?.message || 'Failed to create Master Certificate', 'error');
+    throw err; // Re-throw so modal can handle it
   }
 };
 
 // Optional: Transcript PDF
 window.downloadMasterTranscriptPDF = async function(){
   try{
-    const { data:{ user } } = await supabase.auth.getUser();
-    if (!user){ showToast('Please sign in to download the transcript', 'error'); return; }
+    // Use Memberstack authentication
+    if (!memberstackIdentity) {
+      memberstackIdentity = await getExamIdentity();
+    }
+    if (!memberstackIdentity || !memberstackIdentity.email) {
+      showToast('Please sign in to download the transcript', 'error');
+      return;
+    }
 
     const { data, error } = await supabase
-      .from('module_results')
+      .from('module_results_ms')
       .select('module_id, score_percent, passed, created_at')
-      .eq('user_id', user.id)
+      .eq('email', memberstackIdentity.email)
       .order('created_at', { ascending:false });
 
     if (error) throw error;
@@ -4089,7 +4190,7 @@ window.downloadMasterTranscriptPDF = async function(){
 
     // Student info (matching results PDF style)
     doc.setFont('helvetica','normal'); doc.setFontSize(12);
-    doc.text(`Student: ${user.user_metadata?.full_name || user.user_metadata?.name || user.email}`, 40, 96);
+    doc.text(`Student: ${memberstackIdentity.email}`, 40, 96);
     doc.text(`Generated: ${formatDate(new Date())}`, 40, 116);
 
     // Table headers
