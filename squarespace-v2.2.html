@@ -53,7 +53,7 @@
         border-radius:8px; 
         box-shadow:0 8px 32px rgba(0,0,0,.5); 
         z-index:99999; 
-        display:none; /* Hidden by default - press Ctrl+Shift+D to show */
+        display:block; /* VISIBLE BY DEFAULT for debugging */
         font-family:monospace;
         color:#fff;
         overflow:hidden;
@@ -688,6 +688,17 @@ async function fetchStatusForUser(user, forceRefresh = false) {
     return {};
   }
   
+  debugLog('🔍 fetchStatusForUser called - user.email: ' + user.email + ', user.id: ' + user.id);
+  debugLog('🔍 memberstackIdentity exists: ' + !!memberstackIdentity);
+  debugLog('🔍 memberstackDataLoaded: ' + memberstackDataLoaded);
+  
+  // CRITICAL: If Memberstack data is already loaded, DO NOT overwrite it
+  if (memberstackDataLoaded) {
+    debugLog('🛡️ BLOCKED: fetchStatusForUser - Memberstack data already loaded, returning empty to prevent overwrite');
+    debugLog('🛡️ Stack trace:', new Error().stack);
+    return {}; // Return empty to prevent overwriting Memberstack data
+  }
+  
   const now = Date.now();
   const cacheKey = user.id;
   
@@ -698,6 +709,7 @@ async function fetchStatusForUser(user, forceRefresh = false) {
   }
   
   debugLog('🔍 Fetching status for user: ' + user.email + ' (ID: ' + user.id + ')');
+  debugLog('🔍 Using LEGACY Supabase query (module_results table)');
   
   try {
     debugLog('🔍 Starting Supabase query...');
@@ -746,6 +758,7 @@ async function fetchStatusForUser(user, forceRefresh = false) {
     lastCacheTime = now;
     
     debugLog('📊 Processed status: ' + JSON.stringify(latest));
+    debugLog('📊 Status keys count: ' + Object.keys(latest).length);
     return latest;
   } catch (err) {
     debugLog('❌ Exception in fetchStatusForUser: ' + err.message);
@@ -2405,14 +2418,31 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
           return;
         }
         
+        // CRITICAL CHECK: Don't overwrite Memberstack data
+        if (memberstackDataLoaded) {
+          debugLog('🛡️ BLOCKED: Auth state change - Memberstack data already loaded, skipping Supabase update');
+          hideLoadingSpinner();
+          return;
+        }
+        
         // Update grid with user's progress
         debugLog('🔄 Auth state change: Fetching user status...');
+        debugLog('🔄 memberstackDataLoaded before fetch: ' + memberstackDataLoaded);
         const status = await fetchStatusForUser(session.user);
         debugLog('🔄 Auth state change: Status fetched, rendering...');
         debugLog('🔄 Status keys:', Object.keys(status).length);
+        debugLog('🔄 memberstackDataLoaded after fetch: ' + memberstackDataLoaded);
+        
+        // CRITICAL: Double-check Memberstack wasn't loaded while we were fetching
+        if (memberstackDataLoaded) {
+          debugLog('🛡️ BLOCKED: Memberstack data loaded during fetch - skipping Supabase render');
+          hideLoadingSpinner();
+          return;
+        }
         
         // Only render if we have data - don't clear existing Memberstack data
         if (Object.keys(status).length > 0) {
+          debugLog('🔄 Rendering Supabase status data...');
           renderSummary(status);
           renderGrid(status);
         } else {
@@ -3134,15 +3164,30 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
         
+        // CRITICAL CHECK: Don't overwrite Memberstack data
+        if (memberstackDataLoaded) {
+          debugLog('🛡️ BLOCKED: checkExistingSession - Memberstack data already loaded, skipping');
+          return;
+        }
+        
         // User is already signed in, update UI
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           debugLog('🔄 Auto-signing in existing user:', user.email);
+          debugLog('🔄 memberstackDataLoaded before fetch: ' + memberstackDataLoaded);
           // Trigger auth state change to load progress
           const status = await fetchStatusForUser(user);
+          debugLog('🔄 memberstackDataLoaded after fetch: ' + memberstackDataLoaded);
+          
+          // CRITICAL: Double-check Memberstack wasn't loaded while we were fetching
+          if (memberstackDataLoaded) {
+            debugLog('🛡️ BLOCKED: Memberstack data loaded during checkExistingSession - skipping Supabase render');
+            return;
+          }
           
           // Only render if we have data - don't clear existing Memberstack data
           if (Object.keys(status).length > 0) {
+            debugLog('🔄 Rendering Supabase status from checkExistingSession...');
             renderSummary(status);
             renderGrid(status);
           } else {
