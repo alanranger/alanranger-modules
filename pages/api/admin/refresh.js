@@ -173,7 +173,10 @@ export default async function handler(req, res) {
             matches: planId === trialPlanId,
             paymentMode,
             expiryDate,
-            isTrial
+            isTrial,
+            hasTrialPlan: !!trialPlan,
+            trialPlanExpiry: trialPlan?.expiryDate,
+            memberCreatedAt
           });
         }
         
