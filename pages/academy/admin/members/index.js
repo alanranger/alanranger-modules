@@ -254,6 +254,7 @@ export default function MembersDirectory() {
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Email</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Plan</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Status</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Expires</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Signed Up</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Last Seen</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Modules</th>
@@ -264,7 +265,7 @@ export default function MembersDirectory() {
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="9" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="10" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
@@ -298,6 +299,9 @@ export default function MembersDirectory() {
                           }}>
                             {member.status}
                           </span>
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
+                          {member.plan_expiry_date ? formatDate(member.plan_expiry_date) : '—'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
                           {formatDate(member.signed_up)}

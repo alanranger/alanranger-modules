@@ -147,6 +147,9 @@ module.exports = async (req, res) => {
       const modulesOpenedTotal = totalOpensFromJson > 0 ? totalOpensFromJson : (moduleOpensMap[memberId] || 0);
       const bookmarksCount = Array.isArray(bookmarks) ? bookmarks.length : (bookmarksMap[memberId] || 0);
       
+      // Get expiry date: for trials use expiry_date, for annual use current_period_end
+      const expiryDate = plan.is_trial ? plan.expiry_date : (plan.current_period_end || plan.expiry_date);
+      
       return {
         member_id: memberId,
         email: member.email,
@@ -158,6 +161,7 @@ module.exports = async (req, res) => {
         is_paid: plan.is_paid || false,
         signed_up: member.created_at,
         last_seen: lastSeenMap[memberId] || null,
+        plan_expiry_date: expiryDate,
         modules_opened_unique: modulesOpenedUnique,
         modules_opened_total: modulesOpenedTotal,
         exams_attempted: examStatsMap[memberId]?.attempts || 0,
