@@ -15,7 +15,6 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // First sync members to cache (reuse sync-members logic)
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     const supabase = createClient(
       process.env.SUPABASE_URL,
@@ -23,25 +22,42 @@ module.exports = async (req, res) => {
     );
 
     let membersSynced = 0;
+    let processed = 0;
+    let eventsAdded = 0;
+    let skipped = 0;
     let after = null;
     const limit = 100;
+    let totalMembersFetched = 0;
 
-    console.log('[refresh] Syncing members to cache...');
+    console.log('[refresh] Starting refresh: syncing members and module events...');
 
+    // Single loop: sync members to cache AND process module events
     while (true) {
       const params = { limit };
       if (after) params.after = after;
 
       const { data: members, error: membersError } = await memberstack.members.list(params);
 
-      if (membersError || !members || members.length === 0) break;
+      if (membersError) {
+        console.error('[refresh] Error fetching members:', membersError);
+        throw new Error(`Failed to fetch members: ${membersError.message || 'Unknown error'}`);
+      }
+
+      if (!members || members.length === 0) {
+        console.log(`[refresh] No more members`);
+        break;
+      }
+
+      totalMembersFetched += members.length;
+      console.log(`[refresh] Fetched ${members.length} members (total: ${totalMembersFetched})`);
 
       for (const member of members) {
         try {
           const memberId = member.id;
-          const email = member.auth?.email || null;
+          const memberEmail = member.auth?.email || null;
           const name = member.customFields?.name || member.name || null;
           
+          // 1. Sync member to cache
           const planSummary = {
             plan_id: null,
             plan_name: null,
@@ -71,9 +87,9 @@ module.exports = async (req, res) => {
             }
           }
 
-          await supabase.from('ms_members_cache').upsert([{
+          const { error: upsertError } = await supabase.from('ms_members_cache').upsert([{
             member_id: memberId,
-            email: email,
+            email: memberEmail,
             name: name,
             plan_summary: planSummary,
             created_at: member.createdAt || new Date().toISOString(),
@@ -81,71 +97,14 @@ module.exports = async (req, res) => {
             raw: member
           }], { onConflict: 'member_id' });
 
-          membersSynced++;
-        } catch (err) {
-          console.error(`[refresh] Error syncing member ${member.id}:`, err);
-        }
-      }
+          if (upsertError) {
+            console.error(`[refresh] Error upserting member ${memberId} to cache:`, upsertError);
+          } else {
+            membersSynced++;
+          }
 
-      if (members.length < limit) break;
-      after = members[members.length - 1]?.id || null;
-      if (!after) break;
-    }
-
-    console.log(`[refresh] Synced ${membersSynced} members to cache`);
-
-    const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    // Get all members (or a batch - adjust as needed)
-    // For now, we'll process members in batches
-    let processed = 0;
-    let eventsAdded = 0;
-    let skipped = 0;
-    let page = 1;
-    const pageSize = 100;
-    let totalMembersFetched = 0;
-
-    console.log('[refresh] Starting member fetch...');
-
-    while (true) {
-      const { data: members, error: membersError } = await memberstack.members.list({
-        limit: pageSize,
-        page: page
-      });
-
-      if (membersError) {
-        console.error('[refresh] Error fetching members:', membersError);
-        throw new Error(`Failed to fetch members: ${membersError.message || 'Unknown error'}`);
-      }
-
-      if (!members || members.length === 0) {
-        console.log(`[refresh] No more members (page ${page})`);
-        break;
-      }
-
-      totalMembersFetched += members.length;
-      console.log(`[refresh] Fetched page ${page}: ${members.length} members (total so far: ${totalMembersFetched})`);
-
-      for (const member of members) {
-        try {
-          const memberId = member.id;
-          const memberEmail = member.auth?.email || null;
-          
-          // Get member JSON (contains arAcademy.modules.opened)
+          // 2. Process module events from member JSON
           const memberJson = await memberstack.members.getMemberJSON({ id: memberId });
-          
-          // Debug: Log what we found
-          console.log(`[refresh] Member ${memberId}:`, {
-            hasJson: !!memberJson,
-            hasArAcademy: !!memberJson?.arAcademy,
-            hasModules: !!memberJson?.arAcademy?.modules,
-            hasOpened: !!memberJson?.arAcademy?.modules?.opened,
-            openedCount: memberJson?.arAcademy?.modules?.opened ? Object.keys(memberJson.arAcademy.modules.opened).length : 0
-          });
           
           if (!memberJson || !memberJson.arAcademy || !memberJson.arAcademy.modules || !memberJson.arAcademy.modules.opened) {
             skipped++;
@@ -203,21 +162,46 @@ module.exports = async (req, res) => {
 
             if (!insertError) {
               eventsAdded++;
+            } else {
+              console.error(`[refresh] Error inserting event for ${memberId}/${path}:`, insertError);
             }
           }
 
           processed++;
         } catch (memberError) {
           console.error(`[refresh] Error processing member ${member.id}:`, memberError);
-          // Continue with next member
+          skipped++;
         }
       }
 
-      if (members.length < pageSize) {
+      if (members.length < limit) {
         break; // Last page
       }
-      page++;
+      after = members[members.length - 1]?.id || null;
+      if (!after) break;
     }
+
+      if (membersError) {
+        console.error('[refresh] Error fetching members:', membersError);
+        throw new Error(`Failed to fetch members: ${membersError.message || 'Unknown error'}`);
+      }
+
+      if (!members || members.length === 0) {
+        console.log(`[refresh] No more members (page ${page})`);
+        break;
+      }
+
+      totalMembersFetched += members.length;
+      console.log(`[refresh] Fetched page ${page}: ${members.length} members (total so far: ${totalMembersFetched})`);
+
+      for (const member of members) {
+        try {
+          const memberId = member.id;
+          const memberEmail = member.auth?.email || null;
+          
+          // Get member JSON (contains arAcademy.modules.opened)
+          const memberJson = await memberstack.members.getMemberJSON({ id: memberId });
+          
 
     console.log(`[refresh] Summary: ${membersSynced} members synced, ${totalMembersFetched} total members fetched, ${processed} processed, ${skipped} skipped, ${eventsAdded} events added`);
 
