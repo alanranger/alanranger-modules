@@ -505,18 +505,15 @@ module.exports = async (req, res) => {
     // Active paid now (already calculated as 'annual')
     const activePaidNow = annual;
 
-    // ===== STRIPE REVENUE (Source of Truth) =====
-    let stripeRevenueSummary = null;
-    let revenueSeries30d = [];
+    // ===== STRIPE METRICS (Source of Truth - Subscriptions) =====
+    let stripeMetrics = null;
     
     try {
-      // Call Stripe revenue function directly (server-side)
-      const { calculateStripeRevenue } = require('./stripe-revenue');
-      const result = await calculateStripeRevenue();
-      stripeRevenueSummary = result.stripeRevenueSummary;
-      revenueSeries30d = result.revenueSeries30d || [];
+      // Call Stripe metrics calculation function directly (server-side)
+      const { calculateStripeMetrics } = require('../stripe/metrics');
+      stripeMetrics = await calculateStripeMetrics(false); // Use cache if available
     } catch (error) {
-      console.warn('[overview] Error fetching Stripe revenue:', error.message);
+      console.warn('[overview] Error fetching Stripe metrics:', error.message);
       // Continue without Stripe data (don't break dashboard)
     }
 
@@ -553,27 +550,28 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics
+        // Conversion metrics (from Stripe if available, else fallback to Memberstack)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: trialsConvertedAllTime.length,
-        trialToAnnualConversions30d: trialsConverted30d.length,
+        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? trialsConvertedAllTime.length,
+        trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? trialsConverted30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
-        trialConversionRate30d: trialConversionRate30d,
+        trialConversionRate30d: stripeMetrics?.conversion_rate_last_30d ?? trialConversionRate30d,
         
-        // Drop-off (fixed: uses trials ended logic)
-        trialDropOff30d: trialDropOff30d,
-        trialDropoffRate30d: trialDropoffRate30d,
-        trialsEnded30d: trialsEnded30d.length,
+        // Drop-off (from Stripe if available)
+        trialDropOff30d: stripeMetrics?.trials_ended_last_30d ? (stripeMetrics.trials_ended_last_30d - stripeMetrics.conversions_trial_to_annual_last_30d) : trialDropOff30d,
+        trialDropoffRate30d: stripeMetrics?.trial_dropoff_last_30d ?? trialDropoffRate30d,
+        trialsEnded30d: stripeMetrics?.trials_ended_last_30d ?? trialsEnded30d.length,
         medianDaysToConvert30d: medianDaysToConvert30d,
         
-        // At-risk and churn
+        // At-risk and churn (from Stripe)
         atRiskTrialsNext7d: atRiskTrialsNext7d,
-        annualChurnRate90d: annualChurnRate90d,
-        annualChurnCount90d: annualChurnCount90d,
+        annualChurnRate90d: stripeMetrics?.annual_churn_rate_90d ?? annualChurnRate90d,
+        annualChurnCount90d: stripeMetrics?.annual_churn_90d_count ?? annualChurnCount90d,
         annualChurn30d: annualChurn30d,
-        annualExpiringNext30d: annualExpiringNext30d,
-        revenueAtRiskNext30d: revenueAtRiskNext30d,
+        annualExpiringNext30d: stripeMetrics?.annual_expiring_next_30d_count ?? annualExpiringNext30d,
+        revenueAtRiskNext30d: stripeMetrics?.revenue_at_risk_next_30d_gbp ?? revenueAtRiskNext30d,
+        atRiskAnnualCount: stripeMetrics?.at_risk_annual_count ?? 0,
         
         // Activation
         activationRate7d: activationRate7d,
@@ -586,12 +584,18 @@ module.exports = async (req, res) => {
         netMemberGrowth30d: netMemberGrowth30d,
         newAnnualStarts30d: newAnnualStarts30d,
         netPaidGrowth30d: netPaidGrowth30d,
-        activePaidNow: activePaidNow
+        activePaidNow: stripeMetrics?.annual_active_count ?? activePaidNow
       },
       
-      // Stripe Revenue (source of truth)
-      stripeRevenueSummary: stripeRevenueSummary,
-      revenueSeries30d: revenueSeries30d
+      // Stripe Metrics (source of truth - subscriptions)
+      stripe: stripeMetrics ? {
+        annual_active_count: stripeMetrics.annual_active_count,
+        trials_active_count: stripeMetrics.trials_active_count,
+        revenue_net_all_time_gbp: stripeMetrics.revenue_net_all_time_gbp,
+        revenue_net_last_30d_gbp: stripeMetrics.revenue_net_last_30d_gbp,
+        arr_gbp: stripeMetrics.arr_gbp,
+        revenue_from_conversions_last_30d_gbp: stripeMetrics.revenue_from_conversions_last_30d_gbp
+      } : null
     });
 
   } catch (error) {

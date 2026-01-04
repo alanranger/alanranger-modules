@@ -23,9 +23,18 @@ export default function AdminDashboard() {
     console.log(`[Admin Dashboard] ${timestamp}: ${message}`, data || '');
   }
 
-  async function fetchKPIs() {
+  async function fetchKPIs(forceStripeRefresh = false) {
     try {
       addDebugLog('Fetching KPIs...');
+      // If forcing refresh, also refresh Stripe metrics cache
+      if (forceStripeRefresh) {
+        try {
+          await fetch('/api/stripe/metrics?force=1');
+          addDebugLog('Stripe metrics cache refreshed');
+        } catch (err) {
+          console.warn('Failed to refresh Stripe cache:', err);
+        }
+      }
       const res = await fetch('/api/admin/overview');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -94,8 +103,8 @@ export default function AdminDashboard() {
       
       setRefreshProgress({ step: 'Updating dashboard...', progress: 85 });
       
-      // Reload KPIs
-      await fetchKPIs();
+      // Reload KPIs with forced Stripe refresh
+      await fetchKPIs(true);
       
       // Trigger refresh of top lists
       setRefreshTrigger(prev => prev + 1);
@@ -422,13 +431,13 @@ export default function AdminDashboard() {
         </Link>
         <Link href="/academy/admin/members?plan=trial" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Trials</div>
-          <div className="ar-admin-kpi-value">{kpis?.trials || 0}</div>
-          <div className="ar-admin-kpi-period">Active trialing</div>
+          <div className="ar-admin-kpi-value">{kpis?.stripe?.trials_active_count ?? kpis?.trials ?? 0}</div>
+          <div className="ar-admin-kpi-period">Active (Stripe)</div>
         </Link>
         <Link href="/academy/admin/members?plan=annual" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Annual Plans</div>
-          <div className="ar-admin-kpi-value">{kpis?.annual || 0}</div>
-          <div className="ar-admin-kpi-period">Active</div>
+          <div className="ar-admin-kpi-value">{kpis?.stripe?.annual_active_count ?? kpis?.annual ?? 0}</div>
+          <div className="ar-admin-kpi-period">Active (Stripe)</div>
         </Link>
         <Link href="/academy/admin/members?filter=trials_expiring" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Trials Expiring</div>
@@ -541,7 +550,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Trials that ended in the period without converting to annual, divided by trials that ended in the period (30d)."
+            title="Trials that ended in the last 30 days without converting to annual, divided by total trials ended in the period. Conversion window: 7 days after trial end."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -571,7 +580,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Annual members who ended and did not renew within the period (90d). Will populate once renewals begin."
+            title="Annual subscriptions with status='canceled' and ended_at within last 90 days. Churn rate = churned / (active at start + churned)."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -589,7 +598,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Annual plans ending in next 30d."
+            title="Annual subscriptions with current_period_end within the next 30 days."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -601,15 +610,21 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Sum of annual plan value for members expiring within the next 30 days (net of renewals if known)."
+            title="Annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Sum of subscription revenue for these at-risk subscriptions."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue at Risk
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
-            <div className="ar-admin-kpi-value">£{kpis?.bi?.revenueAtRiskNext30d || 0}</div>
-            <div className="ar-admin-kpi-period">Next 30 days</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.revenueAtRiskNext30d !== null && kpis?.bi?.revenueAtRiskNext30d !== undefined
+                ? `£${kpis.bi.revenueAtRiskNext30d.toFixed(2)}`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.atRiskAnnualCount || 0} at-risk (next 30d)
+            </div>
           </div>
         </div>
       </div>
@@ -622,7 +637,7 @@ export default function AdminDashboard() {
         <div className="ar-admin-kpi-grid">
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from Stripe for Academy price IDs (gross minus refunds). All-time total."
+            title="Net paid revenue from Stripe balance transactions. All-time total (computed from account start or cached snapshot)."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -630,15 +645,15 @@ export default function AdminDashboard() {
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripeRevenueSummary?.allTime?.net !== null && kpis?.stripeRevenueSummary?.allTime?.net !== undefined
-                ? `£${kpis.stripeRevenueSummary.allTime.net.toFixed(2)}`
+              {kpis?.stripe?.revenue_net_all_time_gbp !== null && kpis?.stripe?.revenue_net_all_time_gbp !== undefined
+                ? `£${kpis.stripe.revenue_net_all_time_gbp.toFixed(2)}`
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from Stripe for Academy price IDs in the last 30 days."
+            title="Net paid revenue from Stripe balance transactions in the last 30 days (charges minus refunds)."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -646,8 +661,40 @@ export default function AdminDashboard() {
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripeRevenueSummary?.last30d?.net !== null && kpis?.stripeRevenueSummary?.last30d?.net !== undefined
-                ? `£${kpis.stripeRevenueSummary.last30d.net.toFixed(2)}`
+              {kpis?.stripe?.revenue_net_last_30d_gbp !== null && kpis?.stripe?.revenue_net_last_30d_gbp !== undefined
+                ? `£${kpis.stripe.revenue_net_last_30d_gbp.toFixed(2)}`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">Last 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Annual Run-Rate: Sum of annual subscription revenue from all active annual subscriptions (price × quantity per year)."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              ARR (Annual Run-Rate)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.arr_gbp !== null && kpis?.stripe?.arr_gbp !== undefined
+                ? `£${kpis.stripe.arr_gbp.toFixed(2)}`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">From active annuals</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Revenue from trial-to-annual conversions in the last 30 days (first paid invoice amount for converted subscriptions)."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Revenue from Conversions
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.revenue_from_conversions_last_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_last_30d_gbp !== undefined
+                ? `£${kpis.stripe.revenue_from_conversions_last_30d_gbp.toFixed(2)}`
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
@@ -666,7 +713,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Trial to annual conversion rate for the 30-day cohort (converted / trials started in 30d)."
+            title="Trial to annual conversion rate for trials ended in last 30 days. Conversion window: annual subscription started within 7 days of trial end. Rate = conversions / trials ended."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -679,7 +726,7 @@ export default function AdminDashboard() {
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">
-              {kpis?.bi?.trialsConverted30d || 0}/{kpis?.bi?.trialsStarted30d || 0} (30d)
+              {kpis?.bi?.trialToAnnualConversions30d || 0}/{kpis?.bi?.trialsEnded30d || 0} (30d)
             </div>
           </div>
           <div 
