@@ -53,7 +53,19 @@ export default async function handler(req, res) {
         if (!memberId) continue;
 
         // Retrieve full member (includes `json` field per Memberstack Admin Package docs)
-        const full = await memberstack.members.retrieve({ id: memberId });
+        const response = await memberstack.members.retrieve({ id: memberId });
+        
+        // Memberstack Admin API may return { data: {...} } or the member object directly
+        const full = response?.data || response;
+        
+        // Debug: Log response structure for first member
+        if (membersFetched === 1) {
+          console.log(`[refresh] Response structure:`, {
+            'has data property': !!response?.data,
+            'response keys': Object.keys(response || {}),
+            'full keys': Object.keys(full || {})
+          });
+        }
 
         // Extract email - check multiple possible locations
         const email = full?.auth?.email || full?.email || null;
