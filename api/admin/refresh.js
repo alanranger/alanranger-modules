@@ -215,7 +215,11 @@ module.exports = async (req, res) => {
       message: `Synced ${membersSynced} members, fetched ${totalMembersFetched} members, processed ${processed} with opened modules, skipped ${skipped}, added ${eventsAdded} new events`
     });
   } catch (error) {
-    console.error('[refresh] Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('[refresh] Fatal error:', error);
+    console.error('[refresh] Error stack:', error.stack);
+    return res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };

@@ -79,8 +79,10 @@ export default function AdminDashboard() {
       setRefreshProgress({ step: 'Processing response...', progress: 70 });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Refresh failed');
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}: ${res.statusText}` }));
+        const errorMessage = errorData.error || errorData.message || `HTTP ${res.status}: ${res.statusText}`;
+        addDebugLog('Refresh API error', { status: res.status, error: errorMessage, fullError: errorData });
+        throw new Error(errorMessage);
       }
       
       const result = await res.json();

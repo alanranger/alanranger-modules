@@ -99,16 +99,18 @@ module.exports = async (req, res) => {
     const totalModuleOpens = moduleOpens30d?.length || 0;
     const avgModulesOpened = uniqueModulesOpened > 0 ? (totalModuleOpens / uniqueModulesOpened).toFixed(1) : 0;
 
-    // 6. Exam metrics (30d)
+    // 6. Exam metrics (30d) - Note: exam_member_links uses memberstack_id, not member_id
+    // For now, use module_results_ms which has memberstack_id
     const { data: examAttempts } = await supabase
-      .from('exam_member_links')
-      .select('member_id, passed')
+      .from('module_results_ms')
+      .select('memberstack_id, passed')
       .gte('created_at', periods['30d'].toISOString());
 
     const examAttempts30d = examAttempts?.length || 0;
     const examPassed30d = examAttempts?.filter(e => e.passed).length || 0;
     const passRate30d = examAttempts30d > 0 ? Math.round((examPassed30d / examAttempts30d) * 100) : 0;
-    const avgExamAttempts = uniqueModulesOpened > 0 ? (examAttempts30d / uniqueModulesOpened).toFixed(1) : 0;
+    const uniqueMembersWithExams = new Set(examAttempts?.map(e => e.memberstack_id) || []).size;
+    const avgExamAttempts = uniqueMembersWithExams > 0 ? (examAttempts30d / uniqueMembersWithExams).toFixed(1) : 0;
 
     // 7. Bookmarks (30d)
     const { count: bookmarks30d } = await supabase
