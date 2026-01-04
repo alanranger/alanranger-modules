@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
         
         // Determine if trial (has expiryDate and status might be ACTIVE with future expiry)
-        const isTrial = expiryDate && new Date(expiryDate) > new Date();
+        const isTrial = expiryDate ? (new Date(expiryDate) > new Date()) : false;
         // Paid = ACTIVE status + (RECURRING payment OR no expiryDate indicating it's not a trial)
         const isPaid = planStatus === "ACTIVE" && !isTrial && (paymentMode === "RECURRING" || !expiryDate);
         
