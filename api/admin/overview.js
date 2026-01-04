@@ -41,11 +41,14 @@ module.exports = async (req, res) => {
     if (allMembers) {
       allMembers.forEach(m => {
         const plan = m.plan_summary || {};
+        // Memberstack uses uppercase statuses
+        const status = (plan.status || '').toUpperCase();
+        
         if (plan.is_trial) trials++;
         if (plan.is_paid) paid++;
         if (plan.plan_type === 'annual') annual++;
         if (plan.plan_type === 'monthly') monthly++;
-        if (plan.status === 'canceled' || plan.status === 'cancelled') canceled++;
+        if (status === 'CANCELED' || status === 'CANCELLED') canceled++;
       });
     }
 

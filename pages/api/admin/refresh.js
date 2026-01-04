@@ -58,32 +58,55 @@ export default async function handler(req, res) {
         const email = full?.auth?.email || null;
         const name = full?.customFields?.name || full?.name || null;
 
-        // Plan summary (best-effort; depends on what MS returns in your project)
+        // Plan summary - Memberstack uses uppercase statuses: ACTIVE, CANCELED, PAST_DUE, UNPAID
         const planConnections = Array.isArray(full?.planConnections) ? full.planConnections : [];
+        
+        // Find active plan (ACTIVE status) or trial (has expiryDate)
         const activePlan = planConnections.find(
-          (p) => p?.status === "active" || p?.status === "trialing"
+          (p) => p?.status === "ACTIVE" || (p?.status && p?.expiryDate)
         );
 
-        const planName = activePlan?.planName || activePlan?.name || null;
-        const planStatus = activePlan?.status || full?.status || "unknown";
-        const trialEnd = activePlan?.trialEnd ? safeIso(activePlan.trialEnd) : null;
-
-        const planNameLower = (planName || "").toLowerCase();
-        const planType =
-          planNameLower.includes("annual") || planNameLower.includes("year")
-            ? "annual"
-            : planNameLower.includes("month")
-              ? "monthly"
-              : null;
+        // Get plan name from planId or plan object
+        // Note: Memberstack planConnections may have planId, but plan name might need lookup
+        // For now, try to extract from planId or use a default
+        const planId = activePlan?.planId || null;
+        const planStatus = activePlan?.status || "UNPAID"; // ACTIVE, CANCELED, PAST_DUE, UNPAID
+        const expiryDate = activePlan?.expiryDate ? safeIso(activePlan.expiryDate) : null;
+        const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
+        
+        // Determine if trial (has expiryDate and status might be ACTIVE with future expiry)
+        const isTrial = expiryDate && new Date(expiryDate) > new Date();
+        const isPaid = planStatus === "ACTIVE" && !isTrial && paymentMode === "RECURRING";
+        
+        // Determine plan type from planId (e.g., pln_academy-annual...)
+        let planType = null;
+        let planName = null;
+        if (planId) {
+          const planIdLower = planId.toLowerCase();
+          if (planIdLower.includes("annual") || planIdLower.includes("year")) {
+            planType = "annual";
+            planName = "Academy Annual";
+          } else if (planIdLower.includes("month") || planIdLower.includes("monthly")) {
+            planType = "monthly";
+            planName = "Academy Monthly";
+          } else if (planIdLower.includes("trial")) {
+            planType = "trial";
+            planName = "Academy Trial";
+          } else {
+            planName = "Unknown Plan";
+          }
+        }
 
         const planSummary = {
-          plan_id: activePlan?.planId || activePlan?.id || null,
+          plan_id: planId,
           plan_name: planName,
-          status: planStatus,
-          trial_end: trialEnd,
-          is_trial: planStatus === "trialing",
-          is_paid: planStatus === "active",
+          status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
+          expiry_date: expiryDate,
+          payment_mode: paymentMode,
+          is_trial: isTrial,
+          is_paid: isPaid,
           plan_type: planType,
+          cancel_at_period_end: activePlan?.cancelAtPeriodEnd || false,
         };
 
         // Upsert member cache (this is what your KPI "totalMembers/trials/paid" should read from)
