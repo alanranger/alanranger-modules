@@ -192,7 +192,7 @@ export default async function handler(req, res) {
                 plan_summary: planSummary,
                 created_at: safeIso(full?.createdAt) || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                raw: full || {}, // Store full object for debugging
+                raw: response || full || {}, // Store original response for debugging
               },
             ],
             { onConflict: "member_id" }
