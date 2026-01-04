@@ -24,17 +24,12 @@ module.exports = async (req, res) => {
     // For now, we'll process members in batches
     let processed = 0;
     let eventsAdded = 0;
+    let skipped = 0;
     let page = 1;
     const pageSize = 100;
-    let totalMembers = 0;
+    let totalMembersFetched = 0;
 
-    // First, get total count if possible
-    try {
-      const { data: firstPage } = await memberstack.members.list({ limit: 1 });
-      // Estimate or get actual count - Memberstack API may not provide total
-    } catch (e) {
-      console.log('[refresh] Could not get member count estimate');
-    }
+    console.log('[refresh] Starting member fetch...');
 
     while (true) {
       const { data: members, error: membersError } = await memberstack.members.list({
@@ -48,23 +43,36 @@ module.exports = async (req, res) => {
       }
 
       if (!members || members.length === 0) {
+        console.log(`[refresh] No more members (page ${page})`);
         break;
       }
 
-      totalMembers += members.length;
+      totalMembersFetched += members.length;
+      console.log(`[refresh] Fetched page ${page}: ${members.length} members (total so far: ${totalMembersFetched})`);
 
       for (const member of members) {
         try {
+          const memberId = member.id;
+          const memberEmail = member.auth?.email || null;
+          
           // Get member JSON (contains arAcademy.modules.opened)
-          const memberJson = await memberstack.members.getMemberJSON({ id: member.id });
+          const memberJson = await memberstack.members.getMemberJSON({ id: memberId });
+          
+          // Debug: Log what we found
+          console.log(`[refresh] Member ${memberId}:`, {
+            hasJson: !!memberJson,
+            hasArAcademy: !!memberJson?.arAcademy,
+            hasModules: !!memberJson?.arAcademy?.modules,
+            hasOpened: !!memberJson?.arAcademy?.modules?.opened,
+            openedCount: memberJson?.arAcademy?.modules?.opened ? Object.keys(memberJson.arAcademy.modules.opened).length : 0
+          });
           
           if (!memberJson || !memberJson.arAcademy || !memberJson.arAcademy.modules || !memberJson.arAcademy.modules.opened) {
+            console.log(`[refresh] Skipping member ${memberId} - no opened modules data`);
             continue;
           }
 
           const opened = memberJson.arAcademy.modules.opened;
-          const memberId = member.id;
-          const memberEmail = member.auth?.email || null;
 
           // Process each opened module
           for (const [path, moduleData] of Object.entries(opened)) {
@@ -130,11 +138,15 @@ module.exports = async (req, res) => {
       page++;
     }
 
+    console.log(`[refresh] Summary: ${totalMembersFetched} total members fetched, ${processed} processed, ${skipped} skipped, ${eventsAdded} events added`);
+
     return res.status(200).json({
       success: true,
+      total_members_fetched: totalMembersFetched,
       members_processed: processed,
+      members_skipped: skipped,
       events_added: eventsAdded,
-      message: `Processed ${processed} members, added ${eventsAdded} new events`
+      message: `Fetched ${totalMembersFetched} members, processed ${processed} with opened modules, skipped ${skipped}, added ${eventsAdded} new events`
     });
   } catch (error) {
     console.error('[refresh] Error:', error);

@@ -19,9 +19,10 @@ module.exports = async (req, res) => {
     const day30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Active members (distinct member_id with any event)
-    const { count: active24h } = await supabase
+    // Note: This counts members who have events in Supabase, not total Memberstack members
+    const { data: active24hData } = await supabase
       .from('academy_events')
-      .select('member_id', { count: 'exact', head: true })
+      .select('member_id')
       .not('member_id', 'is', null)
       .gte('created_at', day24h.toISOString());
 
@@ -37,6 +38,7 @@ module.exports = async (req, res) => {
       .not('member_id', 'is', null)
       .gte('created_at', day30d.toISOString());
 
+    const activeMembers24h = new Set(active24hData?.map(e => e.member_id) || []).size;
     const activeMembers7d = new Set(active7dData?.map(e => e.member_id) || []).size;
     const activeMembers30d = new Set(active30dData?.map(e => e.member_id) || []).size;
 
@@ -96,7 +98,7 @@ module.exports = async (req, res) => {
     const passRate30d = totalExams > 0 ? Math.round((passedExams / totalExams) * 100) : 0;
 
     return res.status(200).json({
-      activeMembers24h: active24h || 0,
+      activeMembers24h,
       activeMembers7d,
       activeMembers30d,
       moduleOpens24h: moduleOpens24h || 0,
