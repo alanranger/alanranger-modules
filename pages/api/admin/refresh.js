@@ -59,12 +59,25 @@ export default async function handler(req, res) {
         const name = full?.customFields?.name || full?.name || null;
 
         // Plan summary - Memberstack uses uppercase statuses: ACTIVE, CANCELED, PAST_DUE, UNPAID
-        const planConnections = Array.isArray(full?.planConnections) ? full.planConnections : [];
+        // Check multiple possible locations for plan data
+        let planConnections = [];
+        if (Array.isArray(full?.planConnections)) {
+          planConnections = full.planConnections;
+        } else if (full?.planConnections && typeof full.planConnections === 'object') {
+          planConnections = [full.planConnections];
+        } else if (full?.planConnection) {
+          planConnections = [full.planConnection];
+        } else if (full?.plans && Array.isArray(full.plans)) {
+          planConnections = full.plans;
+        }
         
-        // Debug: Log planConnections structure for first member
-        if (membersFetched === 1) {
-          console.log('[refresh] Sample planConnections:', JSON.stringify(planConnections, null, 2));
-          console.log('[refresh] Full member structure keys:', Object.keys(full || {}));
+        // Debug: Log planConnections structure for first 3 members
+        if (membersFetched <= 3) {
+          console.log(`[refresh] Member ${memberId.substring(0, 20)}... planConnections:`, JSON.stringify(planConnections, null, 2));
+          console.log(`[refresh] Member ${memberId.substring(0, 20)}... full keys:`, Object.keys(full || {}));
+          if (full?.planConnections !== undefined) {
+            console.log(`[refresh] planConnections type:`, typeof full.planConnections, 'isArray:', Array.isArray(full.planConnections));
+          }
         }
         
         // Find active plan (ACTIVE status) or trial (has expiryDate)
