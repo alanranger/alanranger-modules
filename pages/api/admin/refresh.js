@@ -141,10 +141,13 @@ export default async function handler(req, res) {
         const expiryDate = activePlan?.expiryDate ? safeIso(activePlan.expiryDate) : null;
         const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
         
-        // Determine if trial (has expiryDate and status might be ACTIVE with future expiry)
+        // Determine if trial: has expiryDate in the future (30-day free trial)
+        // Trials are ACTIVE but have an expiryDate
         const isTrial = expiryDate ? (new Date(expiryDate) > new Date()) : false;
-        // Paid = ACTIVE status + (RECURRING payment OR no expiryDate indicating it's not a trial)
-        const isPaid = planStatus === "ACTIVE" && !isTrial && (paymentMode === "RECURRING" || !expiryDate);
+        
+        // Paid = ACTIVE status + RECURRING payment mode (not a trial)
+        // If it's ACTIVE with expiryDate, it's a trial, not paid
+        const isPaid = planStatus === "ACTIVE" && paymentMode === "RECURRING" && !isTrial;
         
         // Determine plan type from planId (e.g., pln_academy-annual...)
         let planType = null;

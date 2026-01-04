@@ -37,6 +37,11 @@ module.exports = async (req, res) => {
     let annual = 0;
     let monthly = 0;
     let canceled = 0;
+    let trialsExpiring30d = 0;
+    let annualExpiring30d = 0;
+
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     if (allMembers) {
       allMembers.forEach(m => {
@@ -49,6 +54,22 @@ module.exports = async (req, res) => {
         if (plan.plan_type === 'annual') annual++;
         if (plan.plan_type === 'monthly') monthly++;
         if (status === 'CANCELED' || status === 'CANCELLED') canceled++;
+        
+        // Count expiring trials (expiry_date within next 30 days)
+        if (plan.is_trial && plan.expiry_date) {
+          const expiryDate = new Date(plan.expiry_date);
+          if (expiryDate > now && expiryDate <= thirtyDaysFromNow) {
+            trialsExpiring30d++;
+          }
+        }
+        
+        // Count expiring annual plans (expiry_date within next 30 days for annual plans)
+        if (plan.plan_type === 'annual' && plan.expiry_date) {
+          const expiryDate = new Date(plan.expiry_date);
+          if (expiryDate > now && expiryDate <= thirtyDaysFromNow) {
+            annualExpiring30d++;
+          }
+        }
       });
     }
 
@@ -130,6 +151,8 @@ module.exports = async (req, res) => {
       annual: annual,
       monthly: monthly,
       canceled: canceled,
+      trialsExpiring30d: trialsExpiring30d,
+      annualExpiring30d: annualExpiring30d,
       
       // Signups
       signups24h: signups24h || 0,

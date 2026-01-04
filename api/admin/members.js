@@ -78,11 +78,11 @@ module.exports = async (req, res) => {
       .eq('event_type', 'module_open')
       .in('member_id', memberIds);
 
-    // Get exam stats per member
+    // Get exam stats per member from module_results_ms (uses memberstack_id)
     const { data: examStats } = await supabase
-      .from('exam_member_links')
-      .select('member_id, passed')
-      .in('member_id', memberIds);
+      .from('module_results_ms')
+      .select('memberstack_id, passed')
+      .in('memberstack_id', memberIds);
 
     // Get bookmark count per member
     const { data: bookmarks } = await supabase
@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
 
     const examStatsMap = {};
     examStats?.forEach(exam => {
-      const memberId = exam.member_id;
+      const memberId = exam.memberstack_id; // Use memberstack_id from module_results_ms
       if (!examStatsMap[memberId]) {
         examStatsMap[memberId] = { attempts: 0, passed: 0 };
       }
@@ -125,10 +125,27 @@ module.exports = async (req, res) => {
       bookmarksMap[memberId] = (bookmarksMap[memberId] || 0) + 1;
     });
 
-    // Enrich members with stats
+    // Enrich members with stats from both Supabase events AND Memberstack JSON
     const enrichedMembers = members?.map(member => {
       const memberId = member.member_id;
       const plan = member.plan_summary || {};
+      
+      // Get modules and bookmarks from Memberstack JSON (raw field)
+      const raw = member.raw || {};
+      const json = raw?.json || raw?.data?.json || raw;
+      const arAcademy = json?.arAcademy || {};
+      const modules = arAcademy?.modules || {};
+      const opened = modules?.opened || {};
+      const bookmarks = arAcademy?.bookmarks || [];
+      
+      // Count unique modules from Memberstack JSON
+      const modulesFromJson = Object.keys(opened).filter(Boolean).length;
+      const totalOpensFromJson = Object.values(opened).reduce((sum, m) => sum + (m.count || 1), 0);
+      
+      // Use Memberstack JSON data if available, otherwise fall back to events
+      const modulesOpenedUnique = modulesFromJson > 0 ? modulesFromJson : (uniqueModulesMap[memberId]?.size || 0);
+      const modulesOpenedTotal = totalOpensFromJson > 0 ? totalOpensFromJson : (moduleOpensMap[memberId] || 0);
+      const bookmarksCount = Array.isArray(bookmarks) ? bookmarks.length : (bookmarksMap[memberId] || 0);
       
       return {
         member_id: memberId,
@@ -141,11 +158,11 @@ module.exports = async (req, res) => {
         is_paid: plan.is_paid || false,
         signed_up: member.created_at,
         last_seen: lastSeenMap[memberId] || null,
-        modules_opened_unique: uniqueModulesMap[memberId]?.size || 0,
-        modules_opened_total: moduleOpensMap[memberId] || 0,
+        modules_opened_unique: modulesOpenedUnique,
+        modules_opened_total: modulesOpenedTotal,
         exams_attempted: examStatsMap[memberId]?.attempts || 0,
         exams_passed: examStatsMap[memberId]?.passed || 0,
-        bookmarks_count: bookmarksMap[memberId] || 0
+        bookmarks_count: bookmarksCount
       };
     }) || [];
 

@@ -435,15 +435,15 @@ export default function AdminDashboard() {
           <div className="ar-admin-kpi-value">{kpis?.annual || 0}</div>
           <div className="ar-admin-kpi-period">Active</div>
         </Link>
-        <Link href="/academy/admin/members?plan=monthly" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Monthly Plans</div>
-          <div className="ar-admin-kpi-value">{kpis?.monthly || 0}</div>
-          <div className="ar-admin-kpi-period">Active</div>
+        <Link href="/academy/admin/members?filter=trials_expiring" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Trials Expiring</div>
+          <div className="ar-admin-kpi-value">{kpis?.trialsExpiring30d || 0}</div>
+          <div className="ar-admin-kpi-period">Next 30 days</div>
         </Link>
-        <Link href="/academy/admin/members?status=canceled" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Canceled</div>
-          <div className="ar-admin-kpi-value">{kpis?.canceled || 0}</div>
-          <div className="ar-admin-kpi-period">Total</div>
+        <Link href="/academy/admin/members?filter=annual_expiring" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Annual Plans Expiring</div>
+          <div className="ar-admin-kpi-value">{kpis?.annualExpiring30d || 0}</div>
+          <div className="ar-admin-kpi-period">Next 30 days</div>
         </Link>
       </div>
 
