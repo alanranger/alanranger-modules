@@ -79,12 +79,44 @@ module.exports = async (req, res) => {
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch all exam results for this member
-    const { data: allExams, error: examError } = await supabase
+    // Get member email for fallback query (in case memberstack_id doesn't match)
+    let memberEmail = null;
+    try {
+      const { data: memberCache } = await supabase
+        .from('ms_members_cache')
+        .select('email')
+        .eq('member_id', memberId)
+        .single();
+      
+      if (memberCache) {
+        memberEmail = memberCache.email;
+      }
+    } catch (e) {
+      // Ignore - member cache lookup is optional
+    }
+
+    // Fetch all exam results for this member (try by memberstack_id first)
+    let { data: allExams, error: examError } = await supabase
       .from('module_results_ms')
       .select('module_id, score_percent, passed, attempt, created_at')
       .eq('memberstack_id', memberId)
       .order('created_at', { ascending: false });
+
+    // If no results found by memberstack_id and we have an email, try fallback by email
+    if ((!allExams || allExams.length === 0) && memberEmail) {
+      console.log(`[progress] No results found for memberstack_id ${memberId}, trying email fallback: ${memberEmail}`);
+      const { data: emailExams, error: emailError } = await supabase
+        .from('module_results_ms')
+        .select('module_id, score_percent, passed, attempt, created_at')
+        .eq('email', memberEmail)
+        .order('created_at', { ascending: false });
+      
+      if (!emailError && emailExams && emailExams.length > 0) {
+        console.log(`[progress] Found ${emailExams.length} results by email fallback`);
+        allExams = emailExams;
+        examError = null;
+      }
+    }
 
     if (examError) {
       console.error("[progress] Supabase error:", examError);
