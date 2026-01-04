@@ -82,10 +82,11 @@ export default async function handler(req, res) {
         if (!memberId) continue;
 
         let fullMemberData = null;
+        let memberResponse = null;
         try {
-          const response = await memberstack.members.retrieve({ id: memberId });
+          memberResponse = await memberstack.members.retrieve({ id: memberId });
           // Memberstack Admin API may return { data: {...} } or the member object directly
-          fullMemberData = response?.data || response;
+          fullMemberData = memberResponse?.data || memberResponse;
         } catch (retrieveError) {
           console.error(`[refresh] Error retrieving full member data for ${memberId}:`, retrieveError);
           // Continue processing with partial data if full retrieve fails
@@ -225,9 +226,9 @@ export default async function handler(req, res) {
                 created_at: safeIso(fullMemberData?.createdAt) || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 raw: {
-                  ...(response || {}),
+                  ...(memberResponse || {}),
                   // Ensure json field is accessible at top level for easy querying
-                  json: fullMemberData?.json || response?.json || response?.data?.json || null
+                  json: fullMemberData?.json || memberResponse?.json || memberResponse?.data?.json || null
                 },
               },
             ],
@@ -241,8 +242,8 @@ export default async function handler(req, res) {
         }
 
         // Read opened modules from Member JSON
-        // JSON might be in full.json, response.json, or response.data.json
-        const j = fullMemberData?.json || response?.json || response?.data?.json || {};
+        // JSON might be in full.json, memberResponse.json, or memberResponse.data.json
+        const j = fullMemberData?.json || memberResponse?.json || memberResponse?.data?.json || {};
         const opened = j?.arAcademy?.modules?.opened || null;
         
         if (!opened || typeof opened !== "object") continue;
