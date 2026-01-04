@@ -161,7 +161,21 @@ export default async function handler(req, res) {
         // 1. Check for specific trial planId: pln_academy-trial-30-days--wb7v0hbh
         // 2. OR check for ONETIME payment mode with expiryDate (30-day free trial)
         const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
-        const isTrial = planId === trialPlanId || (paymentMode === "ONETIME" && expiryDate && new Date(expiryDate) > new Date());
+        // Trial detection: if planId matches trial plan, it's a trial
+        // OR if it has expiryDate and paymentMode is ONETIME
+        const isTrial = planId === trialPlanId || (paymentMode === "ONETIME" && expiryDate);
+        
+        // Debug: Log trial detection for first few members
+        if (membersFetched <= 3) {
+          console.log(`[refresh] Member ${memberId.substring(0, 20)}... trial detection:`, {
+            planId,
+            trialPlanId,
+            matches: planId === trialPlanId,
+            paymentMode,
+            expiryDate,
+            isTrial
+          });
+        }
         
         // Paid = ACTIVE status + RECURRING payment mode (annual subscription)
         // Annual plans are RECURRING, not ONETIME
