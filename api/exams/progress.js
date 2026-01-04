@@ -77,6 +77,8 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: "Not logged in" });
     }
 
+    console.log(`[progress] Fetching progress for memberId: ${memberId}`);
+
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     // Get member email for fallback query (in case memberstack_id doesn't match)
@@ -102,6 +104,8 @@ module.exports = async (req, res) => {
       .eq('memberstack_id', memberId)
       .order('created_at', { ascending: false });
 
+    console.log(`[progress] Query by memberstack_id returned ${allExams?.length || 0} results`);
+
     // If no results found by memberstack_id and we have an email, try fallback by email
     if ((!allExams || allExams.length === 0) && memberEmail) {
       console.log(`[progress] No results found for memberstack_id ${memberId}, trying email fallback: ${memberEmail}`);
@@ -115,7 +119,11 @@ module.exports = async (req, res) => {
         console.log(`[progress] Found ${emailExams.length} results by email fallback`);
         allExams = emailExams;
         examError = null;
+      } else if (emailError) {
+        console.error(`[progress] Email fallback query error:`, emailError);
       }
+    } else if (!allExams || allExams.length === 0) {
+      console.log(`[progress] No results found and no email available for fallback`);
     }
 
     if (examError) {
