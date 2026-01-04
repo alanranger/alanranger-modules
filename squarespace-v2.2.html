@@ -877,15 +877,9 @@ async function backToGrid() {
 // Check URL parameters for direct exam access
 function checkUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
-  // Support both ?m= and ?module= parameters
-  const moduleId = urlParams.get('module') || urlParams.get('m');
-  if (moduleId) {
-    // Simple: just load the exam if module ID is provided
-    setTimeout(() => {
-      if (typeof loadExam === 'function') {
-        loadExam(moduleId);
-      }
-    }, 100);
+  const moduleId = urlParams.get('m');
+  if (moduleId === 'module-01-exposure') {
+    setTimeout(() => loadExam(moduleId), 100);
   }
 }
 
