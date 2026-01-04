@@ -515,6 +515,85 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
+      {/* Revenue & Retention Row */}
+      <div style={{ marginTop: '32px' }}>
+        <h2 className="ar-admin-card-title" style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 700 }}>
+          Revenue & Retention
+        </h2>
+        <div className="ar-admin-kpi-grid">
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Trials started in last 30d that became annual within 30d of trial start."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">Trial → Annual Conversion</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.trialConversionRate30d !== null && kpis?.bi?.trialConversionRate30d !== undefined
+                ? `${kpis.bi.trialConversionRate30d}%`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.trialsConverted30d || 0}/{kpis?.bi?.trialsStarted30d || 0} (30d)
+            </div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Trials started in last 30d that did not convert within 30d."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">Trial Drop-off</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.trialDropoffRate30d !== null && kpis?.bi?.trialDropoffRate30d !== undefined
+                ? `${kpis.bi.trialDropoffRate30d}%`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Trials expiring in 7d with low activation (under 3 module opens and 0 exam attempts)."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">At-Risk Trials</div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskTrialsNext7d || 0}</div>
+            <div className="ar-admin-kpi-period">Next 7 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Annual plans that ended/cancelled in last 90d divided by annuals active at start of period."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">Annual Churn</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.annualChurnRate90d !== null && kpis?.bi?.annualChurnRate90d !== undefined
+                ? `${kpis.bi.annualChurnRate90d}%`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.annualChurnCount90d || 0} churned (90d)
+            </div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Annual plans ending in next 30d."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">Annual Expiring</div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.annualExpiringNext30d || 0}</div>
+            <div className="ar-admin-kpi-period">Next 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title={`Expiring annuals next 30d × £${79}.`}
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">Revenue at Risk</div>
+            <div className="ar-admin-kpi-value">£{kpis?.bi?.revenueAtRiskNext30d || 0}</div>
+            <div className="ar-admin-kpi-period">Next 30 days</div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Lists */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
         <div className="ar-admin-card">

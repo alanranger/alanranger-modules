@@ -198,6 +198,240 @@ module.exports = async (req, res) => {
     
     const bookmarks30d = totalBookmarks + (bookmarksFromEvents || 0);
 
+    // ===== BI METRICS: Revenue & Retention =====
+    const start7d = periods['7d'];
+    const start30d = periods['30d'];
+    const start90d = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const next7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const next30d = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Get all members with plan details for BI calculations
+    const { data: allMembersForBI } = await supabase
+      .from('ms_members_cache')
+      .select('member_id, email, created_at, plan_summary');
+
+    // Build member plan timeline map
+    const memberPlans = {};
+    const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+    const ANNUAL_PRICE = 79; // £79 annual plan price
+
+    if (allMembersForBI) {
+      allMembersForBI.forEach(member => {
+        const plan = member.plan_summary || {};
+        const isTrial = plan.plan_id === trialPlanId || (plan.payment_mode === "ONETIME" && plan.expiry_date);
+        
+        // Calculate trial start/end
+        let trialStartAt = null;
+        let trialEndAt = null;
+        if (isTrial) {
+          trialStartAt = member.created_at ? new Date(member.created_at) : null;
+          if (plan.expiry_date) {
+            trialEndAt = new Date(plan.expiry_date);
+          } else if (trialStartAt) {
+            // Default 30-day trial if no expiry_date
+            trialEndAt = new Date(trialStartAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+          }
+        }
+
+        // Calculate annual start/end
+        let annualStartAt = null;
+        let annualEndAt = null;
+        if (plan.plan_type === 'annual') {
+          // Try to get start from created_at or plan connection date
+          annualStartAt = plan.current_period_start ? new Date(plan.current_period_start) : 
+                         (member.created_at ? new Date(member.created_at) : null);
+          
+          // End date from current_period_end or expiry_date
+          if (plan.current_period_end) {
+            annualEndAt = new Date(plan.current_period_end);
+          } else if (plan.expiry_date) {
+            annualEndAt = new Date(plan.expiry_date);
+          } else if (annualStartAt) {
+            // Default 1 year if no end date (only if we're confident it's always 1 year)
+            annualEndAt = new Date(annualStartAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+          }
+        }
+
+        memberPlans[member.member_id] = {
+          member_id: member.member_id,
+          email: member.email,
+          trialStartAt,
+          trialEndAt,
+          annualStartAt,
+          annualEndAt,
+          isTrial,
+          isAnnual: plan.plan_type === 'annual',
+          status: (plan.status || '').toUpperCase()
+        };
+      });
+    }
+
+    // 1. Trial Conversion (30d cohort)
+    const trialsStarted30d = Object.values(memberPlans).filter(m => 
+      m.isTrial && m.trialStartAt && m.trialStartAt >= start30d
+    );
+
+    const trialsConverted30d = trialsStarted30d.filter(m => {
+      if (!m.annualStartAt || !m.trialStartAt) return false;
+      // Converted if annual started within 30 days of trial start
+      const daysToConvert = Math.floor((m.annualStartAt - m.trialStartAt) / 86400000);
+      return daysToConvert >= 0 && daysToConvert <= 30;
+    });
+
+    const trialConversionRate30d = trialsStarted30d.length > 0 
+      ? Math.round((trialsConverted30d.length / trialsStarted30d.length) * 100) 
+      : null;
+    
+    const trialDropoffRate30d = trialConversionRate30d !== null 
+      ? 100 - trialConversionRate30d 
+      : null;
+
+    // Median days to convert
+    const daysToConvert = trialsConverted30d
+      .map(m => Math.floor((m.annualStartAt - m.trialStartAt) / 86400000))
+      .filter(d => d >= 0);
+    const medianDaysToConvert30d = daysToConvert.length > 0
+      ? daysToConvert.sort((a, b) => a - b)[Math.floor(daysToConvert.length / 2)]
+      : null;
+
+    // 2. At-risk trials (expiring next 7d + low activation)
+    // Get activation data (module opens and exam attempts) for trials
+    // Only count active trials (not yet expired) that are expiring soon
+    const trialMemberIds = Object.values(memberPlans)
+      .filter(m => {
+        if (!m.isTrial || !m.trialEndAt || !m.trialStartAt) return false;
+        // Trial must be active (not expired, has started) and expiring in next 7 days
+        return m.trialEndAt > now && m.trialEndAt <= next7d && m.trialStartAt <= now;
+      })
+      .map(m => m.member_id);
+
+    let atRiskTrialsNext7d = 0;
+    if (trialMemberIds.length > 0) {
+      // Get module opens for these trials
+      const { data: moduleOpensForTrials } = await supabase
+        .from('academy_events')
+        .select('member_id, created_at')
+        .eq('event_type', 'module_open')
+        .in('member_id', trialMemberIds);
+
+      // Get exam attempts for these trials
+      const { data: examAttemptsForTrials } = await supabase
+        .from('module_results_ms')
+        .select('memberstack_id, created_at')
+        .in('memberstack_id', trialMemberIds);
+
+      // Check activation for each at-risk trial
+      trialMemberIds.forEach(memberId => {
+        const member = memberPlans[memberId];
+        if (!member || !member.trialStartAt) return;
+
+        const activationWindowEnd = new Date(Math.min(
+          member.trialStartAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+          now.getTime()
+        ));
+
+        // Count module opens in first 7 days
+        const moduleOpensInTrial = (moduleOpensForTrials || []).filter(e => 
+          e.member_id === memberId && 
+          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) <= activationWindowEnd
+        ).length;
+
+        // Count exam attempts in first 7 days
+        const examAttemptsInTrial = (examAttemptsForTrials || []).filter(e => 
+          e.memberstack_id === memberId &&
+          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) <= activationWindowEnd
+        ).length;
+
+        // At risk if: expiring soon AND (less than 3 module opens OR 0 exam attempts)
+        if (moduleOpensInTrial < 3 && examAttemptsInTrial === 0) {
+          atRiskTrialsNext7d++;
+        }
+      });
+    }
+
+    // 3. Annual churn (90d)
+    const annualChurnCount90d = Object.values(memberPlans).filter(m => 
+      m.isAnnual && m.annualEndAt && m.annualEndAt >= start90d && m.annualEndAt <= now
+    ).length;
+
+    // Calculate annual active at start of 90d period
+    const annualActiveAtStart90d = Object.values(memberPlans).filter(m => 
+      m.isAnnual && 
+      m.annualStartAt && 
+      m.annualStartAt <= start90d && 
+      (m.annualEndAt === null || m.annualEndAt > start90d)
+    ).length;
+
+    const annualChurnRate90d = annualActiveAtStart90d > 0
+      ? Math.round((annualChurnCount90d / annualActiveAtStart90d) * 100)
+      : null;
+
+    // 4. Annual expiring next 30d
+    const annualExpiringNext30d = Object.values(memberPlans).filter(m => 
+      m.isAnnual && 
+      m.annualEndAt && 
+      m.annualEndAt > now && 
+      m.annualEndAt <= next30d
+    ).length;
+
+    // 5. Revenue at risk
+    const revenueAtRiskNext30d = annualExpiringNext30d * ANNUAL_PRICE;
+
+    // 6. Activation rate (7d)
+    const trialsStarted7d = Object.values(memberPlans).filter(m => 
+      m.isTrial && m.trialStartAt && m.trialStartAt >= start7d
+    );
+
+    let activatedTrials7d = 0;
+    if (trialsStarted7d.length > 0) {
+      const trial7dMemberIds = trialsStarted7d.map(m => m.member_id);
+      
+      // Get module opens for 7d cohort
+      const { data: moduleOpens7d } = await supabase
+        .from('academy_events')
+        .select('member_id, created_at')
+        .eq('event_type', 'module_open')
+        .in('member_id', trial7dMemberIds);
+
+      // Get exam attempts for 7d cohort
+      const { data: examAttempts7d } = await supabase
+        .from('module_results_ms')
+        .select('memberstack_id, created_at')
+        .in('memberstack_id', trial7dMemberIds);
+
+      trialsStarted7d.forEach(member => {
+        if (!member.trialStartAt) return;
+        
+        const activationWindowEnd = new Date(Math.min(
+          member.trialStartAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+          now.getTime()
+        ));
+
+        const moduleOpens = (moduleOpens7d || []).filter(e => 
+          e.member_id === member.member_id &&
+          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) <= activationWindowEnd
+        ).length;
+
+        const examAttempts = (examAttempts7d || []).filter(e => 
+          e.memberstack_id === member.member_id &&
+          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) <= activationWindowEnd
+        ).length;
+
+        // Activated if: >= 3 module opens OR >= 1 exam attempt
+        if (moduleOpens >= 3 || examAttempts >= 1) {
+          activatedTrials7d++;
+        }
+      });
+    }
+
+    const activationRate7d = trialsStarted7d.length > 0
+      ? Math.round((activatedTrials7d / trialsStarted7d.length) * 100)
+      : null;
+
     return res.status(200).json({
       // Member counts
       totalMembers: totalMembers || 0,
@@ -227,7 +461,26 @@ module.exports = async (req, res) => {
       examPassed30d: examPassed30d,
       passRate30d: passRate30d,
       avgExamAttempts30d: parseFloat(avgExamAttempts),
-      bookmarks30d: bookmarks30d || 0
+      bookmarks30d: bookmarks30d || 0,
+      
+      // BI Metrics: Revenue & Retention
+      bi: {
+        trialConversionRate30d: trialConversionRate30d,
+        trialDropoffRate30d: trialDropoffRate30d,
+        trialsStarted30d: trialsStarted30d.length,
+        trialsConverted30d: trialsConverted30d.length,
+        medianDaysToConvert30d: medianDaysToConvert30d,
+        
+        atRiskTrialsNext7d: atRiskTrialsNext7d,
+        annualChurnRate90d: annualChurnRate90d,
+        annualChurnCount90d: annualChurnCount90d,
+        annualExpiringNext30d: annualExpiringNext30d,
+        revenueAtRiskNext30d: revenueAtRiskNext30d,
+        
+        activationRate7d: activationRate7d,
+        activatedTrials7d: activatedTrials7d,
+        trialsStarted7d: trialsStarted7d.length
+      }
     });
 
   } catch (error) {
