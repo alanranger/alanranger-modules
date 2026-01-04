@@ -603,10 +603,10 @@ function VersionBadge() {
   }, []);
 
   return (
-    <div style={{
+      <div style={{
       position: 'fixed',
-      bottom: '16px',
-      right: '16px',
+      top: '16px',
+      left: '16px',
       background: 'var(--ar-card)',
       border: '1px solid var(--ar-border)',
       borderRadius: '8px',

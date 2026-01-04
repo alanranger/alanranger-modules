@@ -417,7 +417,7 @@ export default function MembersDirectory() {
                           {member.modules_opened_unique} / {member.modules_opened_total}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
-                          {member.exams_passed} / {member.exams_attempted}
+                          {member.exams_attempted > 0 ? `${member.exams_passed} / ${member.exams_attempted}` : '0 / 0'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.bookmarks_count}</td>
                       </tr>

@@ -78,11 +78,22 @@ module.exports = async (req, res) => {
       .eq('event_type', 'module_open')
       .in('member_id', memberIds);
 
-    // Get exam stats per member from module_results_ms (uses memberstack_id)
-    const { data: examStats } = await supabase
+    // Get exam stats per member from module_results_ms
+    // First try by memberstack_id, then also check by email for legacy data
+    const { data: examStatsById } = await supabase
       .from('module_results_ms')
-      .select('memberstack_id, passed')
+      .select('memberstack_id, email, passed')
       .in('memberstack_id', memberIds);
+    
+    // Also get exams by email for legacy data (members who haven't migrated yet)
+    const memberEmails = members?.map(m => m.email).filter(Boolean) || [];
+    const { data: examStatsByEmail } = memberEmails.length > 0 ? await supabase
+      .from('module_results_ms')
+      .select('memberstack_id, email, passed')
+      .in('email', memberEmails) : { data: [] };
+    
+    // Combine both results
+    const examStats = [...(examStatsById || []), ...(examStatsByEmail || [])];
 
     // Get bookmark count per member
     const { data: bookmarks } = await supabase
@@ -109,14 +120,27 @@ module.exports = async (req, res) => {
       uniqueModulesMap[memberId].add(open.path);
     });
 
+    // Build map by member_id first, then by email for legacy data
     const examStatsMap = {};
+    const examStatsByEmailMap = {};
+    
     examStats?.forEach(exam => {
-      const memberId = exam.memberstack_id; // Use memberstack_id from module_results_ms
-      if (!examStatsMap[memberId]) {
-        examStatsMap[memberId] = { attempts: 0, passed: 0 };
+      // Try to match by memberstack_id first
+      const memberId = exam.memberstack_id;
+      if (memberIds.includes(memberId)) {
+        if (!examStatsMap[memberId]) {
+          examStatsMap[memberId] = { attempts: 0, passed: 0 };
+        }
+        examStatsMap[memberId].attempts++;
+        if (exam.passed) examStatsMap[memberId].passed++;
+      } else if (exam.email) {
+        // For legacy data, match by email
+        if (!examStatsByEmailMap[exam.email]) {
+          examStatsByEmailMap[exam.email] = { attempts: 0, passed: 0 };
+        }
+        examStatsByEmailMap[exam.email].attempts++;
+        if (exam.passed) examStatsByEmailMap[exam.email].passed++;
       }
-      examStatsMap[memberId].attempts++;
-      if (exam.passed) examStatsMap[memberId].passed++;
     });
 
     const bookmarksMap = {};
@@ -164,8 +188,9 @@ module.exports = async (req, res) => {
         plan_expiry_date: expiryDate,
         modules_opened_unique: modulesOpenedUnique,
         modules_opened_total: modulesOpenedTotal,
-        exams_attempted: examStatsMap[memberId]?.attempts || 0,
-        exams_passed: examStatsMap[memberId]?.passed || 0,
+        // Combine exam stats by member_id and by email (for legacy data)
+        exams_attempted: (examStatsMap[memberId]?.attempts || 0) + (examStatsByEmailMap[member.email]?.attempts || 0),
+        exams_passed: (examStatsMap[memberId]?.passed || 0) + (examStatsByEmailMap[member.email]?.passed || 0),
         bookmarks_count: bookmarksCount
       };
     }) || [];

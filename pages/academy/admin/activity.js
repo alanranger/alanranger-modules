@@ -133,11 +133,70 @@ export default function ActivityPage() {
   return (
     <div className="ar-admin-container">
       <div className="ar-admin-header">
-        <Link href="/academy/admin" style={{ color: 'var(--ar-orange)', textDecoration: 'none', marginBottom: '16px', display: 'inline-block' }}>
-          ← Back to Dashboard
-        </Link>
-        <h1 className="ar-admin-title">Activity Stream</h1>
-        <p className="ar-admin-subtitle">All Academy events and user activity</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div>
+            <h1 className="ar-admin-title">Activity Stream</h1>
+            <p className="ar-admin-subtitle">All Academy events and user activity</p>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          marginBottom: '24px',
+          borderBottom: '1px solid var(--ar-border)',
+          paddingBottom: '12px'
+        }}>
+          <Link href="/academy/admin" style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: '6px',
+            color: 'var(--ar-text-muted)',
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '14px'
+          }}>
+            Overview
+          </Link>
+          <Link href="/academy/admin/members" style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: '6px',
+            color: 'var(--ar-text-muted)',
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '14px'
+          }}>
+            Members
+          </Link>
+          <Link href="/academy/admin/activity" style={{
+            padding: '8px 16px',
+            background: 'var(--ar-card)',
+            border: '1px solid var(--ar-border)',
+            borderRadius: '6px',
+            color: 'var(--ar-text)',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: '14px'
+          }}>
+            Activity
+          </Link>
+          <Link href="/academy/admin/exams" style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: '6px',
+            color: 'var(--ar-text-muted)',
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '14px'
+          }}>
+            Exams
+          </Link>
+        </div>
       </div>
 
       <div className="ar-admin-filters">
