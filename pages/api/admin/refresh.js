@@ -19,9 +19,12 @@ function safeIso(d) {
 }
 
 export default async function handler(req, res) {
-  // Add CORS headers for debugging
+  // Log the request method for debugging
+  console.log('[refresh] Request received:', { method: req.method, url: req.url });
+  
+  // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   // Handle preflight
@@ -29,13 +32,18 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
   
+  // Allow GET for testing, but prefer POST
+  if (req.method !== "POST" && req.method !== "GET") {
+    console.error('[refresh] Method not allowed:', req.method);
+    return res.status(405).json({ 
+      error: "Method Not Allowed", 
+      received: req.method,
+      allowed: ['POST', 'GET', 'OPTIONS']
+    });
+  }
+  
   try {
-    if (req.method !== "POST") {
-      console.error('[refresh] Method not allowed:', req.method);
-      return res.status(405).json({ error: "Method Not Allowed", received: req.method });
-    }
-    
-    console.log('[refresh] POST request received');
+    console.log('[refresh] Processing request...');
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     const supabase = createClient(
@@ -50,92 +58,73 @@ export default async function handler(req, res) {
     let after = undefined;
     const limit = 100;
 
+    console.log('[refresh] Starting refresh: syncing members and module events...');
+
     while (true) {
-      const { data: members } = await memberstack.members.list({
+      const { data: members, error: listMembersError } = await memberstack.members.list({
         limit,
         ...(after ? { after } : {}),
         order: "ASC",
       });
 
+      if (listMembersError) {
+        console.error('[refresh] Error fetching members list:', listMembersError);
+        throw new Error(`Failed to fetch members list: ${listMembersError.message || 'Unknown error'}`);
+      }
+
       if (!members || members.length === 0) break;
 
       membersFetched += members.length;
+      console.log(`[refresh] Fetched ${members.length} members (total: ${membersFetched})`);
 
       for (const m of members) {
         const memberId = m.id;
         if (!memberId) continue;
 
-        // Retrieve full member (includes `json` field per Memberstack Admin Package docs)
-        const response = await memberstack.members.retrieve({ id: memberId });
-        
-        // Memberstack Admin API may return { data: {...} } or the member object directly
-        const full = response?.data || response;
-        
-        // Debug: Log response structure for first member
-        if (membersFetched === 1) {
-          console.log(`[refresh] Response structure:`, {
-            'has data property': !!response?.data,
-            'response keys': Object.keys(response || {}),
-            'full keys': Object.keys(full || {})
-          });
+        let fullMemberData = null;
+        try {
+          const response = await memberstack.members.retrieve({ id: memberId });
+          // Memberstack Admin API may return { data: {...} } or the member object directly
+          fullMemberData = response?.data || response;
+        } catch (retrieveError) {
+          console.error(`[refresh] Error retrieving full member data for ${memberId}:`, retrieveError);
+          // Continue processing with partial data if full retrieve fails
+          fullMemberData = m; // Use data from list if retrieve fails
         }
 
         // Extract email - check multiple possible locations
-        const email = full?.auth?.email || full?.email || null;
+        const email = fullMemberData?.auth?.email || fullMemberData?.email || null;
         
         // Extract name - Memberstack custom fields use keys like "first-name" and "last-name"
         let name = null;
-        if (full?.customFields) {
+        if (fullMemberData?.customFields) {
           // Try common name field patterns
-          const firstName = full.customFields["first-name"] || full.customFields["firstName"] || full.customFields["first_name"];
-          const lastName = full.customFields["last-name"] || full.customFields["lastName"] || full.customFields["last_name"];
+          const firstName = fullMemberData.customFields["first-name"] || fullMemberData.customFields["firstName"] || fullMemberData.customFields["first_name"];
+          const lastName = fullMemberData.customFields["last-name"] || fullMemberData.customFields["lastName"] || fullMemberData.customFields["last_name"];
           if (firstName || lastName) {
             name = [firstName, lastName].filter(Boolean).join(" ").trim() || null;
           }
           // Fallback to generic name field
           if (!name) {
-            name = full.customFields.name || full.customFields.Name || null;
+            name = fullMemberData.customFields.name || fullMemberData.customFields.Name || null;
           }
         }
         // Final fallback
-        if (!name) {
-          name = full?.name || null;
-        }
-        
-        // Debug: Log email/name extraction for first member
-        if (membersFetched === 1) {
-          console.log(`[refresh] Member ${memberId} email extraction:`, {
-            'full?.auth?.email': full?.auth?.email,
-            'full?.email': full?.email,
-            'final email': email
-          });
-          console.log(`[refresh] Member ${memberId} name extraction:`, {
-            'customFields': full?.customFields,
-            'full?.name': full?.name,
-            'final name': name
-          });
+        if (!name && email) {
+          name = email.split('@')[0]; // Use part of email as name
         }
 
         // Plan summary - Memberstack uses uppercase statuses: ACTIVE, CANCELED, PAST_DUE, UNPAID
         // Check multiple possible locations for plan data
         let planConnections = [];
-        if (Array.isArray(full?.planConnections)) {
-          planConnections = full.planConnections;
-        } else if (full?.planConnections && typeof full.planConnections === 'object') {
-          planConnections = [full.planConnections];
-        } else if (full?.planConnection) {
-          planConnections = [full.planConnection];
-        } else if (full?.plans && Array.isArray(full.plans)) {
-          planConnections = full.plans;
-        }
-        
-        // Debug: Log planConnections structure for first 3 members
-        if (membersFetched <= 3) {
-          console.log(`[refresh] Member ${memberId.substring(0, 20)}... planConnections:`, JSON.stringify(planConnections, null, 2));
-          console.log(`[refresh] Member ${memberId.substring(0, 20)}... full keys:`, Object.keys(full || {}));
-          if (full?.planConnections !== undefined) {
-            console.log(`[refresh] planConnections type:`, typeof full.planConnections, 'isArray:', Array.isArray(full.planConnections));
-          }
+        if (Array.isArray(fullMemberData?.planConnections)) {
+          planConnections = fullMemberData.planConnections;
+        } else if (fullMemberData?.planConnections && typeof fullMemberData.planConnections === 'object') {
+          planConnections = [fullMemberData.planConnections];
+        } else if (fullMemberData?.planConnection) {
+          planConnections = [fullMemberData.planConnection];
+        } else if (fullMemberData?.plans && Array.isArray(fullMemberData.plans)) {
+          planConnections = fullMemberData.plans;
         }
         
         const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
@@ -184,21 +173,6 @@ export default async function handler(req, res) {
         const currentPeriodEnd = planToUse?.current_period_end ? safeIso(planToUse.current_period_end) : null;
         const cancelAtPeriodEnd = planToUse?.cancelAtPeriodEnd || false;
         
-        // Debug: Log trial detection for first few members
-        if (membersFetched <= 3) {
-          console.log(`[refresh] Member ${memberId.substring(0, 20)}... trial detection:`, {
-            planId,
-            trialPlanId,
-            matches: planId === trialPlanId,
-            paymentMode,
-            expiryDate,
-            isTrial,
-            hasTrialPlan: !!trialPlan,
-            trialPlanExpiry: trialPlan?.expiryDate,
-            memberCreatedAt
-          });
-        }
-        
         // Paid = ACTIVE status + RECURRING payment mode (annual subscription)
         // Annual plans are RECURRING, not ONETIME
         const isPaid = planStatus === "ACTIVE" && paymentMode === "RECURRING";
@@ -218,37 +192,25 @@ export default async function handler(req, res) {
             planType = "trial";
             planName = "Academy Trial";
           } else {
-            planName = planId; // Use planId as name if can't determine
+            planName = planToUse?.planName || planToUse?.name || planId; // Use planName from activePlan or planId as name if can't determine
           }
         } else if (planConnections.length > 0) {
-          // If no planId but we have connections, mark as unknown
-          planName = "Plan Connected";
+          // If no planId but we have connections, try to get name from first plan
+          planName = planConnections[0]?.planName || planConnections[0]?.name || "Plan Connected";
         }
 
-                    const planSummary = {
-                      plan_id: planId,
-                      plan_name: planName,
-                      status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
-                      expiry_date: expiryDate, // For trials (ONETIME plans)
-                      current_period_end: currentPeriodEnd, // For annual subscriptions (RECURRING)
-                      payment_mode: paymentMode,
-                      is_trial: isTrial,
-                      is_paid: isPaid,
-                      plan_type: planType,
-                      cancel_at_period_end: cancelAtPeriodEnd,
-                    };
-
-        // Debug: Log what we're about to store for first member
-        if (membersFetched === 1) {
-          console.log(`[refresh] About to store member ${memberId}:`, {
-            email,
-            name,
-            planSummary,
-            'full object keys': Object.keys(full || {}),
-            'full.auth exists': !!full?.auth,
-            'full.customFields exists': !!full?.customFields
-          });
-        }
+        const planSummary = {
+          plan_id: planId,
+          plan_name: planName,
+          status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
+          expiry_date: expiryDate, // For trials (ONETIME plans)
+          current_period_end: currentPeriodEnd, // For annual subscriptions (RECURRING)
+          payment_mode: paymentMode,
+          is_trial: isTrial,
+          is_paid: isPaid,
+          plan_type: planType,
+          cancel_at_period_end: cancelAtPeriodEnd,
+        };
 
         // Upsert member cache (this is what your KPI "totalMembers/trials/paid" should read from)
         const { error: upsertMemberErr } = await supabase
@@ -260,12 +222,12 @@ export default async function handler(req, res) {
                 email,
                 name,
                 plan_summary: planSummary,
-                created_at: safeIso(full?.createdAt) || new Date().toISOString(),
+                created_at: safeIso(fullMemberData?.createdAt) || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 raw: {
                   ...(response || {}),
                   // Ensure json field is accessible at top level for easy querying
-                  json: full?.json || response?.json || response?.data?.json || null
+                  json: fullMemberData?.json || response?.json || response?.data?.json || null
                 },
               },
             ],
@@ -273,27 +235,15 @@ export default async function handler(req, res) {
           );
 
         if (upsertMemberErr) {
-          console.error(`[refresh] Error upserting member ${memberId}:`, upsertMemberErr);
-        } else if (membersFetched <= 3) {
-          console.log(`[refresh] Successfully stored member ${memberId} with email: ${email}, name: ${name}`);
+          console.error(`[refresh] Error upserting member ${memberId} to cache:`, upsertMemberErr);
+        } else {
+          membersUpserted++;
         }
-
-        if (!upsertMemberErr) membersUpserted++;
 
         // Read opened modules from Member JSON
         // JSON might be in full.json, response.json, or response.data.json
-        const j = full?.json || response?.json || response?.data?.json || {};
+        const j = fullMemberData?.json || response?.json || response?.data?.json || {};
         const opened = j?.arAcademy?.modules?.opened || null;
-        
-        // Debug: Log JSON structure for first member
-        if (membersFetched === 1) {
-          console.log(`[refresh] JSON extraction:`, {
-            'full?.json exists': !!full?.json,
-            'response?.json exists': !!response?.json,
-            'response?.data?.json exists': !!response?.data?.json,
-            'opened modules count': opened ? Object.keys(opened).length : 0
-          });
-        }
         
         if (!opened || typeof opened !== "object") continue;
 
@@ -341,6 +291,8 @@ export default async function handler(req, res) {
       if (!after) break;
     }
 
+    console.log(`[refresh] Summary: Fetched ${membersFetched} members, Upserted ${membersUpserted} members to cache, Upserted ${eventsUpserted} events`);
+
     return res.status(200).json({
       success: true,
       members_fetched: membersFetched,
@@ -348,8 +300,11 @@ export default async function handler(req, res) {
       events_upserted: eventsUpserted,
     });
   } catch (err) {
+    console.error('[refresh] Fatal error:', err);
+    console.error('[refresh] Error stack:', err.stack);
     return res.status(500).json({
       error: err?.message || "Unknown error",
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 }
