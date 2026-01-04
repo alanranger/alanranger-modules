@@ -475,19 +475,21 @@ function VersionBadge() {
   const [buildDate, setBuildDate] = useState('');
 
   useEffect(() => {
-    // Get version from environment or fetch from API
-    const envVersion = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
-    if (envVersion) {
-      setVersion(envVersion.substring(0, 7));
-    } else {
-      // Try to fetch from API endpoint
-      fetch('/api/admin/version')
-        .then(res => res.json())
-        .then(data => {
-          if (data.version) setVersion(data.version.substring(0, 7));
-        })
-        .catch(() => {});
-    }
+    // Fetch version from API endpoint (Vercel env vars are server-side only)
+    fetch('/api/admin/version')
+      .then(res => res.json())
+      .then(data => {
+        if (data.version && data.version !== 'dev') {
+          setVersion(data.version.substring(0, 7));
+        }
+      })
+      .catch(() => {
+        // Fallback: try client-side env var (set at build time)
+        const envVersion = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
+        if (envVersion) {
+          setVersion(envVersion.substring(0, 7));
+        }
+      });
     
     // Set build date
     const now = new Date();
