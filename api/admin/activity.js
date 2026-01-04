@@ -47,11 +47,32 @@ module.exports = async (req, res) => {
       query = query.ilike('path', `%${path}%`);
     }
 
-    const { data, error } = await query;
+    const { data: events, error } = await query;
 
     if (error) throw error;
 
-    return res.status(200).json(data || []);
+    // Enrich events with member names from ms_members_cache
+    const memberIds = [...new Set(events?.map(e => e.member_id).filter(Boolean) || [])];
+    const memberNamesMap = {};
+    
+    if (memberIds.length > 0) {
+      const { data: members } = await supabase
+        .from('ms_members_cache')
+        .select('member_id, name')
+        .in('member_id', memberIds);
+      
+      members?.forEach(m => {
+        memberNamesMap[m.member_id] = m.name;
+      });
+    }
+
+    // Add member name to each event
+    const enrichedEvents = events?.map(event => ({
+      ...event,
+      member_name: memberNamesMap[event.member_id] || null
+    })) || [];
+
+    return res.status(200).json(enrichedEvents);
   } catch (error) {
     console.error('[activity] Error:', error);
     return res.status(500).json({ error: error.message });

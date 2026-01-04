@@ -4,10 +4,11 @@ import Link from 'next/link';
 
 export default function ActivityPage() {
   const router = useRouter();
-  const { period = '30d', event_type, category, member_id, path } = router.query;
+  const { period = '30d', event_type, category, member_id, path, sort = 'created_at', order = 'desc' } = router.query;
   
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ field: sort, direction: order });
   const [filters, setFilters] = useState({
     period: period,
     event_type: event_type || '',
@@ -46,17 +47,70 @@ export default function ActivityPage() {
     setFilters(newFilters);
     router.push({
       pathname: '/academy/admin/activity',
-      query: Object.fromEntries(
-        Object.entries(newFilters).filter(([_, v]) => v)
-      )
+      query: {
+        ...Object.fromEntries(Object.entries(newFilters).filter(([_, v]) => v)),
+        sort: sortConfig.field,
+        order: sortConfig.direction
+      }
     });
   }
 
+  function handleSort(field) {
+    const direction = sortConfig.field === field && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    const newSortConfig = { field, direction };
+    setSortConfig(newSortConfig);
+    
+    // Sort events locally
+    const sorted = [...events].sort((a, b) => {
+      let aVal = a[field];
+      let bVal = b[field];
+      
+      // Handle null/undefined values
+      if (aVal == null) aVal = '';
+      if (bVal == null) bVal = '';
+      
+      // Handle dates
+      if (field === 'created_at' || field === 'timestamp') {
+        aVal = new Date(aVal).getTime();
+        bVal = new Date(bVal).getTime();
+      }
+      
+      // Handle strings
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      
+      if (direction === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    
+    setEvents(sorted);
+    
+    router.push({
+      pathname: '/academy/admin/activity',
+      query: {
+        ...router.query,
+        sort: field,
+        order: direction
+      }
+    });
+  }
+
+  function getSortIcon(field) {
+    if (sortConfig.field !== field) {
+      return '↕️'; // Neutral
+    }
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  }
+
   function exportCSV() {
-    const headers = ['Timestamp', 'Event Type', 'Member ID', 'Email', 'Title', 'Path', 'Category'];
+    const headers = ['Timestamp', 'Event Type', 'Name', 'Member ID', 'Email', 'Title', 'Path', 'Category'];
     const rows = events.map(e => [
       new Date(e.created_at).toLocaleString(),
       e.event_type,
+      e.member_name || '',
       e.member_id || '',
       e.email || '',
       e.title || '',
@@ -156,13 +210,54 @@ export default function ActivityPage() {
           <table className="ar-admin-table">
             <thead>
               <tr>
-                <th>Timestamp</th>
-                <th>Event Type</th>
-                <th>Member ID</th>
-                <th>Email</th>
-                <th>Title</th>
-                <th>Path</th>
-                <th>Category</th>
+                <th 
+                  onClick={() => handleSort('created_at')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Timestamp {getSortIcon('created_at')}
+                </th>
+                <th 
+                  onClick={() => handleSort('event_type')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Event Type {getSortIcon('event_type')}
+                </th>
+                <th 
+                  onClick={() => handleSort('member_name')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Name {getSortIcon('member_name')}
+                </th>
+                <th 
+                  onClick={() => handleSort('member_id')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Member ID {getSortIcon('member_id')}
+                </th>
+                <th 
+                  onClick={() => handleSort('email')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Email {getSortIcon('email')}
+                </th>
+                <th 
+                  onClick={() => handleSort('title')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Title {getSortIcon('title')}
+                </th>
+                <th 
+                  onClick={() => handleSort('path')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Path {getSortIcon('path')}
+                </th>
+                <th 
+                  onClick={() => handleSort('category')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Category {getSortIcon('category')}
+                </th>
                 <th>Meta</th>
               </tr>
             </thead>
@@ -171,6 +266,7 @@ export default function ActivityPage() {
                 <tr key={event.id}>
                   <td>{new Date(event.created_at).toLocaleString()}</td>
                   <td>{event.event_type}</td>
+                  <td>{event.member_name || '-'}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
                     {event.member_id ? event.member_id.substring(0, 12) + '...' : '-'}
                   </td>

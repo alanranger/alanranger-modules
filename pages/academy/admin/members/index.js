@@ -7,9 +7,11 @@ import { useRouter } from 'next/router';
 
 export default function MembersDirectory() {
   const router = useRouter();
+  const { sort = 'updated_at', order = 'desc' } = router.query;
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
+  const [sortConfig, setSortConfig] = useState({ field: sort, direction: order });
   
   // Filters
   const [planFilter, setPlanFilter] = useState('');
@@ -64,10 +66,62 @@ export default function MembersDirectory() {
         ...(planFilter && { plan: planFilter }),
         ...(statusFilter && { status: statusFilter }),
         ...(searchQuery && { search: searchQuery }),
-        ...(lastSeenFilter && { last_seen: lastSeenFilter })
+        ...(lastSeenFilter && { last_seen: lastSeenFilter }),
+        sort: sortConfig.field,
+        order: sortConfig.direction
       }
     });
     fetchMembers();
+  }
+
+  function handleSort(field) {
+    const direction = sortConfig.field === field && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    const newSortConfig = { field, direction };
+    setSortConfig(newSortConfig);
+    
+    // Sort members locally
+    const sorted = [...members].sort((a, b) => {
+      let aVal = a[field];
+      let bVal = b[field];
+      
+      // Handle null/undefined values
+      if (aVal == null) aVal = '';
+      if (bVal == null) bVal = '';
+      
+      // Handle dates
+      if (field === 'signed_up' || field === 'last_seen' || field === 'plan_expiry_date') {
+        aVal = aVal ? new Date(aVal).getTime() : 0;
+        bVal = bVal ? new Date(bVal).getTime() : 0;
+      }
+      
+      // Handle strings
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      
+      if (direction === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    
+    setMembers(sorted);
+    
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...router.query,
+        sort: field,
+        order: direction
+      }
+    });
+  }
+
+  function getSortIcon(field) {
+    if (sortConfig.field !== field) {
+      return '↕️'; // Neutral
+    }
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
   }
 
   function formatDate(dateString) {
@@ -250,16 +304,66 @@ export default function MembersDirectory() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Name</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Email</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Plan</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Status</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Expires</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Signed Up</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Last Seen</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Modules</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Exams</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Bookmarks</th>
+                    <th 
+                      onClick={() => handleSort('name')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Name {getSortIcon('name')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('email')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Email {getSortIcon('email')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('plan_name')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Plan {getSortIcon('plan_name')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('status')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Status {getSortIcon('status')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('plan_expiry_date')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Expires {getSortIcon('plan_expiry_date')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('signed_up')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Signed Up {getSortIcon('signed_up')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('last_seen')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Last Seen {getSortIcon('last_seen')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('modules_opened_unique')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Modules {getSortIcon('modules_opened_unique')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('exams_attempted')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Exams {getSortIcon('exams_attempted')}
+                    </th>
+                    <th 
+                      onClick={() => handleSort('bookmarks_count')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Bookmarks {getSortIcon('bookmarks_count')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
