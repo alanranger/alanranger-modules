@@ -19,10 +19,23 @@ function safeIso(d) {
 }
 
 export default async function handler(req, res) {
+  // Add CORS headers for debugging
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
+      console.error('[refresh] Method not allowed:', req.method);
+      return res.status(405).json({ error: "Method Not Allowed", received: req.method });
     }
+    
+    console.log('[refresh] POST request received');
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     const supabase = createClient(
