@@ -19,14 +19,19 @@ export default function MembersDirectory() {
 
   useEffect(() => {
     // Read filters from URL query params
-    const { plan, status, search, last_seen } = router.query;
+    const { plan, status, search, last_seen, page } = router.query;
     if (plan) setPlanFilter(plan);
     if (status) setStatusFilter(status);
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
+    if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
     
     fetchMembers();
   }, [router.query]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [pagination.page]);
 
   async function fetchMembers() {
     setLoading(true);

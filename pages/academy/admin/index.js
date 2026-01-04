@@ -70,28 +70,10 @@ export default function AdminDashboard() {
       setRefreshProgress({ step: 'Connecting to Memberstack...', progress: 10 });
       addDebugLog('Connecting to Memberstack API');
       
-      setRefreshProgress({ step: 'Syncing members from Memberstack...', progress: 20 });
-      addDebugLog('Syncing members to cache');
+      setRefreshProgress({ step: 'Syncing members and module data...', progress: 20 });
+      addDebugLog('Refreshing data from Memberstack');
       
-      // First sync members to cache
-      const syncRes = await fetch('/api/admin/sync-members', { 
-        method: 'POST',
-        headers: {
-          'x-ar-analytics-key': process.env.NEXT_PUBLIC_AR_ANALYTICS_KEY || ''
-        }
-      });
-      
-      if (!syncRes.ok) {
-        const syncError = await syncRes.json().catch(() => ({}));
-        throw new Error(syncError.error || 'Member sync failed');
-      }
-      
-      const syncResult = await syncRes.json();
-      addDebugLog('Members synced', syncResult);
-      
-      setRefreshProgress({ step: 'Processing module data...', progress: 40 });
-      
-      // Then refresh module events
+      // Refresh endpoint now handles both member sync and module events
       const res = await fetch('/api/admin/refresh', { method: 'POST' });
       
       setRefreshProgress({ step: 'Processing response...', progress: 70 });

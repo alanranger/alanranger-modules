@@ -1,6 +1,7 @@
 // /api/admin/refresh.js
 // Refreshes data from Memberstack and updates Supabase events
 // This syncs the latest module opens from Memberstack JSON to Supabase events
+// Also syncs members to ms_members_cache
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
@@ -13,6 +14,85 @@ module.exports = async (req, res) => {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
+
+    // First sync members to cache (reuse sync-members logic)
+    const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    let membersSynced = 0;
+    let after = null;
+    const limit = 100;
+
+    console.log('[refresh] Syncing members to cache...');
+
+    while (true) {
+      const params = { limit };
+      if (after) params.after = after;
+
+      const { data: members, error: membersError } = await memberstack.members.list(params);
+
+      if (membersError || !members || members.length === 0) break;
+
+      for (const member of members) {
+        try {
+          const memberId = member.id;
+          const email = member.auth?.email || null;
+          const name = member.customFields?.name || member.name || null;
+          
+          const planSummary = {
+            plan_id: null,
+            plan_name: null,
+            status: member.status || 'unknown',
+            trial_end: null,
+            is_trial: false,
+            is_paid: false,
+            plan_type: null
+          };
+
+          if (member.planConnections && Array.isArray(member.planConnections) && member.planConnections.length > 0) {
+            const activePlan = member.planConnections.find(p => p.status === 'active' || p.status === 'trialing');
+            if (activePlan) {
+              planSummary.plan_id = activePlan.planId || activePlan.id;
+              planSummary.plan_name = activePlan.planName || activePlan.name || 'Unknown Plan';
+              planSummary.status = activePlan.status || member.status;
+              planSummary.trial_end = activePlan.trialEnd || null;
+              planSummary.is_trial = activePlan.status === 'trialing' || false;
+              planSummary.is_paid = activePlan.status === 'active' && !planSummary.is_trial;
+              
+              const planNameLower = (planSummary.plan_name || '').toLowerCase();
+              if (planNameLower.includes('annual') || planNameLower.includes('year')) {
+                planSummary.plan_type = 'annual';
+              } else if (planNameLower.includes('month') || planNameLower.includes('monthly')) {
+                planSummary.plan_type = 'monthly';
+              }
+            }
+          }
+
+          await supabase.from('ms_members_cache').upsert([{
+            member_id: memberId,
+            email: email,
+            name: name,
+            plan_summary: planSummary,
+            created_at: member.createdAt || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            raw: member
+          }], { onConflict: 'member_id' });
+
+          membersSynced++;
+        } catch (err) {
+          console.error(`[refresh] Error syncing member ${member.id}:`, err);
+        }
+      }
+
+      if (members.length < limit) break;
+      after = members[members.length - 1]?.id || null;
+      if (!after) break;
+    }
+
+    console.log(`[refresh] Synced ${membersSynced} members to cache`);
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     const supabase = createClient(
@@ -139,15 +219,16 @@ module.exports = async (req, res) => {
       page++;
     }
 
-    console.log(`[refresh] Summary: ${totalMembersFetched} total members fetched, ${processed} processed, ${skipped} skipped, ${eventsAdded} events added`);
+    console.log(`[refresh] Summary: ${membersSynced} members synced, ${totalMembersFetched} total members fetched, ${processed} processed, ${skipped} skipped, ${eventsAdded} events added`);
 
     return res.status(200).json({
       success: true,
+      members_synced: membersSynced,
       total_members_fetched: totalMembersFetched,
       members_processed: processed,
       members_skipped: skipped,
       events_added: eventsAdded,
-      message: `Fetched ${totalMembersFetched} members, processed ${processed} with opened modules, skipped ${skipped}, added ${eventsAdded} new events`
+      message: `Synced ${membersSynced} members, fetched ${totalMembersFetched} members, processed ${processed} with opened modules, skipped ${skipped}, added ${eventsAdded} new events`
     });
   } catch (error) {
     console.error('[refresh] Error:', error);
