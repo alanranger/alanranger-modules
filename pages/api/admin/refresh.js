@@ -1,15 +1,24 @@
-// /pages/api/admin/refresh.js
-// Refreshes data from Memberstack and updates Supabase events
-// This syncs the latest module opens from Memberstack JSON to Supabase events
-// Also syncs members to ms_members_cache
+// pages/api/admin/refresh.js
+// Sync Memberstack -> Supabase (member cache + module_open events)
+//
+// Requires env:
+// - MEMBERSTACK_SECRET_KEY
+// - SUPABASE_URL
+// - SUPABASE_SERVICE_ROLE_KEY
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
 
-export default async function handler(req, res) {
-  // Security: Add admin authentication check here
-  // For now, this is a placeholder - add proper auth in production
-  
+function safeIso(d) {
+  try {
+    const x = new Date(d);
+    return isNaN(x.getTime()) ? null : x.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+module.exports = async (req, res) => {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
@@ -21,183 +30,140 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    let membersSynced = 0;
-    let processed = 0;
-    let eventsAdded = 0;
-    let skipped = 0;
-    let after = null;
+    let membersFetched = 0;
+    let membersUpserted = 0;
+    let eventsUpserted = 0;
+
+    let after = undefined;
     const limit = 100;
-    let totalMembersFetched = 0;
 
-    console.log('[refresh] Starting refresh: syncing members and module events...');
-
-    // Single loop: sync members to cache AND process module events
     while (true) {
-      const params = { limit };
-      if (after) params.after = after;
+      const { data: members } = await memberstack.members.list({
+        limit,
+        ...(after ? { after } : {}),
+        order: "ASC",
+      });
 
-      const { data: members, error: membersError } = await memberstack.members.list(params);
+      if (!members || members.length === 0) break;
 
-      if (membersError) {
-        console.error('[refresh] Error fetching members:', membersError);
-        throw new Error(`Failed to fetch members: ${membersError.message || 'Unknown error'}`);
-      }
+      membersFetched += members.length;
 
-      if (!members || members.length === 0) {
-        console.log(`[refresh] No more members`);
-        break;
-      }
+      for (const m of members) {
+        const memberId = m.id;
+        if (!memberId) continue;
 
-      totalMembersFetched += members.length;
-      console.log(`[refresh] Fetched ${members.length} members (total: ${totalMembersFetched})`);
+        // Retrieve full member (includes `json` field per Memberstack Admin Package docs)
+        const full = await memberstack.members.retrieve({ id: memberId });
 
-      for (const member of members) {
-        try {
-          const memberId = member.id;
-          const memberEmail = member.auth?.email || null;
-          const name = member.customFields?.name || member.name || null;
-          
-          // 1. Sync member to cache
-          const planSummary = {
-            plan_id: null,
-            plan_name: null,
-            status: member.status || 'unknown',
-            trial_end: null,
-            is_trial: false,
-            is_paid: false,
-            plan_type: null
+        const email = full?.auth?.email || null;
+        const name = full?.customFields?.name || full?.name || null;
+
+        // Plan summary (best-effort; depends on what MS returns in your project)
+        const planConnections = Array.isArray(full?.planConnections) ? full.planConnections : [];
+        const activePlan = planConnections.find(
+          (p) => p?.status === "active" || p?.status === "trialing"
+        );
+
+        const planName = activePlan?.planName || activePlan?.name || null;
+        const planStatus = activePlan?.status || full?.status || "unknown";
+        const trialEnd = activePlan?.trialEnd ? safeIso(activePlan.trialEnd) : null;
+
+        const planNameLower = (planName || "").toLowerCase();
+        const planType =
+          planNameLower.includes("annual") || planNameLower.includes("year")
+            ? "annual"
+            : planNameLower.includes("month")
+              ? "monthly"
+              : null;
+
+        const planSummary = {
+          plan_id: activePlan?.planId || activePlan?.id || null,
+          plan_name: planName,
+          status: planStatus,
+          trial_end: trialEnd,
+          is_trial: planStatus === "trialing",
+          is_paid: planStatus === "active",
+          plan_type: planType,
+        };
+
+        // Upsert member cache (this is what your KPI "totalMembers/trials/paid" should read from)
+        const { error: upsertMemberErr } = await supabase
+          .from("ms_members_cache")
+          .upsert(
+            [
+              {
+                member_id: memberId,
+                email,
+                name,
+                plan_summary: planSummary,
+                created_at: safeIso(full?.createdAt) || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                raw: full,
+              },
+            ],
+            { onConflict: "member_id" }
+          );
+
+        if (!upsertMemberErr) membersUpserted++;
+
+        // Read opened modules from Member JSON
+        const j = full?.json || {};
+        const opened = j?.arAcademy?.modules?.opened || null;
+        if (!opened || typeof opened !== "object") continue;
+
+        // Upsert module_open events
+        for (const [path, md] of Object.entries(opened)) {
+          if (!path || !md) continue;
+
+          const createdAt =
+            safeIso(md.lastAt) ||
+            safeIso(md.at) ||
+            new Date().toISOString();
+
+          const meta = {
+            source: "memberstack_sync",
+            first_opened_at: safeIso(md.at) || null,
+            last_opened_at: safeIso(md.lastAt) || safeIso(md.at) || null,
           };
 
-          if (member.planConnections && Array.isArray(member.planConnections) && member.planConnections.length > 0) {
-            const activePlan = member.planConnections.find(p => p.status === 'active' || p.status === 'trialing');
-            if (activePlan) {
-              planSummary.plan_id = activePlan.planId || activePlan.id;
-              planSummary.plan_name = activePlan.planName || activePlan.name || 'Unknown Plan';
-              planSummary.status = activePlan.status || member.status;
-              planSummary.trial_end = activePlan.trialEnd || null;
-              planSummary.is_trial = activePlan.status === 'trialing' || false;
-              planSummary.is_paid = activePlan.status === 'active' && !planSummary.is_trial;
-              
-              const planNameLower = (planSummary.plan_name || '').toLowerCase();
-              if (planNameLower.includes('annual') || planNameLower.includes('year')) {
-                planSummary.plan_type = 'annual';
-              } else if (planNameLower.includes('month') || planNameLower.includes('monthly')) {
-                planSummary.plan_type = 'monthly';
-              }
-            }
-          }
-
-          const { error: upsertError } = await supabase.from('ms_members_cache').upsert([{
-            member_id: memberId,
-            email: memberEmail,
-            name: name,
-            plan_summary: planSummary,
-            created_at: member.createdAt || new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            raw: member
-          }], { onConflict: 'member_id' });
-
-          if (upsertError) {
-            console.error(`[refresh] Error upserting member ${memberId} to cache:`, upsertError);
-          } else {
-            membersSynced++;
-          }
-
-          // 2. Process module events from member JSON
-          const memberJson = await memberstack.members.getMemberJSON({ id: memberId });
-          
-          if (!memberJson || !memberJson.arAcademy || !memberJson.arAcademy.modules || !memberJson.arAcademy.modules.opened) {
-            skipped++;
-            console.log(`[refresh] Skipping member ${memberId} (${memberEmail || 'no email'}) - no opened modules data`);
-            continue;
-          }
-
-          const opened = memberJson.arAcademy.modules.opened;
-
-          // Process each opened module
-          for (const [path, moduleData] of Object.entries(opened)) {
-            if (!path || !moduleData) continue;
-
-            // Check if event already exists (avoid duplicates)
-            const { data: existing } = await supabase
-              .from('academy_events')
-              .select('id')
-              .eq('member_id', memberId)
-              .eq('path', path)
-              .eq('event_type', 'module_open')
-              .limit(1)
-              .single();
-
-            if (existing) {
-              // Update lastAt if needed (only if module was opened more recently)
-              if (moduleData.lastAt) {
-                await supabase
-                  .from('academy_events')
-                  .update({ 
-                    created_at: moduleData.lastAt,
-                    email: memberEmail 
-                  })
-                  .eq('id', existing.id);
-              }
-              continue;
-            }
-
-            // Insert new event
-            const { error: insertError } = await supabase
-              .from('academy_events')
-              .insert([{
-                event_type: 'module_open',
-                member_id: memberId,
-                email: memberEmail,
-                path: path,
-                title: moduleData.t || moduleData.title || 'Module',
-                category: moduleData.cat || moduleData.category || null,
-                meta: {
-                  source: 'memberstack_sync',
-                  first_opened_at: moduleData.at || null,
-                  last_opened_at: moduleData.lastAt || moduleData.at || null
+          const { error: upsertEventErr } = await supabase
+            .from("academy_events")
+            .upsert(
+              [
+                {
+                  event_type: "module_open",
+                  member_id: memberId,
+                  email,
+                  path,
+                  title: md.t || md.title || "Module",
+                  category: md.cat || md.category || null,
+                  meta,
+                  created_at: createdAt,
                 },
-                created_at: moduleData.lastAt || moduleData.at || new Date().toISOString()
-              }]);
+              ],
+              // IMPORTANT: you should add a unique constraint on (member_id,event_type,path)
+              // so this upsert is deterministic.
+              { onConflict: "member_id,event_type,path" }
+            );
 
-            if (!insertError) {
-              eventsAdded++;
-            } else {
-              console.error(`[refresh] Error inserting event for ${memberId}/${path}:`, insertError);
-            }
-          }
-
-          processed++;
-        } catch (memberError) {
-          console.error(`[refresh] Error processing member ${member.id}:`, memberError);
-          skipped++;
+          if (!upsertEventErr) eventsUpserted++;
         }
       }
 
-      if (members.length < limit) {
-        break; // Last page
-      }
-      after = members[members.length - 1]?.id || null;
+      if (members.length < limit) break;
+      after = members[members.length - 1]?.id;
       if (!after) break;
     }
 
-    console.log(`[refresh] Summary: ${membersSynced} members synced, ${totalMembersFetched} total members fetched, ${processed} processed, ${skipped} skipped, ${eventsAdded} events added`);
-
     return res.status(200).json({
       success: true,
-      members_synced: membersSynced,
-      total_members_fetched: totalMembersFetched,
-      members_processed: processed,
-      members_skipped: skipped,
-      events_added: eventsAdded,
-      message: `Synced ${membersSynced} members, fetched ${totalMembersFetched} members, processed ${processed} with opened modules, skipped ${skipped}, added ${eventsAdded} new events`
+      members_fetched: membersFetched,
+      members_upserted: membersUpserted,
+      events_upserted: eventsUpserted,
     });
-  } catch (error) {
-    console.error('[refresh] Fatal error:', error);
-    console.error('[refresh] Error stack:', error.stack);
-    return res.status(500).json({ 
-      error: error.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+  } catch (err) {
+    return res.status(500).json({
+      error: err?.message || "Unknown error",
     });
   }
-}
+};

@@ -74,7 +74,10 @@ export default function AdminDashboard() {
       addDebugLog('Refreshing data from Memberstack');
       
       // Refresh endpoint now handles both member sync and module events
-      const res = await fetch('/api/admin/refresh', { method: 'POST' });
+      const res = await fetch('/api/admin/refresh', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
       
       setRefreshProgress({ step: 'Processing response...', progress: 70 });
       
