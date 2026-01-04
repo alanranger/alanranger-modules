@@ -68,7 +68,8 @@ module.exports = async (req, res) => {
           });
           
           if (!memberJson || !memberJson.arAcademy || !memberJson.arAcademy.modules || !memberJson.arAcademy.modules.opened) {
-            console.log(`[refresh] Skipping member ${memberId} - no opened modules data`);
+            skipped++;
+            console.log(`[refresh] Skipping member ${memberId} (${memberEmail || 'no email'}) - no opened modules data`);
             continue;
           }
 

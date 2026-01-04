@@ -119,6 +119,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="ar-admin-container">
+      {/* Version Badge */}
+      <VersionBadge />
+
       <div className="ar-admin-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
@@ -464,6 +467,54 @@ function TopModulesList({ refreshTrigger }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+function VersionBadge() {
+  const [version, setVersion] = useState('dev');
+  const [buildDate, setBuildDate] = useState('');
+
+  useEffect(() => {
+    // Get version from environment or fetch from API
+    const envVersion = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
+    if (envVersion) {
+      setVersion(envVersion.substring(0, 7));
+    } else {
+      // Try to fetch from API endpoint
+      fetch('/api/admin/version')
+        .then(res => res.json())
+        .then(data => {
+          if (data.version) setVersion(data.version.substring(0, 7));
+        })
+        .catch(() => {});
+    }
+    
+    // Set build date
+    const now = new Date();
+    setBuildDate(now.toLocaleDateString() + ' ' + now.toLocaleTimeString());
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: '16px',
+      right: '16px',
+      background: 'var(--ar-card)',
+      border: '1px solid var(--ar-border)',
+      borderRadius: '8px',
+      padding: '8px 12px',
+      fontSize: '11px',
+      color: 'var(--ar-text-muted)',
+      fontFamily: 'monospace',
+      zIndex: 100,
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+      cursor: 'default'
+    }}>
+      <div>Version: <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{version}</span></div>
+      <div style={{ fontSize: '10px', marginTop: '2px', opacity: 0.7 }}>
+        {buildDate}
+      </div>
+    </div>
   );
 }
 
