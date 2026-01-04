@@ -55,8 +55,41 @@ export default async function handler(req, res) {
         // Retrieve full member (includes `json` field per Memberstack Admin Package docs)
         const full = await memberstack.members.retrieve({ id: memberId });
 
-        const email = full?.auth?.email || null;
-        const name = full?.customFields?.name || full?.name || null;
+        // Extract email - check multiple possible locations
+        const email = full?.auth?.email || full?.email || null;
+        
+        // Extract name - Memberstack custom fields use keys like "first-name" and "last-name"
+        let name = null;
+        if (full?.customFields) {
+          // Try common name field patterns
+          const firstName = full.customFields["first-name"] || full.customFields["firstName"] || full.customFields["first_name"];
+          const lastName = full.customFields["last-name"] || full.customFields["lastName"] || full.customFields["last_name"];
+          if (firstName || lastName) {
+            name = [firstName, lastName].filter(Boolean).join(" ").trim() || null;
+          }
+          // Fallback to generic name field
+          if (!name) {
+            name = full.customFields.name || full.customFields.Name || null;
+          }
+        }
+        // Final fallback
+        if (!name) {
+          name = full?.name || null;
+        }
+        
+        // Debug: Log email/name extraction for first member
+        if (membersFetched === 1) {
+          console.log(`[refresh] Member ${memberId} email extraction:`, {
+            'full?.auth?.email': full?.auth?.email,
+            'full?.email': full?.email,
+            'final email': email
+          });
+          console.log(`[refresh] Member ${memberId} name extraction:`, {
+            'customFields': full?.customFields,
+            'full?.name': full?.name,
+            'final name': name
+          });
+        }
 
         // Plan summary - Memberstack uses uppercase statuses: ACTIVE, CANCELED, PAST_DUE, UNPAID
         // Check multiple possible locations for plan data
