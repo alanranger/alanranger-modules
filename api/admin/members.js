@@ -25,10 +25,18 @@ module.exports = async (req, res) => {
     const search = req.query.search; // name or email search
     const lastSeenFilter = req.query.last_seen; // '24h', '7d', '30d', 'never'
 
-    // Build query
+    // Build query - by default, only show members with trial or annual plans
+    // This excludes test accounts and members without valid plans
     let query = supabase.from('ms_members_cache').select('*', { count: 'exact' });
+    
+    // Default filter: only show members with trial or annual plans that are ACTIVE or TRIALING
+    // This can be overridden by explicit planFilter if provided
+    if (!planFilter) {
+      // Filter to only show members with valid plans (trial or annual, active/trialing status)
+      // We'll do this in JavaScript after fetching, as Supabase JSONB filtering is complex
+    }
 
-    // Apply filters
+    // Apply explicit filters
     if (planFilter) {
       if (planFilter === 'trial') {
         query = query.contains('plan_summary', { is_trial: true });
@@ -61,8 +69,23 @@ module.exports = async (req, res) => {
       throw error;
     }
 
+    // Filter out test accounts and members without valid plans (trial or annual)
+    // Only show members with trial or annual plans that are ACTIVE or TRIALING
+    const validMembers = (members || []).filter(member => {
+      const plan = member.plan_summary || {};
+      const planType = plan.plan_type || '';
+      const status = (plan.status || '').toUpperCase();
+      
+      // Only include members with trial or annual plans that are ACTIVE or TRIALING
+      // Exclude test accounts and members without valid plans
+      return (
+        (planType === 'trial' || planType === 'annual') &&
+        (status === 'ACTIVE' || status === 'TRIALING')
+      );
+    });
+
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
-    const memberIds = members?.map(m => m.member_id) || [];
+    const memberIds = validMembers?.map(m => m.member_id) || [];
     
     // Get last activity per member
     const { data: lastActivities } = await supabase
@@ -150,7 +173,7 @@ module.exports = async (req, res) => {
     });
 
     // Enrich members with stats from both Supabase events AND Memberstack JSON
-    const enrichedMembers = members?.map(member => {
+    const enrichedMembers = validMembers?.map(member => {
       const memberId = member.member_id;
       const plan = member.plan_summary || {};
       
@@ -160,7 +183,8 @@ module.exports = async (req, res) => {
       const arAcademy = json?.arAcademy || {};
       const modules = arAcademy?.modules || {};
       const opened = modules?.opened || {};
-      const bookmarks = arAcademy?.bookmarks || [];
+      // Bookmarks are at root level: json.bookmarks, not json.arAcademy.bookmarks
+      const bookmarks = json?.bookmarks || [];
       
       // Count unique modules from Memberstack JSON
       const modulesFromJson = Object.keys(opened).filter(Boolean).length;

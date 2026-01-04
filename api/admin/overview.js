@@ -163,12 +163,40 @@ module.exports = async (req, res) => {
     const uniqueMembersWithExams = new Set(examAttempts?.map(e => e.memberstack_id) || []).size;
     const avgExamAttempts = uniqueMembersWithExams > 0 ? (examAttempts30d / uniqueMembersWithExams).toFixed(1) : 0;
 
-    // 7. Bookmarks (30d)
-    const { count: bookmarks30d } = await supabase
+    // 7. Bookmarks (30d) - Count from Memberstack JSON
+    // Bookmarks are stored at raw.json.bookmarks (root level), not in arAcademy.bookmarks
+    // They're also not logged as events in academy_events
+    const { data: allMembersForBookmarks } = await supabase
+      .from('ms_members_cache')
+      .select('raw, updated_at');
+    
+    let totalBookmarks = 0;
+    if (allMembersForBookmarks) {
+      allMembersForBookmarks.forEach(member => {
+        try {
+          const raw = member.raw || {};
+          const json = raw.json || raw.data?.json || raw;
+          // Bookmarks are at root level: json.bookmarks, not json.arAcademy.bookmarks
+          const bookmarks = json.bookmarks || [];
+          
+          if (Array.isArray(bookmarks)) {
+            // Count all bookmarks (bookmarks don't have individual timestamps)
+            totalBookmarks += bookmarks.length;
+          }
+        } catch (e) {
+          // Skip members with invalid JSON
+        }
+      });
+    }
+    
+    // Also check academy_events as fallback (in case some bookmarks are logged as events)
+    const { count: bookmarksFromEvents } = await supabase
       .from('academy_events')
       .select('*', { count: 'exact', head: true })
       .eq('event_type', 'bookmark_add')
       .gte('created_at', periods['30d'].toISOString());
+    
+    const bookmarks30d = totalBookmarks + (bookmarksFromEvents || 0);
 
     return res.status(200).json({
       // Member counts

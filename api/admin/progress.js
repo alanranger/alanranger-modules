@@ -56,23 +56,48 @@ module.exports = async (req, res) => {
     
     if (examError) throw examError;
 
-    // Get member names from cache
+    // Get member names from cache - ONLY members with trial or annual plans
+    // Filter out test accounts and members without valid plans
     const { data: membersCache } = await supabase
       .from('ms_members_cache')
-      .select('member_id, email, name');
+      .select('member_id, email, name, plan_summary');
 
+    // Build maps and filter to only valid members (trial or annual plans)
     const memberNameMap = {};
     const memberEmailMap = {};
+    const validMemberIds = new Set();
+    
     membersCache?.forEach(m => {
-      memberNameMap[m.member_id] = m.name;
-      memberEmailMap[m.member_id] = m.email;
+      const plan = m.plan_summary || {};
+      const planType = plan.plan_type || '';
+      const status = (plan.status || '').toUpperCase();
+      
+      // Only include members with trial or annual plans that are ACTIVE
+      // Exclude test accounts and members without valid plans
+      const isValidMember = (
+        (planType === 'trial' || planType === 'annual') &&
+        (status === 'ACTIVE' || status === 'TRIALING')
+      );
+      
+      if (isValidMember) {
+        validMemberIds.add(m.member_id);
+        memberNameMap[m.member_id] = m.name;
+        memberEmailMap[m.member_id] = m.email;
+      }
     });
 
     // Group exams by member_id + module_id
+    // Filter to only include valid members (trial or annual plans)
     const memberModuleMap = {};
     
     allExams?.forEach(exam => {
       const memberId = exam.memberstack_id;
+      
+      // Skip test accounts and members without valid plans
+      if (!validMemberIds.has(memberId)) {
+        return;
+      }
+      
       const moduleId = exam.module_id;
       const key = `${memberId}::${moduleId}`;
       

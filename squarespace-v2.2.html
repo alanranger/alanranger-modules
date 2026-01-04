@@ -53,7 +53,7 @@
         border-radius:8px; 
         box-shadow:0 8px 32px rgba(0,0,0,.5); 
         z-index:99999; 
-        display:block; /* VISIBLE BY DEFAULT for debugging */
+        display:none; /* Hidden by default - press Ctrl+Shift+D to show */
         font-family:monospace;
         color:#fff;
         overflow:hidden;
@@ -688,93 +688,69 @@ async function fetchStatusForUser(user, forceRefresh = false) {
     return {};
   }
   
-  debugLog('🔍 fetchStatusForUser called - user.email: ' + user.email + ', user.id: ' + user.id);
-  debugLog('🔍 memberstackIdentity exists: ' + !!memberstackIdentity);
-  debugLog('🔍 memberstackDataLoaded: ' + memberstackDataLoaded);
+  const now = Date.now();
+  const cacheKey = user.id;
   
-  // CRITICAL: If Memberstack data is already loaded, DO NOT overwrite it
-  if (memberstackDataLoaded) {
-    debugLog('🛡️ BLOCKED: fetchStatusForUser - Memberstack data already loaded, returning empty to prevent overwrite');
-    return {}; // Return empty to prevent overwriting Memberstack data
+  // Check cache first (unless force refresh)
+  if (!forceRefresh && userStatusCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
+    debugLog('📋 Using cached status for user: ' + user.email);
+    return userStatusCache[cacheKey];
   }
   
-  // SINGLE SOURCE OF TRUTH: Query module_results_ms using memberstack_id
-  // If we have memberstackIdentity, use it to query the correct table
-  if (memberstackIdentity && memberstackIdentity.memberstack_id) {
-    debugLog('🔍 Using SINGLE SOURCE OF TRUTH: module_results_ms table with memberstack_id: ' + memberstackIdentity.memberstack_id);
+  debugLog('🔍 Fetching status for user: ' + user.email + ' (ID: ' + user.id + ')');
+  
+  try {
+    debugLog('🔍 Starting Supabase query...');
     
-    const now = Date.now();
-    const cacheKey = memberstackIdentity.memberstack_id;
+    // Add timeout to prevent hanging
+    const queryPromise = supabase
+      .from('module_results')
+      .select('module_id, score_percent, passed, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
     
-    // Check cache first (unless force refresh)
-    if (!forceRefresh && userStatusCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
-      debugLog('📋 Using cached status for memberstack_id: ' + memberstackIdentity.memberstack_id);
-      return userStatusCache[cacheKey];
-    }
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000)
+    );
     
-    try {
-      debugLog('🔍 Querying module_results_ms from Supabase (single source of truth)...');
-      
-      // Query module_results_ms table using memberstack_id
-      const queryPromise = supabase
-        .from('module_results_ms')
-        .select('module_id, score_percent, passed, created_at, attempt')
-        .eq('memberstack_id', memberstackIdentity.memberstack_id)
-        .order('created_at', { ascending: false });
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000)
-      );
-      
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-      
-      debugLog('🔍 Supabase query completed for module_results_ms');
-      
-      if (error) {
-        debugLog('❌ Error fetching status from module_results_ms: ' + JSON.stringify(error));
-        return userStatusCache[cacheKey] || {};
-      }
-      
-      if (!data || data.length === 0) {
-        debugLog('⚠️ No data returned from module_results_ms');
-        return userStatusCache[cacheKey] || {};
-      }
-      
-      debugLog('📋 Raw data from module_results_ms: ' + JSON.stringify(data));
-      debugLog('📋 Data length: ' + data.length);
-      
-      // Group by module_id and get the latest attempt for each
-      const latest = {};
-      for (const row of data) {
-        const moduleId = row.module_id;
-        // Only keep the first (latest) result for each module since we ordered by created_at desc
-        if (!latest[moduleId]) {
-          latest[moduleId] = {
-            score: row.score_percent,
-            passed: row.passed,
-            when: row.created_at,
-            attempt: row.attempt
-          };
-        }
-      }
-      
-      // Update cache
-      userStatusCache[cacheKey] = latest;
-      lastCacheTime = now;
-      
-      debugLog('📊 Processed status from module_results_ms: ' + JSON.stringify(latest));
-      debugLog('📊 Status keys count: ' + Object.keys(latest).length);
-      return latest;
-    } catch (err) {
-      debugLog('❌ Exception in fetchStatusForUser (module_results_ms): ' + err.message);
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+    
+    debugLog('🔍 Supabase query completed');
+    
+    if (error) {
+      debugLog('❌ Error fetching status: ' + JSON.stringify(error));
       return userStatusCache[cacheKey] || {};
     }
+    
+    if (!data) {
+      debugLog('⚠️ No data returned from fetchStatusForUser');
+      return userStatusCache[cacheKey] || {};
+    }
+    
+    debugLog('📋 Raw data from DB: ' + JSON.stringify(data));
+    debugLog('📋 Data length: ' + data.length);
+    
+    const latest = {};
+    for (const row of data) {
+      if (!latest[row.module_id]) {
+        latest[row.module_id] = {
+          score: row.score_percent,
+          passed: row.passed,
+          when: row.created_at
+        };
+      }
+    }
+    
+    // Update cache
+    userStatusCache[cacheKey] = latest;
+    lastCacheTime = now;
+    
+    debugLog('📊 Processed status: ' + JSON.stringify(latest));
+    return latest;
+  } catch (err) {
+    debugLog('❌ Exception in fetchStatusForUser: ' + err.message);
+    return userStatusCache[cacheKey] || {};
   }
-  
-  // Fallback: If no memberstackIdentity, return empty (can't query module_results_ms without memberstack_id)
-  debugLog('⚠️ No memberstackIdentity - cannot query module_results_ms (requires memberstack_id)');
-  debugLog('⚠️ Returning empty status - use Memberstack authentication to load exam results');
-  return {};
 }
 
 window.loadExam = async function(moduleId) {
@@ -901,9 +877,96 @@ async function backToGrid() {
 // Check URL parameters for direct exam access
 function checkUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
-  const moduleId = urlParams.get('m');
-  if (moduleId === 'module-01-exposure') {
-    setTimeout(() => loadExam(moduleId), 100);
+  // Support both ?m= and ?module= parameters
+  const moduleId = urlParams.get('module') || urlParams.get('m');
+  
+  if (!moduleId) return;
+  
+  // Validate module ID format
+  if (!moduleId.startsWith('module-')) {
+    debugLog('⚠️ Invalid module ID format:', moduleId);
+    return;
+  }
+  
+  // Check if module exists in modules array
+  const moduleExists = modules && modules.find(m => m.id === moduleId);
+  if (!moduleExists) {
+    debugLog('⚠️ Module not found:', moduleId);
+    return;
+  }
+  
+  debugLog('🔍 URL parameter detected: module=' + moduleId);
+  
+  // Wait for grid to be rendered before scrolling
+  const checkAndScroll = () => {
+    const gridContainer = document.getElementById('grid-container');
+    const grid = document.getElementById('grid');
+    const quizContainer = document.getElementById('quiz-container');
+    
+    // If grid is visible, scroll to the module card
+    if (gridContainer && gridContainer.style.display !== 'none' && grid) {
+      const moduleCard = grid.querySelector(`[data-module-id="${moduleId}"]`);
+      
+      if (moduleCard) {
+        debugLog('✅ Found module card, scrolling to it...');
+        
+        // Scroll to the card with smooth behavior
+        moduleCard.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Highlight the card with a temporary border/background
+        const originalBorder = moduleCard.style.border;
+        const originalBackground = moduleCard.style.background;
+        const originalBoxShadow = moduleCard.style.boxShadow;
+        
+        moduleCard.style.border = '3px solid #E57200';
+        moduleCard.style.boxShadow = '0 4px 12px rgba(229, 114, 0, 0.4)';
+        moduleCard.style.transition = 'all 0.3s ease';
+        
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+          moduleCard.style.border = originalBorder;
+          moduleCard.style.background = originalBackground;
+          moduleCard.style.boxShadow = originalBoxShadow;
+        }, 3000);
+        
+        // Optional: Auto-click the exam button after a short delay (if user wants direct access)
+        // Uncomment the following lines if you want clicking the module pill to auto-open the exam:
+        // setTimeout(() => {
+        //   const examButton = moduleCard.querySelector('button[data-module-id="' + moduleId + '"]');
+        //   if (examButton) {
+        //     examButton.click();
+        //   }
+        // }, 1000);
+        
+        return; // Don't load exam if we're just scrolling
+      } else {
+        debugLog('⚠️ Module card not found in grid, will try to load exam directly');
+      }
+    }
+    
+    // If grid is not visible or card not found, load the exam directly
+    if (quizContainer && quizContainer.style.display !== 'none') {
+      debugLog('✅ Quiz container already visible, loading exam...');
+      setTimeout(() => loadExam(moduleId), 100);
+    } else if (!gridContainer || gridContainer.style.display === 'none') {
+      debugLog('✅ Grid not visible, loading exam directly...');
+      setTimeout(() => loadExam(moduleId), 100);
+    }
+  };
+  
+  // Wait for DOM to be ready and grid to be rendered
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wait a bit more for grid to render
+      setTimeout(checkAndScroll, 500);
+    });
+  } else {
+    // DOM is ready, but grid might still be rendering
+    setTimeout(checkAndScroll, 500);
   }
 }
 
@@ -2429,31 +2492,14 @@ if (typeof supabase !== 'undefined' && supabase.auth) {
           return;
         }
         
-        // CRITICAL CHECK: Don't overwrite Memberstack data
-        if (memberstackDataLoaded) {
-          debugLog('🛡️ BLOCKED: Auth state change - Memberstack data already loaded, skipping Supabase update');
-          hideLoadingSpinner();
-          return;
-        }
-        
         // Update grid with user's progress
         debugLog('🔄 Auth state change: Fetching user status...');
-        debugLog('🔄 memberstackDataLoaded before fetch: ' + memberstackDataLoaded);
         const status = await fetchStatusForUser(session.user);
         debugLog('🔄 Auth state change: Status fetched, rendering...');
         debugLog('🔄 Status keys:', Object.keys(status).length);
-        debugLog('🔄 memberstackDataLoaded after fetch: ' + memberstackDataLoaded);
-        
-        // CRITICAL: Double-check Memberstack wasn't loaded while we were fetching
-        if (memberstackDataLoaded) {
-          debugLog('🛡️ BLOCKED: Memberstack data loaded during fetch - skipping Supabase render');
-          hideLoadingSpinner();
-          return;
-        }
         
         // Only render if we have data - don't clear existing Memberstack data
         if (Object.keys(status).length > 0) {
-          debugLog('🔄 Rendering Supabase status data...');
           renderSummary(status);
           renderGrid(status);
         } else {
@@ -3175,30 +3221,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
         
-        // CRITICAL CHECK: Don't overwrite Memberstack data
-        if (memberstackDataLoaded) {
-          debugLog('🛡️ BLOCKED: checkExistingSession - Memberstack data already loaded, skipping');
-          return;
-        }
-        
         // User is already signed in, update UI
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           debugLog('🔄 Auto-signing in existing user:', user.email);
-          debugLog('🔄 memberstackDataLoaded before fetch: ' + memberstackDataLoaded);
           // Trigger auth state change to load progress
           const status = await fetchStatusForUser(user);
-          debugLog('🔄 memberstackDataLoaded after fetch: ' + memberstackDataLoaded);
-          
-          // CRITICAL: Double-check Memberstack wasn't loaded while we were fetching
-          if (memberstackDataLoaded) {
-            debugLog('🛡️ BLOCKED: Memberstack data loaded during checkExistingSession - skipping Supabase render');
-            return;
-          }
           
           // Only render if we have data - don't clear existing Memberstack data
           if (Object.keys(status).length > 0) {
-            debugLog('🔄 Rendering Supabase status from checkExistingSession...');
             renderSummary(status);
             renderGrid(status);
           } else {
