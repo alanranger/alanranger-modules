@@ -3,13 +3,8 @@
 // Run: node test-memberstack-connection.js
 // Make sure you have a .env.local file with the required variables
 
-// Try to load dotenv if available, otherwise use process.env directly
-try {
-  require('dotenv').config({ path: '.env.local' });
-} catch (e) {
-  // dotenv not installed, use process.env directly
-  console.log('Note: dotenv not found, using process.env directly\n');
-}
+// Load environment variables from .env.local
+require('dotenv').config({ path: '.env.local' });
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
 
