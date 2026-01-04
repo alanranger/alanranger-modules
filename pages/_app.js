@@ -1,5 +1,7 @@
 import '../styles/admin-globals.css';
 
-export default function App({ Component, pageProps }) {
+function App({ Component, pageProps }) {
   return <Component {...pageProps} />;
 }
+
+export default App;
