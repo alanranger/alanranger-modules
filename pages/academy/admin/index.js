@@ -4,6 +4,8 @@ import Link from 'next/link';
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     fetchKPIs();
@@ -28,10 +30,6 @@ export default function AdminDashboard() {
       </div>
     );
   }
-
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   async function handleRefresh() {
     setRefreshing(true);
