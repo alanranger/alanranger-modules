@@ -140,14 +140,19 @@ export default async function handler(req, res) {
         const planStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : "UNPAID";
         const expiryDate = activePlan?.expiryDate ? safeIso(activePlan.expiryDate) : null;
         const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
+        // For annual plans, check for current_period_end (from Stripe) or cancelAtPeriodEnd
+        const currentPeriodEnd = activePlan?.current_period_end ? safeIso(activePlan.current_period_end) : null;
+        const cancelAtPeriodEnd = activePlan?.cancelAtPeriodEnd || false;
         
-        // Determine if trial: has expiryDate in the future (30-day free trial)
-        // Trials are ACTIVE but have an expiryDate
-        const isTrial = expiryDate ? (new Date(expiryDate) > new Date()) : false;
+        // Determine if trial: 
+        // 1. Check for specific trial planId: pln_academy-trial-30-days--wb7v0hbh
+        // 2. OR check for ONETIME payment mode with expiryDate (30-day free trial)
+        const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+        const isTrial = planId === trialPlanId || (paymentMode === "ONETIME" && expiryDate && new Date(expiryDate) > new Date());
         
-        // Paid = ACTIVE status + RECURRING payment mode (not a trial)
-        // If it's ACTIVE with expiryDate, it's a trial, not paid
-        const isPaid = planStatus === "ACTIVE" && paymentMode === "RECURRING" && !isTrial;
+        // Paid = ACTIVE status + RECURRING payment mode (annual subscription)
+        // Annual plans are RECURRING, not ONETIME
+        const isPaid = planStatus === "ACTIVE" && paymentMode === "RECURRING";
         
         // Determine plan type from planId (e.g., pln_academy-annual...)
         let planType = null;
@@ -171,17 +176,18 @@ export default async function handler(req, res) {
           planName = "Plan Connected";
         }
 
-        const planSummary = {
-          plan_id: planId,
-          plan_name: planName,
-          status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
-          expiry_date: expiryDate,
-          payment_mode: paymentMode,
-          is_trial: isTrial,
-          is_paid: isPaid,
-          plan_type: planType,
-          cancel_at_period_end: activePlan?.cancelAtPeriodEnd || false,
-        };
+                    const planSummary = {
+                      plan_id: planId,
+                      plan_name: planName,
+                      status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
+                      expiry_date: expiryDate, // For trials (ONETIME plans)
+                      current_period_end: currentPeriodEnd, // For annual subscriptions (RECURRING)
+                      payment_mode: paymentMode,
+                      is_trial: isTrial,
+                      is_paid: isPaid,
+                      plan_type: planType,
+                      cancel_at_period_end: cancelAtPeriodEnd,
+                    };
 
         // Debug: Log what we're about to store for first member
         if (membersFetched === 1) {
