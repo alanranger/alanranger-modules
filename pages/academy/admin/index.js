@@ -29,11 +29,59 @@ export default function AdminDashboard() {
     );
   }
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      // Trigger refresh endpoint that syncs Memberstack data to Supabase
+      const res = await fetch('/api/admin/refresh', { method: 'POST' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Refresh failed');
+      }
+      
+      const result = await res.json();
+      console.log('Refresh result:', result);
+      
+      // Reload KPIs
+      await fetchKPIs();
+      
+      // Trigger refresh of top lists
+      setRefreshTrigger(prev => prev + 1);
+      
+      alert(`Refresh complete! Processed ${result.members_processed} members, added ${result.events_added} new events.`);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      alert(`Failed to refresh data: ${error.message}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="ar-admin-container">
       <div className="ar-admin-header">
-        <h1 className="ar-admin-title">Admin Analytics Dashboard</h1>
-        <p className="ar-admin-subtitle">Academy activity and engagement metrics</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <h1 className="ar-admin-title">Admin Analytics Dashboard</h1>
+            <p className="ar-admin-subtitle">Academy activity and engagement metrics</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="ar-admin-btn"
+            style={{ 
+              minWidth: '140px',
+              opacity: refreshing ? 0.6 : 1,
+              cursor: refreshing ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {refreshing ? 'Refreshing...' : '🔄 Refresh Data'}
+          </button>
+        </div>
       </div>
 
       {/* KPI Tiles Row 1 */}
@@ -98,33 +146,37 @@ export default function AdminDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
         <div className="ar-admin-card">
           <h2 className="ar-admin-card-title">Top 20 Modules by Opens (30d)</h2>
-          <TopModulesList />
+          <TopModulesList refreshTrigger={refreshTrigger} />
         </div>
         <div className="ar-admin-card">
           <h2 className="ar-admin-card-title">Most Active Members (30d)</h2>
-          <TopMembersList />
+          <TopMembersList refreshTrigger={refreshTrigger} />
         </div>
       </div>
     </div>
   );
 }
 
-function TopModulesList() {
+function TopModulesList({ refreshTrigger }) {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/top-modules?limit=20&period=30d')
-      .then(res => res.json())
-      .then(data => {
-        setModules(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch top modules:', err);
-        setLoading(false);
-      });
-  }, []);
+    fetchModules();
+  }, [refreshTrigger]);
+
+  async function fetchModules() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/top-modules?limit=20&period=30d');
+      const data = await res.json();
+      setModules(data);
+    } catch (err) {
+      console.error('Failed to fetch top modules:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (loading) return <div className="ar-admin-loading">Loading...</div>;
   if (modules.length === 0) return <div className="ar-admin-empty">No data available</div>;
@@ -151,22 +203,26 @@ function TopModulesList() {
   );
 }
 
-function TopMembersList() {
+function TopMembersList({ refreshTrigger }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/top-members?limit=20&period=30d')
-      .then(res => res.json())
-      .then(data => {
-        setMembers(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch top members:', err);
-        setLoading(false);
-      });
-  }, []);
+    fetchMembers();
+  }, [refreshTrigger]);
+
+  async function fetchMembers() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/top-members?limit=20&period=30d');
+      const data = await res.json();
+      setMembers(data);
+    } catch (err) {
+      console.error('Failed to fetch top members:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (loading) return <div className="ar-admin-loading">Loading...</div>;
   if (members.length === 0) return <div className="ar-admin-empty">No data available</div>;
