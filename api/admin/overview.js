@@ -266,11 +266,25 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 1. Trial Conversion (30d cohort)
+    // ===== CONVERSION TOTALS (All-time + Rolling Windows) =====
+    // All-time trial starts
+    const trialsStartedAllTime = Object.values(memberPlans).filter(m => 
+      m.isTrial && m.trialStartAt
+    );
+
+    // All-time conversions (trial → annual)
+    const trialsConvertedAllTime = trialsStartedAllTime.filter(m => {
+      if (!m.annualStartAt || !m.trialStartAt) return false;
+      // Converted if annual started after trial start
+      return m.annualStartAt >= m.trialStartAt;
+    });
+
+    // 30d trial starts
     const trialsStarted30d = Object.values(memberPlans).filter(m => 
       m.isTrial && m.trialStartAt && m.trialStartAt >= start30d
     );
 
+    // 30d conversions
     const trialsConverted30d = trialsStarted30d.filter(m => {
       if (!m.annualStartAt || !m.trialStartAt) return false;
       // Converted if annual started within 30 days of trial start
@@ -278,12 +292,33 @@ module.exports = async (req, res) => {
       return daysToConvert >= 0 && daysToConvert <= 30;
     });
 
-    const trialConversionRate30d = trialsStarted30d.length > 0 
-      ? Math.round((trialsConverted30d.length / trialsStarted30d.length) * 100) 
+    // Conversion rates
+    const trialToAnnualConversionRateAllTime = trialsStartedAllTime.length > 0 
+      ? Math.round((trialsConvertedAllTime.length / trialsStartedAllTime.length) * 100 * 10) / 10
       : null;
-    
-    const trialDropoffRate30d = trialConversionRate30d !== null 
-      ? 100 - trialConversionRate30d 
+
+    const trialConversionRate30d = trialsStarted30d.length > 0 
+      ? Math.round((trialsConverted30d.length / trialsStarted30d.length) * 100 * 10) / 10
+      : null;
+
+    // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
+    // Trials that ended in last 30d
+    const trialsEnded30d = Object.values(memberPlans).filter(m => 
+      m.isTrial && 
+      m.trialEndAt && 
+      m.trialEndAt >= start30d && 
+      m.trialEndAt <= now
+    );
+
+    // Trials that ended without converting
+    const trialsEndedWithoutConversion30d = trialsEnded30d.filter(m => {
+      // Not converted if no annual start OR annual started after trial ended
+      return !m.annualStartAt || m.annualStartAt > m.trialEndAt;
+    });
+
+    const trialDropOff30d = trialsEndedWithoutConversion30d.length;
+    const trialDropoffRate30d = trialsEnded30d.length > 0
+      ? Math.round((trialDropOff30d / trialsEnded30d.length) * 100 * 10) / 10
       : null;
 
     // Median days to convert
@@ -432,6 +467,59 @@ module.exports = async (req, res) => {
       ? Math.round((activatedTrials7d / trialsStarted7d.length) * 100)
       : null;
 
+    // ===== GROWTH INDICATORS =====
+    // New members in last 30d
+    const newMembers30d = Object.values(memberPlans).filter(m => 
+      m.trialStartAt && m.trialStartAt >= start30d
+    ).length;
+
+    // Members churned in last 30d (trials ended + annuals ended, without renewal)
+    const membersChurned30d = Object.values(memberPlans).filter(m => {
+      // Trial ended without conversion
+      if (m.isTrial && m.trialEndAt && m.trialEndAt >= start30d && m.trialEndAt <= now) {
+        return !m.annualStartAt || m.annualStartAt > m.trialEndAt;
+      }
+      // Annual ended without renewal
+      if (m.isAnnual && m.annualEndAt && m.annualEndAt >= start30d && m.annualEndAt <= now) {
+        // Check if there's a renewal (new annual start after end)
+        // For now, if annual ended, consider it churned (renewals would have new annualStartAt)
+        return true;
+      }
+      return false;
+    }).length;
+
+    const netMemberGrowth30d = newMembers30d - membersChurned30d;
+
+    // New annual starts in last 30d
+    const newAnnualStarts30d = Object.values(memberPlans).filter(m => 
+      m.isAnnual && m.annualStartAt && m.annualStartAt >= start30d
+    ).length;
+
+    // Annual churn in last 30d (for growth calculation)
+    const annualChurn30d = Object.values(memberPlans).filter(m => 
+      m.isAnnual && m.annualEndAt && m.annualEndAt >= start30d && m.annualEndAt <= now
+    ).length;
+
+    const netPaidGrowth30d = newAnnualStarts30d - annualChurn30d;
+
+    // Active paid now (already calculated as 'annual')
+    const activePaidNow = annual;
+
+    // ===== STRIPE REVENUE (Source of Truth) =====
+    let stripeRevenueSummary = null;
+    let revenueSeries30d = [];
+    
+    try {
+      // Call Stripe revenue function directly (server-side)
+      const { calculateStripeRevenue } = require('./stripe-revenue');
+      const result = await calculateStripeRevenue();
+      stripeRevenueSummary = result.stripeRevenueSummary;
+      revenueSeries30d = result.revenueSeries30d || [];
+    } catch (error) {
+      console.warn('[overview] Error fetching Stripe revenue:', error.message);
+      // Continue without Stripe data (don't break dashboard)
+    }
+
     return res.status(200).json({
       // Member counts
       totalMembers: totalMembers || 0,
@@ -465,22 +553,45 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
+        // Conversion metrics
+        trialStartsAllTime: trialsStartedAllTime.length,
+        trialStarts30d: trialsStarted30d.length,
+        trialToAnnualConversionsAllTime: trialsConvertedAllTime.length,
+        trialToAnnualConversions30d: trialsConverted30d.length,
+        trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
+        
+        // Drop-off (fixed: uses trials ended logic)
+        trialDropOff30d: trialDropOff30d,
         trialDropoffRate30d: trialDropoffRate30d,
-        trialsStarted30d: trialsStarted30d.length,
-        trialsConverted30d: trialsConverted30d.length,
+        trialsEnded30d: trialsEnded30d.length,
         medianDaysToConvert30d: medianDaysToConvert30d,
         
+        // At-risk and churn
         atRiskTrialsNext7d: atRiskTrialsNext7d,
         annualChurnRate90d: annualChurnRate90d,
         annualChurnCount90d: annualChurnCount90d,
+        annualChurn30d: annualChurn30d,
         annualExpiringNext30d: annualExpiringNext30d,
         revenueAtRiskNext30d: revenueAtRiskNext30d,
         
+        // Activation
         activationRate7d: activationRate7d,
         activatedTrials7d: activatedTrials7d,
-        trialsStarted7d: trialsStarted7d.length
-      }
+        trialsStarted7d: trialsStarted7d.length,
+        
+        // Growth indicators
+        newMembers30d: newMembers30d,
+        membersChurned30d: membersChurned30d,
+        netMemberGrowth30d: netMemberGrowth30d,
+        newAnnualStarts30d: newAnnualStarts30d,
+        netPaidGrowth30d: netPaidGrowth30d,
+        activePaidNow: activePaidNow
+      },
+      
+      // Stripe Revenue (source of truth)
+      stripeRevenueSummary: stripeRevenueSummary,
+      revenueSeries30d: revenueSeries30d
     });
 
   } catch (error) {
