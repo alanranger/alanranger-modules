@@ -61,28 +61,38 @@ export default async function handler(req, res) {
         // Plan summary - Memberstack uses uppercase statuses: ACTIVE, CANCELED, PAST_DUE, UNPAID
         const planConnections = Array.isArray(full?.planConnections) ? full.planConnections : [];
         
+        // Debug: Log planConnections structure for first member
+        if (membersFetched === 1) {
+          console.log('[refresh] Sample planConnections:', JSON.stringify(planConnections, null, 2));
+          console.log('[refresh] Full member structure keys:', Object.keys(full || {}));
+        }
+        
         // Find active plan (ACTIVE status) or trial (has expiryDate)
+        // Also check for any plan with a status (might be the only one)
         const activePlan = planConnections.find(
           (p) => p?.status === "ACTIVE" || (p?.status && p?.expiryDate)
-        );
+        ) || planConnections[0]; // Fallback to first plan if no active found
 
         // Get plan name from planId or plan object
-        // Note: Memberstack planConnections may have planId, but plan name might need lookup
-        // For now, try to extract from planId or use a default
-        const planId = activePlan?.planId || null;
-        const planStatus = activePlan?.status || "UNPAID"; // ACTIVE, CANCELED, PAST_DUE, UNPAID
+        // Note: Memberstack planConnections structure may vary
+        // Check both planId and id fields
+        const planId = activePlan?.planId || activePlan?.id || null;
+        // Status might be in different case, normalize to uppercase
+        const rawStatus = activePlan?.status || "UNPAID";
+        const planStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : "UNPAID";
         const expiryDate = activePlan?.expiryDate ? safeIso(activePlan.expiryDate) : null;
         const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
         
         // Determine if trial (has expiryDate and status might be ACTIVE with future expiry)
         const isTrial = expiryDate && new Date(expiryDate) > new Date();
-        const isPaid = planStatus === "ACTIVE" && !isTrial && paymentMode === "RECURRING";
+        // Paid = ACTIVE status + (RECURRING payment OR no expiryDate indicating it's not a trial)
+        const isPaid = planStatus === "ACTIVE" && !isTrial && (paymentMode === "RECURRING" || !expiryDate);
         
         // Determine plan type from planId (e.g., pln_academy-annual...)
         let planType = null;
         let planName = null;
         if (planId) {
-          const planIdLower = planId.toLowerCase();
+          const planIdLower = String(planId).toLowerCase();
           if (planIdLower.includes("annual") || planIdLower.includes("year")) {
             planType = "annual";
             planName = "Academy Annual";
@@ -93,8 +103,11 @@ export default async function handler(req, res) {
             planType = "trial";
             planName = "Academy Trial";
           } else {
-            planName = "Unknown Plan";
+            planName = planId; // Use planId as name if can't determine
           }
+        } else if (planConnections.length > 0) {
+          // If no planId but we have connections, mark as unknown
+          planName = "Plan Connected";
         }
 
         const planSummary = {
