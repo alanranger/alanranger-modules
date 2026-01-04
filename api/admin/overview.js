@@ -45,30 +45,42 @@ module.exports = async (req, res) => {
 
     if (allMembers) {
       allMembers.forEach(m => {
-        const plan = m.plan_summary || {};
-        // Memberstack uses uppercase statuses
-        const status = (plan.status || '').toUpperCase();
-        
-        if (plan.is_trial) trials++;
-        if (plan.is_paid) paid++;
-        if (plan.plan_type === 'annual') annual++;
-        if (plan.plan_type === 'monthly') monthly++;
-        if (status === 'CANCELED' || status === 'CANCELLED') canceled++;
-        
-        // Count expiring trials (expiry_date within next 30 days)
-        if (plan.is_trial && plan.expiry_date) {
-          const expiryDate = new Date(plan.expiry_date);
-          if (expiryDate > now && expiryDate <= thirtyDaysFromNow) {
-            trialsExpiring30d++;
+        try {
+          const plan = m.plan_summary || {};
+          // Memberstack uses uppercase statuses
+          const status = (plan.status || '').toUpperCase();
+          
+          if (plan.is_trial) trials++;
+          if (plan.is_paid) paid++;
+          if (plan.plan_type === 'annual') annual++;
+          if (plan.plan_type === 'monthly') monthly++;
+          if (status === 'CANCELED' || status === 'CANCELLED') canceled++;
+          
+          // Count expiring trials (expiry_date within next 30 days)
+          if (plan.is_trial && plan.expiry_date) {
+            try {
+              const expiryDate = new Date(plan.expiry_date);
+              if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
+                trialsExpiring30d++;
+              }
+            } catch (e) {
+              // Invalid date, skip
+            }
           }
-        }
-        
-        // Count expiring annual plans (expiry_date within next 30 days for annual plans)
-        if (plan.plan_type === 'annual' && plan.expiry_date) {
-          const expiryDate = new Date(plan.expiry_date);
-          if (expiryDate > now && expiryDate <= thirtyDaysFromNow) {
-            annualExpiring30d++;
+          
+          // Count expiring annual plans (expiry_date within next 30 days for annual plans)
+          if (plan.plan_type === 'annual' && plan.expiry_date) {
+            try {
+              const expiryDate = new Date(plan.expiry_date);
+              if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
+                annualExpiring30d++;
+              }
+            } catch (e) {
+              // Invalid date, skip
+            }
           }
+        } catch (e) {
+          console.error('[overview] Error processing member:', e);
         }
       });
     }
