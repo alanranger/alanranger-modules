@@ -879,94 +879,13 @@ function checkUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
   // Support both ?m= and ?module= parameters
   const moduleId = urlParams.get('module') || urlParams.get('m');
-  
-  if (!moduleId) return;
-  
-  // Validate module ID format
-  if (!moduleId.startsWith('module-')) {
-    debugLog('⚠️ Invalid module ID format:', moduleId);
-    return;
-  }
-  
-  // Check if module exists in modules array
-  const moduleExists = modules && modules.find(m => m.id === moduleId);
-  if (!moduleExists) {
-    debugLog('⚠️ Module not found:', moduleId);
-    return;
-  }
-  
-  debugLog('🔍 URL parameter detected: module=' + moduleId);
-  
-  // Wait for grid to be rendered before scrolling
-  const checkAndScroll = () => {
-    const gridContainer = document.getElementById('grid-container');
-    const grid = document.getElementById('grid');
-    const quizContainer = document.getElementById('quiz-container');
-    
-    // If grid is visible, scroll to the module card
-    if (gridContainer && gridContainer.style.display !== 'none' && grid) {
-      const moduleCard = grid.querySelector(`[data-module-id="${moduleId}"]`);
-      
-      if (moduleCard) {
-        debugLog('✅ Found module card, scrolling to it...');
-        
-        // Scroll to the card with smooth behavior
-        moduleCard.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center',
-          inline: 'nearest'
-        });
-        
-        // Highlight the card with a temporary border/background
-        const originalBorder = moduleCard.style.border;
-        const originalBackground = moduleCard.style.background;
-        const originalBoxShadow = moduleCard.style.boxShadow;
-        
-        moduleCard.style.border = '3px solid #E57200';
-        moduleCard.style.boxShadow = '0 4px 12px rgba(229, 114, 0, 0.4)';
-        moduleCard.style.transition = 'all 0.3s ease';
-        
-        // Remove highlight after 3 seconds
-        setTimeout(() => {
-          moduleCard.style.border = originalBorder;
-          moduleCard.style.background = originalBackground;
-          moduleCard.style.boxShadow = originalBoxShadow;
-        }, 3000);
-        
-        // Optional: Auto-click the exam button after a short delay (if user wants direct access)
-        // Uncomment the following lines if you want clicking the module pill to auto-open the exam:
-        // setTimeout(() => {
-        //   const examButton = moduleCard.querySelector('button[data-module-id="' + moduleId + '"]');
-        //   if (examButton) {
-        //     examButton.click();
-        //   }
-        // }, 1000);
-        
-        return; // Don't load exam if we're just scrolling
-      } else {
-        debugLog('⚠️ Module card not found in grid, will try to load exam directly');
+  if (moduleId) {
+    // Simple: just load the exam if module ID is provided
+    setTimeout(() => {
+      if (typeof loadExam === 'function') {
+        loadExam(moduleId);
       }
-    }
-    
-    // If grid is not visible or card not found, load the exam directly
-    if (quizContainer && quizContainer.style.display !== 'none') {
-      debugLog('✅ Quiz container already visible, loading exam...');
-      setTimeout(() => loadExam(moduleId), 100);
-    } else if (!gridContainer || gridContainer.style.display === 'none') {
-      debugLog('✅ Grid not visible, loading exam directly...');
-      setTimeout(() => loadExam(moduleId), 100);
-    }
-  };
-  
-  // Wait for DOM to be ready and grid to be rendered
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      // Wait a bit more for grid to render
-      setTimeout(checkAndScroll, 500);
-    });
-  } else {
-    // DOM is ready, but grid might still be rendering
-    setTimeout(checkAndScroll, 500);
+    }, 100);
   }
 }
 
