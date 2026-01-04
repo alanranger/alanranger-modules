@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   async function fetchKPIs() {
     try {
       addDebugLog('Fetching KPIs...');
-      const res = await fetch('/api/admin/kpis');
+      const res = await fetch('/api/admin/overview');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKpis(data);
@@ -70,11 +70,28 @@ export default function AdminDashboard() {
       setRefreshProgress({ step: 'Connecting to Memberstack...', progress: 10 });
       addDebugLog('Connecting to Memberstack API');
       
-      setRefreshProgress({ step: 'Fetching members...', progress: 20 });
-      addDebugLog('Fetching member list from Memberstack');
+      setRefreshProgress({ step: 'Syncing members from Memberstack...', progress: 20 });
+      addDebugLog('Syncing members to cache');
       
-      // Trigger refresh endpoint that syncs Memberstack data to Supabase
-      setRefreshProgress({ step: 'Processing member data...', progress: 40 });
+      // First sync members to cache
+      const syncRes = await fetch('/api/admin/sync-members', { 
+        method: 'POST',
+        headers: {
+          'x-ar-analytics-key': process.env.NEXT_PUBLIC_AR_ANALYTICS_KEY || ''
+        }
+      });
+      
+      if (!syncRes.ok) {
+        const syncError = await syncRes.json().catch(() => ({}));
+        throw new Error(syncError.error || 'Member sync failed');
+      }
+      
+      const syncResult = await syncRes.json();
+      addDebugLog('Members synced', syncResult);
+      
+      setRefreshProgress({ step: 'Processing module data...', progress: 40 });
+      
+      // Then refresh module events
       const res = await fetch('/api/admin/refresh', { method: 'POST' });
       
       setRefreshProgress({ step: 'Processing response...', progress: 70 });
@@ -351,8 +368,115 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* KPI Tiles Row 1 */}
+      {/* Navigation Tabs */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '8px', 
+        marginBottom: '24px',
+        borderBottom: '1px solid var(--ar-border)',
+        paddingBottom: '12px'
+      }}>
+        <Link href="/academy/admin" style={{
+          padding: '8px 16px',
+          background: 'var(--ar-card)',
+          border: '1px solid var(--ar-border)',
+          borderRadius: '6px',
+          color: 'var(--ar-text)',
+          textDecoration: 'none',
+          fontWeight: 600,
+          fontSize: '14px'
+        }}>
+          Overview
+        </Link>
+        <Link href="/academy/admin/members" style={{
+          padding: '8px 16px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          borderRadius: '6px',
+          color: 'var(--ar-text-muted)',
+          textDecoration: 'none',
+          fontWeight: 500,
+          fontSize: '14px'
+        }}>
+          Members
+        </Link>
+        <Link href="/academy/admin/activity" style={{
+          padding: '8px 16px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          borderRadius: '6px',
+          color: 'var(--ar-text-muted)',
+          textDecoration: 'none',
+          fontWeight: 500,
+          fontSize: '14px'
+        }}>
+          Activity
+        </Link>
+        <Link href="/academy/admin/exams" style={{
+          padding: '8px 16px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          borderRadius: '6px',
+          color: 'var(--ar-text-muted)',
+          textDecoration: 'none',
+          fontWeight: 500,
+          fontSize: '14px'
+        }}>
+          Exams
+        </Link>
+      </div>
+
+      {/* Member Counts Row */}
       <div className="ar-admin-kpi-grid">
+        <Link href="/academy/admin/members" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Total Members</div>
+          <div className="ar-admin-kpi-value">{kpis?.totalMembers || 0}</div>
+          <div className="ar-admin-kpi-period">All-time</div>
+        </Link>
+        <Link href="/academy/admin/members?plan=trial" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Trials</div>
+          <div className="ar-admin-kpi-value">{kpis?.trials || 0}</div>
+          <div className="ar-admin-kpi-period">Active trialing</div>
+        </Link>
+        <Link href="/academy/admin/members?plan=paid" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Paid Members</div>
+          <div className="ar-admin-kpi-value">{kpis?.paid || 0}</div>
+          <div className="ar-admin-kpi-period">Active paid</div>
+        </Link>
+        <Link href="/academy/admin/members?plan=annual" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Annual Plans</div>
+          <div className="ar-admin-kpi-value">{kpis?.annual || 0}</div>
+          <div className="ar-admin-kpi-period">Active</div>
+        </Link>
+        <Link href="/academy/admin/members?plan=monthly" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Monthly Plans</div>
+          <div className="ar-admin-kpi-value">{kpis?.monthly || 0}</div>
+          <div className="ar-admin-kpi-period">Active</div>
+        </Link>
+        <Link href="/academy/admin/members?status=canceled" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Canceled</div>
+          <div className="ar-admin-kpi-value">{kpis?.canceled || 0}</div>
+          <div className="ar-admin-kpi-period">Total</div>
+        </Link>
+      </div>
+
+      {/* Signups Row */}
+      <div className="ar-admin-kpi-grid">
+        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">New Signups</div>
+          <div className="ar-admin-kpi-value">{kpis?.signups24h || 0}</div>
+          <div className="ar-admin-kpi-period">24 hours</div>
+        </Link>
+        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">New Signups</div>
+          <div className="ar-admin-kpi-value">{kpis?.signups7d || 0}</div>
+          <div className="ar-admin-kpi-period">7 days</div>
+        </Link>
+        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">New Signups</div>
+          <div className="ar-admin-kpi-value">{kpis?.signups30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
+        </Link>
         <Link href="/academy/admin/activity?period=24h" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Active Members</div>
           <div className="ar-admin-kpi-value">{kpis?.activeMembers24h || 0}</div>
@@ -368,34 +492,24 @@ export default function AdminDashboard() {
           <div className="ar-admin-kpi-value">{kpis?.activeMembers30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
         </Link>
-        <Link href="/academy/admin/modules?period=24h" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Module Opens</div>
-          <div className="ar-admin-kpi-value">{kpis?.moduleOpens24h || 0}</div>
-          <div className="ar-admin-kpi-period">24 hours</div>
-        </Link>
-        <Link href="/academy/admin/modules?period=7d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Module Opens</div>
-          <div className="ar-admin-kpi-value">{kpis?.moduleOpens7d || 0}</div>
-          <div className="ar-admin-kpi-period">7 days</div>
-        </Link>
-        <Link href="/academy/admin/modules?period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Module Opens</div>
-          <div className="ar-admin-kpi-value">{kpis?.moduleOpens30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
-        </Link>
       </div>
 
-      {/* KPI Tiles Row 2 */}
+      {/* Engagement Row */}
       <div className="ar-admin-kpi-grid">
+        <Link href="/academy/admin/modules?period=30d" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Avg Modules Opened</div>
+          <div className="ar-admin-kpi-value">{kpis?.avgModulesOpened30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days per member</div>
+        </Link>
         <Link href="/academy/admin/modules?period=30d&unique=true" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Unique Modules Opened</div>
-          <div className="ar-admin-kpi-value">{kpis?.uniqueModules30d || 0}</div>
+          <div className="ar-admin-kpi-label">Unique Modules</div>
+          <div className="ar-admin-kpi-value">{kpis?.uniqueModulesOpened30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
         </Link>
-        <Link href="/academy/admin/activity?event_type=bookmark_add&period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Bookmarks Added</div>
-          <div className="ar-admin-kpi-value">{kpis?.bookmarks30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
+        <Link href="/academy/admin/exams?period=30d" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Avg Exam Attempts</div>
+          <div className="ar-admin-kpi-value">{kpis?.avgExamAttempts30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days per member</div>
         </Link>
         <Link href="/academy/admin/exams?period=30d" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Exam Attempts</div>
@@ -405,6 +519,11 @@ export default function AdminDashboard() {
         <Link href="/academy/admin/exams?period=30d&metric=pass_rate" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Pass Rate</div>
           <div className="ar-admin-kpi-value">{kpis?.passRate30d ? `${kpis.passRate30d}%` : '0%'}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
+        </Link>
+        <Link href="/academy/admin/activity?event_type=bookmark_add&period=30d" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Bookmarks Added</div>
+          <div className="ar-admin-kpi-value">{kpis?.bookmarks30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
         </Link>
       </div>
