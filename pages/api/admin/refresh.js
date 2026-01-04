@@ -138,32 +138,51 @@ export default async function handler(req, res) {
           }
         }
         
-        // Find active plan (ACTIVE status) or trial (has expiryDate)
-        // Also check for any plan with a status (might be the only one)
+        const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+        
+        // Find trial plan first (if exists), then active plan
+        const trialPlan = planConnections.find(p => (p?.planId || p?.id) === trialPlanId);
         const activePlan = planConnections.find(
           (p) => p?.status === "ACTIVE" || (p?.status && p?.expiryDate)
         ) || planConnections[0]; // Fallback to first plan if no active found
 
+        // Use trial plan if it exists, otherwise use active plan
+        const planToUse = trialPlan || activePlan;
+
         // Get plan name from planId or plan object
         // Note: Memberstack planConnections structure may vary
         // Check both planId and id fields
-        const planId = activePlan?.planId || activePlan?.id || null;
+        const planId = planToUse?.planId || planToUse?.id || null;
         // Status might be in different case, normalize to uppercase
-        const rawStatus = activePlan?.status || "UNPAID";
+        const rawStatus = planToUse?.status || "UNPAID";
         const planStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : "UNPAID";
-        const expiryDate = activePlan?.expiryDate ? safeIso(activePlan.expiryDate) : null;
-        const paymentMode = activePlan?.paymentMode || null; // FREE, ONETIME, RECURRING
-        // For annual plans, check for current_period_end (from Stripe) or cancelAtPeriodEnd
-        const currentPeriodEnd = activePlan?.current_period_end ? safeIso(activePlan.current_period_end) : null;
-        const cancelAtPeriodEnd = activePlan?.cancelAtPeriodEnd || false;
+        
+        // Extract expiryDate - check trial plan first, then active plan
+        let expiryDate = null;
+        if (trialPlan?.expiryDate) {
+          expiryDate = safeIso(trialPlan.expiryDate);
+        } else if (planToUse?.expiryDate) {
+          expiryDate = safeIso(planToUse.expiryDate);
+        }
         
         // Determine if trial: 
         // 1. Check for specific trial planId: pln_academy-trial-30-days--wb7v0hbh
         // 2. OR check for ONETIME payment mode with expiryDate (30-day free trial)
-        const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
-        // Trial detection: if planId matches trial plan, it's a trial
-        // OR if it has expiryDate and paymentMode is ONETIME
-        const isTrial = planId === trialPlanId || (paymentMode === "ONETIME" && expiryDate);
+        const isTrial = planId === trialPlanId || (planToUse?.paymentMode === "ONETIME" && expiryDate);
+        
+        // For trials without expiryDate, calculate it (30 days from created_at or now)
+        const memberCreatedAt = safeIso(fullMemberData?.createdAt) || new Date().toISOString();
+        if (isTrial && !expiryDate) {
+          // Calculate 30 days from member creation date
+          const createdDate = new Date(memberCreatedAt);
+          const trialEndDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          expiryDate = trialEndDate.toISOString();
+        }
+        
+        const paymentMode = planToUse?.paymentMode || null; // FREE, ONETIME, RECURRING
+        // For annual plans, check for current_period_end (from Stripe) or cancelAtPeriodEnd
+        const currentPeriodEnd = planToUse?.current_period_end ? safeIso(planToUse.current_period_end) : null;
+        const cancelAtPeriodEnd = planToUse?.cancelAtPeriodEnd || false;
         
         // Debug: Log trial detection for first few members
         if (membersFetched <= 3) {
