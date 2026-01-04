@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
       '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
       '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     };
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     // 1. Total members (all-time from cache)
     const { count: totalMembers } = await supabase
@@ -39,9 +40,6 @@ module.exports = async (req, res) => {
     let canceled = 0;
     let trialsExpiring30d = 0;
     let annualExpiring30d = 0;
-
-    const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     if (allMembers) {
       allMembers.forEach(m => {
