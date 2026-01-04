@@ -130,8 +130,9 @@ module.exports = async (req, res) => {
       const moduleId = moduleData.moduleId;
       
       // Calculate module stats
-      const attempts = Math.max(...moduleData.attempts);
-      const bestScore = Math.max(...moduleData.scores);
+      // Attempts = count of unique attempts (max attempt number, or count if not reliable)
+      const attempts = moduleData.attempts.length > 0 ? Math.max(...moduleData.attempts) : 0;
+      const bestScore = moduleData.scores.length > 0 ? Math.max(...moduleData.scores) : 0;
       const passed = moduleData.passed;
       
       member.modules[moduleId] = {
@@ -168,7 +169,7 @@ module.exports = async (req, res) => {
             e.module_id === moduleId &&
             new Date(e.created_at) >= periodStartDate
           ).length
-        : attempts;
+        : (attempts || 0);
       
       if (moduleAttemptsInPeriod > 0) {
         member.totalAttempts += moduleAttemptsInPeriod;
