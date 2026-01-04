@@ -52,18 +52,27 @@ module.exports = async (req, res) => {
   setCorsHeaders(res);
 
   try {
-    const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+    // Initialize Memberstack admin (gracefully handle if key is missing)
+    let memberstack = null;
+    try {
+      if (process.env.MEMBERSTACK_SECRET_KEY) {
+        memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+      }
+    } catch (e) {
+      console.warn("[progress] Memberstack admin init failed (non-critical):", e.message);
+    }
     
-    // Try token-based auth first
+    // Try token-based auth first (gracefully handle failures)
     let memberId = null;
     
     const token = getMemberstackToken(req);
-    if (token) {
+    if (token && memberstack) {
       try {
         const { id } = await memberstack.verifyToken({ token });
         memberId = id;
+        console.log("[progress] Token verification successful, member ID:", memberId);
       } catch (e) {
-        console.error("[progress] Token verification failed:", e.message);
+        console.warn("[progress] Token verification failed (non-critical):", e.message);
         // Fall through to member ID fallback
       }
     }
@@ -71,59 +80,61 @@ module.exports = async (req, res) => {
     // Fallback: Use member ID header
     if (!memberId) {
       memberId = getMemberstackMemberId(req);
+      if (memberId) {
+        console.log("[progress] Using member ID from header:", memberId);
+      }
     }
     
     if (!memberId) {
       return res.status(401).json({ error: "Not logged in" });
     }
 
-    console.log(`[progress] Fetching progress for memberId: ${memberId}`);
-
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get member email for fallback query (in case memberstack_id doesn't match)
-    let memberEmail = null;
-    try {
-      const { data: memberCache } = await supabase
-        .from('ms_members_cache')
-        .select('email')
-        .eq('member_id', memberId)
-        .single();
-      
-      if (memberCache) {
-        memberEmail = memberCache.email;
-      }
-    } catch (e) {
-      // Ignore - member cache lookup is optional
-    }
-
-    // Fetch all exam results for this member (try by memberstack_id first)
+    // Fetch all exam results for this member by memberstack_id
     let { data: allExams, error: examError } = await supabase
       .from('module_results_ms')
-      .select('module_id, score_percent, passed, attempt, created_at')
+      .select('module_id, score_percent, passed, attempt, created_at, email')
       .eq('memberstack_id', memberId)
       .order('created_at', { ascending: false });
 
-    console.log(`[progress] Query by memberstack_id returned ${allExams?.length || 0} results`);
-
-    // If no results found by memberstack_id and we have an email, try fallback by email
-    if ((!allExams || allExams.length === 0) && memberEmail) {
-      console.log(`[progress] No results found for memberstack_id ${memberId}, trying email fallback: ${memberEmail}`);
-      const { data: emailExams, error: emailError } = await supabase
-        .from('module_results_ms')
-        .select('module_id, score_percent, passed, attempt, created_at')
-        .eq('email', memberEmail)
-        .order('created_at', { ascending: false });
+    // EMAIL FALLBACK: If no results by memberstack_id, try email
+    if ((!allExams || allExams.length === 0) && !examError) {
+      console.log("[progress] No results by memberstack_id, trying email fallback...");
       
-      if (!emailError && emailExams && emailExams.length > 0) {
-        console.log(`[progress] Found ${emailExams.length} results by email fallback`);
-        allExams = emailExams;
-        examError = null;
-      } else if (emailError) {
-        console.error(`[progress] Email fallback query error:`, emailError);
+      // Get email from member cache
+      let memberEmail = null;
+      try {
+        const { data: memberCache } = await supabase
+          .from('ms_members_cache')
+          .select('email')
+          .eq('member_id', memberId)
+          .single();
+        
+        if (memberCache && memberCache.email) {
+          memberEmail = memberCache.email;
+          console.log("[progress] Found email from cache:", memberEmail);
+        }
+      } catch (e) {
+        console.warn("[progress] Member cache lookup failed:", e.message);
       }
-    } else if (!allExams || allExams.length === 0) {
-      console.log(`[progress] No results found and no email available for fallback`);
+      
+      // If we have email, query by email
+      if (memberEmail) {
+        const { data: emailExams, error: emailError } = await supabase
+          .from('module_results_ms')
+          .select('module_id, score_percent, passed, attempt, created_at, email')
+          .eq('email', memberEmail)
+          .order('created_at', { ascending: false });
+        
+        if (emailError) {
+          console.error("[progress] Email query error:", emailError);
+        } else if (emailExams && emailExams.length > 0) {
+          console.log(`[progress] Found ${emailExams.length} results by email fallback`);
+          allExams = emailExams;
+          examError = null;
+        }
+      }
     }
 
     if (examError) {
