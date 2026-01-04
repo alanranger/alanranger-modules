@@ -26,6 +26,15 @@ module.exports = async (req, res) => {
     let eventsAdded = 0;
     let page = 1;
     const pageSize = 100;
+    let totalMembers = 0;
+
+    // First, get total count if possible
+    try {
+      const { data: firstPage } = await memberstack.members.list({ limit: 1 });
+      // Estimate or get actual count - Memberstack API may not provide total
+    } catch (e) {
+      console.log('[refresh] Could not get member count estimate');
+    }
 
     while (true) {
       const { data: members, error: membersError } = await memberstack.members.list({
@@ -33,9 +42,16 @@ module.exports = async (req, res) => {
         page: page
       });
 
-      if (membersError || !members || members.length === 0) {
+      if (membersError) {
+        console.error('[refresh] Error fetching members:', membersError);
+        throw new Error(`Failed to fetch members: ${membersError.message || 'Unknown error'}`);
+      }
+
+      if (!members || members.length === 0) {
         break;
       }
+
+      totalMembers += members.length;
 
       for (const member of members) {
         try {

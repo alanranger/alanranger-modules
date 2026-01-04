@@ -6,21 +6,50 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(null);
+  const [refreshResults, setRefreshResults] = useState(null);
+  const [showResultsModal, setShowResultsModal] = useState(false);
 
   useEffect(() => {
+    addDebugLog('Dashboard initialized');
     fetchKPIs();
   }, []);
 
+  function addDebugLog(message, data = null) {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs(prev => [...prev, { timestamp, message, data }]);
+    console.log(`[Admin Dashboard] ${timestamp}: ${message}`, data || '');
+  }
+
   async function fetchKPIs() {
     try {
+      addDebugLog('Fetching KPIs...');
       const res = await fetch('/api/admin/kpis');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKpis(data);
+      addDebugLog('KPIs loaded successfully', { counts: data });
     } catch (error) {
+      addDebugLog('Failed to fetch KPIs', { error: error.message });
       console.error('Failed to fetch KPIs:', error);
     } finally {
       setLoading(false);
     }
+  }
+
+  function copyDebugLogs() {
+    const logText = debugLogs.map(log => 
+      `[${log.timestamp}] ${log.message}${log.data ? '\n' + JSON.stringify(log.data, null, 2) : ''}`
+    ).join('\n\n');
+    
+    navigator.clipboard.writeText(logText).then(() => {
+      addDebugLog('Debug logs copied to clipboard');
+      alert('Debug logs copied to clipboard!');
+    }).catch(err => {
+      addDebugLog('Failed to copy logs', { error: err.message });
+    });
   }
 
   if (loading) {
@@ -33,16 +62,33 @@ export default function AdminDashboard() {
 
   async function handleRefresh() {
     setRefreshing(true);
+    setRefreshProgress({ step: 'Starting refresh...', progress: 0 });
+    setRefreshResults(null);
+    addDebugLog('Starting data refresh from Memberstack');
+    
     try {
+      setRefreshProgress({ step: 'Connecting to Memberstack...', progress: 10 });
+      addDebugLog('Connecting to Memberstack API');
+      
+      setRefreshProgress({ step: 'Fetching members...', progress: 20 });
+      addDebugLog('Fetching member list from Memberstack');
+      
       // Trigger refresh endpoint that syncs Memberstack data to Supabase
+      setRefreshProgress({ step: 'Processing member data...', progress: 40 });
       const res = await fetch('/api/admin/refresh', { method: 'POST' });
+      
+      setRefreshProgress({ step: 'Processing response...', progress: 70 });
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Refresh failed');
       }
       
       const result = await res.json();
+      addDebugLog('Refresh completed', result);
       console.log('Refresh result:', result);
+      
+      setRefreshProgress({ step: 'Updating dashboard...', progress: 85 });
       
       // Reload KPIs
       await fetchKPIs();
@@ -50,10 +96,22 @@ export default function AdminDashboard() {
       // Trigger refresh of top lists
       setRefreshTrigger(prev => prev + 1);
       
-      alert(`Refresh complete! Processed ${result.members_processed} members, added ${result.events_added} new events.`);
+      setRefreshProgress({ step: 'Complete!', progress: 100 });
+      
+      // Show results modal
+      setRefreshResults(result);
+      setShowResultsModal(true);
+      
+      setTimeout(() => {
+        setRefreshProgress(null);
+      }, 500);
+      
     } catch (error) {
+      addDebugLog('Refresh failed', { error: error.message, stack: error.stack });
       console.error('Refresh failed:', error);
-      alert(`Failed to refresh data: ${error.message}`);
+      setRefreshProgress({ step: 'Error occurred', progress: 0, error: error.message });
+      setRefreshResults({ error: error.message });
+      setShowResultsModal(true);
     } finally {
       setRefreshing(false);
     }
@@ -67,20 +125,208 @@ export default function AdminDashboard() {
             <h1 className="ar-admin-title">Admin Analytics Dashboard</h1>
             <p className="ar-admin-subtitle">Academy activity and engagement metrics</p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="ar-admin-btn"
-            style={{ 
-              minWidth: '140px',
-              opacity: refreshing ? 0.6 : 1,
-              cursor: refreshing ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {refreshing ? 'Refreshing...' : '🔄 Refresh Data'}
-          </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+              className="ar-admin-btn-secondary"
+              style={{ minWidth: '100px' }}
+            >
+              {showDebugPanel ? '🔍 Hide Debug' : '🔍 Show Debug'}
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="ar-admin-btn"
+              style={{ 
+                minWidth: '140px',
+                opacity: refreshing ? 0.6 : 1,
+                cursor: refreshing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {refreshing ? 'Refreshing...' : '🔄 Refresh Data'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Refresh Progress Bar */}
+      {refreshProgress && (
+        <div className="ar-admin-card" style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 600, color: 'var(--ar-text)' }}>{refreshProgress.step}</div>
+            <div style={{ fontSize: '14px', color: 'var(--ar-text-muted)' }}>{refreshProgress.progress}%</div>
+          </div>
+          <div style={{
+            width: '100%',
+            height: '8px',
+            background: 'var(--ar-border)',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${refreshProgress.progress}%`,
+              height: '100%',
+              background: refreshProgress.error ? '#ef4444' : 'var(--ar-orange)',
+              transition: 'width 0.3s ease',
+              borderRadius: '4px'
+            }} />
+          </div>
+          {refreshProgress.error && (
+            <div style={{ marginTop: '8px', color: '#ef4444', fontSize: '14px' }}>
+              Error: {refreshProgress.error}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Results Modal */}
+      {showResultsModal && refreshResults && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setShowResultsModal(false)}>
+          <div style={{
+            background: 'var(--ar-card)',
+            border: '2px solid var(--ar-border)',
+            borderRadius: 'var(--ar-radius)',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--ar-text)', margin: 0 }}>
+                {refreshResults.error ? '❌ Refresh Failed' : '✅ Refresh Complete'}
+              </h2>
+              <button
+                onClick={() => setShowResultsModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--ar-text-muted)',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {refreshResults.error ? (
+              <div style={{ color: '#ef4444' }}>
+                <p style={{ marginBottom: '12px' }}>{refreshResults.error}</p>
+                <p style={{ fontSize: '14px', color: 'var(--ar-text-muted)' }}>
+                  Check the debug log for more details.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
+                    <span style={{ color: 'var(--ar-text-muted)' }}>Members Processed:</span>
+                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.members_processed || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
+                    <span style={{ color: 'var(--ar-text-muted)' }}>Events Added:</span>
+                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.events_added || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
+                    <span style={{ color: 'var(--ar-text-muted)' }}>Status:</span>
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>Success</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: '14px', color: 'var(--ar-text-muted)', marginTop: '16px' }}>
+                  {refreshResults.message || 'Data has been synced from Memberstack to Supabase.'}
+                </p>
+              </div>
+            )}
+            
+            <button
+              onClick={() => setShowResultsModal(false)}
+              className="ar-admin-btn"
+              style={{ width: '100%', marginTop: '20px' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="ar-admin-card" style={{ marginBottom: '24px', maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 className="ar-admin-card-title" style={{ margin: 0 }}>Debug Log</h2>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={copyDebugLogs}
+                className="ar-admin-btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px' }}
+              >
+                📋 Copy Logs
+              </button>
+              <button
+                onClick={() => setDebugLogs([])}
+                className="ar-admin-btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px' }}
+              >
+                🗑️ Clear
+              </button>
+            </div>
+          </div>
+          <div style={{
+            flex: 1,
+            overflow: 'auto',
+            background: 'rgba(0, 0, 0, 0.3)',
+            borderRadius: '8px',
+            padding: '12px',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            lineHeight: '1.6'
+          }}>
+            {debugLogs.length === 0 ? (
+              <div style={{ color: 'var(--ar-text-muted)', fontStyle: 'italic' }}>
+                No debug logs yet. Actions will appear here.
+              </div>
+            ) : (
+              debugLogs.map((log, idx) => (
+                <div key={idx} style={{ marginBottom: '8px', color: 'var(--ar-text)' }}>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>[{log.timestamp}]</span>{' '}
+                  <span>{log.message}</span>
+                  {log.data && (
+                    <pre style={{
+                      marginTop: '4px',
+                      marginLeft: '20px',
+                      color: 'var(--ar-text-muted)',
+                      fontSize: '11px',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all'
+                    }}>
+                      {JSON.stringify(log.data, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* KPI Tiles Row 1 */}
       <div className="ar-admin-kpi-grid">
