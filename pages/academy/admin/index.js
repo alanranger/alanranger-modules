@@ -238,10 +238,25 @@ export default function AdminDashboard() {
             ) : (
               <div>
                 <div style={{ marginBottom: '16px' }}>
+                  {refreshResults.total_members_fetched !== undefined && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
+                      <span style={{ color: 'var(--ar-text-muted)' }}>Total Members Fetched:</span>
+                      <span style={{ color: 'var(--ar-text)', fontWeight: 600 }}>{refreshResults.total_members_fetched || 0}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
                     <span style={{ color: 'var(--ar-text-muted)' }}>Members Processed:</span>
                     <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.members_processed || 0}</span>
                   </div>
+                  {refreshResults.members_skipped !== undefined && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
+                      <span style={{ color: 'var(--ar-text-muted)' }}>Members Skipped:</span>
+                      <span style={{ color: 'var(--ar-text-muted)', fontWeight: 600 }}>{refreshResults.members_skipped || 0}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--ar-text-muted)', fontStyle: 'italic' }}>
+                        (no opened modules data)
+                      </span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
                     <span style={{ color: 'var(--ar-text-muted)' }}>Events Added:</span>
                     <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.events_added || 0}</span>
@@ -254,6 +269,11 @@ export default function AdminDashboard() {
                 <p style={{ fontSize: '14px', color: 'var(--ar-text-muted)', marginTop: '16px' }}>
                   {refreshResults.message || 'Data has been synced from Memberstack to Supabase.'}
                 </p>
+                {refreshResults.members_skipped > 0 && (
+                  <p style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginTop: '12px', fontStyle: 'italic' }}>
+                    Note: Skipped members don't have <code>arAcademy.modules.opened</code> data in their Memberstack JSON yet.
+                  </p>
+                )}
               </div>
             )}
             
