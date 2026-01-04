@@ -26,6 +26,13 @@ Add these environment variables to your Vercel project:
    - Only set if you need to allow a different origin
    - Example: `https://api.alanranger.com` (if API is on subdomain)
 
+5. **AR_ANALYTICS_KEY** (Required for Admin Analytics)
+   - Shared secret key for event ingestion endpoint security
+   - Generate a secure random string (e.g., 32+ characters)
+   - Used by `/api/academy/event` endpoint to authenticate requests
+   - Example: `sk_live_abc123xyz456...` or use a UUID
+   - ⚠️ Keep this secret - it's used to prevent unauthorized event injection
+
 ## How to Add in Vercel
 
 1. Go to your Vercel project dashboard
