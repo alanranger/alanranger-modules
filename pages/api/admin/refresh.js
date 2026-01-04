@@ -168,6 +168,18 @@ export default async function handler(req, res) {
           cancel_at_period_end: activePlan?.cancelAtPeriodEnd || false,
         };
 
+        // Debug: Log what we're about to store for first member
+        if (membersFetched === 1) {
+          console.log(`[refresh] About to store member ${memberId}:`, {
+            email,
+            name,
+            planSummary,
+            'full object keys': Object.keys(full || {}),
+            'full.auth exists': !!full?.auth,
+            'full.customFields exists': !!full?.customFields
+          });
+        }
+
         // Upsert member cache (this is what your KPI "totalMembers/trials/paid" should read from)
         const { error: upsertMemberErr } = await supabase
           .from("ms_members_cache")
@@ -180,11 +192,17 @@ export default async function handler(req, res) {
                 plan_summary: planSummary,
                 created_at: safeIso(full?.createdAt) || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                raw: full,
+                raw: full || {}, // Store full object for debugging
               },
             ],
             { onConflict: "member_id" }
           );
+
+        if (upsertMemberErr) {
+          console.error(`[refresh] Error upserting member ${memberId}:`, upsertMemberErr);
+        } else if (membersFetched <= 3) {
+          console.log(`[refresh] Successfully stored member ${memberId} with email: ${email}, name: ${name}`);
+        }
 
         if (!upsertMemberErr) membersUpserted++;
 
