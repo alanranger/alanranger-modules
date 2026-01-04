@@ -695,75 +695,86 @@ async function fetchStatusForUser(user, forceRefresh = false) {
   // CRITICAL: If Memberstack data is already loaded, DO NOT overwrite it
   if (memberstackDataLoaded) {
     debugLog('🛡️ BLOCKED: fetchStatusForUser - Memberstack data already loaded, returning empty to prevent overwrite');
-    debugLog('🛡️ Stack trace:', new Error().stack);
     return {}; // Return empty to prevent overwriting Memberstack data
   }
   
-  const now = Date.now();
-  const cacheKey = user.id;
-  
-  // Check cache first (unless force refresh)
-  if (!forceRefresh && userStatusCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
-    debugLog('📋 Using cached status for user: ' + user.email);
-    return userStatusCache[cacheKey];
-  }
-  
-  debugLog('🔍 Fetching status for user: ' + user.email + ' (ID: ' + user.id + ')');
-  debugLog('🔍 Using LEGACY Supabase query (module_results table)');
-  
-  try {
-    debugLog('🔍 Starting Supabase query...');
+  // SINGLE SOURCE OF TRUTH: Query module_results_ms using memberstack_id
+  // If we have memberstackIdentity, use it to query the correct table
+  if (memberstackIdentity && memberstackIdentity.memberstack_id) {
+    debugLog('🔍 Using SINGLE SOURCE OF TRUTH: module_results_ms table with memberstack_id: ' + memberstackIdentity.memberstack_id);
     
-    // Add timeout to prevent hanging
-    const queryPromise = supabase
-      .from('module_results')
-      .select('module_id, score_percent, passed, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const now = Date.now();
+    const cacheKey = memberstackIdentity.memberstack_id;
     
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000)
-    );
-    
-    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-    
-    debugLog('🔍 Supabase query completed');
-    
-    if (error) {
-      debugLog('❌ Error fetching status: ' + JSON.stringify(error));
-      return userStatusCache[cacheKey] || {};
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && userStatusCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
+      debugLog('📋 Using cached status for memberstack_id: ' + memberstackIdentity.memberstack_id);
+      return userStatusCache[cacheKey];
     }
     
-    if (!data) {
-      debugLog('⚠️ No data returned from fetchStatusForUser');
-      return userStatusCache[cacheKey] || {};
-    }
-    
-    debugLog('📋 Raw data from DB: ' + JSON.stringify(data));
-    debugLog('📋 Data length: ' + data.length);
-    
-    const latest = {};
-    for (const row of data) {
-      if (!latest[row.module_id]) {
-        latest[row.module_id] = {
-          score: row.score_percent,
-          passed: row.passed,
-          when: row.created_at
-        };
+    try {
+      debugLog('🔍 Querying module_results_ms from Supabase (single source of truth)...');
+      
+      // Query module_results_ms table using memberstack_id
+      const queryPromise = supabase
+        .from('module_results_ms')
+        .select('module_id, score_percent, passed, created_at, attempt')
+        .eq('memberstack_id', memberstackIdentity.memberstack_id)
+        .order('created_at', { ascending: false });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000)
+      );
+      
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+      
+      debugLog('🔍 Supabase query completed for module_results_ms');
+      
+      if (error) {
+        debugLog('❌ Error fetching status from module_results_ms: ' + JSON.stringify(error));
+        return userStatusCache[cacheKey] || {};
       }
+      
+      if (!data || data.length === 0) {
+        debugLog('⚠️ No data returned from module_results_ms');
+        return userStatusCache[cacheKey] || {};
+      }
+      
+      debugLog('📋 Raw data from module_results_ms: ' + JSON.stringify(data));
+      debugLog('📋 Data length: ' + data.length);
+      
+      // Group by module_id and get the latest attempt for each
+      const latest = {};
+      for (const row of data) {
+        const moduleId = row.module_id;
+        // Only keep the first (latest) result for each module since we ordered by created_at desc
+        if (!latest[moduleId]) {
+          latest[moduleId] = {
+            score: row.score_percent,
+            passed: row.passed,
+            when: row.created_at,
+            attempt: row.attempt
+          };
+        }
+      }
+      
+      // Update cache
+      userStatusCache[cacheKey] = latest;
+      lastCacheTime = now;
+      
+      debugLog('📊 Processed status from module_results_ms: ' + JSON.stringify(latest));
+      debugLog('📊 Status keys count: ' + Object.keys(latest).length);
+      return latest;
+    } catch (err) {
+      debugLog('❌ Exception in fetchStatusForUser (module_results_ms): ' + err.message);
+      return userStatusCache[cacheKey] || {};
     }
-    
-    // Update cache
-    userStatusCache[cacheKey] = latest;
-    lastCacheTime = now;
-    
-    debugLog('📊 Processed status: ' + JSON.stringify(latest));
-    debugLog('📊 Status keys count: ' + Object.keys(latest).length);
-    return latest;
-  } catch (err) {
-    debugLog('❌ Exception in fetchStatusForUser: ' + err.message);
-    return userStatusCache[cacheKey] || {};
   }
+  
+  // Fallback: If no memberstackIdentity, return empty (can't query module_results_ms without memberstack_id)
+  debugLog('⚠️ No memberstackIdentity - cannot query module_results_ms (requires memberstack_id)');
+  debugLog('⚠️ Returning empty status - use Memberstack authentication to load exam results');
+  return {};
 }
 
 window.loadExam = async function(moduleId) {
