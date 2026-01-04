@@ -207,7 +207,11 @@ export default async function handler(req, res) {
                 plan_summary: planSummary,
                 created_at: safeIso(full?.createdAt) || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                raw: response || full || {}, // Store original response for debugging
+                raw: {
+                  ...(response || {}),
+                  // Ensure json field is accessible at top level for easy querying
+                  json: full?.json || response?.json || response?.data?.json || null
+                },
               },
             ],
             { onConflict: "member_id" }
@@ -222,8 +226,20 @@ export default async function handler(req, res) {
         if (!upsertMemberErr) membersUpserted++;
 
         // Read opened modules from Member JSON
-        const j = full?.json || {};
+        // JSON might be in full.json, response.json, or response.data.json
+        const j = full?.json || response?.json || response?.data?.json || {};
         const opened = j?.arAcademy?.modules?.opened || null;
+        
+        // Debug: Log JSON structure for first member
+        if (membersFetched === 1) {
+          console.log(`[refresh] JSON extraction:`, {
+            'full?.json exists': !!full?.json,
+            'response?.json exists': !!response?.json,
+            'response?.data?.json exists': !!response?.data?.json,
+            'opened modules count': opened ? Object.keys(opened).length : 0
+          });
+        }
+        
         if (!opened || typeof opened !== "object") continue;
 
         // Upsert module_open events
