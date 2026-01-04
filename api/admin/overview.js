@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
       '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     };
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
     // 1. Total members (all-time from cache)
     const { count: totalMembers } = await supabase
@@ -34,12 +35,12 @@ module.exports = async (req, res) => {
       .select('plan_summary, created_at');
 
     let trials = 0;
-    let paid = 0;
     let annual = 0;
     let monthly = 0;
     let canceled = 0;
     let trialsExpiring30d = 0;
     let annualExpiring30d = 0;
+    let allPlansExpiring60d = 0;
 
     if (allMembers) {
       allMembers.forEach(m => {
@@ -48,33 +49,49 @@ module.exports = async (req, res) => {
           // Memberstack uses uppercase statuses
           const status = (plan.status || '').toUpperCase();
           
-          if (plan.is_trial) trials++;
-          if (plan.is_paid) paid++;
+          // Trial detection: check for trial planId or ONETIME payment with expiryDate
+          const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+          const isTrial = plan.plan_id === trialPlanId || (plan.payment_mode === "ONETIME" && plan.expiry_date);
+          
+          if (isTrial) trials++;
           if (plan.plan_type === 'annual') annual++;
           if (plan.plan_type === 'monthly') monthly++;
           if (status === 'CANCELED' || status === 'CANCELLED') canceled++;
           
           // Count expiring trials (expiry_date within next 30 days)
-          if (plan.is_trial && plan.expiry_date) {
+          if (isTrial && plan.expiry_date) {
             try {
               const expiryDate = new Date(plan.expiry_date);
               if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
                 trialsExpiring30d++;
+              }
+              // Also count for 60-day window
+              if (expiryDate > now && expiryDate <= sixtyDaysFromNow) {
+                allPlansExpiring60d++;
               }
             } catch (e) {
               // Invalid date, skip
             }
           }
           
-          // Count expiring annual plans (expiry_date within next 30 days for annual plans)
-          if (plan.plan_type === 'annual' && plan.expiry_date) {
-            try {
-              const expiryDate = new Date(plan.expiry_date);
-              if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
-                annualExpiring30d++;
+          // Count expiring annual plans
+          // Annual plans use current_period_end (from Stripe) or expiry_date if set
+          // If cancelAtPeriodEnd is true, the plan will expire at current_period_end
+          if (plan.plan_type === 'annual') {
+            const endDate = plan.current_period_end || plan.expiry_date;
+            if (endDate) {
+              try {
+                const expiryDate = new Date(endDate);
+                if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
+                  annualExpiring30d++;
+                }
+                // Also count for 60-day window
+                if (expiryDate > now && expiryDate <= sixtyDaysFromNow) {
+                  allPlansExpiring60d++;
+                }
+              } catch (e) {
+                // Invalid date, skip
               }
-            } catch (e) {
-              // Invalid date, skip
             }
           }
         } catch (e) {
@@ -157,12 +174,12 @@ module.exports = async (req, res) => {
       // Member counts
       totalMembers: totalMembers || 0,
       trials: trials,
-      paid: paid,
       annual: annual,
       monthly: monthly,
       canceled: canceled,
       trialsExpiring30d: trialsExpiring30d,
       annualExpiring30d: annualExpiring30d,
+      allPlansExpiring60d: allPlansExpiring60d,
       
       // Signups
       signups24h: signups24h || 0,
