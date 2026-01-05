@@ -2,7 +2,14 @@
 // Returns real-time Stripe subscription metrics for Admin Dashboard
 // Uses Stripe Subscriptions API (not invoices) for accurate counts
 
-const getStripe = require('../../lib/stripe');
+let getStripe;
+try {
+  getStripe = require('../../lib/stripe');
+  console.log('[stripe-metrics] Stripe module loaded, getStripe type:', typeof getStripe);
+} catch (requireError) {
+  console.error('[stripe-metrics] Failed to require Stripe module:', requireError);
+  throw new Error(`Failed to load Stripe module: ${requireError.message}`);
+}
 
 // Simple in-memory cache
 let cache = {
@@ -13,6 +20,18 @@ let cache = {
 
 // Helper to fetch all subscriptions with pagination
 async function fetchAllSubscriptions(stripe, filters = {}) {
+  if (!stripe) {
+    throw new Error('fetchAllSubscriptions: stripe parameter is required but was undefined or null');
+  }
+  
+  if (!stripe.subscriptions) {
+    throw new Error('fetchAllSubscriptions: stripe.subscriptions is undefined. Stripe object keys: ' + Object.keys(stripe || {}).join(', '));
+  }
+  
+  if (typeof stripe.subscriptions.list !== 'function') {
+    throw new Error('fetchAllSubscriptions: stripe.subscriptions.list is not a function. Type: ' + typeof stripe.subscriptions.list);
+  }
+  
   const subscriptions = [];
   let hasMore = true;
   let startingAfter = null;
@@ -65,25 +84,42 @@ async function calculateStripeMetrics(forceRefresh = false) {
   try {
     // Initialize Stripe client (checks env var at runtime)
     console.log('[stripe-metrics] Initializing Stripe client...');
+    console.log('[stripe-metrics] getStripe type:', typeof getStripe);
+    
+    if (!getStripe || typeof getStripe !== 'function') {
+      throw new Error(`getStripe is not a function. Type: ${typeof getStripe}, value: ${getStripe}`);
+    }
+    
     let stripe;
     try {
       stripe = getStripe();
+      console.log('[stripe-metrics] getStripe() returned, type:', typeof stripe);
     } catch (initError) {
       console.error('[stripe-metrics] Failed to initialize Stripe client:', initError);
+      console.error('[stripe-metrics] Init error message:', initError.message);
+      console.error('[stripe-metrics] Init error stack:', initError.stack);
       throw initError;
     }
     
     if (!stripe) {
-      throw new Error('Stripe client initialization returned undefined');
+      throw new Error('Stripe client initialization returned undefined or null');
+    }
+    
+    if (typeof stripe !== 'object') {
+      throw new Error(`Stripe client is not an object. Type: ${typeof stripe}, value: ${stripe}`);
     }
     
     if (!stripe.subscriptions) {
-      console.error('[stripe-metrics] Stripe client missing subscriptions property. Stripe object keys:', Object.keys(stripe || {}));
+      console.error('[stripe-metrics] Stripe client missing subscriptions property.');
+      console.error('[stripe-metrics] Stripe object keys:', Object.keys(stripe || {}));
+      console.error('[stripe-metrics] Stripe object type:', typeof stripe);
       throw new Error('Stripe client is not properly initialized - missing subscriptions property');
     }
     
     if (typeof stripe.subscriptions.list !== 'function') {
-      console.error('[stripe-metrics] Stripe subscriptions.list is not a function. Type:', typeof stripe.subscriptions.list);
+      console.error('[stripe-metrics] Stripe subscriptions.list is not a function.');
+      console.error('[stripe-metrics] subscriptions.list type:', typeof stripe.subscriptions.list);
+      console.error('[stripe-metrics] subscriptions keys:', Object.keys(stripe.subscriptions || {}));
       throw new Error('Stripe client is not properly initialized - subscriptions.list is not a function');
     }
     
