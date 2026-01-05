@@ -602,7 +602,12 @@ module.exports = async (req, res) => {
         opportunity_revenue_gross_gbp: stripeMetrics.opportunity_revenue_gross_gbp,
         opportunity_revenue_net_estimate_gbp: stripeMetrics.opportunity_revenue_net_estimate_gbp,
         non_gbp_invoices_count: stripeMetrics.non_gbp_invoices_count,
-        arr_gbp: stripeMetrics.arr_gbp
+        arr_gbp: stripeMetrics.arr_gbp,
+        // Debug info
+        stripe_key_mode: stripeMetrics.stripe_key_mode,
+        annual_price_id_used: stripeMetrics.annual_price_id_used,
+        paid_annual_invoices_count_all_time: stripeMetrics.paid_annual_invoices_count_all_time,
+        debug_sample_annual_invoice_ids: stripeMetrics.debug_sample_annual_invoice_ids
       } : null
     });
 

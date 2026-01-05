@@ -278,6 +278,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // H) Revenue (net) from PAID INVOICES (all-time + 30d)
     console.log('[stripe-metrics] Calculating revenue from paid invoices...');
     
+    // Annual Price ID (from Stripe dashboard)
+    const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btfTbxoxk';
+    
+    // Detect Stripe key mode
+    const stripeKeyMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test';
+    
     // Helper to fetch all paid invoices with pagination
     const fetchAllPaidInvoices = async (createdAfter = null, maxInvoices = 5000) => {
       const invoices = [];
@@ -288,7 +294,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
         const params = {
           limit: 100,
           status: 'paid',
-          expand: ['data.subscription', 'data.charge']
+          expand: ['data.subscription', 'data.charge', 'data.lines.data.price']
         };
 
         if (createdAfter) {
@@ -316,9 +322,35 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // Fetch all paid invoices (all-time, capped at 5k for performance)
     const allPaidInvoices = await fetchAllPaidInvoices();
     
-    // Helper to get net revenue from invoice
+    // Helper to check if invoice contains annual price ID
+    const invoiceContainsAnnualPrice = (invoice) => {
+      if (!invoice.lines?.data) return false;
+      return invoice.lines.data.some(line => 
+        line.price?.id === ANNUAL_PRICE_ID
+      );
+    };
+    
+    // Helper to get revenue from invoice (minimum correct approach: use invoice.total)
+    // This includes discounts and is after refunds, before Stripe fees
+    const getInvoiceRevenue = (invoice) => {
+      // Use invoice.total (includes discounts, after refunds, before Stripe fees)
+      // This is the minimum correct approach per user requirements
+      if (invoice.total && invoice.currency === 'gbp') {
+        return invoice.total / 100; // Convert from minor units to GBP
+      }
+      
+      // Fallback: use amount_paid if total is missing
+      if (invoice.amount_paid && invoice.currency === 'gbp') {
+        return invoice.amount_paid / 100;
+      }
+      
+      return 0;
+    };
+    
+    // Helper to get net revenue from invoice (after Stripe fees)
+    // This is the more accurate approach but requires balance_transaction lookup
     const getInvoiceNetRevenue = async (invoice) => {
-      // Try to get net from balance_transaction (most accurate)
+      // Try to get net from balance_transaction (most accurate - after Stripe fees)
       if (invoice.charge) {
         try {
           const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
@@ -340,12 +372,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
         }
       }
       
-      // Fallback: use amount_paid (gross, but labeled as net≈gross)
-      if (invoice.amount_paid && invoice.currency === 'gbp') {
-        return invoice.amount_paid / 100;
-      }
-      
-      return 0;
+      // Fallback: use invoice.total (before Stripe fees, but includes discounts)
+      return getInvoiceRevenue(invoice);
     };
 
     // Calculate revenue metrics
@@ -358,6 +386,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let revenueFromDirectAnnualNetAllTime = 0;
     let revenueFromDirectAnnualNet30d = 0;
     let nonGbpInvoicesCount = 0;
+    let paidAnnualInvoicesCountAllTime = 0;
+    const debugSampleAnnualInvoiceIds = [];
 
     // Build subscription ID to type map for faster lookup
     const subscriptionTypeMap = new Map();
@@ -374,64 +404,63 @@ async function calculateStripeMetrics(forceRefresh = false) {
         continue;
       }
 
-      const invoiceNet = await getInvoiceNetRevenue(invoice);
-      if (invoiceNet === 0) continue;
+      // Use invoice.total (minimum correct approach - includes discounts, after refunds, before Stripe fees)
+      const invoiceRevenue = getInvoiceRevenue(invoice);
+      if (invoiceRevenue === 0) continue;
 
       const invoiceCreated = new Date(invoice.created * 1000);
       const isInLast30d = invoiceCreated >= thirtyDaysAgo;
 
-      // Add to all-time total
-      revenueNetAllTime += invoiceNet;
+      // Add to all-time total (all invoices)
+      revenueNetAllTime += invoiceRevenue;
       if (isInLast30d) {
-        revenueNet30d += invoiceNet;
+        revenueNet30d += invoiceRevenue;
       }
 
-      // Check if this invoice is for an annual subscription
-      if (invoice.subscription) {
-        const subscriptionId = typeof invoice.subscription === 'string' 
-          ? invoice.subscription 
-          : invoice.subscription.id;
-
-        // Check if subscription is annual (use expanded data if available, otherwise map or retrieve)
-        let isAnnual = false;
+      // Check if this invoice contains the annual price ID in line items
+      const containsAnnualPrice = invoiceContainsAnnualPrice(invoice);
+      
+      if (containsAnnualPrice) {
+        paidAnnualInvoicesCountAllTime++;
         
-        // First check if subscription was expanded in the invoice
-        if (typeof invoice.subscription === 'object' && invoice.subscription.items) {
-          isAnnual = isAnnualSubscription(invoice.subscription);
-          subscriptionTypeMap.set(subscriptionId, isAnnual ? 'annual' : 'other');
-        } else {
-          // Use map if available
-          isAnnual = subscriptionTypeMap.get(subscriptionId) === 'annual';
-          
-          // If not in map, retrieve subscription
-          if (!isAnnual && subscriptionId) {
-            try {
-              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-              isAnnual = isAnnualSubscription(subscription);
-              subscriptionTypeMap.set(subscriptionId, isAnnual ? 'annual' : 'other');
-            } catch (err) {
-              console.warn(`[stripe-metrics] Error retrieving subscription ${subscriptionId}:`, err.message);
-            }
-          }
+        // Store sample invoice IDs for debug
+        if (debugSampleAnnualInvoiceIds.length < 3) {
+          debugSampleAnnualInvoiceIds.push({
+            id: invoice.id,
+            total: invoice.total / 100,
+            created: new Date(invoice.created * 1000).toISOString(),
+            billing_reason: invoice.billing_reason || 'unknown'
+          });
         }
 
-        if (isAnnual) {
-          annualRevenueNetAllTime += invoiceNet;
-          if (isInLast30d) {
-            annualRevenueNet30d += invoiceNet;
-          }
+        annualRevenueNetAllTime += invoiceRevenue;
+        if (isInLast30d) {
+          annualRevenueNet30d += invoiceRevenue;
+        }
 
-          // Classify as conversion or direct
+        // Classify as conversion or direct (if subscription exists)
+        if (invoice.subscription) {
+          const subscriptionId = typeof invoice.subscription === 'string' 
+            ? invoice.subscription 
+            : invoice.subscription.id;
+
           if (convertedAnnualSubIds.has(subscriptionId)) {
-            revenueFromConversionsNetAllTime += invoiceNet;
+            revenueFromConversionsNetAllTime += invoiceRevenue;
             if (isInLast30d) {
-              revenueFromConversionsNet30d += invoiceNet;
+              revenueFromConversionsNet30d += invoiceRevenue;
             }
           } else {
-            revenueFromDirectAnnualNetAllTime += invoiceNet;
+            revenueFromDirectAnnualNetAllTime += invoiceRevenue;
             if (isInLast30d) {
-              revenueFromDirectAnnualNet30d += invoiceNet;
+              revenueFromDirectAnnualNet30d += invoiceRevenue;
             }
+          }
+        } else {
+          // Invoice has annual price but no subscription (unlikely but handle it)
+          // Treat as direct annual
+          revenueFromDirectAnnualNetAllTime += invoiceRevenue;
+          if (isInLast30d) {
+            revenueFromDirectAnnualNet30d += invoiceRevenue;
           }
         }
       }
@@ -446,6 +475,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
     metrics.revenue_from_direct_annual_net_all_time_gbp = Math.round(revenueFromDirectAnnualNetAllTime * 100) / 100;
     metrics.revenue_from_direct_annual_net_30d_gbp = Math.round(revenueFromDirectAnnualNet30d * 100) / 100;
     metrics.non_gbp_invoices_count = nonGbpInvoicesCount;
+    
+    // Debug info
+    metrics.stripe_key_mode = stripeKeyMode;
+    metrics.annual_price_id_used = ANNUAL_PRICE_ID;
+    metrics.paid_annual_invoices_count_all_time = paidAnnualInvoicesCountAllTime;
+    metrics.debug_sample_annual_invoice_ids = debugSampleAnnualInvoiceIds;
 
     // I) ARR (Annual Run-Rate) from active annual subscriptions
     allActiveSubs.forEach(sub => {

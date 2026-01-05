@@ -637,7 +637,7 @@ export default function AdminDashboard() {
         <div className="ar-admin-kpi-grid">
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from Stripe paid invoices (all plans). Net = after Stripe fees (from balance_transaction.net). All-time total."
+            title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -669,7 +669,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from annual subscription invoices (direct signups + conversions). All-time total."
+            title="Net paid revenue from annual subscription invoices (direct signups + conversions). Revenue is based on Stripe paid invoices (after discounts). All-time total."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
