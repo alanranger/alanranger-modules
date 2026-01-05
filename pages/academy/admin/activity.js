@@ -196,6 +196,18 @@ export default function ActivityPage() {
           }}>
             Exams
           </Link>
+          <Link href="/academy/admin/qa" style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: '6px',
+            color: 'var(--ar-text-muted)',
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '14px'
+          }}>
+            Q&A
+          </Link>
         </div>
       </div>
 
