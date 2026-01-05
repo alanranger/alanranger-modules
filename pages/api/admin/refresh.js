@@ -226,6 +226,17 @@ export default async function handler(req, res) {
           cancel_at_period_end: cancelAtPeriodEnd,
         };
 
+        // Check if member already exists to track new vs updated
+        const { data: existingMember } = await supabase
+          .from("ms_members_cache")
+          .select("plan_summary")
+          .eq("member_id", memberId)
+          .single();
+
+        const wasTrial = existingMember?.plan_summary?.is_trial === true;
+        const wasAnnual = existingMember?.plan_summary?.plan_type === "annual" && existingMember?.plan_summary?.is_paid === true;
+        const isNewMember = !existingMember;
+
         // Upsert member cache (this is what your KPI "totalMembers/trials/paid" should read from)
         const { error: upsertMemberErr } = await supabase
           .from("ms_members_cache")
@@ -252,6 +263,21 @@ export default async function handler(req, res) {
           console.error(`[refresh] Error upserting member ${memberId} to cache:`, upsertMemberErr);
         } else {
           membersUpserted++;
+          
+          // Track new trials (new member with trial OR existing member who wasn't trial but now is)
+          if (isTrial && (isNewMember || !wasTrial)) {
+            newTrials++;
+          }
+          
+          // Track new annual members (new member with annual OR existing member who wasn't annual but now is)
+          if (planType === "annual" && isPaid && (isNewMember || !wasAnnual)) {
+            newAnnual++;
+          }
+          
+          // Track updated members (existing members that were updated)
+          if (!isNewMember) {
+            updatedMembers++;
+          }
         }
 
         // Read opened modules from Member JSON
