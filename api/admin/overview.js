@@ -511,8 +511,11 @@ module.exports = async (req, res) => {
     
     try {
       // Call Stripe metrics calculation function directly (server-side)
+      // In Next.js, require paths are relative to project root, not file location
       // Path: api/admin/overview.js -> api/stripe/metrics.js
-      const stripeMetricsModule = require('../stripe/metrics');
+      const path = require('path');
+      const stripeMetricsPath = path.join(process.cwd(), 'api', 'stripe', 'metrics');
+      const stripeMetricsModule = require(stripeMetricsPath);
       const calculateStripeMetrics = stripeMetricsModule.calculateStripeMetrics;
       
       if (!calculateStripeMetrics || typeof calculateStripeMetrics !== 'function') {
