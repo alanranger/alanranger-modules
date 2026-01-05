@@ -646,7 +646,12 @@ export default function QAPage() {
                     background: '#fef3c7',
                     borderRadius: '6px',
                     border: '1px solid #f59e0b',
-                    marginBottom: '12px'
+                    marginBottom: '12px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
                   }}>
                     {aiDraft || selectedQuestion.ai_answer}
                   </div>
@@ -700,6 +705,7 @@ export default function QAPage() {
                 style={{
                   flex: 1,
                   minHeight: '200px',
+                  maxHeight: '500px',
                   padding: '12px',
                   background: 'var(--ar-card)',
                   border: '1px solid var(--ar-border)',
@@ -707,7 +713,10 @@ export default function QAPage() {
                   color: 'var(--ar-text)',
                   fontSize: '14px',
                   fontFamily: 'inherit',
-                  resize: 'vertical'
+                  resize: 'vertical',
+                  overflowY: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word'
                 }}
               />
             </div>
