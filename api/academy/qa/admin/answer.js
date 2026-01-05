@@ -44,14 +44,20 @@ module.exports = async (req, res) => {
       return res.status(404).json({ error: 'Question not found' });
     }
 
+    // Check if the answer matches the AI draft (user is publishing AI answer, not editing)
+    const answerText = answer.trim();
+    const isPublishingAI = question.ai_answer && 
+                          question.ai_answer.trim() === answerText &&
+                          !answered_by; // If answered_by is not provided, assume publishing AI
+
     // Update question with answer
     const updates = {
-      answer: answer.trim(),
-      admin_answer: answer.trim(), // Keep for backward compatibility
+      answer: answerText,
+      admin_answer: answerText, // Keep for backward compatibility
       answered_at: new Date().toISOString(),
       admin_answered_at: new Date().toISOString(),
-      answered_by: answered_by || 'Alan',
-      answer_source: 'manual',
+      answered_by: isPublishingAI ? 'Robo-Ranger' : (answered_by || 'Alan'),
+      answer_source: isPublishingAI ? 'ai' : 'manual',
       status: 'answered',
       updated_at: new Date().toISOString()
     };
