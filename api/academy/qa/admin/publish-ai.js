@@ -44,11 +44,12 @@ module.exports = async (req, res) => {
     }
 
     // Publish AI answer
+    const answeredTimestamp = question.ai_answered_at || new Date().toISOString();
     const updates = {
       answer: question.ai_answer,
       admin_answer: question.ai_answer, // Keep for backward compatibility
-      answered_at: question.ai_answered_at || new Date().toISOString(),
-      admin_answered_at: question.ai_answered_at || new Date().toISOString(),
+      answered_at: answeredTimestamp,
+      admin_answered_at: answeredTimestamp,
       answered_by: 'Robo-Ranger',
       answer_source: 'ai',
       status: 'answered',

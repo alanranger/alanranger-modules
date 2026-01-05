@@ -638,23 +638,26 @@ export default function QAPage() {
                   <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '16px', marginBottom: '8px' }}>
                     AI Suggested Answer {aiDraft && '(New Draft)'}
                   </div>
-                  <div style={{ 
-                    color: '#1f2937', 
-                    fontSize: '13px', 
-                    lineHeight: '1.6',
-                    padding: '12px',
-                    background: '#fef3c7',
-                    borderRadius: '6px',
-                    border: '1px solid #f59e0b',
-                    marginBottom: '12px',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word'
-                  }}>
-                    {aiDraft || selectedQuestion.ai_answer}
-                  </div>
+                  <div 
+                    style={{ 
+                      color: '#1f2937', 
+                      fontSize: '13px', 
+                      lineHeight: '1.6',
+                      padding: '12px',
+                      background: '#f0f9ff',
+                      borderRadius: '6px',
+                      border: '1px solid #3b82f6',
+                      marginBottom: '12px',
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                      overflowX: 'hidden',
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word'
+                    }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: formatAIAnswer(aiDraft || selectedQuestion.ai_answer) 
+                    }}
+                  />
                 </>
               )}
             </div>
