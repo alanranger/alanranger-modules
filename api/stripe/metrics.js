@@ -2,13 +2,28 @@
 // Returns real-time Stripe subscription metrics for Admin Dashboard
 // Uses Stripe Subscriptions API (not invoices) for accurate counts
 
+const path = require('path');
+
 let getStripe;
 try {
-  getStripe = require('../../lib/stripe');
+  // Use absolute path for Vercel serverless compatibility
+  const stripePath = path.join(process.cwd(), 'lib', 'stripe');
+  console.log('[stripe-metrics] Attempting to require Stripe from:', stripePath);
+  getStripe = require(stripePath);
   console.log('[stripe-metrics] Stripe module loaded, getStripe type:', typeof getStripe);
 } catch (requireError) {
   console.error('[stripe-metrics] Failed to require Stripe module:', requireError);
-  throw new Error(`Failed to load Stripe module: ${requireError.message}`);
+  console.error('[stripe-metrics] Require error message:', requireError.message);
+  console.error('[stripe-metrics] Require error stack:', requireError.stack);
+  // Try fallback relative path
+  try {
+    console.log('[stripe-metrics] Trying fallback relative path...');
+    getStripe = require('../../lib/stripe');
+    console.log('[stripe-metrics] Fallback path worked, getStripe type:', typeof getStripe);
+  } catch (fallbackError) {
+    console.error('[stripe-metrics] Fallback path also failed:', fallbackError);
+    throw new Error(`Failed to load Stripe module: ${requireError.message}. Fallback also failed: ${fallbackError.message}`);
+  }
 }
 
 // Simple in-memory cache
