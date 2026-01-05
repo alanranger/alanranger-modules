@@ -115,12 +115,12 @@ module.exports = async (req, res) => {
         
         // Extract payment info from plan connection
         const payment = planToUse?.payment || {};
-        const planType = planToUse?.type || null; // "SUBSCRIPTION" or "ONETIME"
+        const planConnectionType = planToUse?.type || null; // "SUBSCRIPTION" or "ONETIME"
         
         // Determine payment mode: SUBSCRIPTION = RECURRING, ONETIME = ONETIME
         let paymentMode = planToUse?.paymentMode || null;
-        if (!paymentMode && planType) {
-          paymentMode = planType === "SUBSCRIPTION" ? "RECURRING" : "ONETIME";
+        if (!paymentMode && planConnectionType) {
+          paymentMode = planConnectionType === "SUBSCRIPTION" ? "RECURRING" : "ONETIME";
         }
         
         // Extract dates from various sources
@@ -136,7 +136,7 @@ module.exports = async (req, res) => {
           if (!isNaN(nextBillingTimestamp)) {
             currentPeriodEnd = new Date(nextBillingTimestamp * 1000).toISOString();
             // For annual subscriptions, also use as expiry_date
-            if (planType === "SUBSCRIPTION") {
+            if (planConnectionType === "SUBSCRIPTION") {
               expiryDate = currentPeriodEnd;
             }
           }
@@ -154,7 +154,7 @@ module.exports = async (req, res) => {
           currentPeriodEnd = safeIso(planToUse.current_period_end);
         }
         
-        const isTrial = planId === trialPlanId || (planType === "ONETIME" && expiryDate);
+        const isTrial = planId === trialPlanId || (planConnectionType === "ONETIME" && expiryDate);
         const memberCreatedAt = safeIso(fullMemberData?.createdAt) || new Date().toISOString();
         if (isTrial && !expiryDate) {
           const createdDate = new Date(memberCreatedAt);
@@ -165,7 +165,7 @@ module.exports = async (req, res) => {
         const cancelAtPeriodEnd = planToUse?.cancelAtPeriodEnd || false;
         
         // Determine is_paid: true if payment is PAID and it's a subscription, or if status is ACTIVE with RECURRING payment
-        const isPaid = (payment?.status === "PAID" && planType === "SUBSCRIPTION") || 
+        const isPaid = (payment?.status === "PAID" && planConnectionType === "SUBSCRIPTION") || 
                        (planStatus === "ACTIVE" && paymentMode === "RECURRING");
         
         let planType = null;
