@@ -28,7 +28,7 @@ const stripe = new Stripe(stripeKey, {
   apiVersion: '2023-10-16'
 });
 
-const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btfTbxoxk';
+const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btIfTbxoxk'; // Capital 'I' not lowercase 'f'
 
 async function testStripeRevenue() {
   console.log('\n=== Stripe Revenue Diagnostic Test ===\n');
