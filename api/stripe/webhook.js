@@ -160,35 +160,82 @@ async function isAcademyEvent(obj, stripe) {
 }
 
 /**
+ * Extract ms_member_id from various locations in the Stripe event object
+ * @param {Object} obj - Stripe object (invoice, checkout session, subscription, etc.)
+ * @returns {string|null} Memberstack member ID or null
+ */
+function extractMsMemberIdFromEvent(obj) {
+  // Try 1: Object metadata (most common)
+  const metadata = obj?.metadata || {};
+  if (metadata.msMemberId) return metadata.msMemberId;
+  if (metadata.ms_member_id) return metadata.ms_member_id;
+  
+  // Try 2: Customer details metadata (rare)
+  if (obj?.customer_details?.metadata) {
+    const custMeta = obj.customer_details.metadata;
+    if (custMeta.msMemberId) return custMeta.msMemberId;
+    if (custMeta.ms_member_id) return custMeta.ms_member_id;
+  }
+  
+  // Try 3: Subscription details metadata (for subscription events)
+  if (obj?.subscription_details?.metadata) {
+    const subMeta = obj.subscription_details.metadata;
+    if (subMeta.msMemberId) return subMeta.msMemberId;
+    if (subMeta.ms_member_id) return subMeta.ms_member_id;
+  }
+  
+  // Try 4: Check invoice line items price metadata (for invoice events)
+  if (obj?.lines?.data) {
+    for (const line of obj.lines.data) {
+      const priceMeta = line?.price?.metadata;
+      if (priceMeta?.msMemberId) return priceMeta.msMemberId;
+      if (priceMeta?.ms_member_id) return priceMeta.ms_member_id;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Look up ms_member_id from previous events in academy_plan_events
+ * Uses stripe_customer_id to find a previous event that had ms_member_id
+ * @param {string} stripeCustomerId - Stripe customer ID
+ * @returns {Promise<string|null>} Memberstack member ID or null
+ */
+async function lookupMsMemberIdFromPreviousEvents(stripeCustomerId) {
+  if (!stripeCustomerId) return null;
+  
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('academy_plan_events')
+      .select('ms_member_id')
+      .eq('stripe_customer_id', stripeCustomerId)
+      .not('ms_member_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (!error && data?.ms_member_id) {
+      console.log(`[stripe-webhook] Found ms_member_id from previous event: ${data.ms_member_id}`);
+      return data.ms_member_id;
+    }
+    
+    return null;
+  } catch (err) {
+    console.warn('[stripe-webhook] Error looking up ms_member_id from previous events:', err.message);
+    return null;
+  }
+}
+
+/**
  * Look up Memberstack member ID from ms_members_cache
  * @param {string} stripeCustomerId - Stripe customer ID
  * @param {string} customerEmail - Customer email
  * @returns {Promise<string|null>} Memberstack member ID or null
  */
-async function lookupMsMemberId(stripeCustomerId, customerEmail) {
+async function lookupMsMemberIdFromCache(stripeCustomerId, customerEmail) {
   try {
-    // First try by Stripe customer ID (check if stored in raw JSONB or plan_summary)
-    if (stripeCustomerId) {
-      // Check if stripe_customer_id is stored in the raw JSONB field
-      const { data, error } = await supabaseAdmin
-        .from('ms_members_cache')
-        .select('member_id, raw')
-        .limit(100); // Get a batch to check
-      
-      if (!error && data) {
-        for (const member of data) {
-          // Check raw JSONB for stripe customer ID
-          const raw = member.raw || {};
-          if (raw.stripe_customer_id === stripeCustomerId || 
-              raw.stripeCustomerId === stripeCustomerId ||
-              raw.customer_id === stripeCustomerId) {
-            return member.member_id;
-          }
-        }
-      }
-    }
-    
-    // Try by email (more reliable)
+    // Try by email (most reliable)
     if (customerEmail) {
       const { data, error } = await supabaseAdmin
         .from('ms_members_cache')
@@ -202,9 +249,28 @@ async function lookupMsMemberId(stripeCustomerId, customerEmail) {
       }
     }
     
+    // Try by Stripe customer ID in raw JSONB (if stored)
+    if (stripeCustomerId) {
+      const { data, error } = await supabaseAdmin
+        .from('ms_members_cache')
+        .select('member_id, raw')
+        .limit(100); // Get a batch to check
+      
+      if (!error && data) {
+        for (const member of data) {
+          const raw = member.raw || {};
+          if (raw.stripe_customer_id === stripeCustomerId || 
+              raw.stripeCustomerId === stripeCustomerId ||
+              raw.customer_id === stripeCustomerId) {
+            return member.member_id;
+          }
+        }
+      }
+    }
+    
     return null;
   } catch (err) {
-    console.warn('[stripe-webhook] Error looking up ms_member_id:', err.message);
+    console.warn('[stripe-webhook] Error looking up ms_member_id from cache:', err.message);
     return null;
   }
 }
@@ -279,16 +345,36 @@ module.exports = async (req, res) => {
     const stripeInvoiceId = obj?.invoice || (obj?.object === 'invoice' ? obj?.id : null) || null;
     const customerEmail = obj?.customer_email || obj?.customer_details?.email || null;
 
-    // Try to resolve ms_member_id (but don't skip if not found)
-    // First try metadata, then lookup
-    let msMemberId = meta.msMemberId || null;
+    // Try multiple methods to resolve ms_member_id (required for insert)
+    let msMemberId = null;
+    
+    // Method 1: Extract from event object metadata
+    msMemberId = extractMsMemberIdFromEvent(obj);
+    if (msMemberId) {
+      console.log(`[stripe-webhook] Found ms_member_id from event metadata: ${msMemberId}`);
+    }
+    
+    // Method 2: Look up from previous events (if same customer)
+    if (!msMemberId && stripeCustomerId) {
+      msMemberId = await lookupMsMemberIdFromPreviousEvents(stripeCustomerId);
+    }
+    
+    // Method 3: Look up from ms_members_cache
     if (!msMemberId && (stripeCustomerId || customerEmail)) {
-      msMemberId = await lookupMsMemberId(stripeCustomerId, customerEmail);
+      msMemberId = await lookupMsMemberIdFromCache(stripeCustomerId, customerEmail);
       if (msMemberId) {
-        console.log(`[stripe-webhook] Resolved ms_member_id via lookup: ${msMemberId}`);
-      } else {
-        console.log(`[stripe-webhook] Could not resolve ms_member_id (will store as null)`);
+        console.log(`[stripe-webhook] Found ms_member_id from cache: ${msMemberId}`);
       }
+    }
+    
+    // If still not found, skip the insert (required field)
+    if (!msMemberId) {
+      console.log(`[stripe-webhook] Cannot resolve ms_member_id for event ${event.type} (customer: ${stripeCustomerId || 'unknown'})`);
+      return res.status(200).json({ 
+        received: true, 
+        skipped: true, 
+        reason: 'no_ms_member_id' 
+      });
     }
 
     // Use Academy app ID and price ID from price metadata (most reliable)
@@ -297,7 +383,7 @@ module.exports = async (req, res) => {
 
     // Insert event into academy_plan_events
     // Use stripe_event_id for idempotency (unique constraint will prevent duplicates)
-    // Store even if ms_member_id is null (we can link it later)
+    // ms_member_id is required (we've already verified it exists above)
     const { data, error } = await supabaseAdmin
       .from('academy_plan_events')
       .insert({
@@ -307,7 +393,7 @@ module.exports = async (req, res) => {
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
         stripe_invoice_id: stripeInvoiceId,
-        ms_member_id: msMemberId, // May be null - that's OK
+        ms_member_id: msMemberId, // Required - already verified above
         ms_app_id: msAppId,
         ms_plan_id: meta.msPlanId || null,
         ms_price_id: msPriceId,
