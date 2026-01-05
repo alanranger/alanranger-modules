@@ -26,8 +26,10 @@ if (typeof globalThis.fetch !== 'undefined') {
 }
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000';
-// Try both possible routes (nested and flat)
-const API_URL = process.env.QA_API_URL || `${API_BASE}/api/academy-qa-questions`;
+// Test both routes - flat route first (Vercel serverless), then nested (Next.js pages/api)
+const FLAT_ROUTE = `${API_BASE}/api/academy-qa-questions`;
+const NESTED_ROUTE = `${API_BASE}/api/academy/qa/questions`;
+const API_URL = process.env.QA_API_URL || FLAT_ROUTE;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
