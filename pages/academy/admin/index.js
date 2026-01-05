@@ -519,7 +519,7 @@ export default function AdminDashboard() {
         </Link>
         <Link href="/academy/admin/members?plan=trial" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Trials</div>
-          <div className="ar-admin-kpi-value">{kpis?.stripe?.trials_active_count ?? kpis?.trials ?? 0}</div>
+          <div className="ar-admin-kpi-value">{kpis?.trials ?? 0}</div>
           <div className="ar-admin-kpi-period">Active (Stripe)</div>
         </Link>
         <Link href="/academy/admin/members?plan=annual" className="ar-admin-kpi-tile">

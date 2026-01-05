@@ -41,6 +41,12 @@ module.exports = async (req, res) => {
     let trialsExpiring30d = 0;
     let annualExpiring30d = 0;
     let allPlansExpiring60d = 0;
+    
+    // 3. Get conversion data from academy_plan_events
+    const { data: planEvents } = await supabase
+      .from('academy_plan_events')
+      .select('ms_member_id, event_type, ms_price_id, created_at, stripe_invoice_id, payload')
+      .order('created_at', { ascending: true });
 
     if (allMembers) {
       allMembers.forEach(m => {
@@ -266,40 +272,88 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ===== CONVERSION TOTALS (All-time + Rolling Windows) =====
-    // All-time trial starts
-    const trialsStartedAllTime = Object.values(memberPlans).filter(m => 
-      m.isTrial && m.trialStartAt
+    // ===== CONVERSION DETECTION FROM academy_plan_events =====
+    // Build per-member timeline from events
+    const memberTimelines = {};
+    
+    if (planEvents) {
+      planEvents.forEach(event => {
+        if (!event.ms_member_id) return;
+        
+        const memberId = event.ms_member_id;
+        if (!memberTimelines[memberId]) {
+          memberTimelines[memberId] = {
+            ms_member_id: memberId,
+            trialStartAt: null,
+            annualPaidAt: null,
+            annualInvoiceId: null,
+            annualAmount: 0
+          };
+        }
+        
+        const timeline = memberTimelines[memberId];
+        const eventDate = new Date(event.created_at);
+        
+        // Detect trial start (checkout.session.completed with trial price)
+        if (event.event_type === 'checkout.session.completed') {
+          const priceId = event.ms_price_id || '';
+          if (priceId.includes('trial') || priceId.includes('30-day')) {
+            if (!timeline.trialStartAt || eventDate < timeline.trialStartAt) {
+              timeline.trialStartAt = eventDate;
+            }
+          }
+        }
+        
+        // Detect annual paid (invoice.paid with annual price)
+        if (event.event_type === 'invoice.paid') {
+          const priceId = event.ms_price_id || '';
+          if (priceId.includes('annual') || priceId === 'prc_annual-membership-jj7y0h89') {
+            if (!timeline.annualPaidAt || eventDate < timeline.annualPaidAt) {
+              timeline.annualPaidAt = eventDate;
+              timeline.annualInvoiceId = event.stripe_invoice_id;
+              
+              // Try to extract amount from payload
+              try {
+                const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+                const amount = payload?.data?.object?.amount_paid || payload?.data?.object?.total || 0;
+                timeline.annualAmount = amount / 100; // Convert from pennies
+              } catch (e) {
+                // If we can't parse, we'll fetch from Stripe later if needed
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Calculate conversions
+    const allConversions = Object.values(memberTimelines).filter(t => 
+      t.trialStartAt && t.annualPaidAt && t.annualPaidAt > t.trialStartAt
     );
-
-    // All-time conversions (trial → annual)
-    const trialsConvertedAllTime = trialsStartedAllTime.filter(m => {
-      if (!m.annualStartAt || !m.trialStartAt) return false;
-      // Converted if annual started after trial start
-      return m.annualStartAt >= m.trialStartAt;
+    
+    const conversions30d = allConversions.filter(t => {
+      if (!t.annualPaidAt) return false;
+      return t.annualPaidAt >= start30d;
     });
-
-    // 30d trial starts
-    const trialsStarted30d = Object.values(memberPlans).filter(m => 
-      m.isTrial && m.trialStartAt && m.trialStartAt >= start30d
+    
+    // Trial starts from events
+    const trialsStartedAllTime = Object.values(memberTimelines).filter(t => t.trialStartAt);
+    const trialsStarted30d = trialsStartedAllTime.filter(t => 
+      t.trialStartAt && t.trialStartAt >= start30d
     );
-
-    // 30d conversions
-    const trialsConverted30d = trialsStarted30d.filter(m => {
-      if (!m.annualStartAt || !m.trialStartAt) return false;
-      // Converted if annual started within 30 days of trial start
-      const daysToConvert = Math.floor((m.annualStartAt - m.trialStartAt) / 86400000);
-      return daysToConvert >= 0 && daysToConvert <= 30;
-    });
-
+    
     // Conversion rates
     const trialToAnnualConversionRateAllTime = trialsStartedAllTime.length > 0 
-      ? Math.round((trialsConvertedAllTime.length / trialsStartedAllTime.length) * 100 * 10) / 10
+      ? Math.round((allConversions.length / trialsStartedAllTime.length) * 100 * 10) / 10
       : null;
 
     const trialConversionRate30d = trialsStarted30d.length > 0 
-      ? Math.round((trialsConverted30d.length / trialsStarted30d.length) * 100 * 10) / 10
+      ? Math.round((conversions30d.length / trialsStarted30d.length) * 100 * 10) / 10
       : null;
+    
+    // Revenue from conversions
+    const revenueFromConversionsAllTime = allConversions.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
+    const revenueFromConversions30d = conversions30d.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
 
     // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
     // Trials that ended in last 30d
@@ -617,7 +671,7 @@ module.exports = async (req, res) => {
       // Stripe Metrics (source of truth - subscriptions + invoices)
       stripe: stripeMetrics ? {
         annual_active_count: stripeMetrics.annual_active_count,
-        trials_active_count: stripeMetrics.trials_active_count,
+        trials_active_count: trials, // Use ms_members_cache count, not Stripe
         revenue_net_all_time_gbp: stripeMetrics.revenue_net_all_time_gbp,
         revenue_net_last_30d_gbp: stripeMetrics.revenue_net_last_30d_gbp,
         annual_revenue_net_all_time_gbp: stripeMetrics.annual_revenue_net_all_time_gbp,
