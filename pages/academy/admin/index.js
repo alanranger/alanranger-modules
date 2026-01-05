@@ -701,6 +701,18 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
+            title="Total number of trials that ended (all-time). Supporting stat for conversion calculations."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Trials Ended
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.trialsEnded30d || 0}</div>
+            <div className="ar-admin-kpi-period">Last 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
             title="Total number of members who started a trial and later converted to annual plan. All-time count."
             style={{ cursor: 'help' }}
           >
@@ -713,11 +725,27 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
+            title="Trial to annual conversion rate (all-time). Rate = all-time conversions / all-time trials ended."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Conversion Rate (All-time)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.trialToAnnualConversionRateAllTime !== null && kpis?.bi?.trialToAnnualConversionRateAllTime !== undefined
+                ? `${kpis.bi.trialToAnnualConversionRateAllTime}%`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">All-time</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
             title="Trial to annual conversion rate for trials ended in last 30 days. Conversion window: annual subscription started within 7 days of trial end. Rate = conversions / trials ended."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
-              Conversion Rate — Trial → Annual
+              Conversion Rate (30d)
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
@@ -728,6 +756,18 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.trialToAnnualConversions30d || 0}/{kpis?.bi?.trialsEnded30d || 0} (30d)
             </div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Number of annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Supporting stat for revenue at risk."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              At-Risk Annual
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskAnnualCount || 0}</div>
+            <div className="ar-admin-kpi-period">Next 30 days</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 

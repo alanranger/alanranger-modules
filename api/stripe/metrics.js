@@ -218,6 +218,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let conversions30d = 0;
     let conversionsAllTime = 0;
     let trialsEnded30d = 0;
+    let trialsEndedAllTime = 0;
 
     Object.keys(customerTrials).forEach(customerId => {
       const trials = customerTrials[customerId];
@@ -230,6 +231,10 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
           if (isInLast30d) {
             trialsEnded30d++;
+          }
+          // Count all-time trials ended (any trial that has ended)
+          if (trialEnd <= nowDate) {
+            trialsEndedAllTime++;
           }
 
           // Check if customer has annual subscription started within 7 days of trial end
@@ -251,8 +256,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
     metrics.conversions_trial_to_annual_last_30d = conversions30d;
     metrics.conversions_trial_to_annual_all_time = conversionsAllTime;
     metrics.trials_ended_last_30d = trialsEnded30d;
+    metrics.trials_ended_all_time = trialsEndedAllTime;
     metrics.conversion_rate_last_30d = trialsEnded30d > 0
       ? Math.round((conversions30d / trialsEnded30d) * 100 * 10) / 10
+      : null;
+    metrics.conversion_rate_all_time = trialsEndedAllTime > 0
+      ? Math.round((conversionsAllTime / trialsEndedAllTime) * 100 * 10) / 10
       : null;
     metrics.trial_dropoff_last_30d = metrics.conversion_rate_last_30d !== null
       ? Math.round((100 - metrics.conversion_rate_last_30d) * 10) / 10

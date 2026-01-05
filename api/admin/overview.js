@@ -555,7 +555,7 @@ module.exports = async (req, res) => {
         trialStarts30d: trialsStarted30d.length,
         trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? trialsConvertedAllTime.length,
         trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? trialsConverted30d.length,
-        trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
+        trialToAnnualConversionRateAllTime: stripeMetrics?.conversion_rate_all_time ?? trialToAnnualConversionRateAllTime,
         trialConversionRate30d: stripeMetrics?.conversion_rate_last_30d ?? trialConversionRate30d,
         
         // Drop-off (from Stripe if available)
