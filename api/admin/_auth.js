@@ -62,12 +62,14 @@ async function checkAdminAccess(req) {
     }
 
     if (!memberData || !memberData.id) {
+      console.error("[admin-auth] No member data found. Token:", !!token, "Header:", !!req.headers["x-memberstack-id"]);
       return { isAdmin: false, member: null, error: "Not authenticated" };
     }
 
     // Check email-based admin access (primary method - set ADMIN_EMAILS env var)
     const adminEmails = (process.env.ADMIN_EMAILS || "info@alanranger.com,marketing@alanranger.com").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const memberEmail = (memberData.auth?.email || memberData.email || "").toLowerCase();
+    console.log("[admin-auth] Checking admin access for:", memberEmail, "Admin emails:", adminEmails);
     const isAdminEmail = adminEmails.includes(memberEmail);
 
     // Also check if member has Admin plan (if configured)
@@ -84,8 +86,10 @@ async function checkAdminAccess(req) {
 
     const isAdmin = isAdminEmail || hasAdminPlan;
 
+    console.log("[admin-auth] Admin check result:", { isAdminEmail, hasAdminPlan, isAdmin, memberEmail });
+
     if (!isAdmin) {
-      return { isAdmin: false, member: memberData, error: "Admin access required" };
+      return { isAdmin: false, member: memberData, error: `Admin access required. Your email (${memberEmail}) is not in the admin list.` };
     }
 
     return { isAdmin: true, member: memberData, error: null };

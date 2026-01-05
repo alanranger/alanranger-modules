@@ -33,7 +33,16 @@ export default function QAPage() {
 
   async function fetchStats() {
     try {
-      const res = await fetch('/api/academy/qa/admin/stats?range=30d');
+      const res = await fetch('/api/academy/qa/admin/stats?range=30d', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errorData.error || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       setStats(data);
     } catch (error) {
@@ -59,7 +68,12 @@ export default function QAPage() {
       params.append('sort', sortBy);
       params.append('order', sortOrder);
 
-      const res = await fetch(`/api/academy/qa/admin/questions?${params}`);
+      const res = await fetch(`/api/academy/qa/admin/questions?${params}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         console.error('Failed to fetch questions:', errorData);
@@ -138,6 +152,7 @@ export default function QAPage() {
     try {
       const res = await fetch(`/api/academy/qa/admin/questions/${selectedQuestion.id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           answer: answerText,
