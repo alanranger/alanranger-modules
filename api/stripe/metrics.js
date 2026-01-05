@@ -1,8 +1,14 @@
 // /api/stripe/metrics.js
 // Returns real-time Stripe subscription metrics for Admin Dashboard
 // Uses Stripe Subscriptions API (not invoices) for accurate counts
+// FILTERED TO ACADEMY PRODUCTS ONLY
 
 const path = require('path');
+const {
+  isAcademyInvoice,
+  isAcademyAnnualSubscription,
+  getAcademyAnnualListPrice
+} = require('../../lib/academyStripeConfig');
 
 let getStripe;
 try {
@@ -184,19 +190,21 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
     const allActiveSubs = [...activeSubs, ...trialingSubs];
 
-    // B) Count annual active and trials active
+    // B) Count Academy annual active and trials active (FILTERED TO ACADEMY ONLY)
     allActiveSubs.forEach(sub => {
-      if (sub.status === 'trialing') {
+      // Note: Trials are tracked via Memberstack, not Stripe (trials are £0 checkouts)
+      // This count is for reference only - actual trial count comes from Memberstack
+      if (sub.status === 'trialing' && isAcademyAnnualSubscription(sub)) {
         metrics.trials_active_count++;
       }
-      if (isAnnualSubscription(sub) && sub.status === 'active') {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active') {
         metrics.annual_active_count++;
       }
     });
 
-    // C) Expiring next 30 days (annual active with current_period_end in window)
+    // C) Expiring next 30 days (Academy annual active with current_period_end in window)
     allActiveSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.status === 'active' && sub.current_period_end) {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active' && sub.current_period_end) {
         const periodEnd = new Date(sub.current_period_end * 1000);
         if (periodEnd > nowDate && periodEnd <= thirtyDaysFromNow) {
           metrics.annual_expiring_next_30d_count++;
@@ -204,9 +212,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // D) Revenue at risk (cancel_at_period_end=true AND expiring soon)
+    // D) Revenue at risk (Academy annual with cancel_at_period_end=true AND expiring soon)
     allActiveSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.status === 'active' && sub.cancel_at_period_end) {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active' && sub.cancel_at_period_end) {
         if (sub.current_period_end) {
           const periodEnd = new Date(sub.current_period_end * 1000);
           if (periodEnd > nowDate && periodEnd <= thirtyDaysFromNow) {
@@ -226,8 +234,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let annualChurned = 0;
     let annualActiveAtStart = 0;
 
+    // Filter churn to Academy annual subscriptions only
     canceledSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.ended_at) {
+      if (isAcademyAnnualSubscription(sub) && sub.ended_at) {
         const endedAt = new Date(sub.ended_at * 1000);
         if (endedAt >= ninetyDaysAgo && endedAt <= nowDate) {
           annualChurned++;
@@ -235,9 +244,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Count active annuals at start of 90d period (approximate)
+    // Count active Academy annuals at start of 90d period (approximate)
     allActiveSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.status === 'active') {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active') {
         if (sub.created) {
           const created = new Date(sub.created * 1000);
           if (created <= ninetyDaysAgo) {
@@ -282,9 +291,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Find annual subscriptions for these customers
+    // Find Academy annual subscriptions for these customers
     allActiveSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.status === 'active') {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active') {
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
         if (customerId) {
           if (!customerAnnuals[customerId]) {
@@ -352,12 +361,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
     // G) Revenue from conversions will be calculated in step H (invoice processing)
 
-    // H) Revenue (net) from PAID INVOICES (all-time + 30d)
-    console.log('[stripe-metrics] Calculating revenue from paid invoices...');
-    
-    // Annual Price ID (from Stripe dashboard)
-    // NOTE: Capital 'I' not lowercase 'f' - price_1Sie474mPKLoo2btIfTbxoxk
-    const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btIfTbxoxk';
+    // H) Revenue (net) from PAID ACADEMY INVOICES ONLY (all-time + 30d)
+    console.log('[stripe-metrics] Calculating Academy revenue from paid invoices...');
     
     // Detect Stripe key mode
     const stripeKeyMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test';
@@ -400,13 +405,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // Fetch all paid invoices (all-time, capped at 5k for performance)
     const allPaidInvoices = await fetchAllPaidInvoices();
     
-    // Helper to check if invoice contains annual price ID
-    const invoiceContainsAnnualPrice = (invoice) => {
-      if (!invoice.lines?.data) return false;
-      return invoice.lines.data.some(line => 
-        line.price?.id === ANNUAL_PRICE_ID
-      );
-    };
+    // Filter to Academy invoices only
+    const academyInvoices = allPaidInvoices.filter(invoice => isAcademyInvoice(invoice));
+    console.log(`[stripe-metrics] Filtered ${academyInvoices.length} Academy invoices from ${allPaidInvoices.length} total paid invoices`);
     
     // Helper to get revenue from invoice (minimum correct approach: use invoice.total)
     // This includes discounts and is after refunds, before Stripe fees
@@ -472,15 +473,17 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let annualInvoicesMatched = 0;
     let annualRevenuePenniesSum = 0;
 
-    // Build subscription ID to type map for faster lookup
+    // Build subscription ID to type map for faster lookup (Academy only)
     const subscriptionTypeMap = new Map();
     allActiveSubs.forEach(sub => {
-      subscriptionTypeMap.set(sub.id, isAnnualSubscription(sub) ? 'annual' : 'other');
+      if (isAcademyAnnualSubscription(sub)) {
+        subscriptionTypeMap.set(sub.id, 'academy_annual');
+      }
     });
 
-    // Process invoices (limit to first 1000 for performance)
-    const invoicesToProcess = allPaidInvoices.slice(0, 1000);
-    console.log(`[stripe-metrics] Processing ${invoicesToProcess.length} paid invoices...`);
+    // Process Academy invoices only (already filtered above)
+    const invoicesToProcess = academyInvoices.slice(0, 1000);
+    console.log(`[stripe-metrics] Processing ${invoicesToProcess.length} Academy invoices...`);
     
     for (const invoice of invoicesToProcess) {
       // Skip non-GBP invoices
@@ -489,33 +492,33 @@ async function calculateStripeMetrics(forceRefresh = false) {
         continue;
       }
 
-      // Use invoice.total (minimum correct approach - includes discounts, after refunds, before Stripe fees)
+      // Use invoice.total (includes discounts, after refunds, before Stripe fees)
       // invoice.total is in minor units (pence), so divide by 100
       const invoiceRevenue = getInvoiceRevenue(invoice);
       
       // Log invoice details for debugging
       if (invoice.total && invoice.total > 0) {
-        console.log(`[stripe-metrics] Invoice ${invoice.id}: total=${invoice.total} (${invoice.total/100} GBP), billing_reason=${invoice.billing_reason || 'none'}, status=${invoice.status}`);
+        console.log(`[stripe-metrics] Academy invoice ${invoice.id}: total=${invoice.total} (${invoice.total/100} GBP), billing_reason=${invoice.billing_reason || 'none'}, status=${invoice.status}`);
       }
       
       if (invoiceRevenue === 0) {
-        console.log(`[stripe-metrics] Invoice ${invoice.id} has zero revenue, skipping`);
+        console.log(`[stripe-metrics] Academy invoice ${invoice.id} has zero revenue, skipping`);
         continue;
       }
 
       const invoiceCreated = new Date(invoice.created * 1000);
       const isInLast30d = invoiceCreated >= thirtyDaysAgo;
 
-      // Add to all-time total (all invoices)
+      // All invoices in this loop are Academy invoices, so add to totals
       revenueNetAllTime += invoiceRevenue;
       if (isInLast30d) {
         revenueNet30d += invoiceRevenue;
       }
 
-      // Check if this invoice contains the annual price ID in line items
-      const containsAnnualPrice = invoiceContainsAnnualPrice(invoice);
+      // All invoices here are Academy annual (already filtered)
+      const isAcademyAnnual = true;
       
-      if (containsAnnualPrice) {
+      if (isAcademyAnnual) {
         annualInvoicesMatched++;
         paidAnnualInvoicesCountAllTime++;
         annualRevenuePenniesSum += invoice.total || 0;
@@ -567,7 +570,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     }
     
-    console.log(`[stripe-metrics] Summary: invoicesFound=${invoicesFound}, annualInvoicesMatched=${annualInvoicesMatched}, annualRevenuePenniesSum=${annualRevenuePenniesSum}, annualRevenueNetAllTime=${annualRevenueNetAllTime}`);
+    console.log(`[stripe-metrics] Academy revenue summary: invoicesFound=${academyInvoices.length}, annualInvoicesMatched=${annualInvoicesMatched}, annualRevenuePenniesSum=${annualRevenuePenniesSum}, annualRevenueNetAllTime=${annualRevenueNetAllTime}`);
 
     metrics.revenue_net_all_time_gbp = Math.round(revenueNetAllTime * 100) / 100;
     metrics.revenue_net_last_30d_gbp = Math.round(revenueNet30d * 100) / 100;
@@ -581,16 +584,16 @@ async function calculateStripeMetrics(forceRefresh = false) {
     
     // Debug info
     metrics.stripe_key_mode = stripeKeyMode;
-    metrics.annual_price_id_used = ANNUAL_PRICE_ID;
+    metrics.academy_price_ids_used = require('../../lib/academyStripeConfig').ACADEMY_ANNUAL_PRICE_IDS;
     metrics.paid_annual_invoices_count_all_time = paidAnnualInvoicesCountAllTime;
     metrics.debug_sample_annual_invoice_ids = debugSampleAnnualInvoiceIds;
-    metrics.debug_invoices_found = invoicesFound;
+    metrics.debug_invoices_found = academyInvoices.length;
     metrics.debug_annual_invoices_matched = annualInvoicesMatched;
     metrics.debug_annual_revenue_pennies_sum = annualRevenuePenniesSum;
 
-    // I) ARR (Annual Run-Rate) from active annual subscriptions
+    // I) ARR (Annual Run-Rate) from active Academy annual subscriptions only
     allActiveSubs.forEach(sub => {
-      if (isAnnualSubscription(sub) && sub.status === 'active') {
+      if (isAcademyAnnualSubscription(sub) && sub.status === 'active') {
         metrics.arr_gbp += getSubscriptionRevenue(sub);
       }
     });
@@ -598,42 +601,42 @@ async function calculateStripeMetrics(forceRefresh = false) {
     metrics.arr_gbp = Math.round(metrics.arr_gbp * 100) / 100;
 
     // J) Opportunity Revenue (if all trials convert)
-    // Use active trials count (not ended, not expiring - just active)
-    // Get annual price from active annual subscriptions or from paid invoices
+    // NOTE: Trial count comes from Memberstack/DB (not Stripe, since trials are £0 checkouts)
+    // This will be set by the overview.js endpoint using Memberstack trial count
+    // For now, get the annual list price from Stripe
     let annualPriceGross = 0;
     
-    // First, try to get from a paid annual invoice (most accurate, includes discounts)
-    if (debugSampleAnnualInvoiceIds.length > 0) {
-      // Use the first annual invoice's total as the price (includes any discounts)
-      annualPriceGross = debugSampleAnnualInvoiceIds[0].total;
-      console.log(`[stripe-metrics] Using annual price from paid invoice: £${annualPriceGross}`);
-    } else if (allActiveSubs.length > 0) {
-      // Fallback: get from active annual subscription
-      const annualSub = allActiveSubs.find(sub => isAnnualSubscription(sub) && sub.status === 'active');
-      if (annualSub && annualSub.items?.data?.length > 0) {
-        const annualItem = annualSub.items.data.find(item => item.price?.recurring?.interval === 'year');
-        if (annualItem && annualItem.price?.unit_amount) {
-          annualPriceGross = annualItem.price.unit_amount / 100; // Convert to GBP
-          console.log(`[stripe-metrics] Using annual price from subscription: £${annualPriceGross}`);
+    try {
+      annualPriceGross = await getAcademyAnnualListPrice(stripe);
+      console.log(`[stripe-metrics] Retrieved Academy annual list price from Stripe: £${annualPriceGross}`);
+    } catch (priceError) {
+      console.warn(`[stripe-metrics] Failed to retrieve annual price, using fallback:`, priceError.message);
+      // Fallback: try to get from active subscription
+      const academyAnnualSub = allActiveSubs.find(sub => isAcademyAnnualSubscription(sub) && sub.status === 'active');
+      if (academyAnnualSub && academyAnnualSub.items?.data?.length > 0) {
+        const academyItem = academyAnnualSub.items.data.find(item => 
+          require('../../lib/academyStripeConfig').ACADEMY_ANNUAL_PRICE_IDS.includes(item.price?.id)
+        );
+        if (academyItem && academyItem.price?.unit_amount) {
+          annualPriceGross = academyItem.price.unit_amount / 100;
+          console.log(`[stripe-metrics] Using annual price from active subscription: £${annualPriceGross}`);
         }
+      }
+      
+      // Final fallback
+      if (annualPriceGross === 0) {
+        annualPriceGross = 79.00; // Default £79 annual price
+        console.log(`[stripe-metrics] Using default annual price: £${annualPriceGross}`);
       }
     }
 
-    // If still no price found, use default
-    if (annualPriceGross === 0) {
-      annualPriceGross = 79; // Default £79 annual price
-      console.log(`[stripe-metrics] Using default annual price: £${annualPriceGross}`);
-    }
-
-    // Use active trials count (not ended, not expiring)
-    const activeTrialsCount = metrics.trials_active_count;
-    const opportunityGross = activeTrialsCount * annualPriceGross;
-    const opportunityNetEstimate = opportunityGross * 0.97; // Estimate 3% Stripe fees
-
-    console.log(`[stripe-metrics] Opportunity: ${activeTrialsCount} active trials × £${annualPriceGross} = £${opportunityGross}`);
-
-    metrics.opportunity_revenue_gross_gbp = Math.round(opportunityGross * 100) / 100;
-    metrics.opportunity_revenue_net_estimate_gbp = Math.round(opportunityNetEstimate * 100) / 100;
+    // Store the annual list price for use by overview.js (which has Memberstack trial count)
+    metrics.academy_annual_list_price_gbp = annualPriceGross;
+    
+    // Note: Trial opportunity calculation will be done in overview.js using Memberstack trial count
+    // For now, set to 0 (will be overridden by overview.js)
+    metrics.opportunity_revenue_gross_gbp = 0;
+    metrics.opportunity_revenue_net_estimate_gbp = 0;
 
     // Update cache
     cache.data = metrics;

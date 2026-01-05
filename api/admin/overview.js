@@ -626,13 +626,19 @@ module.exports = async (req, res) => {
         revenue_from_conversions_net_30d_gbp: stripeMetrics.revenue_from_conversions_net_30d_gbp,
         revenue_from_direct_annual_net_all_time_gbp: stripeMetrics.revenue_from_direct_annual_net_all_time_gbp,
         revenue_from_direct_annual_net_30d_gbp: stripeMetrics.revenue_from_direct_annual_net_30d_gbp,
-        opportunity_revenue_gross_gbp: stripeMetrics.opportunity_revenue_gross_gbp,
-        opportunity_revenue_net_estimate_gbp: stripeMetrics.opportunity_revenue_net_estimate_gbp,
+        // Trial opportunity: Memberstack trial count × Stripe annual list price
+        opportunity_revenue_gross_gbp: stripeMetrics?.academy_annual_list_price_gbp 
+          ? Math.round((trials * stripeMetrics.academy_annual_list_price_gbp) * 100) / 100 
+          : 0,
+        opportunity_revenue_net_estimate_gbp: stripeMetrics?.academy_annual_list_price_gbp 
+          ? Math.round((trials * stripeMetrics.academy_annual_list_price_gbp * 0.97) * 100) / 100 
+          : 0,
+        academy_annual_list_price_gbp: stripeMetrics?.academy_annual_list_price_gbp || null,
         non_gbp_invoices_count: stripeMetrics.non_gbp_invoices_count,
         arr_gbp: stripeMetrics.arr_gbp,
         // Debug info
         stripe_key_mode: stripeMetrics.stripe_key_mode,
-        annual_price_id_used: stripeMetrics.annual_price_id_used,
+        academy_price_ids_used: stripeMetrics.academy_price_ids_used || stripeMetrics.annual_price_id_used,
         paid_annual_invoices_count_all_time: stripeMetrics.paid_annual_invoices_count_all_time,
         debug_sample_annual_invoice_ids: stripeMetrics.debug_sample_annual_invoice_ids,
         debug_invoices_found: stripeMetrics.debug_invoices_found,
