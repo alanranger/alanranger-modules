@@ -34,12 +34,13 @@ module.exports = async (req, res) => {
     // Get all-time events for all-time login days calculation
     const { data: allTimeEvents, error: allTimeError } = await supabase
       .from('academy_events')
-      .select('member_id, created_at')
+      .select('member_id, event_type, created_at')
       .not('member_id', 'is', null);
 
     if (allTimeError) throw allTimeError;
 
     // Build all-time login days map (member_id -> Set of distinct dates)
+    // Count both dashboard_access and module_open events as "logins"
     const allTimeLoginMap = {};
     if (allTimeEvents) {
       allTimeEvents.forEach(event => {
@@ -47,7 +48,7 @@ module.exports = async (req, res) => {
         if (!allTimeLoginMap[key]) {
           allTimeLoginMap[key] = new Set();
         }
-        if (event.created_at) {
+        if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
           const eventDate = new Date(event.created_at);
           const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
           allTimeLoginMap[key].add(dateOnly);
@@ -75,7 +76,8 @@ module.exports = async (req, res) => {
       }
       
       // Track login dates (distinct days with activity in period)
-      if (event.created_at) {
+      // Count both dashboard_access and module_open events as "logins"
+      if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
         const eventDate = new Date(event.created_at);
         const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
         memberMap[key].login_dates.add(dateOnly);
