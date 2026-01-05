@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academy Q&A - Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-header {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-header h1 {
+      margin: 0 0 10px 0;
+      color: #111;
+    }
+    .test-info {
+      font-size: 14px;
+      color: #666;
+      margin: 10px 0;
+    }
+    .test-accounts {
+      background: #fff3e6;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .test-accounts strong {
+      color: #E57200;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-header">
+    <h1>🧪 Academy Q&A - Test Page</h1>
+    <div class="test-info">
+      <p><strong>Purpose:</strong> Test Q&A functionality before deploying to live Squarespace page</p>
+      <p><strong>Status:</strong> <span id="auth-status">Checking...</span></p>
+    </div>
+    <div class="test-accounts">
+      <strong>Test Accounts:</strong><br>
+      • info@alanranger.com (Trial) - password: Ipswich1968<br>
+      • marketing@alanranger.com (Annual) - password: ipswich1968
+    </div>
+  </div>
+
+  <!-- Academy Q&A Snippet (from academy-questions-answers-squarespace-snippet-v1.html) -->
+  <!-- Academy Q&A Section (Supabase-backed via Vercel API) -->
+  <div id="academy-qa-section" style="max-width:800px; margin: 40px auto; font-family: sans-serif; text-align: left;">
+    <h2 style="border-bottom: 2px solid #E57200; padding-bottom: 10px;">Academy Q&amp;A</h2>
+
+    <div id="qa-form-container" style="background: #f4f4f4; padding: 25px; border-radius: 12px; margin-bottom: 35px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <h4 style="margin-top:0;">Ask a Question</h4>
+      <textarea id="qa-input" placeholder="What is on your mind?" style="width: 100%; height: 100px; padding: 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box;"></textarea>
+      <button id="submit-qa" style="background: #E57200; color: #fff; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px;">Post to Academy</button>
+      <div id="qa-status" style="margin-top: 10px; font-size: 14px; display: none;"></div>
+      <p style="margin:14px 0 0; color:#666; font-size:14px;">Please keep questions on-topic. Don't post personal booking details.</p>
+    </div>
+
+    <div id="qa-list-container">
+      <h4>My Questions</h4>
+      <div id="qa-list">
+        <p style="color: #999;">Loading questions...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memberstack SDK (required for authentication) -->
+  <!-- Update data-memberstack-id with your actual Memberstack App ID -->
+  <script src="https://cdn.memberstack.com/scripts/memberstack.js" data-memberstack-id="YOUR_MEMBERSTACK_APP_ID"></script>
+  
+  <script>
+  (function () {
+    const API_BASE = "https://alanranger-modules.vercel.app";
+    const API_URL = API_BASE + "/api/academy-qa-questions";
+
+    const pageUrl = (window.location.origin + window.location.pathname).replace(/\/$/, "");
+
+    const els = {
+      list: document.getElementById("qa-list"),
+      status: document.getElementById("qa-status"),
+      input: document.getElementById("qa-input"),
+      btn: document.getElementById("submit-qa"),
+    };
+
+    // Update auth status in test header
+    async function updateAuthStatus() {
+      const statusEl = document.getElementById("auth-status");
+      const member = await getMember();
+      if (member) {
+        const email = (member.auth && member.auth.email) || member.email || "Unknown";
+        statusEl.textContent = `✅ Logged in as: ${email}`;
+        statusEl.style.color = "#10b981";
+      } else {
+        statusEl.textContent = "❌ Not logged in";
+        statusEl.style.color = "#ef4444";
+      }
+    }
+
+    function showStatus(msg, color) {
+      els.status.style.display = "block";
+      els.status.style.color = color || "#333";
+      els.status.textContent = msg;
+    }
+
+    function hideStatusSoon() {
+      setTimeout(() => {
+        els.status.style.display = "none";
+      }, 4000);
+    }
+
+    async function safeFetchJson(url, options) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
+
+      if (!res.ok) {
+        const err = json?.error || json?.message || ("HTTP " + res.status);
+        throw new Error(err);
+      }
+      return json;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function extractFirstName(fullName) {
+      if (!fullName) return null;
+      if (fullName.includes('@')) return null;
+      const parts = fullName.trim().split(/\s+/);
+      return parts[0] || null;
+    }
+
+    function getStatusLabel(status) {
+      const statusMap = {
+        'ai_suggested': { label: 'AI Suggested', color: '#E57200' },
+        'closed': { label: 'Closed', color: '#10b981' },
+        'queued': { label: 'Queued for Alan', color: '#f59e0b' }
+      };
+      return statusMap[status] || { label: status || 'Open', color: '#666' };
+    }
+
+    function renderQuestions(rows) {
+      if (!rows || !rows.length) {
+        els.list.innerHTML = '<p style="color:#999; font-style: italic;">No questions yet. Ask your first question above!</p>';
+        return;
+      }
+
+      els.list.innerHTML = "";
+      rows.forEach(row => {
+        const content = row.question || "";
+        const date = row.created_at ? new Date(row.created_at).toLocaleDateString() : "";
+        const status = row.status || 'ai_suggested';
+        const statusInfo = getStatusLabel(status);
+
+        const qDiv = document.createElement("div");
+        qDiv.style = "background:#fff;border:1px solid #eee;padding:20px;border-radius:8px;margin-bottom:15px;box-shadow:0 2px 4px rgba(0,0,0,0.02);";
+        qDiv.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:11px; padding:3px 8px; border-radius:999px; background:${statusInfo.color}15; color:${statusInfo.color}; font-weight:500;">${escapeHtml(statusInfo.label)}</span>
+              </div>
+              <p style="margin:0; line-height:1.5; color:#333; white-space:pre-wrap; font-weight:500;">${escapeHtml(content)}</p>
+            </div>
+            <span style="font-size:12px; color:#aaa; flex:0 0 auto; white-space:nowrap;">${escapeHtml(date)}</span>
+          </div>
+        `;
+        els.list.appendChild(qDiv);
+      });
+    }
+
+    async function fetchQuestions() {
+      try {
+        const member = await getMember();
+        if (!member) {
+          els.list.innerHTML = '<p style="color:#666; font-style:italic;">Please sign in to view your questions.</p>';
+          return;
+        }
+
+        const url = API_URL + "?limit=25";
+        const json = await safeFetchJson(url, { 
+          method: "GET", 
+          cache: "no-store",
+          credentials: "include"
+        });
+        renderQuestions(json.data || []);
+      } catch (err) {
+        console.error("[Academy Q&A] Fetch failed:", err);
+        const errorMsg = err.message || String(err);
+        if (errorMsg.includes("401") || errorMsg.includes("Authentication")) {
+          els.list.innerHTML = '<p style="color:#666; font-style:italic;">Please sign in to view your questions.</p>';
+        } else {
+          els.list.innerHTML = '<p style="color:#c2410c;">Could not load questions. Please try again.</p>';
+        }
+      }
+    }
+
+    async function getMember() {
+      const ms = window.$memberstackDom;
+      if (!ms || !ms.getCurrentMember) return null;
+
+      try {
+        const { data: member } = await ms.getCurrentMember();
+        return member || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function submitQuestion() {
+      const questionText = (els.input.value || "").trim();
+      if (!questionText) return;
+
+      const member = await getMember();
+      if (!member) {
+        showStatus("Please sign in to ask a question.", "#b91c1c");
+        if (window.$memberstackDom && window.$memberstackDom.openModal) {
+          window.$memberstackDom.openModal("LOGIN");
+        }
+        return;
+      }
+
+      if (questionText.length < 10) {
+        showStatus("Question must be at least 10 characters.", "#b91c1c");
+        return;
+      }
+      if (questionText.length > 2000) {
+        showStatus("Question must be 2000 characters or less.", "#b91c1c");
+        return;
+      }
+
+      els.btn.disabled = true;
+      showStatus("Posting...", "#333");
+
+      try {
+        const payload = {
+          page_url: pageUrl,
+          question: questionText
+        };
+
+        await safeFetchJson(API_URL, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+          cache: "no-store"
+        });
+
+        els.input.value = "";
+        showStatus("✓ Question posted!", "green");
+        els.btn.disabled = false;
+        await fetchQuestions();
+        await updateAuthStatus(); // Refresh auth status
+        hideStatusSoon();
+      } catch (err) {
+        console.error("[Academy Q&A] Submit failed:", err);
+        const errorMsg = err.message || String(err);
+        if (errorMsg.includes("401") || errorMsg.includes("Authentication")) {
+          showStatus("Please sign in to ask a question.", "#b91c1c");
+          if (window.$memberstackDom && window.$memberstackDom.openModal) {
+            window.$memberstackDom.openModal("LOGIN");
+          }
+        } else {
+          showStatus("Error: Could not post question. Please try again.", "#b91c1c");
+        }
+        els.btn.disabled = false;
+      }
+    }
+
+    async function initialize() {
+      const member = await getMember();
+      await updateAuthStatus();
+      
+      if (!member) {
+        els.btn.disabled = true;
+        els.input.placeholder = "Please sign in to ask a question";
+        els.list.innerHTML = '<p style="color:#666; font-style:italic;">Please sign in to view your questions.</p>';
+      } else {
+        els.btn.disabled = false;
+        await fetchQuestions();
+      }
+    }
+
+    els.btn.addEventListener("click", submitQuestion);
+
+    // Wait for Memberstack to load, then initialize
+    function waitForMemberstack() {
+      if (window.$memberstackDom) {
+        initialize();
+      } else {
+        setTimeout(waitForMemberstack, 100);
+      }
+    }
+    waitForMemberstack();
+  })();
+  </script>
+</body>
+</html>
