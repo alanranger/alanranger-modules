@@ -64,7 +64,30 @@ function getSubscriptionRevenue(subscription) {
 async function calculateStripeMetrics(forceRefresh = false) {
   try {
     // Initialize Stripe client (checks env var at runtime)
-    const stripe = getStripe();
+    console.log('[stripe-metrics] Initializing Stripe client...');
+    let stripe;
+    try {
+      stripe = getStripe();
+    } catch (initError) {
+      console.error('[stripe-metrics] Failed to initialize Stripe client:', initError);
+      throw initError;
+    }
+    
+    if (!stripe) {
+      throw new Error('Stripe client initialization returned undefined');
+    }
+    
+    if (!stripe.subscriptions) {
+      console.error('[stripe-metrics] Stripe client missing subscriptions property. Stripe object keys:', Object.keys(stripe || {}));
+      throw new Error('Stripe client is not properly initialized - missing subscriptions property');
+    }
+    
+    if (typeof stripe.subscriptions.list !== 'function') {
+      console.error('[stripe-metrics] Stripe subscriptions.list is not a function. Type:', typeof stripe.subscriptions.list);
+      throw new Error('Stripe client is not properly initialized - subscriptions.list is not a function');
+    }
+    
+    console.log('[stripe-metrics] Stripe client initialized successfully');
     
     // Check cache unless force refresh
     const now = Date.now();
@@ -587,7 +610,11 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('[stripe-metrics] API Error:', error);
+    console.error('[stripe-metrics] Error message:', error.message);
     console.error('[stripe-metrics] Error stack:', error.stack);
+    if (error.debugInfo) {
+      console.error('[stripe-metrics] Debug info:', JSON.stringify(error.debugInfo, null, 2));
+    }
     
     // Return error details in response for debugging
     return res.status(500).json({ 
@@ -595,7 +622,10 @@ module.exports = async (req, res) => {
       details: 'Stripe metrics calculation failed',
       debugError: error.message,
       debugStack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      stripe_key_mode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test'
+      debugInfo: error.debugInfo || null,
+      stripe_key_mode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test',
+      stripe_key_exists: !!process.env.STRIPE_SECRET_KEY,
+      stripe_key_length: process.env.STRIPE_SECRET_KEY?.length || 0
     });
   }
 };
