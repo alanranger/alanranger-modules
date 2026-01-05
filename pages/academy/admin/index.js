@@ -253,43 +253,59 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div>
+                {/* Summary Stats */}
                 <div style={{ marginBottom: '16px' }}>
-                  {refreshResults.total_members_fetched !== undefined && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
-                      <span style={{ color: 'var(--ar-text-muted)' }}>Total Members Fetched:</span>
-                      <span style={{ color: 'var(--ar-text)', fontWeight: 600 }}>{refreshResults.total_members_fetched || 0}</span>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
+                    <span style={{ color: 'var(--ar-text-muted)' }}>Members Fetched:</span>
+                    <span style={{ color: 'var(--ar-text)', fontWeight: 600 }}>{refreshResults.members_fetched || 0}</span>
+                  </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
                     <span style={{ color: 'var(--ar-text-muted)' }}>Members Processed:</span>
-                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.members_processed || 0}</span>
+                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.members_upserted || 0}</span>
                   </div>
-                  {refreshResults.members_skipped !== undefined && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
-                      <span style={{ color: 'var(--ar-text-muted)' }}>Members Skipped:</span>
-                      <span style={{ color: 'var(--ar-text-muted)', fontWeight: 600 }}>{refreshResults.members_skipped || 0}</span>
-                      <span style={{ fontSize: '12px', color: 'var(--ar-text-muted)', fontStyle: 'italic' }}>
-                        (no opened modules data)
-                      </span>
-                    </div>
-                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--ar-border)' }}>
                     <span style={{ color: 'var(--ar-text-muted)' }}>Events Added:</span>
-                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.events_added || 0}</span>
+                    <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{refreshResults.events_upserted || 0}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
+                </div>
+
+                {/* Plan Type Breakdown */}
+                {(refreshResults.new_trials > 0 || refreshResults.new_annual > 0 || refreshResults.updated_members > 0) && (
+                  <div style={{ marginTop: '16px', marginBottom: '16px', paddingTop: '16px', borderTop: '1px solid var(--ar-border)' }}>
+                    <div style={{ color: 'var(--ar-text-muted)', fontSize: '12px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Changes Detected
+                    </div>
+                    {refreshResults.new_trials > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                        <span style={{ color: 'var(--ar-text-muted)' }}>New Trial Members:</span>
+                        <span style={{ color: 'rgba(245,158,11,0.95)', fontWeight: 600 }}>+{refreshResults.new_trials}</span>
+                      </div>
+                    )}
+                    {refreshResults.new_annual > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                        <span style={{ color: 'var(--ar-text-muted)' }}>New Annual Members:</span>
+                        <span style={{ color: 'rgba(34,197,94,0.95)', fontWeight: 600 }}>+{refreshResults.new_annual}</span>
+                      </div>
+                    )}
+                    {refreshResults.updated_members > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                        <span style={{ color: 'var(--ar-text-muted)' }}>Updated Members:</span>
+                        <span style={{ color: 'var(--ar-text)', fontWeight: 600 }}>{refreshResults.updated_members}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Status Message */}
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--ar-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', marginBottom: '8px' }}>
                     <span style={{ color: 'var(--ar-text-muted)' }}>Status:</span>
                     <span style={{ color: '#10b981', fontWeight: 600 }}>Success</span>
                   </div>
-                </div>
-                <p style={{ fontSize: '14px', color: 'var(--ar-text-muted)', marginTop: '16px' }}>
-                  {refreshResults.message || 'Data has been synced from Memberstack to Supabase.'}
-                </p>
-                {refreshResults.members_skipped > 0 && (
-                  <p style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginTop: '12px', fontStyle: 'italic' }}>
-                    Note: Skipped members don't have <code>arAcademy.modules.opened</code> data in their Memberstack JSON yet.
+                  <p style={{ fontSize: '13px', color: 'var(--ar-text-muted)', marginTop: '12px', lineHeight: '1.5' }}>
+                    {refreshResults.message || 'Data has been synced from Memberstack to Supabase.'}
                   </p>
-                )}
+                </div>
               </div>
             )}
             

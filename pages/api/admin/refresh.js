@@ -64,6 +64,9 @@ export default async function handler(req, res) {
     let membersFetched = 0;
     let membersUpserted = 0;
     let eventsUpserted = 0;
+    let newTrials = 0;
+    let newAnnual = 0;
+    let updatedMembers = 0;
 
     let after = undefined;
     const limit = 100;
@@ -309,6 +312,10 @@ export default async function handler(req, res) {
       members_fetched: membersFetched,
       members_upserted: membersUpserted,
       events_upserted: eventsUpserted,
+      new_trials: newTrials,
+      new_annual: newAnnual,
+      updated_members: updatedMembers,
+      message: `Synced ${membersUpserted} members and ${eventsUpserted} events from Memberstack to Supabase.`
     });
   } catch (err) {
     console.error('[refresh] Fatal error:', err);
