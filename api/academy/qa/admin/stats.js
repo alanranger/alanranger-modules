@@ -3,7 +3,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
-const { checkAdminAccess } = require(path.join(process.cwd(), "api", "admin", "_auth.js"));
+const { checkAdminAccess } = require(path.resolve(__dirname, "../../../admin/_auth.js"));
 
 module.exports = async (req, res) => {
   // Check admin access
