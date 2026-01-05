@@ -122,23 +122,23 @@ module.exports = async function handler(req, res) {
         console.error("[qa-count-api] Error counting asked:", askedError);
       }
 
-      // Get answered count (status = 'answered' or 'closed', or has admin_answer)
+      // Get answered count (has published answer field - Phase 3 consolidated field)
       const { count: answeredCount, error: answeredError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
         .eq("member_id", auth.memberId)
-        .or("status.eq.answered,status.eq.closed,admin_answer.not.is.null");
+        .not("answer", "is", null); // Has published answer
 
       if (answeredError) {
         console.error("[qa-count-api] Error counting answered:", answeredError);
       }
 
-      // Get outstanding count (status = 'ai_suggested' or 'queued')
+      // Get outstanding count (no published answer - includes AI drafts and queued)
       const { count: outstandingCount, error: outstandingError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
         .eq("member_id", auth.memberId)
-        .in("status", ["ai_suggested", "queued"]);
+        .is("answer", null); // No published answer
 
       if (outstandingError) {
         console.error("[qa-count-api] Error counting outstanding:", outstandingError);
