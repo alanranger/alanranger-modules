@@ -1,0 +1,438 @@
+<!--
+Academy Login — Squarespace Code Block (v3 - Forced Trial Checkout)
+Page: /academy/login
+Purpose: Trial signup immediately redirects to Stripe checkout (no account without plan)
+-->
+
+<div id="arp-academy-login" style="max-width:720px;margin:0 auto;padding:28px 18px;text-align:center;">
+  <style>
+    /* Panel frame (match your card style) */
+    #arp-academy-login{
+      border: 1px solid rgba(17, 24, 39, 0.14);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    #arp-academy-login:hover{
+      transform: translateY(-2px);
+      border-color: rgba(229,114,0,0.30);
+      box-shadow: 0 18px 46px rgba(17, 24, 39, 0.14);
+    }
+
+    /* CTA hover: lift + subtle wiggle (scoped only) */
+    #arp-academy-login #arpLoginBtn,
+    #arp-academy-login #arpTrialBtn,
+    #arp-academy-login #arpAnnualBtn,
+    #arp-academy-login #arpTrialForm button[type="submit"]{
+      transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+      will-change: transform;
+    }
+    #arp-academy-login #arpLoginBtn:hover,
+    #arp-academy-login #arpLoginBtn:focus-visible,
+    #arp-academy-login #arpTrialBtn:hover,
+    #arp-academy-login #arpTrialBtn:focus-visible,
+    #arp-academy-login #arpAnnualBtn:hover,
+    #arp-academy-login #arpAnnualBtn:focus-visible,
+    #arp-academy-login #arpTrialForm button[type="submit"]:hover,
+    #arp-academy-login #arpTrialForm button[type="submit"]:focus-visible{
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: rgba(0,0,0,0.22) 0px 10px 26px;
+      animation: arp-wiggle 0.45s ease-in-out;
+      outline: none;
+    }
+    @keyframes arp-wiggle{
+      0%, 100% { transform: translateY(-2px) scale(1.02) rotate(0deg); }
+      25% { transform: translateY(-2px) scale(1.02) rotate(-0.8deg); }
+      75% { transform: translateY(-2px) scale(1.02) rotate(0.8deg); }
+    }
+    @media (prefers-reduced-motion: reduce){
+      #arp-academy-login #arpLoginBtn:hover,
+      #arp-academy-login #arpLoginBtn:focus-visible,
+      #arp-academy-login #arpTrialBtn:hover,
+      #arp-academy-login #arpTrialBtn:focus-visible,
+      #arp-academy-login #arpAnnualBtn:hover,
+      #arp-academy-login #arpAnnualBtn:focus-visible,
+      #arp-academy-login #arpTrialForm button[type="submit"]:hover,
+      #arp-academy-login #arpTrialForm button[type="submit"]:focus-visible{
+        animation: none;
+      }
+    }
+
+    /* Trial form styles */
+    #arp-academy-login #arpTrialForm {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(37, 99, 235, 0.05);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: 12px;
+      text-align: left;
+    }
+    #arp-academy-login #arpTrialForm.is-visible {
+      display: block;
+    }
+    #arp-academy-login #arpTrialForm .form-group {
+      margin-bottom: 16px;
+    }
+    #arp-academy-login #arpTrialForm label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+    }
+    #arp-academy-login #arpTrialForm input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+    #arp-academy-login #arpTrialForm input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    #arp-academy-login #arpTrialForm button[type="submit"] {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 1.2;
+      cursor: pointer;
+      box-shadow: rgba(0,0,0,0.18) 0px 2px 6px;
+      margin-top: 8px;
+    }
+    #arp-academy-login #arpTrialForm button[type="submit"]:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    #arp-academy-login #arpTrialForm .error-message {
+      display: none;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #dc2626;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #arp-academy-login #arpTrialForm .error-message.is-visible {
+      display: block;
+    }
+    #arp-academy-login #arpTrialForm .error-message.is-info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #2563eb;
+    }
+    #arp-academy-login #arpTrialForm .cancel-link {
+      display: block;
+      margin-top: 12px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    #arp-academy-login #arpTrialForm .cancel-link:hover {
+      color: #333;
+      text-decoration: underline;
+    }
+  </style>
+
+  <h1 style="margin:0 0 10px 0;font-size:34px;letter-spacing:.5px;">Academy Login / Join</h1>
+  <p style="margin:0 0 18px 0;color:#555;font-size:16px;line-height:1.6;">
+    Log in to access your modules, exams, downloads, practice packs, and membership status.
+  </p>
+
+  <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;">
+    <!-- Memberstack login modal -->
+    <button
+      id="arpLoginBtn"
+      type="button"
+      data-ms-modal="login"
+      aria-label="Log in to the Academy"
+      style="background:#E57200;color:#fff;padding:14px 34px;border:none;border-radius:8px;font-weight:700;font-size:16px;line-height:1.2;cursor:pointer;box-shadow:rgba(0,0,0,0.18) 0px 2px 6px;display:inline-flex !important;align-items:center;justify-content:center;min-width:180px;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;position:relative !important;z-index:9999 !important;"
+    >
+      Log in
+    </button>
+
+    <!-- Start 30-Day Free Trial Button (opens form) -->
+    <button
+      id="arpTrialBtn"
+      type="button"
+      aria-label="Start 30-Day Free Trial"
+      style="background:#2563eb;color:#fff;padding:14px 34px;border:none;border-radius:8px;font-weight:700;font-size:16px;line-height:1.2;cursor:pointer;box-shadow:rgba(0,0,0,0.18) 0px 2px 6px;display:inline-flex;align-items:center;justify-content:center;min-width:180px;"
+    >
+      Start 30-Day Free Trial
+    </button>
+
+    <!-- Annual Membership Button -->
+    <button
+      id="arpAnnualBtn"
+      type="button"
+      data-ms-modal="signup"
+      data-ms-price:add="prc_annual-membership-jj7y0h89"
+      style="background:#E57200;color:#fff;padding:14px 34px;border:none;border-radius:8px;font-weight:700;font-size:16px;line-height:1.2;cursor:pointer;box-shadow:rgba(0,0,0,0.18) 0px 2px 6px;display:inline-flex;align-items:center;justify-content:center;min-width:180px;"
+    >
+      Annual Membership
+    </button>
+  </div>
+
+  <!-- Trial Signup Form (hidden by default) -->
+  <form id="arpTrialForm" novalidate>
+    <h3 style="margin:0 0 16px 0;font-size:20px;font-weight:700;color:#2563eb;text-align:center;">Create Account & Start Free Trial</h3>
+    
+    <div class="form-group">
+      <label for="arpTrialEmail">Email Address</label>
+      <input
+        type="email"
+        id="arpTrialEmail"
+        name="email"
+        required
+        autocomplete="email"
+        placeholder="your@email.com"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="arpTrialPassword">Password</label>
+      <input
+        type="password"
+        id="arpTrialPassword"
+        name="password"
+        required
+        autocomplete="new-password"
+        placeholder="Choose a secure password"
+        minlength="8"
+      />
+    </div>
+
+    <button type="submit" id="arpTrialSubmitBtn">
+      Create Account & Continue to Checkout
+    </button>
+
+    <div class="error-message" id="arpTrialError"></div>
+
+    <a href="#" class="cancel-link" id="arpTrialCancel">Cancel</a>
+  </form>
+
+  <div style="margin-top:14px;color:#666;font-size:14px;line-height:1.6;">
+    Forgot your password? Use <strong>"Forgot Password"</strong> in the login form.
+  </div>
+</div>
+
+<script>
+(function () {
+  // Keep ONLY the visibility safeguard for the login button
+  function keepVisible() {
+    var btn = document.getElementById("arpLoginBtn");
+    if (!btn) return;
+    btn.style.setProperty("display", "inline-flex", "important");
+    btn.style.setProperty("opacity", "1", "important");
+    btn.style.setProperty("visibility", "visible", "important");
+    btn.style.setProperty("pointer-events", "auto", "important");
+    btn.style.setProperty("position", "relative", "important");
+    btn.style.setProperty("z-index", "9999", "important");
+  }
+
+  keepVisible();
+  window.addEventListener("load", function () {
+    setTimeout(keepVisible, 0);
+    setTimeout(keepVisible, 250);
+  });
+
+  // Guarded observer (prevents the "parameter 1 is not of type Node" crash)
+  var root = document.documentElement || document.body;
+  if (root && root.nodeType === 1) {
+    var mo = new MutationObserver(function () { keepVisible(); });
+    mo.observe(root, { childList: true, subtree: true });
+  }
+
+  // Trial signup form logic
+  var trialBtn = document.getElementById("arpTrialBtn");
+  var trialForm = document.getElementById("arpTrialForm");
+  var trialCancel = document.getElementById("arpTrialCancel");
+  var trialSubmitBtn = document.getElementById("arpTrialSubmitBtn");
+  var trialError = document.getElementById("arpTrialError");
+  var trialEmailInput = document.getElementById("arpTrialEmail");
+  var trialPasswordInput = document.getElementById("arpTrialPassword");
+
+  // Show form when trial button is clicked
+  if (trialBtn && trialForm) {
+    trialBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      trialForm.classList.add("is-visible");
+      trialError.classList.remove("is-visible");
+      trialEmailInput.focus();
+    });
+  }
+
+  // Hide form when cancel is clicked
+  if (trialCancel && trialForm) {
+    trialCancel.addEventListener("click", function(e) {
+      e.preventDefault();
+      trialForm.classList.remove("is-visible");
+      trialError.classList.remove("is-visible");
+      trialForm.reset();
+    });
+  }
+
+  // Handle form submission
+  if (trialForm) {
+    trialForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      var email = trialEmailInput.value.trim();
+      var password = trialPasswordInput.value;
+
+      // Basic validation
+      if (!email || !password) {
+        showError("Please enter both email and password.");
+        return;
+      }
+
+      if (password.length < 8) {
+        showError("Password must be at least 8 characters long.");
+        return;
+      }
+
+      // Disable submit button and show neutral redirecting message
+      trialSubmitBtn.disabled = true;
+      trialSubmitBtn.textContent = "Redirecting to secure checkout...";
+      trialError.classList.remove("is-visible", "is-info");
+
+      // Store initial page location to detect navigation
+      var initialHref = window.location.href;
+      var hasNavigated = false;
+      
+      // Monitor for navigation
+      var navigationCheck = setInterval(function() {
+        if (window.location.href !== initialHref) {
+          hasNavigated = true;
+          clearInterval(navigationCheck);
+        }
+      }, 100);
+
+      try {
+        // Wait for Memberstack to be available
+        var ms = await waitForMemberstack();
+        if (!ms) {
+          throw new Error("Memberstack is not available. Please refresh the page.");
+        }
+
+        // Step 1: Create account
+        await ms.signupMemberEmailPassword({ email: email, password: password });
+
+        // Step 2: Create checkout session
+        var checkoutResult = await ms.purchasePlansWithCheckout({
+          priceId: "prc_30-day-free-trial-mg18p0u9z",
+          successUrl: "https://alanranger.com/academy/dashboard",
+          cancelUrl: "https://alanranger.com/free-online-photography-course"
+        });
+
+        // Step 3: Handle checkout URL with delayed error handling
+        if (checkoutResult && checkoutResult.data && checkoutResult.data.url) {
+          // URL is present - redirect immediately
+          clearInterval(navigationCheck);
+          window.location.href = checkoutResult.data.url;
+          return; // Exit early, redirect started
+        }
+
+        // URL not immediately present - wait before showing any message
+        // Wait 1-2 seconds first
+        await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+
+        // Check if page has navigated (Memberstack may have redirected)
+        if (hasNavigated || window.location.href !== initialHref) {
+          clearInterval(navigationCheck);
+          return; // Navigation occurred, don't show error
+        }
+
+        // Still on login page after delay - show neutral message
+        showInfo("Opening checkout... If nothing happens, please try again.");
+        
+        // Wait additional 3-4 seconds before showing hard error
+        await new Promise(function(resolve) { setTimeout(resolve, 3500); });
+
+        // Final check - if still on page, show error
+        if (!hasNavigated && window.location.href === initialHref) {
+          clearInterval(navigationCheck);
+          showError("Checkout could not be opened. Please try again or contact support.");
+          trialSubmitBtn.disabled = false;
+          trialSubmitBtn.textContent = "Create Account & Continue to Checkout";
+        } else {
+          clearInterval(navigationCheck);
+        }
+
+      } catch (error) {
+        clearInterval(navigationCheck);
+        
+        // Only show error if still on login page
+        if (!hasNavigated && window.location.href === initialHref) {
+          console.error("[Trial Signup] Error:", error);
+          var errorMsg = "Signup failed. ";
+          if (error.message) {
+            errorMsg += error.message;
+          } else if (typeof error === "string") {
+            errorMsg += error;
+          } else {
+            errorMsg += "Please try again or contact support.";
+          }
+          showError(errorMsg);
+          trialSubmitBtn.disabled = false;
+          trialSubmitBtn.textContent = "Create Account & Continue to Checkout";
+        }
+      }
+    });
+  }
+
+  function showError(message) {
+    if (trialError) {
+      trialError.textContent = message;
+      trialError.classList.remove("is-info");
+      trialError.classList.add("is-visible");
+    }
+  }
+
+  function showInfo(message) {
+    if (trialError) {
+      trialError.textContent = message;
+      trialError.classList.add("is-info", "is-visible");
+    }
+  }
+
+  function waitForMemberstack() {
+    return new Promise(function(resolve) {
+      // Check if already available
+      if (window.$memberstackDom) {
+        resolve(window.$memberstackDom);
+        return;
+      }
+
+      // Wait up to 10 seconds
+      var attempts = 0;
+      var maxAttempts = 50; // 50 * 200ms = 10 seconds
+      var interval = setInterval(function() {
+        attempts++;
+        if (window.$memberstackDom) {
+          clearInterval(interval);
+          resolve(window.$memberstackDom);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          resolve(null);
+        }
+      }, 200);
+    });
+  }
+})();
+</script>
+
