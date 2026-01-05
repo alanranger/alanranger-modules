@@ -256,8 +256,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // Build trial cohort (trialing or ended with trial_end in last 30d)
     console.log('[stripe-metrics] Calculating trial conversions...');
     
-    // Get all subscriptions that were trialing or have trial_end
-    const allSubsForConversion = await fetchAllSubscriptions({});
+    // Use subscriptions we already fetched (active, trialing, canceled) instead of making another API call
+    const allSubsForConversion = [...allActiveSubs, ...canceledSubs];
     
     const trialCohort = allSubsForConversion.filter(sub => {
       if (sub.status === 'trialing') return true;
