@@ -100,14 +100,48 @@ module.exports = async (req, res) => {
         const rawStatus = planToUse?.status || "UNPAID";
         const planStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : "UNPAID";
         
+        // Extract payment info from plan connection
+        const payment = planToUse?.payment || {};
+        const planType = planToUse?.type || null; // "SUBSCRIPTION" or "ONETIME"
+        
+        // Determine payment mode: SUBSCRIPTION = RECURRING, ONETIME = ONETIME
+        let paymentMode = planToUse?.paymentMode || null;
+        if (!paymentMode && planType) {
+          paymentMode = planType === "SUBSCRIPTION" ? "RECURRING" : "ONETIME";
+        }
+        
+        // Extract dates from various sources
         let expiryDate = null;
-        if (trialPlan?.expiryDate) {
+        let currentPeriodEnd = null;
+        
+        // For subscriptions, use nextBillingDate (Unix timestamp) as current_period_end
+        if (payment?.nextBillingDate) {
+          // Convert Unix timestamp to ISO string
+          const nextBillingTimestamp = typeof payment.nextBillingDate === 'number' 
+            ? payment.nextBillingDate 
+            : parseInt(payment.nextBillingDate, 10);
+          if (!isNaN(nextBillingTimestamp)) {
+            currentPeriodEnd = new Date(nextBillingTimestamp * 1000).toISOString();
+            // For annual subscriptions, also use as expiry_date
+            if (planType === "SUBSCRIPTION") {
+              expiryDate = currentPeriodEnd;
+            }
+          }
+        }
+        
+        // Fallback to plan connection expiryDate if available
+        if (!expiryDate && trialPlan?.expiryDate) {
           expiryDate = safeIso(trialPlan.expiryDate);
-        } else if (planToUse?.expiryDate) {
+        } else if (!expiryDate && planToUse?.expiryDate) {
           expiryDate = safeIso(planToUse.expiryDate);
         }
         
-        const isTrial = planId === trialPlanId || (planToUse?.paymentMode === "ONETIME" && expiryDate);
+        // Fallback to plan connection current_period_end if available
+        if (!currentPeriodEnd && planToUse?.current_period_end) {
+          currentPeriodEnd = safeIso(planToUse.current_period_end);
+        }
+        
+        const isTrial = planId === trialPlanId || (planType === "ONETIME" && expiryDate);
         const memberCreatedAt = safeIso(fullMemberData?.createdAt) || new Date().toISOString();
         if (isTrial && !expiryDate) {
           const createdDate = new Date(memberCreatedAt);
@@ -115,10 +149,11 @@ module.exports = async (req, res) => {
           expiryDate = trialEndDate.toISOString();
         }
         
-        const paymentMode = planToUse?.paymentMode || null;
-        const currentPeriodEnd = planToUse?.current_period_end ? safeIso(planToUse.current_period_end) : null;
         const cancelAtPeriodEnd = planToUse?.cancelAtPeriodEnd || false;
-        const isPaid = planStatus === "ACTIVE" && paymentMode === "RECURRING";
+        
+        // Determine is_paid: true if payment is PAID and it's a subscription, or if status is ACTIVE with RECURRING payment
+        const isPaid = (payment?.status === "PAID" && planType === "SUBSCRIPTION") || 
+                       (planStatus === "ACTIVE" && paymentMode === "RECURRING");
         
         let planType = null;
         let planName = null;
