@@ -2,7 +2,7 @@
 // Returns real-time Stripe subscription metrics for Admin Dashboard
 // Uses Stripe Subscriptions API (not invoices) for accurate counts
 
-const stripe = require('../../lib/stripe');
+const getStripe = require('../../lib/stripe');
 
 // Simple in-memory cache
 let cache = {
@@ -12,7 +12,7 @@ let cache = {
 };
 
 // Helper to fetch all subscriptions with pagination
-async function fetchAllSubscriptions(filters = {}) {
+async function fetchAllSubscriptions(stripe, filters = {}) {
   const subscriptions = [];
   let hasMore = true;
   let startingAfter = null;
@@ -63,6 +63,9 @@ function getSubscriptionRevenue(subscription) {
 // Main calculation function (can be called directly or via API)
 async function calculateStripeMetrics(forceRefresh = false) {
   try {
+    // Initialize Stripe client (checks env var at runtime)
+    const stripe = getStripe();
+    
     // Check cache unless force refresh
     const now = Date.now();
 
@@ -96,12 +99,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
     // A) Fetch all active and trialing subscriptions
     console.log('[stripe-metrics] Fetching active subscriptions...');
-    const activeSubs = await fetchAllSubscriptions({
+    const activeSubs = await fetchAllSubscriptions(stripe, {
       status: 'active'
     });
 
     console.log('[stripe-metrics] Fetching trialing subscriptions...');
-    const trialingSubs = await fetchAllSubscriptions({
+    const trialingSubs = await fetchAllSubscriptions(stripe, {
       status: 'trialing'
     });
 
@@ -142,7 +145,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
     // E) Annual churn (canceled in last 90 days)
     console.log('[stripe-metrics] Fetching canceled subscriptions...');
-    const canceledSubs = await fetchAllSubscriptions({
+    const canceledSubs = await fetchAllSubscriptions(stripe, {
       status: 'canceled'
     });
 
