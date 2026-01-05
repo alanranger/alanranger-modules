@@ -60,11 +60,20 @@ export default function QAPage() {
       params.append('order', sortOrder);
 
       const res = await fetch(`/api/academy/qa/admin/questions?${params}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        console.error('Failed to fetch questions:', errorData);
+        throw new Error(errorData.error || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       setQuestions(data.questions || []);
       setTotalQuestions(data.total || 0);
     } catch (error) {
       console.error('Failed to fetch questions:', error);
+      setQuestions([]);
+      setTotalQuestions(0);
+      // Show error message to user
+      alert(`Failed to load questions: ${error.message}. Please check console for details.`);
     } finally {
       setLoading(false);
     }
