@@ -122,9 +122,17 @@
         return;
       }
 
+      // Get member ID to send in header as fallback (cookies may not work cross-origin)
+      const memberId = member.id || member.memberId || null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (memberId) {
+        headers['X-Memberstack-Id'] = memberId;
+      }
+
       const url = API_URL + "?limit=25";
       const json = await safeFetchJson(url, { 
         method: "GET", 
+        headers: headers,
         cache: "no-store",
         credentials: "include" // Include cookies for Memberstack auth
       });
@@ -217,6 +225,15 @@
 
     try {
       // API will extract member_id from authenticated session - never send it from client
+      // But send member ID in header as fallback (cookies may not work cross-origin)
+      const memberId = member.id || member.memberId || null;
+      const headers = { 
+        "Content-Type": "application/json"
+      };
+      if (memberId) {
+        headers['X-Memberstack-Id'] = memberId;
+      }
+
       const payload = {
         page_url: pageUrl,
         question: questionText
@@ -224,9 +241,7 @@
 
       await safeFetchJson(API_URL, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
-        },
+        headers: headers,
         credentials: "include", // Include cookies for Memberstack auth
         body: JSON.stringify(payload),
         cache: "no-store"
