@@ -2,17 +2,15 @@
 // Updates a Q&A question (save/edit answer)
 
 const { createClient } = require("@supabase/supabase-js");
-// Note: Admin pages are gated by Memberstack at the page level
-// API-level auth check is optional - uncomment if needed
-// const path = require("path");
-// const { checkAdminAccess } = require(path.resolve(__dirname, "../../../../admin/_auth.js"));
+const path = require("path");
+const { checkAdminAccess } = require(path.resolve(__dirname, "../../../../admin/_auth.js"));
 
 module.exports = async (req, res) => {
-  // Optional: Check admin access (currently disabled - page is gated)
-  // const { isAdmin, error } = await checkAdminAccess(req);
-  // if (!isAdmin) {
-  //   return res.status(403).json({ error: error || "Admin access required" });
-  // }
+  // Check admin access - Phase 3: Security enforcement
+  const { isAdmin, error } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    return res.status(403).json({ error: error || "Admin access required" });
+  }
 
   try {
     if (req.method !== 'PATCH') {
@@ -46,7 +44,9 @@ module.exports = async (req, res) => {
         updates.status = 'queued'; // Reset to queued if answer cleared
       } else {
         // Setting answer - ensure all metadata is stored
-        updates.admin_answer = answer.trim();
+        updates.answer = answer.trim();
+        updates.admin_answer = answer.trim(); // Keep for backward compatibility
+        updates.answered_at = new Date().toISOString();
         updates.admin_answered_at = new Date().toISOString();
         updates.answered_by = answered_by || 'Alan'; // Default to 'Alan' for admin answers
         updates.answer_source = 'manual'; // Ensure answer_source is set

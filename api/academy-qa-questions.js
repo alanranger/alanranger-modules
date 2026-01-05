@@ -132,9 +132,10 @@ module.exports = async function handler(req, res) {
 
     // Only return questions for the authenticated member
     // Include answer fields so members can see admin and AI answers
+    // Phase 3: Use consolidated 'answer' field (falls back to admin_answer or ai_answer)
     const { data, error } = await supabase
       .from("academy_qa_questions")
-      .select("id, question, member_id, member_name, page_url, status, created_at, admin_answer, admin_answered_at, ai_answer, ai_answered_at, answer_source")
+      .select("id, question, member_id, member_name, page_url, status, created_at, answer, answered_at, admin_answer, admin_answered_at, ai_answer, ai_answered_at, answer_source, updated_at")
       .eq("member_id", auth.memberId) // CRITICAL: Filter by authenticated member only
       .order("created_at", { ascending: false })
       .limit(limit);

@@ -2,17 +2,15 @@
 // Returns all Q&A questions with filters for admin dashboard
 
 const { createClient } = require("@supabase/supabase-js");
-// Note: Admin pages are gated by Memberstack at the page level
-// API-level auth check is optional - uncomment if needed
-// const path = require("path");
-// const { checkAdminAccess } = require(path.resolve(__dirname, "../../../admin/_auth.js"));
+const path = require("path");
+const { checkAdminAccess } = require(path.resolve(__dirname, "../../../admin/_auth.js"));
 
 module.exports = async (req, res) => {
-  // Optional: Check admin access (currently disabled - page is gated)
-  // const { isAdmin, error } = await checkAdminAccess(req);
-  // if (!isAdmin) {
-  //   return res.status(403).json({ error: error || "Admin access required" });
-  // }
+  // Check admin access - Phase 3: Security enforcement
+  const { isAdmin, error } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    return res.status(403).json({ error: error || "Admin access required" });
+  }
 
   try {
     const { 
@@ -20,6 +18,9 @@ module.exports = async (req, res) => {
       answer_source, 
       page_url,
       member_id,
+      q, // Search query
+      from, // Date range start
+      to, // Date range end
       limit = 50,
       offset = 0,
       sort = 'created_at',
@@ -38,7 +39,7 @@ module.exports = async (req, res) => {
     // Apply filters
     if (status) {
       if (status === 'outstanding') {
-        query = query.in('status', ['ai_suggested', 'queued']);
+        query = query.in('status', ['open', 'ai_suggested', 'queued']);
       } else if (status === 'answered') {
         query = query.in('status', ['answered', 'closed']);
       } else {
@@ -56,6 +57,19 @@ module.exports = async (req, res) => {
 
     if (member_id) {
       query = query.eq('member_id', member_id);
+    }
+
+    // Date range filters
+    if (from) {
+      query = query.gte('created_at', from);
+    }
+    if (to) {
+      query = query.lte('created_at', to);
+    }
+
+    // Search query (question text, member name, member email)
+    if (q) {
+      query = query.or(`question.ilike.%${q}%,member_name.ilike.%${q}%,member_email.ilike.%${q}%`);
     }
 
     // Apply sorting

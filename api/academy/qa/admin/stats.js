@@ -2,17 +2,15 @@
 // Returns Q&A statistics for admin dashboard tiles
 
 const { createClient } = require("@supabase/supabase-js");
-// Note: Admin pages are gated by Memberstack at the page level
-// API-level auth check is optional - uncomment if needed
-// const path = require("path");
-// const { checkAdminAccess } = require(path.resolve(__dirname, "../../../admin/_auth.js"));
+const path = require("path");
+const { checkAdminAccess } = require(path.resolve(__dirname, "../../../admin/_auth.js"));
 
 module.exports = async (req, res) => {
-  // Optional: Check admin access (currently disabled - page is gated)
-  // const { isAdmin, error } = await checkAdminAccess(req);
-  // if (!isAdmin) {
-  //   return res.status(403).json({ error: error || "Admin access required" });
-  // }
+  // Check admin access - Phase 3: Security enforcement
+  const { isAdmin, error } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    return res.status(403).json({ error: error || "Admin access required" });
+  }
 
   try {
     const { range = '30d' } = req.query;
@@ -46,11 +44,12 @@ module.exports = async (req, res) => {
       .in('status', ['answered', 'closed'])
       .gte('created_at', startDate.toISOString());
 
-    // Outstanding (no answer yet) - status = 'ai_suggested' or 'queued'
+    // Outstanding (no answer yet) - status = 'open', 'ai_suggested', or 'queued' without published answer
     const { count: outstanding } = await supabase
       .from('academy_qa_questions')
       .select('*', { count: 'exact', head: true })
-      .in('status', ['ai_suggested', 'queued']);
+      .in('status', ['open', 'ai_suggested', 'queued'])
+      .is('answer', null);
 
     // Answered by Robo-Ranger (AI answers, last 30 days)
     const { count: answeredByAI } = await supabase
@@ -88,7 +87,8 @@ module.exports = async (req, res) => {
     const { data: outstandingQuestions } = await supabase
       .from('academy_qa_questions')
       .select('member_id')
-      .in('status', ['ai_suggested', 'queued'])
+      .in('status', ['open', 'ai_suggested', 'queued'])
+      .is('answer', null)
       .not('member_id', 'is', null);
 
     const uniqueMembersWithOutstanding = outstandingQuestions

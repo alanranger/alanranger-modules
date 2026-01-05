@@ -12,6 +12,9 @@ export default function QAPage() {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [answerText, setAnswerText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null);
+  const [notifyMember, setNotifyMember] = useState(false);
   const [filters, setFilters] = useState({
     status: statusParam || 'all',
     answer_source: sourceParam || 'all',
@@ -67,6 +70,9 @@ export default function QAPage() {
       params.append('offset', String((currentPage - 1) * 50));
       params.append('sort', sortBy);
       params.append('order', sortOrder);
+      if (searchQuery) {
+        params.append('q', searchQuery);
+      }
 
       const res = await fetch(`/api/academy/qa/admin/questions?${params}`, {
         credentials: 'include',
@@ -142,26 +148,64 @@ export default function QAPage() {
 
   function handleAnswerClick(question) {
     setSelectedQuestion(question);
-    setAnswerText(question.admin_answer || question.ai_answer || '');
+    setAnswerText(question.answer || question.admin_answer || '');
+    setAiDraft(question.ai_answer || null);
+    setNotifyMember(false);
   }
 
-  async function handleSaveAnswer() {
+  async function handleGenerateAI() {
     if (!selectedQuestion) return;
     
-    setSaving(true);
+    setGeneratingAI(true);
     try {
-      const res = await fetch(`/api/academy/qa/admin/questions/${selectedQuestion.id}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/academy/qa/admin/ai-suggest', {
+        method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answer: answerText,
-          answered_by: 'admin',
-          answer_source: 'manual'
+          question_id: selectedQuestion.id,
+          question: selectedQuestion.question,
+          page_url: selectedQuestion.page_url
         })
       });
 
-      if (!res.ok) throw new Error('Failed to save answer');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errorData.error || 'Failed to generate AI answer');
+      }
+
+      const { question: updatedQuestion, ai_answer } = await res.json();
+      setAiDraft(ai_answer);
+      setSelectedQuestion(updatedQuestion);
+      // Pre-fill answer text with AI draft for editing
+      setAnswerText(ai_answer);
+    } catch (error) {
+      console.error('Failed to generate AI answer:', error);
+      alert(`Failed to generate AI answer: ${error.message}`);
+    } finally {
+      setGeneratingAI(false);
+    }
+  }
+
+  async function handlePublishAI() {
+    if (!selectedQuestion || !aiDraft) return;
+    
+    setSaving(true);
+    try {
+      const res = await fetch('/api/academy/qa/admin/publish-ai', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: selectedQuestion.id,
+          notify_member: notifyMember
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errorData.error || 'Failed to publish AI answer');
+      }
 
       const { question } = await res.json();
       
@@ -169,12 +213,55 @@ export default function QAPage() {
       setQuestions(questions.map(q => q.id === question.id ? question : q));
       setSelectedQuestion(null);
       setAnswerText('');
+      setAiDraft(null);
+      setNotifyMember(false);
+      
+      // Refresh stats
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to publish AI answer:', error);
+      alert(`Failed to publish AI answer: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveAnswer() {
+    if (!selectedQuestion) return;
+    
+    setSaving(true);
+    try {
+      const res = await fetch('/api/academy/qa/admin/answer', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: selectedQuestion.id,
+          answer: answerText,
+          answered_by: 'Alan',
+          notify_member: notifyMember
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errorData.error || 'Failed to save answer');
+      }
+
+      const { question } = await res.json();
+      
+      // Update local state
+      setQuestions(questions.map(q => q.id === question.id ? question : q));
+      setSelectedQuestion(null);
+      setAnswerText('');
+      setAiDraft(null);
+      setNotifyMember(false);
       
       // Refresh stats
       fetchStats();
     } catch (error) {
       console.error('Failed to save answer:', error);
-      alert('Failed to save answer. Please try again.');
+      alert(`Failed to save answer: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -431,7 +518,7 @@ export default function QAPage() {
                     {question.answer_source === 'ai' ? 'Robo-Ranger' : question.answer_source === 'manual' ? 'Manual' : '-'}
                   </td>
                   <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '12px' }}>
-                    {formatDate(question.admin_answered_at || question.ai_answered_at)}
+                    {formatDate(question.answered_at || question.admin_answered_at || question.ai_answered_at)}
                   </td>
                   <td style={{ padding: '12px' }}>
                     <button
@@ -521,6 +608,8 @@ export default function QAPage() {
                 onClick={() => {
                   setSelectedQuestion(null);
                   setAnswerText('');
+                  setAiDraft(null);
+                  setNotifyMember(false);
                 }}
                 style={{
                   background: 'transparent',
@@ -554,9 +643,11 @@ export default function QAPage() {
               <div style={{ color: 'var(--ar-text)', fontSize: '14px', lineHeight: '1.6' }}>
                 {selectedQuestion.question}
               </div>
-              {selectedQuestion.ai_answer && !selectedQuestion.admin_answer && (
+              {(selectedQuestion.ai_answer || aiDraft) && !selectedQuestion.answer && (
                 <>
-                  <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '16px', marginBottom: '8px' }}>AI Suggested Answer</div>
+                  <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '16px', marginBottom: '8px' }}>
+                    AI Suggested Answer {aiDraft && '(New Draft)'}
+                  </div>
                   <div style={{ 
                     color: 'var(--ar-text)', 
                     fontSize: '13px', 
@@ -564,23 +655,58 @@ export default function QAPage() {
                     padding: '12px',
                     background: '#fef3c7',
                     borderRadius: '6px',
-                    border: '1px solid #f59e0b'
+                    border: '1px solid #f59e0b',
+                    marginBottom: '12px'
                   }}>
-                    {selectedQuestion.ai_answer}
+                    {aiDraft || selectedQuestion.ai_answer}
                   </div>
                 </>
               )}
             </div>
 
+            {/* AI Actions */}
+            {selectedQuestion.status !== 'answered' && (
+              <div style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleGenerateAI}
+                  disabled={generatingAI}
+                  className="ar-admin-btn"
+                  style={{
+                    flex: 1,
+                    background: '#f59e0b',
+                    opacity: generatingAI ? 0.5 : 1,
+                    cursor: generatingAI ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {generatingAI ? 'Generating AI Draft...' : '🤖 Generate AI Draft'}
+                </button>
+                {aiDraft && (
+                  <button
+                    onClick={handlePublishAI}
+                    disabled={saving}
+                    className="ar-admin-btn"
+                    style={{
+                      flex: 1,
+                      background: '#10b981',
+                      opacity: saving ? 0.5 : 1,
+                      cursor: saving ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {saving ? 'Publishing...' : '✓ Publish AI Answer'}
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Answer Textarea */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: '24px' }}>
               <label style={{ color: 'var(--ar-text)', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-                Your Answer
+                Your Answer {selectedQuestion.status === 'answered' && '(Edit)'}
               </label>
               <textarea
                 value={answerText}
                 onChange={(e) => setAnswerText(e.target.value)}
-                placeholder="Enter your answer here..."
+                placeholder="Enter your answer here, or use AI Draft above..."
                 style={{
                   flex: 1,
                   minHeight: '200px',
@@ -596,24 +722,42 @@ export default function QAPage() {
               />
             </div>
 
+            {/* Notify Member Checkbox */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={notifyMember}
+                  onChange={(e) => setNotifyMember(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ color: 'var(--ar-text)', fontSize: '14px' }}>
+                  Notify member by email when answer is saved
+                </span>
+              </label>
+            </div>
+
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleSaveAnswer}
                 disabled={saving || !answerText.trim()}
                 className="ar-admin-btn"
                 style={{ 
                   flex: 1,
+                  minWidth: '150px',
                   opacity: (!answerText.trim() || saving) ? 0.5 : 1,
                   cursor: (!answerText.trim() || saving) ? 'not-allowed' : 'pointer'
                 }}
               >
-                {saving ? 'Saving...' : 'Save Answer'}
+                {saving ? 'Saving...' : notifyMember ? 'Save & Notify' : 'Save Answer'}
               </button>
               <button
                 onClick={() => {
                   setSelectedQuestion(null);
                   setAnswerText('');
+                  setAiDraft(null);
+                  setNotifyMember(false);
                 }}
                 style={{
                   padding: '10px 20px',
