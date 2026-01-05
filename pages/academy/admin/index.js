@@ -802,7 +802,7 @@ export default function AdminDashboard() {
                 : '£0.00'}
             </div>
             <div className="ar-admin-kpi-period">
-              Gross ({kpis?.stripe?.trials_active_count || 0} trials)
+              Gross ({kpis?.trials || 0} trials)
             </div>
           </div>
           <div 
