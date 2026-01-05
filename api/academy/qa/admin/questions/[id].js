@@ -2,8 +2,15 @@
 // Updates a Q&A question (save/edit answer)
 
 const { createClient } = require("@supabase/supabase-js");
+const { checkAdminAccess } = require("../../../admin/_auth");
 
 module.exports = async (req, res) => {
+  // Check admin access
+  const { isAdmin, error } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    return res.status(403).json({ error: error || "Admin access required" });
+  }
+
   try {
     if (req.method !== 'PATCH') {
       return res.status(405).json({ error: 'Method not allowed' });
@@ -35,10 +42,11 @@ module.exports = async (req, res) => {
         updates.answered_by = null;
         updates.status = 'queued'; // Reset to queued if answer cleared
       } else {
-        // Setting answer
+        // Setting answer - ensure all metadata is stored
         updates.admin_answer = answer.trim();
         updates.admin_answered_at = new Date().toISOString();
-        updates.answered_by = answered_by || 'admin';
+        updates.answered_by = answered_by || 'Alan'; // Default to 'Alan' for admin answers
+        updates.answer_source = 'manual'; // Ensure answer_source is set
         updates.status = 'answered';
       }
     }

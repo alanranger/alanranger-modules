@@ -17,11 +17,19 @@ export default function QAPage() {
     answer_source: sourceParam || 'all',
     page_url: pageParam || ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     fetchStats();
+  }, []);
+
+  useEffect(() => {
     fetchQuestions();
-  }, [statusParam, sourceParam, pageParam]);
+  }, [statusParam, sourceParam, pageParam, currentPage, sortBy, sortOrder, searchQuery]);
 
   async function fetchStats() {
     try {
@@ -46,19 +54,55 @@ export default function QAPage() {
       if (pageParam) {
         params.append('page_url', pageParam);
       }
-      params.append('limit', '100');
-      params.append('sort', 'created_at');
-      params.append('order', 'desc');
+      params.append('limit', '50');
+      params.append('offset', String((currentPage - 1) * 50));
+      params.append('sort', sortBy);
+      params.append('order', sortOrder);
 
       const res = await fetch(`/api/academy/qa/admin/questions?${params}`);
       const data = await res.json();
       setQuestions(data.questions || []);
+      setTotalQuestions(data.total || 0);
     } catch (error) {
       console.error('Failed to fetch questions:', error);
     } finally {
       setLoading(false);
     }
   }
+
+  function handleSearch(e) {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page on search
+  }
+
+  function handleSort(column) {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+    setCurrentPage(1);
+  }
+
+  function getSortIcon(column) {
+    if (sortBy !== column) return '';
+    return sortOrder === 'asc' ? ' ↑' : ' ↓';
+  }
+
+  // Filter questions by search query (client-side for now)
+  const filteredQuestions = questions.filter(q => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      (q.question || '').toLowerCase().includes(query) ||
+      (q.member_name || '').toLowerCase().includes(query) ||
+      (q.member_email || '').toLowerCase().includes(query) ||
+      (q.admin_answer || '').toLowerCase().includes(query)
+    );
+  });
+
+  const totalPages = Math.ceil(totalQuestions / 50);
 
   function handleTileClick(filterType, filterValue) {
     const newFilters = { ...filters };
@@ -291,23 +335,35 @@ export default function QAPage() {
           <table className="ar-admin-table">
             <thead>
               <tr>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
-                  Date Asked
+                <th 
+                  style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleSort('created_at')}
+                >
+                  Date Asked{getSortIcon('created_at')}
                 </th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
-                  Member
+                <th 
+                  style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleSort('member_name')}
+                >
+                  Member{getSortIcon('member_name')}
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
                   Question
                 </th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
-                  Status
+                <th 
+                  style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleSort('status')}
+                >
+                  Status{getSortIcon('status')}
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
                   Answer Source
                 </th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
-                  Answered Date
+                <th 
+                  style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleSort('admin_answered_at')}
+                >
+                  Answered Date{getSortIcon('admin_answered_at')}
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
                   Actions
@@ -315,7 +371,7 @@ export default function QAPage() {
               </tr>
             </thead>
             <tbody>
-              {questions.map((question) => (
+              {filteredQuestions.map((question) => (
                 <tr 
                   key={question.id}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--ar-card-hover)'}
@@ -371,6 +427,33 @@ export default function QAPage() {
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--ar-border)' }}>
+              <div style={{ color: 'var(--ar-text-muted)', fontSize: '14px' }}>
+                Page {currentPage} of {totalPages}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="ar-admin-btn"
+                  style={{ opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="ar-admin-btn"
+                  style={{ opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

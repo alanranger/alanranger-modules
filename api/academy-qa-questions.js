@@ -73,7 +73,9 @@ async function getAuthenticatedMember(req) {
             const nameParts = data.name.trim().split(/\s+/);
             memberName = nameParts[0] || null;
           }
-          return { memberId: data.id, memberName };
+          // Get email for storage
+          const memberEmail = data.auth?.email || data.email || null;
+          return { memberId: data.id, memberName, memberEmail };
         }
       } catch (e) {
         console.error("[qa-api] Token verification failed:", e.message);
@@ -93,7 +95,9 @@ async function getAuthenticatedMember(req) {
             const nameParts = data.name.trim().split(/\s+/);
             memberName = nameParts[0] || null;
           }
-          return { memberId: data.id, memberName };
+          // Get email for storage
+          const memberEmail = data.auth?.email || data.email || null;
+          return { memberId: data.id, memberName, memberEmail };
         }
       } catch (e) {
         console.error("[qa-api] Member ID retrieval failed:", e.message);
@@ -167,6 +171,7 @@ module.exports = async function handler(req, res) {
       question,
       member_id: auth.memberId, // From verified auth, not client
       member_name: auth.memberName, // First name only, extracted from Memberstack
+      member_email: auth.memberEmail || null, // Email from Memberstack
       status: 'queued' // Default status - queued for admin until AI service is connected
     };
 

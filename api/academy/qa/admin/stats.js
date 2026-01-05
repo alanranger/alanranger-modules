@@ -2,8 +2,15 @@
 // Returns Q&A statistics for admin dashboard tiles
 
 const { createClient } = require("@supabase/supabase-js");
+const { checkAdminAccess } = require("../../admin/_auth");
 
 module.exports = async (req, res) => {
+  // Check admin access
+  const { isAdmin, error } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    return res.status(403).json({ error: error || "Admin access required" });
+  }
+
   try {
     const { range = '30d' } = req.query;
     
@@ -50,12 +57,12 @@ module.exports = async (req, res) => {
       .not('ai_answer', 'is', null)
       .gte('created_at', startDate.toISOString());
 
-    // Avg response time (answered_at - created_at) for answered questions
+    // Avg response time (answered_at - created_at) for answered questions only
+    // Only include questions that have been answered (have admin_answered_at or ai_answered_at)
     const { data: answeredQuestions } = await supabase
       .from('academy_qa_questions')
       .select('created_at, admin_answered_at, ai_answered_at')
-      .in('status', ['answered', 'closed'])
-      .not('admin_answered_at', 'is', null)
+      .or('admin_answered_at.not.is.null,ai_answered_at.not.is.null')
       .gte('created_at', startDate.toISOString());
 
     let avgResponseTime = null;
