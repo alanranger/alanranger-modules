@@ -20,7 +20,11 @@ function safeIso(d) {
 
 export default async function handler(req, res) {
   // Log the request method for debugging
-  console.log('[refresh] Request received:', { method: req.method, url: req.url });
+  console.log('[refresh-pages-api] Request received:', { 
+    method: req.method, 
+    url: req.url,
+    endpoint: 'pages/api/admin/refresh'
+  });
   
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,22 +33,24 @@ export default async function handler(req, res) {
   
   // Handle preflight
   if (req.method === 'OPTIONS') {
+    console.log('[refresh-pages-api] OPTIONS preflight handled');
     return res.status(200).end();
   }
   
   // Only allow POST method
   if (req.method !== 'POST') {
-    console.error('[refresh] Method not allowed:', req.method);
+    console.error('[refresh-pages-api] Method not allowed:', req.method);
     const errorResponse = { 
       error: `Method Not Allowed. Expected POST, got ${req.method}`,
       received: req.method,
-      allowed: ['POST', 'OPTIONS']
+      allowed: ['POST', 'OPTIONS'],
+      endpoint: 'pages/api/admin/refresh'
     };
-    console.error('[refresh] Returning 405:', errorResponse);
+    console.error('[refresh-pages-api] Returning 405:', errorResponse);
     return res.status(405).json(errorResponse);
   }
   
-  console.log('[refresh] POST request validated, proceeding...');
+  console.log('[refresh-pages-api] POST request validated, proceeding...');
   
   try {
     console.log('[refresh] Processing request...');
