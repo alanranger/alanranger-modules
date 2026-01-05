@@ -1097,11 +1097,32 @@ function TopMembersList({ refreshTrigger }) {
   if (loading) return <div className="ar-admin-loading">Loading...</div>;
   if (members.length === 0) return <div className="ar-admin-empty">No data available</div>;
 
+  function formatDate(dateString) {
+    if (!dateString) return 'Never';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return 'Invalid date';
+    }
+  }
+
   return (
     <table className="ar-admin-table">
       <thead>
         <tr>
           <th>Member</th>
+          <th>Login Days</th>
+          <th>Last Login</th>
           <th>Events</th>
           <th>Modules</th>
         </tr>
@@ -1110,6 +1131,8 @@ function TopMembersList({ refreshTrigger }) {
         {members.map((member, idx) => (
           <tr key={idx}>
             <td>{member.email || member.member_id || 'Unknown'}</td>
+            <td>{member.login_days || 0}</td>
+            <td>{formatDate(member.last_login)}</td>
             <td>{member.event_count}</td>
             <td>{member.module_opens}</td>
           </tr>
