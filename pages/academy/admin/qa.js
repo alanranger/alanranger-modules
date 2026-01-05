@@ -639,7 +639,7 @@ export default function QAPage() {
                     AI Suggested Answer {aiDraft && '(New Draft)'}
                   </div>
                   <div style={{ 
-                    color: 'var(--ar-text)', 
+                    color: '#1f2937', 
                     fontSize: '13px', 
                     lineHeight: '1.6',
                     padding: '12px',
