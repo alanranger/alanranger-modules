@@ -35,12 +35,16 @@ export default async function handler(req, res) {
   // Only allow POST method
   if (req.method !== 'POST') {
     console.error('[refresh] Method not allowed:', req.method);
-    return res.status(405).json({ 
+    const errorResponse = { 
       error: `Method Not Allowed. Expected POST, got ${req.method}`,
       received: req.method,
       allowed: ['POST', 'OPTIONS']
-    });
+    };
+    console.error('[refresh] Returning 405:', errorResponse);
+    return res.status(405).json(errorResponse);
   }
+  
+  console.log('[refresh] POST request validated, proceeding...');
   
   try {
     console.log('[refresh] Processing request...');
