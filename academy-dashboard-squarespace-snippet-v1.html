@@ -1,0 +1,3003 @@
+<!--
+Academy Dashboard UI (v1.1) — Squarespace Snippet
+Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
+Keeps all styling + elements. Access guard still runs on live site.
+-->
+
+<script>
+  (function () {
+    try {
+      var p = (globalThis.location && globalThis.location.pathname) ? globalThis.location.pathname : "";
+      var isAcademy = (p === "/academy" || p.indexOf("/academy/") === 0);
+      if (!isAcademy) return;
+      document.documentElement.classList.add("ar-academy");
+    } catch (e) { /* no-op */ }
+  })();
+  </script>
+  
+  <style>
+  /* -------------------------
+     Scope guard (critical)
+     ------------------------- */
+  html:not(.ar-academy) .ar-academy-dashboard,
+  html:not(.ar-academy) .ar-academy-dashboard * { all: revert; }
+  
+  /* -------------------------
+     Theme tokens (match AI GEO Audit dashboard separation)
+     ------------------------- */
+  html.ar-academy {
+    --ar-bg: #0f1419;
+    --ar-panel: #1a1f2e;
+    --ar-border: #374151;
+    --ar-text: #e2e8f0;
+    --ar-text-muted: #9ca3af;
+  
+    --ar-brand: #E57200;
+    --ar-brand-2: #ff8c42;
+    --ar-shadow: 0 8px 24px rgba(245, 158, 11, 0.20);
+    --ar-radius: 14px;
+  }
+  
+  /* Ensure the *page* background is dark on /academy/* */
+  html.ar-academy body{
+    background: var(--ar-bg) !important;
+  }
+  /* Squarespace wrappers */
+  html.ar-academy #siteWrapper,
+  html.ar-academy #page,
+  html.ar-academy main{
+    background: transparent !important;
+  }
+  
+  /* Full-bleed dark backdrop */
+  html.ar-academy .ar-academy-dashboard {
+    background:
+      radial-gradient(1200px 600px at 20% 0%, rgba(229,114,0,0.10), transparent 60%),
+      radial-gradient(900px 500px at 85% 20%, rgba(245,158,11,0.10), transparent 55%),
+      var(--ar-bg);
+    color: var(--ar-text);
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 10px 0 56px;
+    min-height: 100vh;
+  
+    /* No-flash: hidden until Memberstack guard confirms access */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  html.ar-academy .ar-academy-dashboard.is-ready{
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  html.ar-academy .ar-academy-dashboard__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 18px;
+  }
+  
+  /* Top utility row (logout) */
+  html.ar-academy .ar-academy-dashboard__topbar{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    margin-bottom: 8px;
+  }
+  
+  /* Header / branding */
+  html.ar-academy .ar-academy-dashboard__brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 12px;
+  }
+  html.ar-academy .ar-academy-dashboard__brand-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    min-width: 0;
+  }
+  html.ar-academy .ar-academy-dashboard__brand-right{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  html.ar-academy .ar-academy-dashboard__logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: rgba(15, 20, 25, 0.35);
+    border: 1px solid var(--ar-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    padding: 6px;
+  }
+  html.ar-academy .ar-academy-dashboard__logo--brand {
+    width: 150px;
+    height: 44px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: rgba(15, 20, 25, 0.35);
+    border: 1px solid var(--ar-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    padding: 8px 10px;
+  }
+  html.ar-academy .ar-academy-dashboard__home-link{
+    display: inline-flex;
+    text-decoration: none;
+  }
+  
+  /* Logout button (Memberstack) — dashboard-only */
+  #arp-logout-btn{
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid rgba(239, 68, 68, 0.95);
+    background: rgba(26, 31, 46, 0.80);
+    color: var(--ar-text);
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  #arp-logout-btn:hover{
+    border-color: rgba(239, 68, 68, 1);
+    background: #20263a;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.18);
+    transform: translateY(-1px);
+  }
+  #arp-logout-btn:active{ transform: translateY(0); }
+  #arp-logout-btn:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+  }
+  
+  /* Invert black logos so they read correctly on dark backgrounds */
+  html.ar-academy .ar-logo--invert{
+    filter: invert(1) brightness(1.1) contrast(1.05);
+  }
+  @media (max-width: 760px){
+    html.ar-academy .ar-academy-dashboard__brand{ flex-direction: column; align-items: flex-start; }
+    html.ar-academy .ar-academy-dashboard__brand-right{ width: 100%; justify-content: flex-start; }
+    html.ar-academy .ar-academy-dashboard__logo--brand{ width: 180px; }
+  }
+  
+  html.ar-academy .ar-academy-dashboard__title {
+    margin: 0 0 6px 0;
+    font-size: 34px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 900;
+    color: var(--ar-text);
+  }
+  html.ar-academy .ar-academy-dashboard__subtitle {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ar-text-muted);
+  }
+  
+  /* Grid */
+  html.ar-academy .ar-academy-tiles {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px;
+  }
+  @media (max-width: 980px){
+    html.ar-academy .ar-academy-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+  @media (max-width: 800px){
+    html.ar-academy .ar-academy-tiles { grid-template-columns: 1fr; }
+  }
+  
+  /* Tile */
+  html.ar-academy .ar-tile {
+    position: relative;
+    display: block;
+    text-decoration: none;
+    color: var(--ar-text);
+    background: var(--ar-panel);
+    border: 2px solid var(--ar-border);
+    border-radius: var(--ar-radius);
+    padding: 16px 16px 14px;
+    overflow: hidden;
+    min-height: 120px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  
+  html.ar-academy .ar-tile::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--ar-brand);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+  }
+  html.ar-academy .ar-tile::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--ar-brand), var(--ar-brand-2), var(--ar-brand));
+    background-size: 200% 100%;
+    opacity: 0;
+    pointer-events: none;
+    padding: 2px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  
+  html.ar-academy .ar-tile:hover,
+  html.ar-academy .ar-tile:focus-visible {
+    border-color: var(--ar-brand);
+    transform: translateY(-4px);
+    box-shadow: var(--ar-shadow);
+    background: #20263a;
+    animation: ar-wobble 0.5s ease-in-out;
+  }
+  html.ar-academy .ar-tile:hover::after,
+  html.ar-academy .ar-tile:focus-visible::after { transform: scaleX(1); }
+  html.ar-academy .ar-tile:hover::before,
+  html.ar-academy .ar-tile:focus-visible::before {
+    opacity: 1;
+    animation: ar-borderShift 1.4s linear infinite;
+  }
+  
+  @keyframes ar-wobble {
+    0%, 100% { transform: translateY(-4px) rotate(0deg); }
+    25% { transform: translateY(-4px) rotate(-1deg); }
+    75% { transform: translateY(-4px) rotate(1deg); }
+  }
+  @keyframes ar-borderShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    html.ar-academy .ar-tile,
+    html.ar-academy .ar-tile:hover,
+    html.ar-academy .ar-tile:focus-visible { transition: none; animation: none; transform: none; }
+    html.ar-academy .ar-tile::before { animation: none; }
+  }
+
+  /* Disabled tiles for trial members */
+  html.ar-academy .ar-tile.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.6);
+  }
+  html.ar-academy .ar-tile.is-disabled:hover,
+  html.ar-academy .ar-tile.is-disabled:focus-visible {
+    transform: none;
+    border-color: var(--ar-border);
+    box-shadow: none;
+    background: var(--ar-panel);
+    animation: none;
+  }
+  html.ar-academy .ar-tile.is-disabled::after,
+  html.ar-academy .ar-tile.is-disabled::before {
+    display: none;
+  }
+  
+  /* Tile content */
+  html.ar-academy .ar-tile__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--ar-text-muted);
+    margin-bottom: 10px;
+  }
+  html.ar-academy .ar-dot {
+    width: 10px; height: 10px; border-radius: 999px;
+    background: rgba(148, 163, 184, 0.55);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
+  }
+  html.ar-academy .ar-dot--brand { background: var(--ar-brand); }
+  
+  html.ar-academy .ar-tile__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--ar-text);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  html.ar-academy .ar-tile__title > span:first-of-type {
+    flex: 0 0 auto;
+  }
+  html.ar-academy .ar-tile__title > span:nth-of-type(2) {
+    flex: 1 1 auto;
+  }
+  html.ar-academy .ar-tile__progress {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ar-brand);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-tile__icon {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  html.ar-academy .ar-tile__desc {
+    margin: 6px 0 0 0;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-tile__details {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-tile__details-item {
+    display: inline-block;
+    margin-right: 8px;
+    margin-bottom: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  html.ar-academy .ar-tile__details-item.passed {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+  }
+  html.ar-academy .ar-tile__details-item.failed {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+  }
+  html.ar-academy .ar-tile__details-item.not-attempted {
+    background: rgba(148, 163, 184, 0.1);
+    border-color: rgba(148, 163, 184, 0.2);
+    color: var(--ar-text-muted);
+  }
+  
+  /* Membership status tile widgets */
+  html.ar-academy #arp-ms-status{
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.35;
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy #arp-ms-status .ms-row{
+    display:flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  html.ar-academy #arp-ms-status .ms-label{
+    color: rgba(148,163,184,0.95);
+    font-weight: 850;
+    letter-spacing: 0.2px;
+  }
+  html.ar-academy #arp-ms-status .ms-value{
+    color: var(--ar-text);
+    font-weight: 900;
+  }
+  html.ar-academy #arp-ms-status .ms-value--accent{
+    color: rgba(245,158,11,0.95);
+  }
+  html.ar-academy #arp-ms-manage{
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(55, 65, 81, 0.85);
+    background: rgba(15, 20, 25, 0.12);
+    color: var(--ar-text);
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  html.ar-academy #arp-ms-manage:hover{
+    transform: translateY(-1px);
+    border-color: rgba(245, 158, 11, 0.75);
+    background: rgba(32, 38, 58, 0.70);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+  }
+  html.ar-academy #arp-ms-manage:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+  }
+  html.ar-academy #arp-upgrade-membership{
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(229, 114, 0, 0.55);
+    background: rgba(229, 114, 0, 0.12);
+    color: var(--ar-text);
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  html.ar-academy #arp-upgrade-membership:hover{
+    transform: translateY(-1px);
+    border-color: rgba(229, 114, 0, 0.75);
+    background: rgba(229, 114, 0, 0.25);
+    box-shadow: 0 10px 28px rgba(229, 114, 0, 0.28);
+  }
+  html.ar-academy #arp-upgrade-membership:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(229, 114, 0, 0.22);
+  }
+  html.ar-academy #arp-upgrade-membership[disabled]{
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  html.ar-academy #arp-ms-tile{ cursor: pointer; }
+  /* Membership Status dot indicator */
+  html.ar-academy #arp-ms-tile .ar-dot{
+    background: rgba(148,163,184,0.6);
+  }
+  html.ar-academy #arp-ms-tile.is-trial .ar-dot{
+    background: rgba(245,158,11,0.95); /* orange */
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+  }
+  html.ar-academy #arp-ms-tile.is-annual .ar-dot{
+    background: rgba(34,197,94,0.95); /* green */
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.14);
+  }
+
+  /* Social connect tile */
+  html.ar-academy #arp-social-tile .ar-dot{
+    background: rgba(99,102,241,0.9); /* indigo hint */
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.10);
+  }
+  html.ar-academy #arp-social-tile .ms-provider-wrap{
+    margin-top: 10px;
+    display: grid;
+    gap: 10px;
+  }
+  html.ar-academy #arp-social-tile .ms-provider-btn{
+    width: 100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(55, 65, 81, 0.85);
+    background: rgba(15, 20, 25, 0.12);
+    color: var(--ar-text);
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  html.ar-academy #arp-social-tile .ms-provider-btn:hover{
+    transform: translateY(-1px);
+    border-color: rgba(245, 158, 11, 0.75);
+    background: rgba(32, 38, 58, 0.70);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+  }
+  html.ar-academy #arp-social-tile .ms-provider-btn:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+  }
+  html.ar-academy #arp-social-tile .ms-provider-note{
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 750;
+    color: var(--ar-text-muted);
+    line-height: 1.4;
+  }
+
+  /* Social connect tile icons + connected state */
+  html.ar-academy #arp-social-tile .ms-provider-icon{
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(148,163,184,0.35);
+    background: rgba(255,255,255,0.06);
+    font-weight: 1000;
+    font-size: 12px;
+    color: rgba(226,232,240,0.95);
+    flex: 0 0 auto;
+  }
+  html.ar-academy #arp-social-tile .ms-provider-state{
+    margin-left: auto;
+    font-weight: 950;
+    font-size: 12px;
+    color: rgba(148,163,184,0.95);
+  }
+  html.ar-academy #arp-social-tile .ms-provider-btn.is-connected{
+    border-color: rgba(34,197,94,0.55);
+  }
+  html.ar-academy #arp-social-tile .ms-provider-btn.is-connected .ms-provider-state{
+    color: rgba(34,197,94,0.95);
+  }
+  
+  /* Hover tips */
+  html.ar-academy .ar-tile__tip{
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(55, 65, 81, 0.85);
+    background: rgba(15, 20, 25, 0.92);
+    color: var(--ar-text);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    pointer-events: none;
+    z-index: 3;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+  }
+  /* Adjust tip position for exams tile to make room for refresh button */
+  html.ar-academy #ar-exams-tile .ar-tile__tip{
+    right: 90px; /* Make room for refresh button */
+  }
+  /* Hide tip for bookmarks tile to prevent obscuring "View all" link */
+  html.ar-academy #arp-bookmarks-tile .ar-tile__tip{
+    display: none;
+  }
+  html.ar-academy .ar-tile__tip::before{
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.95);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
+    flex: 0 0 auto;
+  }
+  html.ar-academy .ar-tile:hover .ar-tile__tip,
+  html.ar-academy .ar-tile:focus-visible .ar-tile__tip{
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce){
+    html.ar-academy .ar-tile__tip{ transition: none; transform: none; }
+  }
+  
+  /* Tile groups */
+  html.ar-academy .ar-tile-group {
+    grid-column: span 12;
+    background: rgba(15, 20, 25, 0.18);
+    border: 1px solid rgba(55, 65, 81, 0.55);
+    border-radius: var(--ar-radius);
+    padding: 14px;
+  }
+  html.ar-academy .ar-tile-group__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(55, 65, 81, 0.8);
+    background: rgba(26, 31, 46, 0.65);
+    color: var(--ar-text);
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+  }
+  html.ar-academy .ar-tile-group__label .pill-muted {
+    color: var(--ar-text-muted);
+    font-weight: 800;
+  }
+  html.ar-academy .ar-tile-group__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px;
+  }
+  
+  /* Spans */
+  html.ar-academy .ar-span-3 { grid-column: span 3; }
+  html.ar-academy .ar-span-4 { grid-column: span 4; }
+  html.ar-academy .ar-span-6 { grid-column: span 6; }
+  html.ar-academy .ar-span-12 { grid-column: span 12; }
+  @media (max-width: 980px){
+    html.ar-academy .ar-span-3,
+    html.ar-academy .ar-span-4 { grid-column: span 3; }
+    html.ar-academy .ar-span-6 { grid-column: span 6; }
+  }
+  @media (max-width: 800px){
+    html.ar-academy .ar-span-3,
+    html.ar-academy .ar-span-4,
+    html.ar-academy .ar-span-6 { grid-column: span 12; }
+    html.ar-academy .ar-tile-group__grid { grid-template-columns: 1fr; }
+  }
+  
+  /* Editor-only banner + force visibility */
+  html.ar-academy .ar-academy-editor-banner{
+    display:none;
+    margin: 0 0 14px 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px dashed rgba(245,158,11,0.65);
+    background: rgba(245,158,11,0.10);
+    color: var(--ar-text);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  html.ar-academy .ar-academy-editor-banner code{
+    font-weight: 900;
+  }
+  
+  /* Exam mini grid */
+  html.ar-academy #ar-exams-mini-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  html.ar-academy .ar-exam-module-pill {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    pointer-events: none !important; /* Pills don't capture clicks - parent does */
+    user-select: none; /* Prevent text selection */
+    cursor: default !important; /* No pointer cursor on pills */
+  }
+  /* Disable ALL hover effects on pills since they're not interactive in the grid */
+  html.ar-academy #ar-exams-mini-grid .ar-exam-module-pill:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  /* Details button styling */
+  html.ar-academy #ar-exams-details-btn {
+    position: relative;
+    z-index: 20;
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+  html.ar-academy #ar-exams-details-btn:hover {
+    background: #d46200 !important;
+    border-color: #d46200 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(229,114,0,0.3);
+  }
+  html.ar-academy #ar-exams-details-btn:active {
+    transform: translateY(0);
+  }
+  html.ar-academy .ar-exam-module-pill.status-passed {
+    background: #10b981;
+    color: #fff;
+    border-color: rgba(16,185,129,0.3);
+  }
+  html.ar-academy .ar-exam-module-pill.status-failed {
+    background: #ef4444;
+    color: #fff;
+    border-color: rgba(239,68,68,0.3);
+  }
+  html.ar-academy .ar-exam-module-pill.status-not_taken {
+    background: var(--ar-border);
+    color: var(--ar-text-muted);
+    border-color: var(--ar-border);
+  }
+  </style>
+  
+  <div class="ar-academy-dashboard">
+    <div class="ar-academy-dashboard__inner">
+  
+      <div class="ar-academy-editor-banner" id="ar-academy-editor-banner">
+        Editor preview mode detected — access redirects are disabled so you can edit this page safely.
+        (<code>/config</code> or <code>?nochrome</code>)
+      </div>
+  
+      <div class="ar-academy-dashboard__topbar">
+        <button id="arp-logout-btn" type="button" data-ms-action="logout">Log out</button>
+      </div>
+  
+      <div class="ar-academy-dashboard__brand">
+        <div class="ar-academy-dashboard__brand-left">
+          <img
+            class="ar-academy-dashboard__logo ar-logo--invert"
+            src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
+            alt="Alan Ranger Academy"
+            loading="eager"
+          />
+          <div>
+            <h1 class="ar-academy-dashboard__title">Academy Dashboard</h1>
+            <p class="ar-academy-dashboard__subtitle">Your hub for modules, exams, practice packs and account status.</p>
+          </div>
+        </div>
+  
+        <div class="ar-academy-dashboard__brand-right">
+          <a class="ar-academy-dashboard__home-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage">
+            <img
+              class="ar-academy-dashboard__logo--brand ar-logo--invert"
+              src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+              alt="Alan Ranger"
+              loading="eager"
+            />
+          </a>
+        </div>
+      </div>
+  
+      <div class="ar-academy-tiles">
+        <a class="ar-tile ar-span-6" href="https://www.alanranger.com/academy/online-photography-course">
+          <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">📚</span>Modules</div>
+          <div class="ar-tile__desc">60 step-by-step modules</div>
+          <div class="ar-mod-progress" style="margin-top:10px;">
+            <div style="font-weight:900; color: var(--ar-brand, #E57200); font-size: 20px; line-height:1;">
+              <span data-ar-mod-opened-total>0</span> / 45 opened
+            </div>
+            <div style="margin-top:6px; color: rgba(255,255,255,.75); font-size:14px;">
+              <span data-ar-mod-opened-totals>Camera 0/15 • Gear 0/10 • Composition 0/10 • Genre 0/10</span>
+            </div>
+            <!-- Optional: if you prefer individual spans -->
+            <span hidden data-ar-mod-opened-camera style="display:none !important;">0</span>
+            <span hidden data-ar-mod-opened-gear style="display:none !important;">0</span>
+            <span hidden data-ar-mod-opened-composition style="display:none !important;">0</span>
+            <span hidden data-ar-mod-opened-genre style="display:none !important;">0</span>
+          </div>
+          <div class="ar-tile__tip">Continue your lessons and tick off each module.</div>
+        </a>
+  
+        <div class="ar-tile ar-span-6" id="ar-exams-tile">
+          <a href="https://www.alanranger.com/academy/photography-exams-certification" style="display:block; text-decoration:none; color:inherit;">
+            <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Track progress</div>
+            <div class="ar-tile__title">
+              <span class="ar-tile__icon">🎓</span>
+              <span>Exams & Certificates</span>
+              <span id="ar-exams-progress-title" class="ar-tile__progress"></span>
+            </div>
+            <div class="ar-tile__desc">Take exams, save progress, download results PDFs and certificates.</div>
+            <div id="ar-exams-progress" class="ar-tile__tip">Resume an exam or download your latest results.</div>
+            <div id="ar-exams-details" class="ar-tile__details"></div>
+            <!-- Mini grid for 15 modules -->
+            <div id="ar-exams-mini-grid" style="margin-top:12px; display:none;"></div>
+          </a>
+          <!-- Details button to open drawer (outside <a> tag to prevent navigation) -->
+          <button id="ar-exams-details-btn" onclick="event.preventDefault(); event.stopPropagation(); if(window.openExamDrawer) { window.openExamDrawer(); }" style="display:none; margin-top:12px; margin-left:0; margin-right:0; padding:8px 16px; font-size:13px; background:var(--ar-orange); border:1px solid var(--ar-orange); border-radius:6px; color:#fff; cursor:pointer; font-weight:600; transition:all 0.15s ease; width:calc(100% - 28px); position:relative; z-index:20;">View Details</button>
+          <button id="ar-exams-refresh" onclick="if(window.refreshExamProgress) { event.stopPropagation(); window.refreshExamProgress(); }" style="position:absolute; bottom:12px; right:14px; z-index:10; padding:6px 10px; font-size:11px; background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.3); border-radius:6px; color:var(--ar-text); cursor:pointer; font-weight:600; transition:all 0.15s ease;">🔄 Refresh</button>
+        </div>
+        
+        <!-- Exam Progress Drawer -->
+        <div id="ar-exams-drawer" style="display:none; position:fixed; top:0; right:0; width:500px; max-width:90vw; height:100vh; background:var(--ar-bg); border-left:1px solid var(--ar-border); box-shadow:-4px 0 12px rgba(0,0,0,0.3); z-index:10000; overflow-y:auto; padding:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+            <h2 style="color:var(--ar-text); font-size:20px; font-weight:600; margin:0;">Exam Progress</h2>
+            <button id="ar-exams-drawer-close" style="background:transparent; border:1px solid var(--ar-border); border-radius:6px; padding:8px 12px; color:var(--ar-text); cursor:pointer; font-size:14px;">✕ Close</button>
+          </div>
+          <div id="ar-exams-drawer-content"></div>
+        </div>
+        <div id="ar-exams-drawer-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999;"></div>
+  
+        <div class="ar-tile-group">
+          <div class="ar-tile-group__label">
+            Paid Members Only <span class="pill-muted">— Resources</span>
+          </div>
+          <div class="ar-tile-group__grid">
+            <a id="arp-practice-packs-tile" class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-practice-packs">
+              <div class="ar-tile__title"><span class="ar-tile__icon">📦</span>Practice Packs</div>
+              <div class="ar-tile__desc">30 Assignment Practice Packs (PDF)</div>
+              <div class="ar-tile__tip">Grab a pack and follow the step-by-step field exercises.</div>
+            </a>
+  
+            <a id="arp-ebook-tile" class="ar-tile ar-span-4" href="/academy/ebook">
+              <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
+              <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
+              <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
+            </a>
+  
+            <a id="arp-checklists-tile" class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-checklists">
+              <div class="ar-tile__title"><span class="ar-tile__icon">✅</span>1-Page Field Checklists</div>
+              <div class="ar-tile__desc">35 One-page Field Checklists</div>
+              <div class="ar-tile__tip">Print one page per lesson and take it on location.</div>
+            </a>
+          </div>
+        </div>
+  
+        <div class="ar-tile-group">
+          <div class="ar-tile-group__label">
+            Need Help <span class="pill-muted">— Support</span>
+          </div>
+          <div class="ar-tile-group__grid">
+            <a class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-course-feedback">
+              <div class="ar-tile__title"><span class="ar-tile__icon">💬</span>Course Feedback</div>
+              <div class="ar-tile__desc">Submit questions, share progress, and get help moving forward.</div>
+              <div class="ar-tile__tip">Send a question or share your results for feedback.</div>
+            </a>
+  
+            <a class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-questions-answers" id="qa-tile">
+              <div class="ar-tile__title"><span class="ar-tile__icon">❓</span>Your Questions &amp; Answers</div>
+              <div class="ar-tile__desc">Quick answers to common questions, issues, and next steps.</div>
+              <div id="qa-counts" style="margin-top: 12px; font-size: 13px; color: var(--ar-text-muted);">
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                  <span>Asked: <strong id="qa-asked-count" style="color: var(--ar-text);">—</strong></span>
+                  <span>Answered: <strong id="qa-answered-count" style="color: var(--ar-text);">—</strong></span>
+                  <span>Outstanding: <strong id="qa-outstanding-count" style="color: var(--ar-text);">—</strong></span>
+                </div>
+              </div>
+              <div class="ar-tile__tip">Find quick answers and troubleshooting steps.</div>
+            </a>
+
+            <a class="ar-tile ar-span-4" href="/academy-robo-ranger">
+              <div class="ar-tile__title"><span class="ar-tile__icon">🤖</span>Robo-Ranger Chat</div>
+              <div class="ar-tile__desc">Alan's AI assistant. Ask about workshops, tuition, or photography.</div>
+              <div class="ar-tile__tip">Get instant answers from Alan's AI assistant.</div>
+            </a>
+          </div>
+        </div>
+  
+        <div id="arp-ms-tile" class="ar-tile ar-span-4">
+          <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">👤</span>Membership Status</div>
+          <div id="arp-ms-status">Loading membership status…</div>
+          <button id="arp-ms-manage" type="button">Manage subscription</button>
+          <button id="arp-upgrade-membership" type="button" style="display:none;">Upgrade Membership</button>
+          <div class="ar-tile__tip">Check your access level and manage your plan.</div>
+        </div>
+
+        <div id="arp-social-tile" class="ar-tile ar-span-4">
+          <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">🔗</span>Connect Social Accounts</div>
+          <div class="ar-tile__desc">Connect Google or Facebook so you can sign in with them too.</div>
+
+          <!-- Memberstack: Manage Connected Providers -->
+          <div data-ms-auth="manage-providers" class="ms-provider-wrap" aria-label="Connected accounts">
+            <button type="button" class="ms-provider-btn" data-ms-auth-provider="google">
+              <span class="ms-provider-icon">G</span>
+              <span>Connect Google</span>
+              <span class="ms-provider-state" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="ms-provider-btn" data-ms-auth-provider="facebook">
+              <span class="ms-provider-icon">f</span>
+              <span>Connect Facebook</span>
+              <span class="ms-provider-state" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="ms-provider-note">
+            Tip: connect the provider you prefer, then next time you can log in with it.
+          </div>
+          <div class="ar-tile__tip">Connect Google/Facebook so login is faster on any device.</div>
+        </div>
+
+        <!-- Bookmarks & Recent Activity Tile (LIVE MINI LISTS) -->
+        <div id="arp-bookmarks-tile" class="ar-tile ar-span-4">
+          <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">⭐</span>Bookmarks &amp; Recent Activity</div>
+
+          <div class="ar-tile__desc" style="margin-top:8px;">
+            <div style="color:#E57200;font-weight:900;margin-bottom:6px;">
+              Bookmarks <span style="color:rgba(226,232,240,0.85);font-weight:800;">(up to 20)</span>
+            </div>
+            <ul id="bookmarks-mini" style="list-style:none;padding:0;margin:0 0 10px 0;"></ul>
+
+            <div style="color:#FFD700;font-weight:900;margin:6px 0;">
+              Recent activity <span style="color:rgba(226,232,240,0.85);font-weight:800;">(last 10)</span>
+            </div>
+            <ul id="history-mini" style="list-style:none;padding:0;margin:0;"></ul>
+
+            <a href="#academy-activity"
+               style="display:inline-block;margin-top:10px;color:#9ca3af;text-decoration:none;font-size:12px;font-weight:800;position:relative;z-index:10;">
+              View all
+            </a>
+          </div>
+
+          <div class="ar-tile__tip">View your saved bookmarks and recent activity.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===========================
+    AR | DASHBOARD: RECENT ACTIVITY + BOOKMARKS (DISPLAY)
+    WHAT IT DOES:
+    - Reads Memberstack Member JSON and displays:
+      - Recent Activity (json.history[])
+      - Bookmarks (json.bookmarks[])
+    - Includes optional "Clear bookmarks" action
+    WHERE TO PUT IT:
+    - Squarespace Code Block on /academy/dashboard (place under the welcome area)
+    THEME:
+    - Styled for your dark dashboard with orange/yellow accents.
+    =========================== -->
+
+    <div id="academy-activity" style="margin-top:18px;color:#fff;font-family:sans-serif;padding:0 18px;">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;max-width:1200px;margin:0 auto;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+          <!-- Left Column: Recent Activity -->
+          <div>
+            <h3 style="color:#E57200;margin:0 0 8px;font-weight:900;">Last 10 Pages Visited</h3>
+            <ul id="history-list" style="list-style:none;padding:0;margin:0 0 10px 0;"></ul>
+            <div>
+              <a href="#" id="clear-history" style="color:#9ca3af;text-decoration:none;font-size:13px;">Clear pages visited</a>
+            </div>
+          </div>
+          
+          <!-- Right Column: Bookmarks -->
+          <div>
+            <h3 style="color:#FFD700;margin:0 0 8px;font-weight:900;">Bookmarked Pages</h3>
+            <ul id="bookmarks-list" style="list-style:none;padding:0;margin:0 0 10px 0;"></ul>
+            <div>
+              <a href="#" id="clear-bookmarks" style="color:#9ca3af;text-decoration:none;font-size:13px;">Clear bookmarks</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @media (max-width: 768px) {
+        #academy-activity > div > div {
+          grid-template-columns: 1fr !important;
+        }
+      }
+    </style>
+
+    <!-- ===========================
+    END: AR | DASHBOARD: RECENT ACTIVITY + BOOKMARKS (DISPLAY)
+    =========================== -->
+
+    <!-- ===========================
+    AR | DASHBOARD: DEBUG PANEL (Module Progress Diagnostics)
+    =========================== -->
+    <div id="ar-module-debug-panel" style="position:fixed; top:20px; right:20px; width:400px; max-height:600px; background:#1a1f2e; border:2px solid #E57200; border-radius:8px; padding:15px; z-index:99999; overflow-y:auto; font-family:monospace; font-size:11px; box-shadow:0 4px 12px rgba(0,0,0,0.5); color:#e2e8f0; display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+        <h3 style="margin:0; color:#E57200; font-weight:900; font-size:14px;">🔍 Module Progress Debug</h3>
+        <div style="display:flex; gap:6px;">
+          <button id="ar-debug-copy-btn" onclick="(function(){const content=document.getElementById('ar-module-debug-content').innerText;navigator.clipboard.writeText(content).then(()=>{const btn=document.getElementById('ar-debug-copy-btn');const orig=btn.textContent;btn.textContent='✓ Copied!';btn.style.background='#10b981';setTimeout(()=>{btn.textContent=orig;btn.style.background='#3b82f6';},2000);}).catch(()=>{alert('Failed to copy');});})()" style="background:#3b82f6; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">Copy</button>
+          <button onclick="document.getElementById('ar-module-debug-panel').style.display='none'" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">Close</button>
+        </div>
+      </div>
+      <div id="ar-module-debug-content" style="line-height:1.6;">
+        <div style="color:#9ca3af;">Waiting for data...</div>
+      </div>
+    </div>
+    <!-- ===========================
+    END: AR | DASHBOARD: DEBUG PANEL
+    =========================== -->
+  </div>
+  
+  <script>
+  (function(){
+    var LOGIN_URL = "/academy/login";
+    var DASHBOARD_URL = "/academy/dashboard";
+    var EXPIRED_URL = "/academy/trial-expired";
+  
+    var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+    // Keep the old annual price id for legacy members, but also support the new annual-with-trial price id.
+    var ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+    var ANNUAL_WITH_TRIAL_PRICE_ID = "prc_annual-membership-with-30-day-trial-881h0iui";
+    
+    // === Upgrade Membership constants ===
+    var UPGRADE_ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+    
+    // === Upgrade button handler ===
+    function getMemberstackDom() {
+      return globalThis.$memberstackDom || window.$memberstackDom || window.memberstackDom || null;
+    }
+    
+    function dashboardUrl() {
+      // Keep it stable regardless of query params
+      return (globalThis.location ? globalThis.location.origin : "") + "/academy/dashboard";
+    }
+    
+    async function handleUpgradeMembership(e) {
+      // CRITICAL: Prevent default and stop propagation to avoid triggering portal
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      var btn = document.getElementById("arp-upgrade-membership");
+      if (!btn) return;
+      
+      btn.disabled = true;
+      var originalText = btn.textContent;
+      btn.textContent = "Opening checkout...";
+      
+      var ms = getMemberstackDom();
+      if (!ms || typeof ms.purchasePlansWithCheckout !== "function") {
+        console.error("[Upgrade] Memberstack DOM not ready or purchasePlansWithCheckout unavailable");
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert("Upgrade is temporarily unavailable. Please refresh and try again.");
+        return;
+      }
+      
+      try {
+        var result = await ms.purchasePlansWithCheckout({
+          priceId: UPGRADE_ANNUAL_PRICE_ID,
+          successUrl: dashboardUrl() + "?upgrade=success",
+          cancelUrl: dashboardUrl() + "?upgrade=cancel"
+        });
+        
+        var url = result && result.data && result.data.url;
+        if (!url) {
+          throw new Error("No checkout URL returned from Memberstack.");
+        }
+        
+        // IMPORTANT: same-tab navigation so the user sees checkout
+        globalThis.location.assign(url);
+      } catch (err) {
+        console.error("[Upgrade] Failed to open checkout:", err);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert("Could not open checkout. Please try again.");
+      }
+    }
+  
+    function inSquarespaceEditor(){
+      var loc = globalThis.location || {};
+      var href = String(loc.href || "");
+      var path = String(loc.pathname || "");
+      var search = String(loc.search || "");
+
+      function isEditorPath(p){
+        return p.startsWith("/config") || p.startsWith("/backend");
+      }
+
+      function hasNoChrome(){
+        return search.includes("nochrome") || href.includes("nochrome");
+      }
+
+      function inIFrame(){
+        try { return !!(globalThis.top && globalThis.top !== globalThis.self); }
+        catch (error_) { return false; }
+      }
+
+      function topLooksLikeEditor(){
+        try{
+          var topLoc = globalThis.top && globalThis.top.location ? globalThis.top.location : {};
+          var topHref = String(topLoc.href || "");
+          var topPath = String(topLoc.pathname || "");
+          if (isEditorPath(topPath)) return true;
+          if (topHref.includes("nochrome")) return true;
+          return (topHref.includes("squarespace.com") && topHref.includes("/config"));
+        } catch (error_) {
+          // Cross-origin iframe: treat as NOT editor (keep protection on live-site embeds)
+          return false;
+        }
+      }
+
+      if (isEditorPath(path)) return true;
+      if (hasNoChrome()) return true;
+      if (!inIFrame()) return false;
+      return topLooksLikeEditor();
+    }
+  
+    function unwrapMember(res){
+      if (!res) return null;
+      if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+      if (res.email || res.planConnections) return { id: res.id || null, data: res };
+      if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+      return res;
+    }
+
+    function mergeMissingFields(target, source){
+      if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+      for (var k in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+        if (target[k] == null) target[k] = source[k];
+      }
+    }
+
+    function getMemberExtended(ms){
+      return ms.getCurrentMember().then(function(res){
+        var m = unwrapMember(res);
+        if (!m || !m.data) return m;
+        if (typeof ms.getMemberJSON !== "function") return m;
+        return ms.getMemberJSON().then(function(json){
+          var mj = unwrapMember(json);
+          if (!mj) return m;
+          if (!m.id && mj.id) m.id = mj.id;
+          if (!m.data) m.data = {};
+          // Merge both shapes:
+          // - mj.data (common)
+          // - mj (some wrappers return the raw member object directly)
+          if (mj.data) mergeMissingFields(m.data, mj.data);
+          mergeMissingFields(m.data, mj);
+          return m;
+        }).catch(function(){
+          return m;
+        });
+      });
+    }
+
+    function pickFirstString(arr){
+      for (var i = 0; i < arr.length; i++) {
+        var v = arr[i];
+        if (typeof v === "string" && v.trim()) return v.trim();
+      }
+      return "";
+    }
+
+    function getMemberEmail(member){
+      var d = member && member.data ? member.data : {};
+      return pickFirstString([
+        d.email,
+        d.emailAddress,
+        d.email_address,
+        d.loginEmail,
+        d.memberEmail,
+        member && member.email,
+        d.auth && d.auth.email,
+        d.member && d.member.auth && d.member.auth.email,
+        d.user && d.user.auth && d.user.auth.email,
+        d.authentication && d.authentication.email,
+        d.user && d.user.email,
+        d.customer && d.customer.email
+      ]);
+    }
+  
+    function safeDate(v){
+      if (!v) return null;
+      // Memberstack sometimes returns epoch seconds (e.g. 1769726078)
+      if (typeof v === "number" && v > 0 && v < 100000000000) v = v * 1000;
+      var d = (v instanceof Date) ? v : new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  
+    function daysBetween(now, future){
+      var ms = future.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(ms / (1000*60*60*24)));
+    }
+
+    function formatDate(d){
+      try{
+        return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      } catch(e){
+        return d.toDateString();
+      }
+    }
+  
+    function ready(fn){
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+      else fn();
+    }
+  
+    function waitForMemberstack(maxMs){
+      maxMs = typeof maxMs === "number" ? maxMs : 8000;
+      return new Promise(function(resolve){
+        var start = Date.now();
+        (function tick(){
+          if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.getCurrentMember === "function") {
+            resolve(globalThis.$memberstackDom);
+            return;
+          }
+          if ((Date.now() - start) > maxMs) { resolve(null); return; }
+          setTimeout(tick, 100);
+        })();
+      });
+    }
+  
+    function getPlanConnections(member){
+      var pcs = member && member.data && Array.isArray(member.data.planConnections) ? member.data.planConnections : [];
+      return pcs.filter(Boolean);
+    }
+  
+    function hasTrialingSubscription(member){
+      var pcs = getPlanConnections(member);
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.status === "TRIALING") return true;
+        if (pc.payment && pc.payment.status === "TRIALING") return true;
+      }
+      return false;
+    }
+
+    function hasTrialAccess(member){
+      return getPlanConnections(member).some(function(pc){ return pc && pc.planId === TRIAL_PLAN_ID; });
+    }
+  
+    function hasAnnualAccess(member){
+      var data = member && member.data ? member.data : null;
+      if (!data) return false;
+      for (var k in data) {
+        if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+        var v = data[k];
+        if (!Array.isArray(v)) continue;
+        for (var i = 0; i < v.length; i++) {
+          var item = v[i];
+          if (!item || typeof item !== "object") continue;
+          if (item.priceId === ANNUAL_PRICE_ID) return true;
+          if (item.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) return true;
+        }
+      }
+      return false;
+    }
+  
+    function hasAnyNonTrialPlan(member){
+      return getPlanConnections(member).some(function(pc){ return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID; });
+    }
+  
+    function hasAccess(member){
+      if (!member || !member.data) return false;
+      if (hasTrialAccess(member)) return true;
+      if (hasAnnualAccess(member)) return true;
+      if (hasAnyNonTrialPlan(member)) return true;
+      return false;
+    }
+  
+    function getTrialEndsAt(member){
+      var pcs = getPlanConnections(member);
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.planId !== TRIAL_PLAN_ID) continue;
+        var d =
+          safeDate(pc.trialEndsAt) ||
+          safeDate(pc.endsAt) ||
+          safeDate(pc.currentPeriodEnd) ||
+          safeDate(pc.renewsAt) ||
+          safeDate(pc.expiresAt);
+        if (d) return d;
+      }
+      var created =
+        safeDate(member.createdAt) ||
+        safeDate(member.data && (member.data.createdAt || member.data.created_at));
+      if (created) return new Date(created.getTime() + (30 * 24 * 60 * 60 * 1000));
+      return null;
+    }
+  
+    function firstDateInObject(obj, keys){
+      if (!obj || typeof obj !== "object") return null;
+      for (var i = 0; i < keys.length; i++) {
+        var d = safeDate(obj[keys[i]]);
+        if (d) return d;
+      }
+      return null;
+    }
+  
+    function dateFromArray(arr, keys, onlyAnnual){
+      if (!Array.isArray(arr)) return null;
+      for (var i = 0; i < arr.length; i++) {
+        var item = arr[i];
+        if (!item || typeof item !== "object") continue;
+        if (onlyAnnual) {
+          if (item.priceId !== ANNUAL_PRICE_ID && item.priceId !== ANNUAL_WITH_TRIAL_PRICE_ID) continue;
+        }
+        // Memberstack often nests billing dates under payment
+        var d =
+          firstDateInObject(item, keys) ||
+          firstDateInObject(item.payment, keys);
+        if (d) return d;
+      }
+      return null;
+    }
+  
+    function scanDataArraysForRenewal(data, keys){
+      var any = null;
+      var entries = Object.entries(data);
+      for (var i = 0; i < entries.length; i++) {
+        var arr = entries[i][1];
+        if (!Array.isArray(arr)) continue;
+  
+        var preferred = dateFromArray(arr, keys, true);
+        if (preferred) return preferred;
+  
+        if (!any) {
+          var maybe = dateFromArray(arr, keys, false);
+          if (maybe) any = maybe;
+        }
+      }
+      return any;
+    }
+  
+    function scanDataObjectsForRenewal(data, keys){
+      var entries = Object.entries(data);
+      for (var i = 0; i < entries.length; i++) {
+        var v = entries[i][1];
+        if (!v || typeof v !== "object") continue;
+        if (Array.isArray(v)) continue;
+        var d = firstDateInObject(v, keys);
+        if (d) return d;
+      }
+      return null;
+    }
+
+    function getAnnualRenewsAt(member){
+      var data = member && member.data ? member.data : null;
+      if (!data) return null;
+      var keys = [
+        "currentPeriodEnd", "current_period_end",
+        "renewsAt", "renews_at",
+        "nextBillDate", "next_bill_date",
+        "nextBillingDate", "next_billing_date"
+      ];
+  
+      var direct = firstDateInObject(data, keys);
+      if (direct) return direct;
+  
+      var obj = scanDataObjectsForRenewal(data, keys);
+      if (obj) return obj;
+      return scanDataArraysForRenewal(data, keys);
+    }
+  
+    function setText(el, text){
+      if (el) el.textContent = text;
+    }
+  
+    function wirePortal(ms){
+      var manageBtn = document.getElementById("arp-ms-manage");
+      var tile = document.getElementById("arp-ms-tile");
+  
+      function openPortalInNewTab(e){
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        // Open a same-origin helper tab. That tab will launch the portal and keep this dashboard tab open.
+        try{
+          var url = DASHBOARD_URL + (DASHBOARD_URL.indexOf("?") === -1 ? "?" : "&") + "arpPortal=1";
+          globalThis.open(url, "_blank");
+        } catch(err){
+          // Fallback: if popups blocked, attempt the normal portal launch in this tab.
+          if (ms && typeof ms.launchStripeCustomerPortal === "function") ms.launchStripeCustomerPortal();
+        }
+      }
+  
+      // Only wire custom portal handler if button doesn't have data-ms-action (Memberstack will handle it)
+      // For checkout buttons, we don't need the portal handler
+      if (manageBtn) {
+        var hasMsAction = manageBtn.getAttribute("data-ms-action");
+        if (!hasMsAction) {
+          manageBtn.onclick = openPortalInNewTab;
+        }
+      }
+      // Tile click should still work for portal mode
+      if (tile) {
+        tile.onclick = function(e) {
+          // Only handle if the button is in portal mode
+          if (manageBtn && manageBtn.getAttribute("data-ms-action") === "customer-portal") {
+            openPortalInNewTab(e);
+    }
+        };
+      }
+    }
+  
+  
+    function escapeHtml(s){
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    // Helper functions for membership state derivation
+    function parseDate(d) {
+      if (!d) return null;
+      // Memberstack sometimes returns epoch seconds (e.g. 1769726078)
+      if (typeof d === "number" && d > 0 && d < 100000000000) d = d * 1000;
+      var x = d instanceof Date ? d : new Date(d);
+      return x && !isNaN(x.getTime()) ? x : null;
+    }
+
+    function fmtDate(d) {
+      if (!d) return "";
+      try {
+        return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      } catch(e) {
+        return d.toDateString();
+      }
+    }
+
+    function daysUntil(d) {
+      if (!d) return null;
+      var ms = d.getTime() - Date.now();
+      var days = Math.ceil(ms / 86400000);
+      // Return absolute value to handle past dates gracefully
+      return Math.abs(days);
+    }
+  
+    function getAcademyPlanConnection(member) {
+      var pcs = getPlanConnections(member);
+      if (pcs.length === 0) return null;
+      
+      // First, check for trial plan ID (ONETIME trial plans)
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.planId === TRIAL_PLAN_ID) {
+          return pc;
+        }
+      }
+      
+      // Second, try to find a plan with matching price IDs (most reliable)
+      for (var j = 0; j < pcs.length; j++) {
+        var pc2 = pcs[j] || {};
+        var payment = pc2.payment || {};
+        if (payment.priceId === ANNUAL_PRICE_ID || payment.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) {
+          return pc2;
+        }
+      }
+      
+      // Third, check planId for academy/annual keywords
+      for (var k = 0; k < pcs.length; k++) {
+        var pc3 = pcs[k] || {};
+        var planId = String(pc3.planId || "").toLowerCase();
+        if (planId.indexOf("academy") !== -1 || planId.indexOf("annual") !== -1) {
+          return pc3;
+        }
+      }
+      
+      // Fallback: return first active/trialing plan, or first plan if none match
+      for (var l = 0; l < pcs.length; l++) {
+        var pc4 = pcs[l] || {};
+        var status = String(pc4.status || "").toLowerCase();
+        if (status === "active" || status === "trialing") {
+          return pc4;
+        }
+      }
+      
+      return pcs[0] || null;
+    }
+
+    function deriveMembershipState(p) {
+      if (!p || typeof p !== "object") {
+        return {
+          label: "No active membership",
+          dateLine: "",
+          ctaText: "Join",
+          ctaMode: "checkout",
+          severity: "warn"
+        };
+      }
+
+      // p.status is the key driver: trialing | active | past_due | canceled | unpaid | incomplete | paused ...
+      var status = String(p.status || "").toLowerCase();
+
+      // Extract dates from various possible field names
+      var payment = p.payment || {};
+      var trialEnd = parseDate(p.trialEndsAt || p.trial_end || p.trialEnd || 
+                               payment.trialEndsAt || payment.cancelAtDate || payment.cancel_at_date);
+      var renewAt = parseDate(p.renewsAt || p.renews_at || p.nextBillingAt || p.next_billing_date || 
+                             p.currentPeriodEnd || p.current_period_end || 
+                             payment.nextBillingDate || payment.next_billing_date || 
+                             payment.currentPeriodEnd || payment.current_period_end);
+      var cancelAt = parseDate(p.cancelAt || p.cancel_at || p.cancelAtDate || 
+                               payment.cancelAt || payment.cancelAtDate);
+      var periodEnd = parseDate(p.currentPeriodEnd || p.current_period_end || 
+                                payment.currentPeriodEnd || payment.current_period_end || renewAt);
+
+      var cancelAtPeriodEnd = !!(p.cancelAtPeriodEnd !== undefined ? p.cancelAtPeriodEnd : 
+                                (p.cancel_at_period_end !== undefined ? p.cancel_at_period_end : false));
+
+      // Debug: log the plan object being processed
+      console.log("[MS] plan connection object", p);
+      console.log("[MS] derived state", { status: status, trialEnd: trialEnd, renewAt: renewAt, cancelAt: cancelAt, cancelAtPeriodEnd: cancelAtPeriodEnd });
+
+      // Check if this is a trial plan (by planId) - handles ONETIME trial plans with ACTIVE status
+      var isTrialPlan = p.planId === TRIAL_PLAN_ID;
+      
+      // Trial - check by status OR by planId
+      if (status === "trialing" || isTrialPlan) {
+        // For ONETIME trial plans, use cancelAtDate from payment object
+        var d = trialEnd || cancelAt || renewAt;
+        return {
+          label: "Trial member",
+          dateLine: d ? ("Trial ends: " + fmtDate(d) + " (" + daysUntil(d) + " days)") : "",
+          ctaText: "Manage subscription",
+          ctaMode: "portal",
+          severity: "warn"
+        };
+      }
+
+      // Past due / payment failed
+      if (status === "past_due" || status === "unpaid") {
+        return {
+          label: "Payment failed",
+          dateLine: "",
+          ctaText: "Update payment method",
+          ctaMode: "portal",
+          severity: "bad"
+        };
+      }
+
+      // Active (but might be set to cancel at period end)
+      if (status === "active") {
+        if (cancelAtPeriodEnd) {
+          var d = cancelAt || periodEnd || renewAt;
+          return {
+            label: d ? ("Cancels on " + fmtDate(d)) : "Cancelling",
+            dateLine: "",
+            ctaText: "Manage subscription",
+            ctaMode: "portal",
+            severity: "warn"
+          };
+        }
+
+        var d = renewAt || periodEnd;
+        return {
+          label: "Annual member",
+          dateLine: d ? ("Next renewal: " + fmtDate(d) + " (" + daysUntil(d) + " days)") : "",
+          ctaText: "Manage subscription",
+          ctaMode: "portal",
+          severity: "ok"
+        };
+      }
+
+      // Canceled/Ended
+      if (status === "canceled" || status === "incomplete_expired") {
+        // If still within access window, treat as "Cancels on …"
+        if (periodEnd && periodEnd.getTime() > Date.now()) {
+          return {
+            label: "Cancels on " + fmtDate(periodEnd),
+            dateLine: "",
+            ctaText: "Manage subscription",
+            ctaMode: "portal",
+            severity: "warn"
+          };
+        }
+
+        return {
+          label: "Ended",
+          dateLine: "",
+          ctaText: "Rejoin",
+          ctaMode: "checkout",
+          severity: "bad"
+        };
+      }
+
+      // Fallback (no paid plan found etc.)
+      return {
+        label: "No active membership",
+        dateLine: "",
+        ctaText: "Join",
+        ctaMode: "checkout",
+        severity: "warn"
+      };
+    }
+  
+    // Store progress data globally for drawer
+    window.examProgressData = null;
+    
+    function formatDate(dateString) {
+      if (!dateString) return 'Never';
+      try {
+        var d = new Date(dateString);
+        return d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch(e) {
+        return dateString;
+      }
+    }
+    
+    // Make openExamDrawer globally accessible
+    window.openExamDrawer = function() {
+      var drawer = document.getElementById('ar-exams-drawer');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (!drawer || !overlay || !window.examProgressData) return;
+      
+      var data = window.examProgressData;
+      var summary = data.summary;
+      var modules = data.modules;
+      
+      // Build drawer content
+      var content = '<div style="margin-bottom:24px; padding:16px; background:var(--ar-panel); border-radius:8px; border:1px solid var(--ar-border);">';
+      if (summary.name) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Name</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + escapeHtml(summary.name) + '</div>';
+      }
+      if (summary.email) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Email</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + escapeHtml(summary.email) + '</div>';
+      }
+      content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-top:16px; margin-bottom:8px;">Progress</div>';
+      content += '<div style="color:var(--ar-text); font-size:18px; font-weight:600; margin-bottom:16px;">' + summary.passedCount + '/15 modules passed</div>';
+      content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Total Attempts</div>';
+      content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + summary.totalAttempts + '</div>';
+      if (summary.lastExamAt) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Last Exam</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px;">' + formatDate(summary.lastExamAt) + '</div>';
+      }
+      content += '</div>';
+      
+      // Passed modules
+      var passedModules = modules.filter(function(m) { return m.status === 'passed'; });
+      if (passedModules.length > 0) {
+        content += '<div style="margin-bottom:24px;"><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Passed Modules (' + passedModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-direction:column; gap:8px;">';
+        passedModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:12px; background:var(--ar-panel); border-radius:6px; border:1px solid #10b981; cursor:pointer; transition:all 0.15s ease;" onmouseover="this.style.background=\'rgba(16,185,129,0.1)\'; this.style.transform=\'translateX(4px)\';" onmouseout="this.style.background=\'var(--ar-panel)\'; this.style.transform=\'translateX(0)\';">';
+          content += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
+          content += '<span style="color:var(--ar-text); font-weight:600;">' + escapeHtml(module.name) + '</span>';
+          content += '<span style="color:#10b981; font-size:13px; font-weight:600;">' + module.bestScore + '%</span>';
+          content += '</div>';
+          content += '<div style="color:var(--ar-text-muted); font-size:12px;">' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '') + ' • Passed: ' + formatDate(module.firstPassedAt) + '</div>';
+          content += '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      // Failed modules
+      var failedModules = modules.filter(function(m) { return m.status === 'failed'; });
+      if (failedModules.length > 0) {
+        content += '<div style="margin-bottom:24px;"><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Failed Modules (' + failedModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-direction:column; gap:8px;">';
+        failedModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:12px; background:var(--ar-panel); border-radius:6px; border:1px solid #ef4444; cursor:pointer; transition:all 0.15s ease;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'; this.style.transform=\'translateX(4px)\';" onmouseout="this.style.background=\'var(--ar-panel)\'; this.style.transform=\'translateX(0)\';">';
+          content += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
+          content += '<span style="color:var(--ar-text); font-weight:600;">' + escapeHtml(module.name) + '</span>';
+          content += '<span style="color:#ef4444; font-size:13px; font-weight:600;">Best: ' + module.bestScore + '%</span>';
+          content += '</div>';
+          content += '<div style="color:var(--ar-text-muted); font-size:12px;">' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '') + ' • Last: ' + formatDate(module.lastAttemptAt) + '</div>';
+          content += '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      // Remaining modules
+      var remainingModules = modules.filter(function(m) { return m.status === 'not_taken'; });
+      if (remainingModules.length > 0) {
+        content += '<div><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Remaining Modules (' + remainingModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+        remainingModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:8px 12px; background:var(--ar-panel); border-radius:6px; border:1px solid var(--ar-border); color:var(--ar-text-muted); font-size:13px; cursor:pointer; transition:all 0.15s ease;">' + escapeHtml(module.name) + '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      document.getElementById('ar-exams-drawer-content').innerHTML = content;
+      
+      // Wire up module chip clicks (all modules in drawer are clickable)
+      var chips = document.querySelectorAll('.ar-exam-module-chip');
+      chips.forEach(function(chip) {
+        chip.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var moduleId = this.getAttribute('data-module-id');
+          if (moduleId) {
+            // Close drawer before navigating
+            closeExamDrawer();
+            // Navigate to exam page with module parameter
+            window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+          }
+        });
+      });
+      
+      drawer.style.display = 'block';
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    };
+    
+    function closeExamDrawer() {
+      var drawer = document.getElementById('ar-exams-drawer');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (drawer) drawer.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    
+    // Wire up drawer close buttons
+    ready(function() {
+      var closeBtn = document.getElementById('ar-exams-drawer-close');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeExamDrawer();
+        });
+      }
+      if (overlay) {
+        overlay.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeExamDrawer();
+        });
+      }
+    });
+
+    function loadExamProgress(member) {
+      var progressEl = document.getElementById("ar-exams-progress");
+      var progressTitleEl = document.getElementById("ar-exams-progress-title");
+      var miniGridEl = document.getElementById("ar-exams-mini-grid");
+      
+      if (!progressEl || !progressTitleEl) {
+        console.warn("[Dashboard] Exam progress element not found");
+        return;
+      }
+      
+      // Try multiple ways to get member ID (compatible with older browsers)
+      var memberId = null;
+      if (member) {
+        memberId = member.id || (member.data && member.data.id) || null;
+      }
+      
+      if (!memberId) {
+        console.warn("[Dashboard] No member ID found. Member object:", member);
+        progressEl.textContent = "Resume an exam or download your latest results.";
+        progressTitleEl.textContent = "";
+        if (miniGridEl) miniGridEl.style.display = 'none';
+        var detailsBtn = document.getElementById('ar-exams-details-btn');
+        if (detailsBtn) detailsBtn.style.display = 'none';
+        return;
+      }
+      
+      console.log("[Dashboard] loadExamProgress called with member ID:", memberId);
+      
+      // Show loading state
+      progressEl.textContent = "Loading exam progress...";
+      progressTitleEl.textContent = "Loading...";
+      if (miniGridEl) miniGridEl.style.display = 'none';
+      var detailsBtn = document.getElementById('ar-exams-details-btn');
+      if (detailsBtn) detailsBtn.style.display = 'none';
+      
+      var apiBase = "https://alanranger-modules.vercel.app";
+      
+      // Fetch progress from new endpoint (all modules in one call)
+      var url = apiBase + "/api/exams/progress";
+      var headers = {
+        "Content-Type": "application/json",
+        "X-Memberstack-Id": memberId
+      };
+      
+      fetch(url, {
+        method: "GET",
+        headers: headers,
+        credentials: "include"
+      })
+      .then(function(r) {
+        if (!r.ok) {
+          console.error("[Dashboard] Progress API failed:", r.status);
+          throw new Error("Failed to fetch progress");
+        }
+        return r.json();
+      })
+      .then(function(data) {
+        console.log("[Dashboard] Progress data received:", data);
+        
+        // Store globally for drawer
+        window.examProgressData = data;
+        
+        var summary = data.summary;
+        var modules = data.modules;
+        var passed = summary.passedCount;
+        var failed = summary.failedCount;
+        var total = 15;
+        var percent = Math.round((passed / total) * 100);
+        
+        // Update title progress
+        if (passed > 0 || failed > 0) {
+          var progressText = passed + "/" + total + " passed (" + percent + "%)";
+          progressTitleEl.textContent = progressText;
+        } else {
+          progressTitleEl.textContent = "";
+        }
+        
+        // Update tip area
+        if (passed > 0 || failed > 0) {
+          var tipText = passed + "/" + total + " modules passed";
+          if (failed > 0) {
+            tipText += " • " + failed + " failed";
+          }
+          var remaining = total - passed - failed;
+          if (remaining > 0) {
+            tipText += " • " + remaining + " not started";
+          }
+          progressEl.textContent = tipText;
+        } else {
+          progressEl.textContent = "Resume an exam or download your latest results.";
+        }
+        
+        // Update details badges (keep existing behavior)
+        var detailsEl = document.getElementById("ar-exams-details");
+        if (detailsEl && (passed > 0 || failed > 0)) {
+          var detailsHtml = "";
+          if (passed > 0) {
+            detailsHtml += '<div class="ar-tile__details-item passed">✓ ' + passed + ' passed</div>';
+          }
+          if (failed > 0) {
+            detailsHtml += '<div class="ar-tile__details-item failed">✕ ' + failed + ' failed</div>';
+          }
+          var remaining = total - passed - failed;
+          if (remaining > 0) {
+            detailsHtml += '<div class="ar-tile__details-item not-attempted">○ ' + remaining + ' not started</div>';
+          }
+          detailsEl.innerHTML = detailsHtml;
+        }
+        
+        // Render mini grid
+        if (miniGridEl) {
+          var gridHtml = '';
+          modules.forEach(function(module) {
+            var statusClass = 'status-' + module.status;
+            // NO title attribute - tooltips interfere with clicks
+            // All info is available in the drawer
+            
+            gridHtml += '<div class="ar-exam-module-pill ' + statusClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || '') + '" data-module-attempts="' + (module.attempts || 0) + '">' + module.label + '</div>';
+          });
+          miniGridEl.innerHTML = gridHtml;
+          miniGridEl.style.display = 'flex';
+          
+          // Show Details button
+          var detailsBtn = document.getElementById('ar-exams-details-btn');
+          if (detailsBtn) {
+            detailsBtn.style.display = 'block';
+          }
+        }
+      })
+      .catch(function(err) {
+        console.error("[Dashboard] Error fetching progress:", err);
+        progressEl.textContent = "Resume an exam or download your latest results.";
+        progressTitleEl.textContent = "";
+        if (miniGridEl) miniGridEl.style.display = 'none';
+        var detailsBtn = document.getElementById('ar-exams-details-btn');
+        if (detailsBtn) detailsBtn.style.display = 'none';
+      });
+    }
+
+    function updatePaidResourceTiles(isTrial) {
+      var practicePacksTile = document.getElementById("arp-practice-packs-tile");
+      var ebookTile = document.getElementById("arp-ebook-tile");
+      var checklistsTile = document.getElementById("arp-checklists-tile");
+      
+      if (practicePacksTile) {
+        practicePacksTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          practicePacksTile.removeAttribute("href");
+          practicePacksTile.setAttribute("aria-disabled", "true");
+        } else {
+          practicePacksTile.setAttribute("href", "https://www.alanranger.com/academy/photography-practice-packs");
+          practicePacksTile.removeAttribute("aria-disabled");
+        }
+      }
+      
+      if (ebookTile) {
+        ebookTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          ebookTile.removeAttribute("href");
+          ebookTile.setAttribute("aria-disabled", "true");
+        } else {
+          ebookTile.setAttribute("href", "/academy/ebook");
+          ebookTile.removeAttribute("aria-disabled");
+        }
+      }
+      
+      if (checklistsTile) {
+        checklistsTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          checklistsTile.removeAttribute("href");
+          checklistsTile.setAttribute("aria-disabled", "true");
+        } else {
+          checklistsTile.setAttribute("href", "https://www.alanranger.com/academy/photography-checklists");
+          checklistsTile.removeAttribute("aria-disabled");
+        }
+      }
+    }
+
+    function renderMemberStatus(member, ms){
+      var statusEl = document.getElementById("arp-ms-status");
+      var manageBtn = document.getElementById("arp-ms-manage");
+      var tileEl = document.getElementById("arp-ms-tile");
+      if (!statusEl) return;
+  
+      if (!member || !member.data) {
+        setText(statusEl, "Not logged in.");
+        if (manageBtn) manageBtn.style.display = "none";
+        if (tileEl) { tileEl.classList.remove("is-trial"); tileEl.classList.remove("is-annual"); }
+        return;
+      }
+  
+      var email = getMemberEmail(member) || "";
+      var memberId = member.id || member.data.id || "";
+  
+      // Get first and last name from customFields
+      var customFields = member.data.customFields || {};
+      var firstName = customFields["first-name"] || customFields.firstName || customFields.first_name || "";
+      var lastName = customFields["last-name"] || customFields.lastName || customFields.last_name || "";
+      var fullName = (firstName && lastName) ? (firstName + " " + lastName) : (firstName || lastName || "");
+
+      // Get the Academy plan connection
+      var academyPlan = getAcademyPlanConnection(member);
+      
+      // Derive membership state from the plan
+      var state = deriveMembershipState(academyPlan);
+      
+      // Update tile classes based on state
+      var isTrial = state.label === "Trial member";
+      var isAnnual = state.label === "Annual member";
+      if (tileEl) {
+        tileEl.classList.toggle("is-trial", isTrial);
+        tileEl.classList.toggle("is-annual", isAnnual);
+      }
+
+      // Disable paid resource tiles for trial members
+      updatePaidResourceTiles(isTrial);
+
+      // Update upgrade button visibility (only show for trial members, not annual)
+      var upgradeBtn = document.getElementById("arp-upgrade-membership");
+      if (upgradeBtn) {
+        upgradeBtn.style.display = (isTrial && !isAnnual) ? "inline-flex" : "none";
+        // Wire up click handler (only once) - use capture phase to prevent bubbling
+        if (!upgradeBtn.hasAttribute("data-upgrade-wired")) {
+          upgradeBtn.addEventListener("click", handleUpgradeMembership, true);
+          upgradeBtn.setAttribute("data-upgrade-wired", "true");
+        }
+        // Ensure button has no href or portal attributes
+        upgradeBtn.removeAttribute("href");
+        upgradeBtn.removeAttribute("data-ms-action");
+        upgradeBtn.removeAttribute("data-ms-modal");
+      }
+
+      // Update CTA button
+      if (manageBtn) {
+        manageBtn.style.display = "";
+        manageBtn.textContent = state.ctaText;
+        
+        // Wire up CTA based on mode
+        if (state.ctaMode === "portal") {
+          // Use existing portal wiring (already set up in wirePortal)
+          manageBtn.setAttribute("data-ms-action", "customer-portal");
+          manageBtn.removeAttribute("href");
+        } else if (state.ctaMode === "checkout") {
+          // Use checkout flow - add price ID based on state
+          manageBtn.removeAttribute("data-ms-action");
+          if (state.ctaText === "Upgrade now" || state.ctaText === "Rejoin" || state.ctaText === "Join") {
+            // Use the annual with trial price for upgrades/joins
+            manageBtn.setAttribute("data-ms-modal", "signup");
+            manageBtn.setAttribute("data-ms-price:add", ANNUAL_WITH_TRIAL_PRICE_ID);
+          } else {
+            // Fallback: just open signup modal
+            manageBtn.setAttribute("data-ms-modal", "signup");
+          }
+        } else {
+          // none mode - hide button
+          manageBtn.style.display = "none";
+        }
+      }
+  
+      // Render status rows
+      var dateLabel = state.dateLine ? state.dateLine.split(":")[0] + ":" : "";
+      var dateValue = state.dateLine ? state.dateLine.split(":").slice(1).join(":").trim() : "";
+      
+      statusEl.innerHTML =
+        (fullName ? '<div class="ms-row"><span class="ms-label">Name:</span> <span class="ms-value">' + escapeHtml(fullName) + '</span></div>' : '') +
+        '<div class="ms-row"><span class="ms-label">Email:</span> <span class="ms-value">' + escapeHtml(email || "—") + '</span></div>' +
+        '<div class="ms-row"><span class="ms-label">Member ID:</span> <span class="ms-value">' + escapeHtml(memberId || "—") + '</span></div>' +
+        '<div class="ms-row"><span class="ms-label">Status:</span> <span class="ms-value ms-value--accent">' + escapeHtml(state.label) + '</span></div>' +
+        (state.dateLine ? '<div class="ms-row"><span class="ms-label">' + escapeHtml(dateLabel) + '</span> <span class="ms-value">' + escapeHtml(dateValue || "—") + '</span></div>' : '');
+    }
+
+    function getConnectedProviderSet(member){
+      var set = {};
+      var providers = member && member.data && member.data.auth && Array.isArray(member.data.auth.providers)
+        ? member.data.auth.providers
+        : [];
+      for (var i = 0; i < providers.length; i++) {
+        var p = providers[i];
+        var name = p && typeof p.provider === "string" ? p.provider.toLowerCase() : "";
+        if (name) set[name] = true;
+      }
+      return set;
+    }
+
+    function renderProviderState(member){
+      var root = document.getElementById("arp-social-tile");
+      if (!root) return;
+      var connected = getConnectedProviderSet(member);
+      var buttons = root.querySelectorAll("[data-ms-auth-provider]");
+      for (var i = 0; i < buttons.length; i++) {
+        var btn = buttons[i];
+        var prov = String(btn.getAttribute("data-ms-auth-provider") || "").toLowerCase();
+        var isConnected = !!connected[prov];
+        btn.classList.toggle("is-connected", isConnected);
+        var stateEl = btn.querySelector(".ms-provider-state");
+        if (stateEl) stateEl.textContent = isConnected ? "Connected" : "";
+      }
+    }
+  
+    function softFailShow(){
+      // Show something in editor even if Memberstack isn't available
+      var dashboardEl = document.querySelector(".ar-academy-dashboard");
+      if (dashboardEl) dashboardEl.classList.add("is-ready");
+    }
+  
+    function safeRedirect(url){
+      // Never redirect in editor
+      if (inSquarespaceEditor()) return;
+      try { globalThis.location.href = url; } catch(e) {}
+    }
+  
+    ready(function(){
+      var dashboardEl = document.querySelector(".ar-academy-dashboard");
+      if (dashboardEl) dashboardEl.classList.remove("is-ready");
+  
+      var isEditor = inSquarespaceEditor();
+      var banner = document.getElementById("ar-academy-editor-banner");
+      if (isEditor) {
+        if (banner) banner.style.display = "block";
+        softFailShow();
+        return; // DO NOT run access guard in editor
+      }
+  
+      // Portal helper tab: if opened with ?arpPortal=1, launch portal and stop.
+      try{
+        var params = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+        if (params.get("arpPortal") === "1") {
+          waitForMemberstack(8000).then(function(ms){
+            if (!ms || typeof ms.getCurrentMember !== "function") { safeRedirect(LOGIN_URL); return; }
+            getMemberExtended(ms).then(function(m){
+              if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+              if (typeof ms.launchStripeCustomerPortal !== "function") return;
+              ms.launchStripeCustomerPortal();
+              if (dashboardEl) dashboardEl.classList.add("is-ready");
+            }).catch(function(){
+              safeRedirect(LOGIN_URL);
+            });
+            // Best-effort cleanup if portal opens in a new window instead of navigating this tab.
+            setTimeout(function(){
+              try{
+                params.delete("arpPortal");
+                var clean = globalThis.location.pathname + (params.toString() ? ("?" + params.toString()) : "") + (globalThis.location.hash || "");
+                globalThis.history.replaceState({}, "", clean);
+              } catch(e) {}
+            }, 600);
+          });
+          return;
+        }
+      } catch(e) { /* ignore */ }
+
+      // Live site: Guard access (no flash)
+      waitForMemberstack(8000).then(function(ms){
+        if (!ms) { safeRedirect(LOGIN_URL); return; }
+        return getMemberExtended(ms).then(function(m){
+          if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+          
+          // Debug logging: log full member payload
+          console.log("[MS] member payload", m);
+          
+          if (!hasAccess(m)) { safeRedirect(EXPIRED_URL); return; }
+          if (dashboardEl) dashboardEl.classList.add("is-ready");
+          renderMemberStatus(m, ms);
+          
+          // Load exam progress - log member object for debugging
+          console.log("[Dashboard] Calling loadExamProgress");
+          console.log("[Dashboard] Member object:", m);
+          console.log("[Dashboard] Member ID:", m ? (m.id || (m.data && m.data.id)) : 'null');
+          loadExamProgress(m);
+          
+          // Load Q&A question counts
+          loadQAQuestionCounts(m, ms);
+          
+          // Make refresh function available globally
+          window.refreshExamProgress = function() {
+            console.log("[Dashboard] Manual refresh triggered");
+            loadExamProgress(m);
+          };
+          
+          // Show refresh button
+          var refreshBtn = document.getElementById("ar-exams-refresh");
+          if (refreshBtn) {
+            refreshBtn.style.display = "block";
+            // Add hover effect
+            refreshBtn.addEventListener('mouseenter', function() {
+              this.style.background = 'rgba(148,163,184,0.25)';
+              this.style.borderColor = 'rgba(148,163,184,0.5)';
+            });
+            refreshBtn.addEventListener('mouseleave', function() {
+              this.style.background = 'rgba(148,163,184,0.15)';
+              this.style.borderColor = 'rgba(148,163,184,0.3)';
+            });
+          }
+          
+          // Auto-refresh every 30 seconds
+          var autoRefreshInterval = setInterval(function() {
+            if (m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Auto-refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          }, 30000);
+          
+          // Also refresh when page becomes visible (user switches back to tab)
+          document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Page visible - refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          });
+          
+          // CRITICAL: Refresh when page loads (in case user navigated back from exam page)
+          // Use a small delay to ensure page is fully loaded
+          setTimeout(function() {
+            if (m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Page load refresh - refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          }, 1000);
+          
+          renderProviderState(m);
+          wirePortal(ms);
+          
+          // Handle upgrade success/cancel URL parameters
+          var urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has("upgrade")) {
+            var upgradeStatus = urlParams.get("upgrade");
+            if (upgradeStatus === "success") {
+              // Refresh member data to show updated status
+              setTimeout(function() {
+                if (ms && typeof ms.getCurrentMember === "function") {
+                  ms.getCurrentMember().then(function(updatedMember) {
+                    if (updatedMember) {
+                      renderMemberStatus(updatedMember, ms);
+                    }
+                  }).catch(function(err) {
+                    console.error("Error refreshing member after upgrade:", err);
+                  });
+                }
+                // Clean up URL
+                var newUrl = window.location.pathname;
+                window.history.replaceState({}, "", newUrl);
+              }, 500);
+            } else if (upgradeStatus === "cancel") {
+              // Clean up URL
+              var newUrl = window.location.pathname;
+              window.history.replaceState({}, "", newUrl);
+            }
+          }
+        }).catch(function(){
+          safeRedirect(LOGIN_URL);
+        });
+      });
+  
+      // Logout button (attribute + JS fallback)
+      var btn = document.getElementById("arp-logout-btn");
+      if (btn) {
+        btn.addEventListener("click", function(){
+          if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.logout === "function") {
+            try { globalThis.$memberstackDom.logout(); } catch (e) { /* no-op */ }
+          }
+          setTimeout(function(){ safeRedirect(LOGIN_URL); }, 600);
+        });
+      }
+    });
+  })();
+
+  // ===========================
+  // AR | DASHBOARD: RECENT ACTIVITY + BOOKMARKS (DISPLAY)
+  // Fixes:
+  // - Runs even if script loads AFTER window.load (Squarespace Code Blocks can do that)
+  // - Handles Memberstack JSON shapes: {data:{...}} OR {data:{json:{...}}}
+  // - Populates BOTH the full section lists and the mini tile lists
+  // ===========================
+  (function(){
+    async function waitForMS(){
+      for(let i=0;i<80;i++){
+        if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === "function") return window.$memberstackDom;
+        await new Promise(r=>setTimeout(r,150));
+      }
+      return null;
+    }
+
+    function fmt(ts){
+      try{
+        const d = new Date(ts);
+        return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+      }catch(e){ return ''; }
+    }
+
+    function esc(s){
+      return String(s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function itemLi(item, compact){
+      const safeTitle = esc(item.title || 'Page');
+      const safeUrl = item.url || '#';
+      // Try multiple date field names
+      const dateValue = item.date || item.timestamp || item.created_at || item.createdAt || item.visitedAt || item.visited_at || '';
+      
+      if (compact) {
+        // Compact view: just show date in parentheses
+        const date = dateValue ? fmt(dateValue) : '';
+        const dateHtml = date ? `<span style="color:#9ca3af;font-size:11px;margin-left:4px;">(${date})</span>` : ``;
+        return `<li style="margin:0 0 8px; line-height:1.25;">
+          • <a href="${safeUrl}" style="color:#fff;text-decoration:none;">${safeTitle}</a>
+          ${dateHtml}
+        </li>`;
+      } else {
+        // Full view: show date and time
+        let dateHtml = '';
+        if (dateValue) {
+          try {
+            const visitDate = new Date(dateValue);
+            const dateStr = visitDate.toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric'});
+            const timeStr = visitDate.toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit'});
+            dateHtml = `<span style="color:#aaaaaa;font-size:12px;margin-left:12px;display:block;">Visited at ${timeStr} — ${dateStr}</span>`;
+          } catch(e) {
+            const date = fmt(dateValue);
+            if (date) dateHtml = `<span style="color:#9ca3af;font-size:12px;"> — ${date}</span>`;
+          }
+        }
+        return `<li style="margin-bottom:10px;line-height:1.4;">
+          <a href="${safeUrl}" style="color:#fff;text-decoration:none;display:block;font-weight:500;">
+            • ${safeTitle}
+          </a>
+          ${dateHtml}
+        </li>`;
+      }
+    }
+
+    function emptyLi(msg){
+      return `<li style="color:#9ca3af; line-height:1.25;">${esc(msg)}</li>`;
+    }
+
+    function normalizeMemberJson(jsonRes){
+      const raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+      // Some shapes are { data: { json: {...} } }
+      if (raw && raw.json && typeof raw.json === "object") return raw.json;
+      return raw || {};
+    }
+
+    async function renderModuleProgress(msInstance){
+      // Re-fetch fresh Memberstack JSON each time to get latest opened modules
+      // msInstance is the Memberstack instance, or null to fetch it
+      let ms = msInstance;
+      if (!ms) {
+        ms = await waitForMS();
+        if (!ms) return;
+      }
+      
+      // Definitive list of all 45 module URLs (from CSV)
+      // Only URLs in this list will be counted as modules
+      const DEFINITIVE_MODULE_URLS = [
+        // Camera (15 modules) - 1-15
+        '/blog-on-photography/what-is-exposure-in-photography',
+        '/blog-on-photography/what-is-aperture-in-photography',
+        '/blog-on-photography/what-is-shutter-speed',
+        '/blog-on-photography/what-is-iso-in-photography',
+        '/blog-on-photography/what-is-manual-exposure-in-photography',
+        '/blog-on-photography/what-is-metering-in-photography',
+        '/blog-on-photography/exposure-bracketing-a-guide-for-photographers',
+        '/blog-on-photography/what-is-focus-in-photography',
+        '/blog-on-photography/what-is-depth-of-field',
+        '/blog-on-photography/what-is-dynamic-range-in-photography',
+        '/blog-on-photography/what-is-white-balance-in-photography',
+        '/blog-on-photography/what-are-camera-drive-modes',
+        '/blog-on-photography/jpeg-vs-raw-the-key-differences',
+        '/blog-on-photography/full-frame-vs-cropped-sensor',
+        '/blog-on-photography/what-is-focal-length-in-photography',
+        // Gear (10 modules) - 16-25
+        '/blog-on-photography/tripod-for-cameras-essential-guide',
+        '/blog-on-photography/are-camera-uv-filters-worth-it',
+        '/blog-on-photography/10-basic-camera-settings-for-camera',
+        '/blog-on-photography/camera-sensor-cleaning-guide',
+        '/blog-on-photography/best-camera-bags-for-different-trips',
+        '/blog-on-photography/what-do-camera-lens-filters-do',
+        '/blog-on-photography/camera-lenses-hire-or-buy',
+        '/blog-on-photography/are-mirrorless-cameras-better-than-dslrs',
+        '/blog-on-photography/photo-editing-software',
+        '/blog-on-photography/7-essential-camera-accessories',
+        // Composition (10 modules) - 26-35
+        '/blog-on-photography/mastering-photography-composition-rules',
+        '/blog-on-photography/what-is-framing-in-photography',
+        '/blog-on-photography/the-art-of-storytelling-photography',
+        '/blog-on-photography/what-are-leading-lines-in-photography',
+        '/blog-on-photography/what-is-negative-space-in-photography',
+        '/blog-on-photography/what-is-contrast-in-photography',
+        '/blog-on-photography/finding-your-compositional-balance',
+        '/blog-on-photography/photography-is-an-art-of-observation',
+        '/blog-on-photography/how-to-improve-your-photography-composition',
+        '/blog-on-photography/how-to-find-your-photography-style',
+        // Genre (10 modules) - 36-45
+        '/blog-on-photography/art-of-macro-photography',
+        '/blog-on-photography/mastering-landscape-photography-tips-and-techniques',
+        '/blog-on-photography/product-photography-setup',
+        '/blog-on-photography/what-is-minimalist-photography',
+        '/blog-on-photography/what-is-still-life-photography',
+        '/blog-on-photography/how-to-take-long-exposure-photos',
+        '/blog-on-photography/architecture-photography-guide',
+        '/blog-on-photography/what-is-portrait-photography',
+        '/blog-on-photography/black-and-white-photography-for-beginners',
+        '/blog-on-photography/street-photography-tips'
+      ];
+      
+      // Complete mapping of all 45 modules to their categories
+      const MODULE_CATEGORY_MAP = {
+        // Camera (15)
+        '/blog-on-photography/what-is-exposure-in-photography': 'camera',
+        '/blog-on-photography/what-is-aperture-in-photography': 'camera',
+        '/blog-on-photography/what-is-shutter-speed': 'camera',
+        '/blog-on-photography/what-is-iso-in-photography': 'camera',
+        '/blog-on-photography/what-is-manual-exposure-in-photography': 'camera',
+        '/blog-on-photography/what-is-metering-in-photography': 'camera',
+        '/blog-on-photography/exposure-bracketing-a-guide-for-photographers': 'camera',
+        '/blog-on-photography/what-is-focus-in-photography': 'camera',
+        '/blog-on-photography/what-is-depth-of-field': 'camera',
+        '/blog-on-photography/what-is-dynamic-range-in-photography': 'camera',
+        '/blog-on-photography/what-is-white-balance-in-photography': 'camera',
+        '/blog-on-photography/what-are-camera-drive-modes': 'camera',
+        '/blog-on-photography/jpeg-vs-raw-the-key-differences': 'camera',
+        '/blog-on-photography/full-frame-vs-cropped-sensor': 'camera',
+        '/blog-on-photography/what-is-focal-length-in-photography': 'camera',
+        // Gear (10)
+        '/blog-on-photography/tripod-for-cameras-essential-guide': 'gear',
+        '/blog-on-photography/are-camera-uv-filters-worth-it': 'gear',
+        '/blog-on-photography/10-basic-camera-settings-for-camera': 'gear',
+        '/blog-on-photography/camera-sensor-cleaning-guide': 'gear',
+        '/blog-on-photography/best-camera-bags-for-different-trips': 'gear',
+        '/blog-on-photography/what-do-camera-lens-filters-do': 'gear',
+        '/blog-on-photography/camera-lenses-hire-or-buy': 'gear',
+        '/blog-on-photography/are-mirrorless-cameras-better-than-dslrs': 'gear',
+        '/blog-on-photography/photo-editing-software': 'gear',
+        '/blog-on-photography/7-essential-camera-accessories': 'gear',
+        // Composition (10)
+        '/blog-on-photography/mastering-photography-composition-rules': 'composition',
+        '/blog-on-photography/what-is-framing-in-photography': 'composition',
+        '/blog-on-photography/the-art-of-storytelling-photography': 'composition',
+        '/blog-on-photography/what-are-leading-lines-in-photography': 'composition',
+        '/blog-on-photography/what-is-negative-space-in-photography': 'composition',
+        '/blog-on-photography/what-is-contrast-in-photography': 'composition',
+        '/blog-on-photography/finding-your-compositional-balance': 'composition',
+        '/blog-on-photography/photography-is-an-art-of-observation': 'composition',
+        '/blog-on-photography/how-to-improve-your-photography-composition': 'composition',
+        '/blog-on-photography/how-to-find-your-photography-style': 'composition',
+        // Genre (10)
+        '/blog-on-photography/art-of-macro-photography': 'genre',
+        '/blog-on-photography/mastering-landscape-photography-tips-and-techniques': 'genre',
+        '/blog-on-photography/product-photography-setup': 'genre',
+        '/blog-on-photography/what-is-minimalist-photography': 'genre',
+        '/blog-on-photography/what-is-still-life-photography': 'genre',
+        '/blog-on-photography/how-to-take-long-exposure-photos': 'genre',
+        '/blog-on-photography/architecture-photography-guide': 'genre',
+        '/blog-on-photography/what-is-portrait-photography': 'genre',
+        '/blog-on-photography/black-and-white-photography-for-beginners': 'genre',
+        '/blog-on-photography/street-photography-tips': 'genre'
+      };
+      
+      const jsonRes = await ms.getMemberJSON();
+      const memberJson = normalizeMemberJson(jsonRes);
+      const rawResponse = jsonRes;
+      
+      // URL normalizer helper - converts any URL form to canonical path for module tracking
+      // Only used for module tracking keys, not for recent activity rendering
+      function normalizePath(url) {
+        if (!url || typeof url !== 'string') return '/';
+        try {
+          // Strip domain if present
+          let path = url;
+          if (url.startsWith('http://') || url.startsWith('https://')) {
+            try {
+              const urlObj = new URL(url);
+              path = urlObj.pathname;
+            } catch (e) {
+              // If URL parsing fails, try to extract path manually
+              const match = url.match(/https?:\/\/[^\/]+(\/.*)/);
+              if (match) path = match[1];
+            }
+          }
+          // Remove query string and hash
+          path = path.split('?')[0].split('#')[0];
+          // Remove trailing slash (but keep root as '/')
+          path = path.replace(/\/+$/, '') || '/';
+          // Ensure leading slash
+          if (!path.startsWith('/')) path = '/' + path;
+          return path;
+        } catch (e) {
+          return '/';
+        }
+      }
+      
+      // Update debug panel helper (defined first so it's available)
+      function updateDebugPanel(msg, data) {
+        const debugContent = document.getElementById('ar-module-debug-content');
+        if (!debugContent) return;
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = document.createElement('div');
+        entry.style.marginBottom = '8px';
+        entry.style.padding = '6px';
+        entry.style.background = 'rgba(255,255,255,0.05)';
+        entry.style.borderRadius = '4px';
+        entry.innerHTML = `<div style="color:#9ca3af; font-size:10px;">[${timestamp}]</div><div style="color:#e2e8f0; margin-top:2px;">${msg}</div>${data ? '<pre style="margin:4px 0 0 0; font-size:10px; color:#9ca3af; white-space:pre-wrap; word-break:break-all;">' + JSON.stringify(data, null, 2).substring(0, 500) + '</pre>' : ''}`;
+        debugContent.appendChild(entry);
+        debugContent.scrollTop = debugContent.scrollHeight;
+      }
+      
+      // Use the same normalization logic as the tracking script
+      // This matches the tracking script's unwrapStoredJson function
+      function unwrapStoredJson(obj) {
+        // unwrap user-stored "data" wrappers (NOT the API wrapper)
+        let cur = obj;
+        for (let i = 0; i < 10; i++) {
+          if (!cur || typeof cur !== "object") break;
+          if (!cur.data || typeof cur.data !== "object") break;
+
+          const d = cur.data;
+          const looksLikePayload =
+            (d.history && Array.isArray(d.history)) ||
+            (d.bookmarks && Array.isArray(d.bookmarks)) ||
+            (d.arAcademy && typeof d.arAcademy === "object");
+
+          if (looksLikePayload) {
+            cur = d;
+            continue;
+          }
+          break;
+        }
+        return cur || {};
+      }
+      
+      // Handle API wrapper: { data: <storedJson> }
+      let stored = (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") 
+        ? memberJson.data 
+        : (memberJson || {});
+      
+      // Unwrap nested data.data.data... structures
+      const normalized = unwrapStoredJson(stored);
+      
+      // Read from arAcademy.modules.opened (where tracking script writes)
+      let opened = (normalized?.arAcademy?.modules?.opened) || {};
+      
+      // Calculate count BEFORE fallback (so we know if we added new modules)
+      // Normalize keys to count unique modules (handles legacy duplicates)
+      const normalizedKeysBeforeFallback = new Set();
+      Object.keys(opened).forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey)) {
+          normalizedKeysBeforeFallback.add(normalizedKey);
+        }
+      });
+      const openedBeforeFallback = normalizedKeysBeforeFallback.size;
+      
+      // Fallback: Check history for blog pages that match module URLs but weren't tracked
+      // This handles cases where the tracking script didn't run or detect the page
+      // Check ALL possible history locations (root, data, normalized)
+      let history = [];
+      
+      // Priority 1: Root level history from RAW response (most recent - this is where new history lives)
+      // getMemberJSON() might return { data: {...}, history: [...] } or just { data: {...} }
+      if (rawResponse && typeof rawResponse === "object" && rawResponse.history && Array.isArray(rawResponse.history)) {
+        updateDebugPanel('✅ Found root-level history in raw response: ' + rawResponse.history.length + ' items', null);
+        rawResponse.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      } else {
+        updateDebugPanel('❌ No root-level history in raw response', { rawResponseKeys: rawResponse ? Object.keys(rawResponse) : [] });
+      }
+      
+      // Priority 2: Root level history from memberJson (in case it's there)
+      if (memberJson && typeof memberJson === "object" && memberJson.history && Array.isArray(memberJson.history)) {
+        updateDebugPanel('Found root-level history in memberJson: ' + memberJson.history.length + ' items', null);
+        memberJson.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 3: Data wrapper history
+      if (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") {
+        if (memberJson.data.history && Array.isArray(memberJson.data.history)) {
+          updateDebugPanel('Found data-level history: ' + memberJson.data.history.length + ' items', null);
+          memberJson.data.history.forEach(function(item) {
+            if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+              history.push(item);
+            }
+          });
+        }
+      }
+      
+      // Priority 4: Normalized history (from nested structure - old history)
+      if (normalized && normalized.history && Array.isArray(normalized.history)) {
+        updateDebugPanel('Found normalized history (nested): ' + normalized.history.length + ' items', null);
+        normalized.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      updateDebugPanel('Starting module progress render...', null);
+      // Debug: Check all possible history locations
+      const rootHistory = memberJson?.history;
+      const dataHistory = memberJson?.data?.history;
+      const normalizedHistory = normalized?.history;
+      
+      updateDebugPanel('JSON Structure Check:', { 
+        hasArAcademy: !!normalized?.arAcademy, 
+        memberJsonKeys: memberJson ? Object.keys(memberJson) : [],
+        hasRootHistory: !!rootHistory,
+        hasDataHistory: !!dataHistory,
+        hasNormalizedHistory: !!normalizedHistory,
+        rootHistoryCount: rootHistory ? rootHistory.length : 0,
+        dataHistoryCount: dataHistory ? dataHistory.length : 0,
+        normalizedHistoryCount: normalizedHistory ? normalizedHistory.length : 0
+      });
+      updateDebugPanel('Opened before fallback: ' + Object.keys(opened).length + ' items', opened);
+      
+      console.log('[Module Progress] History items found:', history.length, history);
+      console.log('[Module Progress] Opened before fallback:', Object.keys(opened).length, opened);
+      
+      updateDebugPanel('Checking ' + history.length + ' history items against definitive module list...', null);
+      
+      history.forEach(function(item) {
+        if (!item || !item.url) {
+          updateDebugPanel('⚠️ Skipping invalid history item:', item);
+          return;
+        }
+        // Normalize URL to canonical path for module tracking
+        const path = normalizePath(item.url);
+        updateDebugPanel('Checking URL: ' + item.url + ' → normalized: ' + path, null);
+        
+        // Only process if it's in the definitive module list (using normalized path)
+        if (DEFINITIVE_MODULE_URLS.includes(path)) {
+          if (opened[path]) {
+            updateDebugPanel('✓ Already tracked: ' + path, null);
+            // Do NOT update lastAt here - that should only happen on the module page script
+            // Dashboard only creates missing entries, never updates existing ones
+          } else {
+            // Get category from the definitive mapping
+            const category = MODULE_CATEGORY_MAP[path];
+            
+            if (category) {
+              const nowIso = item.date || new Date().toISOString();
+              opened[path] = {
+                cat: category,
+                t: item.title || 'Module',
+                at: nowIso,  // Keep 'at' for backward compatibility
+                lastAt: nowIso  // Add lastAt (will be updated by module page script on re-open)
+              };
+              updateDebugPanel('✅ Added module: ' + path + ' → ' + category, null);
+              console.log('[Module Progress] Added module', path, '→', category);
+            } else {
+              updateDebugPanel('⚠️ Module URL found but no category mapping: ' + path, null);
+              console.warn('[Module Progress] Module URL found but no category mapping:', path);
+            }
+          }
+        } else {
+          updateDebugPanel('⊘ Not in definitive module list: ' + path, null);
+        }
+      });
+      
+      // Filter opened modules to only include those in the definitive list before saving
+      // Normalize keys to handle legacy non-normalized URLs
+      const filteredOpenedForSave = {};
+      Object.keys(opened).forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        // Check if normalized key is in definitive list
+        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey)) {
+          // Use normalized key (this migrates legacy keys to normalized format)
+          // If normalized key already exists, prefer the one with earlier 'at' timestamp
+          if (!filteredOpenedForSave[normalizedKey] || 
+              (opened[key].at && filteredOpenedForSave[normalizedKey].at && 
+               opened[key].at < filteredOpenedForSave[normalizedKey].at)) {
+            filteredOpenedForSave[normalizedKey] = opened[key];
+          }
+        }
+      });
+      
+      // Save filtered modules back to Memberstack so they persist
+      // Only save if we added new modules (opened count increased)
+      const openedAfterFallback = Object.keys(filteredOpenedForSave).length;
+      
+      updateDebugPanel('📊 Count check: before=' + openedBeforeFallback + ', after=' + openedAfterFallback, null);
+      
+      // Only save to Memberstack if new module keys were added
+      // This prevents overwriting good data when nothing changed
+      if (openedAfterFallback > openedBeforeFallback) {
+        updateDebugPanel('💾 Saving ' + (openedAfterFallback - openedBeforeFallback) + ' new modules to Memberstack...', null);
+        try {
+          // Ensure arAcademy structure exists
+          if (!normalized.arAcademy) normalized.arAcademy = {};
+          if (!normalized.arAcademy.modules) normalized.arAcademy.modules = {};
+          // Only save modules from the definitive list
+          normalized.arAcademy.modules.opened = filteredOpenedForSave;
+
+          // Save back to Memberstack
+          await ms.updateMemberJSON({ json: normalized });
+          updateDebugPanel('✅ Saved modules to Memberstack', null);
+          console.log('[Module Progress] Saved', openedAfterFallback - openedBeforeFallback, 'new modules to Memberstack');
+        } catch (err) {
+          updateDebugPanel('❌ Failed to save modules: ' + (err?.message || err), null);
+          console.error('[Module Progress] Failed to save modules:', err);
+        }
+      } else {
+        updateDebugPanel('⊘ No new modules added, skipping Memberstack write', null);
+        console.log('[Module Progress] No new modules added, skipping Memberstack write');
+      }
+      
+      // Use filtered modules for counting
+      opened = filteredOpenedForSave;
+      
+      const finalOpenedKeys = Object.keys(opened);
+      const totalOpened = finalOpenedKeys.length;
+
+      // Category totals
+      const totals = {
+        camera: 15,
+        gear: 10,
+        composition: 10,
+        genre: 10
+      };
+
+      // Count by category (only from definitive modules)
+      const counts = {
+        camera: 0,
+        gear: 0,
+        composition: 0,
+        genre: 0
+      };
+
+      finalOpenedKeys.forEach(function(path){
+        const item = opened[path];
+        if (item && item.cat) {
+          const cat = item.cat.toLowerCase();
+          if (cat in counts) {
+            counts[cat]++;
+          }
+        }
+      });
+      
+      updateDebugPanel('📊 Total opened after fallback: ' + totalOpened, opened);
+      updateDebugPanel('Final counts: Camera=' + counts.camera + ', Gear=' + counts.gear + ', Composition=' + counts.composition + ', Genre=' + counts.genre, null);
+      
+      console.log('[Module Progress] Total opened after fallback:', totalOpened, opened);
+      
+      // Update debug panel with counts before UI update
+      const debugContent = document.getElementById('ar-module-debug-content');
+      if (debugContent) {
+        const countsEntry = document.createElement('div');
+        countsEntry.style.marginTop = '10px';
+        countsEntry.style.padding = '8px';
+        countsEntry.style.background = 'rgba(229,114,0,0.1)';
+        countsEntry.style.borderRadius = '4px';
+        countsEntry.style.border = '1px solid rgba(229,114,0,0.3)';
+        countsEntry.innerHTML = `
+          <div style="color:#E57200; font-weight:900; margin-bottom:6px;">📈 Category Counts:</div>
+          <div style="color:#e2e8f0;">Camera: ${counts.camera}/15</div>
+          <div style="color:#e2e8f0;">Gear: ${counts.gear}/10</div>
+          <div style="color:#e2e8f0;">Composition: ${counts.composition}/10</div>
+          <div style="color:#e2e8f0;">Genre: ${counts.genre}/10</div>
+          <div style="color:#E57200; font-weight:900; margin-top:6px;">Total: ${totalOpened}/45</div>
+        `;
+        debugContent.appendChild(countsEntry);
+      }
+
+      // Update UI using data attributes
+      const totalEl = document.querySelector('[data-ar-mod-opened-total]');
+      const totalsEl = document.querySelector('[data-ar-mod-opened-totals]');
+      const cameraEl = document.querySelector('[data-ar-mod-opened-camera]');
+      const gearEl = document.querySelector('[data-ar-mod-opened-gear]');
+      const compositionEl = document.querySelector('[data-ar-mod-opened-composition]');
+      const genreEl = document.querySelector('[data-ar-mod-opened-genre]');
+
+      if (totalEl) {
+        totalEl.textContent = totalOpened;
+      }
+
+      if (totalsEl) {
+        const parts = [
+          'Camera ' + counts.camera + '/' + totals.camera,
+          'Gear ' + counts.gear + '/' + totals.gear,
+          'Composition ' + counts.composition + '/' + totals.composition,
+          'Genre ' + counts.genre + '/' + totals.genre
+        ];
+        totalsEl.textContent = parts.join(' • ');
+      }
+
+      // Update individual category spans (hidden, but available if needed)
+      if (cameraEl) cameraEl.textContent = counts.camera;
+      if (gearEl) gearEl.textContent = counts.gear;
+      if (compositionEl) compositionEl.textContent = counts.composition;
+      if (genreEl) genreEl.textContent = counts.genre;
+    }
+
+    async function run(){
+      const ms = await waitForMS();
+      if(!ms) return;
+
+      const who = await ms.getCurrentMember();
+      if(!who || !who.data) return;
+
+      const jsonRes = await ms.getMemberJSON();
+      // Debug: Log raw response to see structure
+      console.log('[Dashboard] Raw getMemberJSON() response:', jsonRes);
+      console.log('[Dashboard] Response keys:', jsonRes ? Object.keys(jsonRes) : 'null');
+      const memberJson = normalizeMemberJson(jsonRes);
+      // Also preserve raw response for root-level history access
+      const rawResponse = jsonRes;
+
+      // Collect history from ALL possible sources (like renderModuleProgress does)
+      let history = [];
+      
+      // Priority 1: Root level history from RAW response (most recent - this is where new history lives)
+      if (rawResponse && typeof rawResponse === "object" && rawResponse.history && Array.isArray(rawResponse.history)) {
+        rawResponse.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 2: Root level history from memberJson
+      if (memberJson && typeof memberJson === "object" && memberJson.history && Array.isArray(memberJson.history)) {
+        memberJson.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 3: Data wrapper history
+      if (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") {
+        if (memberJson.data.history && Array.isArray(memberJson.data.history)) {
+          memberJson.data.history.forEach(function(item) {
+            if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+              history.push(item);
+            }
+          });
+        }
+      }
+      
+      // Priority 4: Check nested data structures (unwrap stored JSON wrappers)
+      let cur = memberJson;
+      for (let i = 0; i < 10; i++) {
+        if (!cur || typeof cur !== "object") break;
+        if (!cur.data || typeof cur.data !== "object") break;
+        const d = cur.data;
+        const looksLikePayload = (d.history && Array.isArray(d.history)) || (d.bookmarks && Array.isArray(d.bookmarks)) || (d.arAcademy && typeof d.arAcademy === "object");
+        if (looksLikePayload) {
+          if (d.history && Array.isArray(d.history)) {
+            d.history.forEach(function(item) {
+              if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+                history.push(item);
+              }
+            });
+          }
+          cur = d;
+          continue;
+        }
+        break;
+      }
+      
+      const bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks : [];
+
+      // Render module progress - run multiple times to ensure it runs after tracking script
+      // Tracking script runs at DOMContentLoaded + 1500ms, so we run at multiple intervals
+      // Pass ms instance so it can re-fetch fresh data each time
+      renderModuleProgress(ms);
+      setTimeout(function() { renderModuleProgress(ms); }, 2000);
+      setTimeout(function() { renderModuleProgress(ms); }, 3000);
+      setTimeout(function() { renderModuleProgress(ms); }, 4000);
+      
+
+      // Full section lists
+      const historyList = document.getElementById('history-list');
+      const bookmarksList = document.getElementById('bookmarks-list');
+      
+      // Build combined and sorted history (used by both main list and mini tile)
+      // Combine history with opened modules to show up to 10 items
+      // History might be limited to 5 by the tracking script, so supplement with opened modules
+      const openedModules = memberJson?.arAcademy?.modules?.opened || {};
+      const openedModulesArray = Object.keys(openedModules).map(function(url) {
+        const mod = openedModules[url];
+        return {
+          url: url,
+          title: mod.t || 'Module',
+          date: mod.at || new Date().toISOString(),
+          timestamp: mod.at || new Date().toISOString()
+        };
+      });
+      
+      // Merge history and opened modules, removing duplicates by URL
+      // Exclude academy dashboard from the list
+      const combinedHistory = [];
+      const seenUrls = new Set();
+      
+      // Helper function to normalize URL and check if it's dashboard
+      function isDashboard(item) {
+        if (!item || !item.url) return false;
+        const url = item.url.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+        const isDashboardUrl = url === '/academy/dashboard';
+        const isDashboardTitle = item.title && item.title.toLowerCase().includes('academy dashboard');
+        return isDashboardUrl || isDashboardTitle;
+      }
+      
+      // First, add all history items (excluding dashboard)
+      history.forEach(function(item) {
+        if (item && item.url && !isDashboard(item) && !seenUrls.has(item.url)) {
+          combinedHistory.push(item);
+          seenUrls.add(item.url);
+        }
+      });
+      
+      // Then, add opened modules that aren't already in history (excluding dashboard)
+      openedModulesArray.forEach(function(item) {
+        if (item && item.url && !isDashboard(item) && !seenUrls.has(item.url)) {
+          combinedHistory.push(item);
+          seenUrls.add(item.url);
+        }
+      });
+      
+      console.log('[Dashboard] History items:', history.length, '| Opened modules:', openedModulesArray.length, '| Combined:', combinedHistory.length);
+      
+      // Sort combined history by date (most recent first)
+      const sortedHistory = combinedHistory.slice().sort(function(a, b) {
+        const dateA = a.date || a.timestamp || a.created_at || a.createdAt || a.visitedAt || a.visited_at || '';
+        const dateB = b.date || b.timestamp || b.created_at || b.createdAt || b.visitedAt || b.visited_at || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        try {
+          return new Date(dateB) - new Date(dateA); // Most recent first
+        } catch (e) {
+          return 0;
+        }
+      });
+      
+      if (historyList) {
+        const recentHistory = sortedHistory.slice(0, 10); // Take first 10 (most recent)
+        console.log('[Dashboard] Showing', recentHistory.length, 'of', sortedHistory.length, 'total combined items');
+        historyList.innerHTML = recentHistory.length
+          ? recentHistory.map(i => itemLi(i, false)).join('')
+          : emptyLi("No recent activity yet.");
+      }
+
+      if (bookmarksList) {
+        bookmarksList.innerHTML = bookmarks.length
+          ? bookmarks.map(i => itemLi(i, false)).join('')
+          : emptyLi("No bookmarks yet.");
+      }
+
+      // Mini tile lists (top 3)
+      const historyMini = document.getElementById('history-mini');
+      const bookmarksMini = document.getElementById('bookmarks-mini');
+
+      if (bookmarksMini) {
+        // Sort bookmarks by date (most recent first), then take first 3
+        const sortedBookmarks = bookmarks.slice().sort(function(a, b) {
+          const dateA = a.date || a.timestamp || a.created_at || a.createdAt || a.visitedAt || a.visited_at || '';
+          const dateB = b.date || b.timestamp || b.created_at || b.createdAt || b.visitedAt || b.visited_at || '';
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          try {
+            return new Date(dateB) - new Date(dateA); // Most recent first
+          } catch (e) {
+            return 0;
+          }
+        });
+        const topB = sortedBookmarks.slice(0, 3); // Take first 3 (most recent)
+        bookmarksMini.innerHTML = topB.length
+          ? topB.map(i => itemLi(i, true)).join('')
+          : emptyLi("No bookmarks yet.");
+      }
+
+      if (historyMini) {
+        // Use the same sorted history as the main list, then take first 3 (most recent)
+        const topH = sortedHistory.slice(0, 3);
+        historyMini.innerHTML = topH.length
+          ? topH.map(i => itemLi(i, true)).join('')
+          : emptyLi("No recent activity yet.");
+      }
+
+      // Clear bookmarks
+      const clear = document.getElementById('clear-bookmarks');
+      if (clear) {
+        clear.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const jsonRes2 = await ms.getMemberJSON();
+          const memberJson2 = normalizeMemberJson(jsonRes2);
+          await ms.updateMemberJSON({ json: { ...memberJson2, bookmarks: [] } });
+
+          if (bookmarksList) bookmarksList.innerHTML = emptyLi("No bookmarks yet.");
+          if (bookmarksMini) bookmarksMini.innerHTML = emptyLi("No bookmarks yet.");
+        }, { passive: false });
+      }
+
+      // Clear history
+      const clearHistory = document.getElementById('clear-history');
+      if (clearHistory) {
+        clearHistory.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const jsonRes2 = await ms.getMemberJSON();
+          const memberJson2 = normalizeMemberJson(jsonRes2);
+          
+          // Clear history arrays (root level and in data)
+          const updatedJson = { ...memberJson2 };
+          updatedJson.history = [];
+          if (updatedJson.data) {
+            updatedJson.data = { ...updatedJson.data, history: [] };
+          }
+          
+          // Clear opened modules tracking
+          if (updatedJson.arAcademy && updatedJson.arAcademy.modules) {
+            updatedJson.arAcademy = {
+              ...updatedJson.arAcademy,
+              modules: {
+                ...updatedJson.arAcademy.modules,
+                opened: {}
+              }
+            };
+          } else if (updatedJson.arAcademy) {
+            updatedJson.arAcademy = {
+              ...updatedJson.arAcademy,
+              modules: { opened: {} }
+            };
+          } else {
+            updatedJson.arAcademy = { modules: { opened: {} } };
+          }
+          
+          await ms.updateMemberJSON({ json: updatedJson });
+
+          if (historyList) historyList.innerHTML = emptyLi("No recent activity yet.");
+          if (historyMini) historyMini.innerHTML = emptyLi("No recent activity yet.");
+        }, { passive: false });
+      }
+    }
+
+    function kick(){
+      // Run now, and again shortly after (Memberstack sometimes hydrates late)
+      run();
+      setTimeout(run, 600);
+      setTimeout(run, 1500);
+    }
+
+    // Robust start (works even if added after window.load)
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      setTimeout(kick, 0);
+    } else {
+      document.addEventListener("DOMContentLoaded", () => setTimeout(kick, 0));
+      window.addEventListener("load", () => setTimeout(kick, 0));
+    }
+
+    // Also update module counts when page becomes visible (user returns to dashboard)
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && window.location.pathname === "/academy/dashboard") {
+        setTimeout(async function() {
+          const ms = await waitForMS();
+          if (!ms) return;
+          const who = await ms.getCurrentMember();
+          if (!who || !who.data) return;
+          // Pass ms instance so it re-fetches fresh data
+          renderModuleProgress(ms);
+        }, 500);
+      }
+    });
+  })();
+  </script>
+  
