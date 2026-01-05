@@ -520,7 +520,7 @@ export default function AdminDashboard() {
         <Link href="/academy/admin/members?plan=trial" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Trials</div>
           <div className="ar-admin-kpi-value">{kpis?.trials ?? 0}</div>
-          <div className="ar-admin-kpi-period">Active (Stripe)</div>
+          <div className="ar-admin-kpi-period">Active</div>
         </Link>
         <Link href="/academy/admin/members?plan=annual" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Annual Plans</div>
@@ -633,7 +633,7 @@ export default function AdminDashboard() {
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">
-              {kpis?.bi?.trialsConverted30d || 0}/{kpis?.bi?.trialsStarted30d || 0} (30d)
+              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.trialStarts30d ?? 0} (30d)
             </div>
           </div>
           <div 
@@ -878,7 +878,7 @@ export default function AdminDashboard() {
               Conversions — Trial → Annual
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
-            <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime || 0}</div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}</div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
           <div 
@@ -912,7 +912,7 @@ export default function AdminDashboard() {
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">
-              {kpis?.bi?.trialToAnnualConversions30d || 0}/{kpis?.bi?.trialsEnded30d || 0} (30d)
+              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.trialStarts30d ?? 0} (30d)
             </div>
           </div>
           <div 
