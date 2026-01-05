@@ -306,26 +306,77 @@ export default function AdminDashboard() {
 
       {/* Debug Panel */}
       {showDebugPanel && (
-        <div className="ar-admin-card" style={{ marginBottom: '24px', maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 className="ar-admin-card-title" style={{ margin: 0 }}>Debug Log</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={copyDebugLogs}
-                className="ar-admin-btn-secondary"
-                style={{ fontSize: '12px', padding: '6px 12px' }}
-              >
-                📋 Copy Logs
-              </button>
-              <button
-                onClick={() => setDebugLogs([])}
-                className="ar-admin-btn-secondary"
-                style={{ fontSize: '12px', padding: '6px 12px' }}
-              >
-                🗑️ Clear
-              </button>
+        <>
+          {/* Stripe Debug Info */}
+          {kpis?.stripe && (
+            <div className="ar-admin-card" style={{ marginBottom: '16px' }}>
+              <h2 className="ar-admin-card-title" style={{ marginBottom: '16px' }}>Stripe Debug Info</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '14px' }}>
+                <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Key Mode:</span>
+                  <span style={{ marginLeft: '8px', fontWeight: 600, color: kpis.stripe.stripe_key_mode === 'live' ? '#10b981' : '#f59e0b' }}>
+                    {kpis.stripe.stripe_key_mode || 'unknown'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Annual Price ID:</span>
+                  <span style={{ marginLeft: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
+                    {kpis.stripe.annual_price_id_used || 'not set'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Paid Annual Invoices:</span>
+                  <span style={{ marginLeft: '8px', fontWeight: 600 }}>
+                    {kpis.stripe.paid_annual_invoices_count_all_time || 0}
+                  </span>
+                </div>
+                {kpis.stripe.debug_sample_annual_invoice_ids && kpis.stripe.debug_sample_annual_invoice_ids.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                    <div style={{ color: 'var(--ar-text-muted)', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>
+                      Sample Annual Invoice IDs:
+                    </div>
+                    {kpis.stripe.debug_sample_annual_invoice_ids.map((inv, idx) => (
+                      <div key={idx} style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '12px', 
+                        padding: '8px', 
+                        background: 'var(--ar-bg)',
+                        borderRadius: '4px',
+                        marginTop: '4px',
+                        border: '1px solid var(--ar-border)'
+                      }}>
+                        <div><strong>ID:</strong> {inv.id}</div>
+                        <div><strong>Amount:</strong> £{inv.total.toFixed(2)}</div>
+                        <div><strong>Created:</strong> {new Date(inv.created).toLocaleString()}</div>
+                        <div><strong>Billing Reason:</strong> {inv.billing_reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+          
+          <div className="ar-admin-card" style={{ marginBottom: '24px', maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 className="ar-admin-card-title" style={{ margin: 0 }}>Debug Log</h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={copyDebugLogs}
+                  className="ar-admin-btn-secondary"
+                  style={{ fontSize: '12px', padding: '6px 12px' }}
+                >
+                  📋 Copy Logs
+                </button>
+                <button
+                  onClick={() => setDebugLogs([])}
+                  className="ar-admin-btn-secondary"
+                  style={{ fontSize: '12px', padding: '6px 12px' }}
+                >
+                  🗑️ Clear
+                </button>
+              </div>
+            </div>
           <div style={{
             flex: 1,
             overflow: 'auto',
@@ -362,6 +413,7 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+        </>
       )}
 
       {/* Navigation Tabs */}
