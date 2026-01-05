@@ -119,6 +119,25 @@ export default function QAPage() {
     return sortOrder === 'asc' ? ' ↑' : ' ↓';
   }
 
+  // Format AI answer text - convert URLs to links
+  function formatAIAnswer(text) {
+    if (!text) return '';
+    
+    // Escape HTML first
+    let formatted = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Convert URLs to clickable links
+    formatted = formatted.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">$1</a>'
+    );
+    
+    return formatted;
+  }
+
   // Search is handled server-side via 'q' parameter
   const filteredQuestions = questions;
   const totalPages = Math.ceil(totalQuestions / 50);
