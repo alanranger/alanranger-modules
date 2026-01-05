@@ -375,10 +375,13 @@ module.exports = async (req, res) => {
       ? Math.round((trialDropOff30d / trialsEnded30d.length) * 100 * 10) / 10
       : null;
 
-    // Median days to convert
-    const daysToConvert = trialsConverted30d
-      .map(m => Math.floor((m.annualStartAt - m.trialStartAt) / 86400000))
-      .filter(d => d >= 0);
+    // Median days to convert (from conversions30d timeline)
+    const daysToConvert = conversions30d
+      .map(t => {
+        if (!t.trialStartAt || !t.annualPaidAt) return null;
+        return Math.floor((t.annualPaidAt - t.trialStartAt) / 86400000);
+      })
+      .filter(d => d !== null && d >= 0);
     const medianDaysToConvert30d = daysToConvert.length > 0
       ? daysToConvert.sort((a, b) => a - b)[Math.floor(daysToConvert.length / 2)]
       : null;
