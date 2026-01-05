@@ -637,7 +637,7 @@ export default function AdminDashboard() {
         <div className="ar-admin-kpi-grid">
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from Stripe balance transactions. All-time total (computed from account start or cached snapshot)."
+            title="Net paid revenue from Stripe paid invoices (all plans). Net = after Stripe fees (from balance_transaction.net). All-time total."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -647,13 +647,13 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.revenue_net_all_time_gbp !== null && kpis?.stripe?.revenue_net_all_time_gbp !== undefined
                 ? `£${kpis.stripe.revenue_net_all_time_gbp.toFixed(2)}`
-                : '—'}
+                : '£0.00'}
             </div>
-            <div className="ar-admin-kpi-period">All-time</div>
+            <div className="ar-admin-kpi-period">All-time (all plans)</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from Stripe balance transactions in the last 30 days (charges minus refunds)."
+            title="Net paid revenue from Stripe paid invoices in the last 30 days. Net = after Stripe fees."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -663,9 +663,75 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.revenue_net_last_30d_gbp !== null && kpis?.stripe?.revenue_net_last_30d_gbp !== undefined
                 ? `£${kpis.stripe.revenue_net_last_30d_gbp.toFixed(2)}`
-                : '—'}
+                : '£0.00'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Net paid revenue from annual subscription invoices (direct signups + conversions). All-time total."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Annual Revenue (Net)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.annual_revenue_net_all_time_gbp !== null && kpis?.stripe?.annual_revenue_net_all_time_gbp !== undefined
+                ? `£${kpis.stripe.annual_revenue_net_all_time_gbp.toFixed(2)}`
+                : '£0.00'}
+            </div>
+            <div className="ar-admin-kpi-period">All-time</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Net paid revenue from trial-to-annual conversions. Conversion = annual subscription started within 7 days of trial end. All-time total."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Revenue from Conversions
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== undefined
+                ? `£${kpis.stripe.revenue_from_conversions_net_all_time_gbp.toFixed(2)}`
+                : '£0.00'}
+            </div>
+            <div className="ar-admin-kpi-period">All-time</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Net paid revenue from direct annual signups (no trial first). All-time total."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Revenue from Direct Annual
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.revenue_from_direct_annual_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_direct_annual_net_all_time_gbp !== undefined
+                ? `£${kpis.stripe.revenue_from_direct_annual_net_all_time_gbp.toFixed(2)}`
+                : '£0.00'}
+            </div>
+            <div className="ar-admin-kpi-period">All-time</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Potential revenue if all active trials convert to annual. Gross = active trials × annual price. Net estimate = gross × 0.97 (estimated Stripe fees)."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Trial Opportunity (if 100% convert)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.opportunity_revenue_gross_gbp !== null && kpis?.stripe?.opportunity_revenue_gross_gbp !== undefined
+                ? `£${kpis.stripe.opportunity_revenue_gross_gbp.toFixed(2)}`
+                : '£0.00'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              Gross ({kpis?.stripe?.trials_active_count || 0} trials)
+            </div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
@@ -685,17 +751,17 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Revenue from trial-to-annual conversions in the last 30 days (first paid invoice amount for converted subscriptions)."
+            title="Net paid revenue from trial-to-annual conversions in the last 30 days. Net = after Stripe fees."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
-              Revenue from Conversions
+              Revenue from Conversions (30d)
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.revenue_from_conversions_last_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_last_30d_gbp !== undefined
-                ? `£${kpis.stripe.revenue_from_conversions_last_30d_gbp.toFixed(2)}`
-                : '—'}
+              {kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== undefined
+                ? `£${kpis.stripe.revenue_from_conversions_net_30d_gbp.toFixed(2)}`
+                : '£0.00'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
           </div>

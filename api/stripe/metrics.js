@@ -196,25 +196,30 @@ async function calculateStripeMetrics(forceRefresh = false) {
     const customerAnnuals = {};
 
     trialCohort.forEach(sub => {
-      const customerId = sub.customer;
-      if (!customerTrials[customerId]) {
-        customerTrials[customerId] = [];
+      const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+      if (customerId) {
+        if (!customerTrials[customerId]) {
+          customerTrials[customerId] = [];
+        }
+        customerTrials[customerId].push(sub);
       }
-      customerTrials[customerId].push(sub);
     });
 
     // Find annual subscriptions for these customers
     allActiveSubs.forEach(sub => {
       if (isAnnualSubscription(sub) && sub.status === 'active') {
-        const customerId = sub.customer;
-        if (!customerAnnuals[customerId]) {
-          customerAnnuals[customerId] = [];
+        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+        if (customerId) {
+          if (!customerAnnuals[customerId]) {
+            customerAnnuals[customerId] = [];
+          }
+          customerAnnuals[customerId].push(sub);
         }
-        customerAnnuals[customerId].push(sub);
       }
     });
 
-    // Count conversions (trial ended → annual started within 7 days)
+    // Build map of converted annual subscription IDs and count conversions
+    const convertedAnnualSubIds = new Set();
     let conversions30d = 0;
     let conversionsAllTime = 0;
     let trialsEnded30d = 0;
@@ -243,6 +248,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
             const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
 
             if (daysDiff >= 0 && daysDiff <= 7) {
+              convertedAnnualSubIds.add(annual.id);
               if (isInLast30d) {
                 conversions30d++;
               }
@@ -267,97 +273,179 @@ async function calculateStripeMetrics(forceRefresh = false) {
       ? Math.round((100 - metrics.conversion_rate_last_30d) * 10) / 10
       : null;
 
-    // G) Revenue from conversions (last 30d)
-    // For converted annuals started in last 30d, get first invoice
-    console.log('[stripe-metrics] Calculating revenue from conversions...');
-    let revenueFromConversions = 0;
+    // G) Revenue from conversions will be calculated in step H (invoice processing)
 
-    for (const customerId of Object.keys(customerAnnuals)) {
-      const annuals = customerAnnuals[customerId];
-      const trials = customerTrials[customerId] || [];
+    // H) Revenue (net) from PAID INVOICES (all-time + 30d)
+    console.log('[stripe-metrics] Calculating revenue from paid invoices...');
+    
+    // Helper to fetch all paid invoices with pagination
+    const fetchAllPaidInvoices = async (createdAfter = null, maxInvoices = 5000) => {
+      const invoices = [];
+      let hasMore = true;
+      let startingAfter = null;
 
-      for (const annual of annuals) {
-        const annualStart = new Date(annual.created * 1000);
-        if (annualStart >= thirtyDaysAgo) {
-          // Check if this annual came from a trial
-          const hasTrial = trials.some(trial => {
-            if (trial.trial_end) {
-              const trialEnd = new Date(trial.trial_end * 1000);
-              const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
-              return daysDiff >= 0 && daysDiff <= 7;
-            }
-            return false;
-          });
+      while (hasMore && invoices.length < maxInvoices) {
+        const params = {
+          limit: 100,
+          status: 'paid',
+          expand: ['data.subscription', 'data.charge']
+        };
 
-          if (hasTrial) {
-            // Get first invoice for this subscription
-            try {
-              const invoices = await stripe.invoices.list({
-                subscription: annual.id,
-                limit: 1,
-                status: 'paid'
-              });
+        if (createdAfter) {
+          params.created = { gte: Math.floor(createdAfter.getTime() / 1000) };
+        }
 
-              if (invoices.data.length > 0) {
-                const invoice = invoices.data[0];
-                revenueFromConversions += (invoice.amount_paid || 0) / 100; // Convert to GBP
-              } else {
-                // Fallback: use subscription revenue
-                revenueFromConversions += getSubscriptionRevenue(annual);
+        if (startingAfter) {
+          params.starting_after = startingAfter;
+        }
+
+        const response = await stripe.invoices.list(params);
+        invoices.push(...response.data);
+
+        hasMore = response.has_more;
+        if (hasMore && response.data.length > 0) {
+          startingAfter = response.data[response.data.length - 1].id;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return invoices;
+    };
+
+    // Fetch all paid invoices (all-time, capped at 5k for performance)
+    const allPaidInvoices = await fetchAllPaidInvoices();
+    
+    // Helper to get net revenue from invoice
+    const getInvoiceNetRevenue = async (invoice) => {
+      // Try to get net from balance_transaction (most accurate)
+      if (invoice.charge) {
+        try {
+          const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
+          if (chargeId) {
+            const charge = await stripe.charges.retrieve(chargeId, { expand: ['balance_transaction'] });
+            
+            if (charge.balance_transaction) {
+              const balanceTx = typeof charge.balance_transaction === 'string'
+                ? await stripe.balanceTransactions.retrieve(charge.balance_transaction)
+                : charge.balance_transaction;
+              
+              if (balanceTx.net && balanceTx.currency === 'gbp') {
+                return balanceTx.net / 100; // Convert to GBP major units
               }
+            }
+          }
+        } catch (err) {
+          console.warn(`[stripe-metrics] Error fetching balance_transaction for invoice ${invoice.id}:`, err.message);
+        }
+      }
+      
+      // Fallback: use amount_paid (gross, but labeled as net≈gross)
+      if (invoice.amount_paid && invoice.currency === 'gbp') {
+        return invoice.amount_paid / 100;
+      }
+      
+      return 0;
+    };
+
+    // Calculate revenue metrics
+    let revenueNetAllTime = 0;
+    let revenueNet30d = 0;
+    let annualRevenueNetAllTime = 0;
+    let annualRevenueNet30d = 0;
+    let revenueFromConversionsNetAllTime = 0;
+    let revenueFromConversionsNet30d = 0;
+    let revenueFromDirectAnnualNetAllTime = 0;
+    let revenueFromDirectAnnualNet30d = 0;
+    let nonGbpInvoicesCount = 0;
+
+    // Build subscription ID to type map for faster lookup
+    const subscriptionTypeMap = new Map();
+    allActiveSubs.forEach(sub => {
+      subscriptionTypeMap.set(sub.id, isAnnualSubscription(sub) ? 'annual' : 'other');
+    });
+
+    // Process invoices (limit to first 1000 for performance)
+    const invoicesToProcess = allPaidInvoices.slice(0, 1000);
+    for (const invoice of invoicesToProcess) {
+      // Skip non-GBP invoices
+      if (invoice.currency !== 'gbp') {
+        nonGbpInvoicesCount++;
+        continue;
+      }
+
+      const invoiceNet = await getInvoiceNetRevenue(invoice);
+      if (invoiceNet === 0) continue;
+
+      const invoiceCreated = new Date(invoice.created * 1000);
+      const isInLast30d = invoiceCreated >= thirtyDaysAgo;
+
+      // Add to all-time total
+      revenueNetAllTime += invoiceNet;
+      if (isInLast30d) {
+        revenueNet30d += invoiceNet;
+      }
+
+      // Check if this invoice is for an annual subscription
+      if (invoice.subscription) {
+        const subscriptionId = typeof invoice.subscription === 'string' 
+          ? invoice.subscription 
+          : invoice.subscription.id;
+
+        // Check if subscription is annual (use expanded data if available, otherwise map or retrieve)
+        let isAnnual = false;
+        
+        // First check if subscription was expanded in the invoice
+        if (typeof invoice.subscription === 'object' && invoice.subscription.items) {
+          isAnnual = isAnnualSubscription(invoice.subscription);
+          subscriptionTypeMap.set(subscriptionId, isAnnual ? 'annual' : 'other');
+        } else {
+          // Use map if available
+          isAnnual = subscriptionTypeMap.get(subscriptionId) === 'annual';
+          
+          // If not in map, retrieve subscription
+          if (!isAnnual && subscriptionId) {
+            try {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              isAnnual = isAnnualSubscription(subscription);
+              subscriptionTypeMap.set(subscriptionId, isAnnual ? 'annual' : 'other');
             } catch (err) {
-              console.warn(`[stripe-metrics] Error fetching invoice for sub ${annual.id}:`, err.message);
-              // Fallback: use subscription revenue
-              revenueFromConversions += getSubscriptionRevenue(annual);
+              console.warn(`[stripe-metrics] Error retrieving subscription ${subscriptionId}:`, err.message);
+            }
+          }
+        }
+
+        if (isAnnual) {
+          annualRevenueNetAllTime += invoiceNet;
+          if (isInLast30d) {
+            annualRevenueNet30d += invoiceNet;
+          }
+
+          // Classify as conversion or direct
+          if (convertedAnnualSubIds.has(subscriptionId)) {
+            revenueFromConversionsNetAllTime += invoiceNet;
+            if (isInLast30d) {
+              revenueFromConversionsNet30d += invoiceNet;
+            }
+          } else {
+            revenueFromDirectAnnualNetAllTime += invoiceNet;
+            if (isInLast30d) {
+              revenueFromDirectAnnualNet30d += invoiceNet;
             }
           }
         }
       }
     }
 
-    metrics.revenue_from_conversions_last_30d_gbp = Math.round(revenueFromConversions * 100) / 100;
-
-    // H) Revenue (net) last 30 days from balance transactions
-    console.log('[stripe-metrics] Calculating revenue from balance transactions...');
-    let revenue30d = 0;
-    let hasMore = true;
-    let startingAfter = null;
-
-    while (hasMore) {
-      const params = {
-        limit: 100,
-        type: 'charge',
-        created: {
-          gte: Math.floor(thirtyDaysAgo.getTime() / 1000)
-        }
-      };
-
-      if (startingAfter) {
-        params.starting_after = startingAfter;
-      }
-
-      const transactions = await stripe.balanceTransactions.list(params);
-      
-      transactions.data.forEach(tx => {
-        // Only count GBP charges
-        if (tx.currency === 'gbp' && tx.type === 'charge' && tx.net) {
-          revenue30d += tx.net / 100; // Convert from minor units
-        }
-      });
-
-      hasMore = transactions.has_more;
-      if (hasMore && transactions.data.length > 0) {
-        startingAfter = transactions.data[transactions.data.length - 1].id;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    metrics.revenue_net_last_30d_gbp = Math.round(revenue30d * 100) / 100;
-
-    // All-time revenue: For now, return null (too heavy to compute on every request)
-    // TODO: Implement daily snapshot in Supabase or compute "since YYYY-MM-DD"
-    metrics.revenue_net_all_time_gbp = null;
+    metrics.revenue_net_all_time_gbp = Math.round(revenueNetAllTime * 100) / 100;
+    metrics.revenue_net_last_30d_gbp = Math.round(revenueNet30d * 100) / 100;
+    metrics.annual_revenue_net_all_time_gbp = Math.round(annualRevenueNetAllTime * 100) / 100;
+    metrics.annual_revenue_net_30d_gbp = Math.round(annualRevenueNet30d * 100) / 100;
+    metrics.revenue_from_conversions_net_all_time_gbp = Math.round(revenueFromConversionsNetAllTime * 100) / 100;
+    metrics.revenue_from_conversions_net_30d_gbp = Math.round(revenueFromConversionsNet30d * 100) / 100;
+    metrics.revenue_from_direct_annual_net_all_time_gbp = Math.round(revenueFromDirectAnnualNetAllTime * 100) / 100;
+    metrics.revenue_from_direct_annual_net_30d_gbp = Math.round(revenueFromDirectAnnualNet30d * 100) / 100;
+    metrics.non_gbp_invoices_count = nonGbpInvoicesCount;
 
     // I) ARR (Annual Run-Rate) from active annual subscriptions
     allActiveSubs.forEach(sub => {
@@ -367,6 +455,30 @@ async function calculateStripeMetrics(forceRefresh = false) {
     });
 
     metrics.arr_gbp = Math.round(metrics.arr_gbp * 100) / 100;
+
+    // J) Opportunity Revenue (if all trials convert)
+    // Get annual price from active annual subscriptions
+    let annualPriceGross = 0;
+    if (allActiveSubs.length > 0) {
+      const annualSub = allActiveSubs.find(sub => isAnnualSubscription(sub) && sub.status === 'active');
+      if (annualSub && annualSub.items?.data?.length > 0) {
+        const annualItem = annualSub.items.data.find(item => item.price?.recurring?.interval === 'year');
+        if (annualItem && annualItem.price?.unit_amount) {
+          annualPriceGross = annualItem.price.unit_amount / 100; // Convert to GBP
+        }
+      }
+    }
+
+    // If no active annuals, try to get from env or use default
+    if (annualPriceGross === 0) {
+      annualPriceGross = 79; // Default £79 annual price
+    }
+
+    const opportunityGross = metrics.trials_active_count * annualPriceGross;
+    const opportunityNetEstimate = opportunityGross * 0.97; // Estimate 3% Stripe fees
+
+    metrics.opportunity_revenue_gross_gbp = Math.round(opportunityGross * 100) / 100;
+    metrics.opportunity_revenue_net_estimate_gbp = Math.round(opportunityNetEstimate * 100) / 100;
 
     // Update cache
     cache.data = metrics;

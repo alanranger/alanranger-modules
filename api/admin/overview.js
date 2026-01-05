@@ -587,14 +587,22 @@ module.exports = async (req, res) => {
         activePaidNow: stripeMetrics?.annual_active_count ?? activePaidNow
       },
       
-      // Stripe Metrics (source of truth - subscriptions)
+      // Stripe Metrics (source of truth - subscriptions + invoices)
       stripe: stripeMetrics ? {
         annual_active_count: stripeMetrics.annual_active_count,
         trials_active_count: stripeMetrics.trials_active_count,
         revenue_net_all_time_gbp: stripeMetrics.revenue_net_all_time_gbp,
         revenue_net_last_30d_gbp: stripeMetrics.revenue_net_last_30d_gbp,
-        arr_gbp: stripeMetrics.arr_gbp,
-        revenue_from_conversions_last_30d_gbp: stripeMetrics.revenue_from_conversions_last_30d_gbp
+        annual_revenue_net_all_time_gbp: stripeMetrics.annual_revenue_net_all_time_gbp,
+        annual_revenue_net_30d_gbp: stripeMetrics.annual_revenue_net_30d_gbp,
+        revenue_from_conversions_net_all_time_gbp: stripeMetrics.revenue_from_conversions_net_all_time_gbp,
+        revenue_from_conversions_net_30d_gbp: stripeMetrics.revenue_from_conversions_net_30d_gbp,
+        revenue_from_direct_annual_net_all_time_gbp: stripeMetrics.revenue_from_direct_annual_net_all_time_gbp,
+        revenue_from_direct_annual_net_30d_gbp: stripeMetrics.revenue_from_direct_annual_net_30d_gbp,
+        opportunity_revenue_gross_gbp: stripeMetrics.opportunity_revenue_gross_gbp,
+        opportunity_revenue_net_estimate_gbp: stripeMetrics.opportunity_revenue_net_estimate_gbp,
+        non_gbp_invoices_count: stripeMetrics.non_gbp_invoices_count,
+        arr_gbp: stripeMetrics.arr_gbp
       } : null
     });
 
