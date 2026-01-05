@@ -65,24 +65,24 @@ async function checkAdminAccess(req) {
       return { isAdmin: false, member: null, error: "Not authenticated" };
     }
 
-    // Check if member has Admin plan
-    // Admin plan ID should be configured in env or hardcoded
-    const adminPlanId = process.env.ADMIN_PLAN_ID || "pln_admin"; // Update with actual admin plan ID
-    const planConnections = memberData.planConnections || [];
-    
-    const hasAdminPlan = planConnections.some(pc => {
-      // Check plan ID or plan name
-      return pc.planId === adminPlanId || 
-             pc.planId?.includes('admin') || 
-             pc.plan?.name?.toLowerCase().includes('admin');
-    });
-
-    // Also check email-based admin access (fallback for development)
-    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    // Check email-based admin access (primary method - set ADMIN_EMAILS env var)
+    const adminEmails = (process.env.ADMIN_EMAILS || "info@alanranger.com,marketing@alanranger.com").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const memberEmail = (memberData.auth?.email || memberData.email || "").toLowerCase();
-    const isAdminEmail = adminEmails.length > 0 && adminEmails.includes(memberEmail);
+    const isAdminEmail = adminEmails.includes(memberEmail);
 
-    const isAdmin = hasAdminPlan || isAdminEmail;
+    // Also check if member has Admin plan (if configured)
+    const adminPlanId = process.env.ADMIN_PLAN_ID;
+    let hasAdminPlan = false;
+    if (adminPlanId) {
+      const planConnections = memberData.planConnections || [];
+      hasAdminPlan = planConnections.some(pc => {
+        return pc.planId === adminPlanId || 
+               pc.planId?.toLowerCase().includes('admin') || 
+               pc.plan?.name?.toLowerCase().includes('admin');
+      });
+    }
+
+    const isAdmin = isAdminEmail || hasAdminPlan;
 
     if (!isAdmin) {
       return { isAdmin: false, member: memberData, error: "Admin access required" };

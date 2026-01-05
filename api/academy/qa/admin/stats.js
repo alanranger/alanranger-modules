@@ -2,7 +2,7 @@
 // Returns Q&A statistics for admin dashboard tiles
 
 const { createClient } = require("@supabase/supabase-js");
-const { checkAdminAccess } = require("../../admin/_auth");
+const { checkAdminAccess } = require("../../admin/_auth.js");
 
 module.exports = async (req, res) => {
   // Check admin access

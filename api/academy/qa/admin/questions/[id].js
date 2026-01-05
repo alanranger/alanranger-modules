@@ -2,7 +2,7 @@
 // Updates a Q&A question (save/edit answer)
 
 const { createClient } = require("@supabase/supabase-js");
-const { checkAdminAccess } = require("../../../admin/_auth");
+const { checkAdminAccess } = require("../../../admin/_auth.js");
 
 module.exports = async (req, res) => {
   // Check admin access

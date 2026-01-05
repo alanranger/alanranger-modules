@@ -2,7 +2,7 @@
 // Returns all Q&A questions with filters for admin dashboard
 
 const { createClient } = require("@supabase/supabase-js");
-const { checkAdminAccess } = require("../../admin/_auth");
+const { checkAdminAccess } = require("../../admin/_auth.js");
 
 module.exports = async (req, res) => {
   // Check admin access
