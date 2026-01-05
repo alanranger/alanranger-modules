@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:qa": "node test-qa-api.js",
-    "test:qa-functionality": "node test-qa-functionality.js"
+    "test:qa-functionality": "node test-qa-functionality.js",
+    "test:qa-comprehensive": "node test-qa-comprehensive.js"
   },
   "dependencies": {
     "@memberstack/admin": "^1.0.0",
