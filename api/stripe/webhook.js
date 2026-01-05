@@ -41,57 +41,118 @@ function extractMemberstackMeta(obj) {
 }
 
 /**
- * Check if an event is Academy-related by examining line items
+ * Check if an event is Academy-related by examining line items and price metadata
  * @param {Object} obj - Stripe object (invoice, checkout session, subscription, etc.)
- * @returns {Object} { isAcademy: boolean, msAppId: string|null, msPriceId: string|null }
+ * @param {Object} stripe - Stripe client (for retrieving expanded data if needed)
+ * @returns {Promise<Object>} { isAcademy: boolean, msAppId: string|null, msPriceId: string|null }
  */
-function isAcademyEvent(obj) {
-  // Check line items (invoices, checkout sessions)
-  const lineItems = obj?.lines?.data || obj?.line_items?.data || [];
-  
-  for (const item of lineItems) {
-    const price = item?.price;
-    if (!price) continue;
-    
-    // Check 1: Price ID matches Academy config
-    if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
-      return {
-        isAcademy: true,
-        msAppId: price.metadata?.msAppId || null,
-        msPriceId: price.metadata?.msPriceId || price.id || null
-      };
-    }
-    
-    // Check 2: Price metadata contains Academy app ID
-    if (price.metadata?.msAppId === ACADEMY_APP_ID) {
-      return {
-        isAcademy: true,
-        msAppId: price.metadata.msAppId,
-        msPriceId: price.metadata?.msPriceId || price.id || null
-      };
+async function isAcademyEvent(obj, stripe) {
+  // Check 1: Invoice line items (invoice.* events)
+  if (obj?.lines?.data) {
+    for (const line of obj.lines.data) {
+      const price = line?.price;
+      if (!price) continue;
+      
+      // Check price ID in Academy config
+      if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata?.msAppId || null,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
+      
+      // Check price metadata for Academy app ID
+      if (price.metadata?.msAppId === ACADEMY_APP_ID) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata.msAppId,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
     }
   }
   
-  // Check subscription items (for subscription events)
-  const subscriptionItems = obj?.items?.data || [];
-  for (const item of subscriptionItems) {
-    const price = item?.price;
-    if (!price) continue;
-    
-    if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
-      return {
-        isAcademy: true,
-        msAppId: price.metadata?.msAppId || null,
-        msPriceId: price.metadata?.msPriceId || price.id || null
-      };
+  // Check 2: Checkout session line items (checkout.session.completed)
+  // Try expanded line_items first
+  if (obj?.line_items?.data) {
+    for (const item of obj.line_items.data) {
+      const price = item?.price;
+      if (!price) continue;
+      
+      if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata?.msAppId || null,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
+      
+      if (price.metadata?.msAppId === ACADEMY_APP_ID) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata.msAppId,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
     }
-    
-    if (price.metadata?.msAppId === ACADEMY_APP_ID) {
-      return {
-        isAcademy: true,
-        msAppId: price.metadata.msAppId,
-        msPriceId: price.metadata?.msPriceId || price.id || null
-      };
+  }
+  
+  // If checkout session doesn't have expanded line_items, retrieve them
+  if (obj?.object === 'checkout.session' && obj?.id && stripe) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(obj.id, {
+        expand: ['line_items.data.price']
+      });
+      
+      if (session?.line_items?.data) {
+        for (const item of session.line_items.data) {
+          const price = item?.price;
+          if (!price) continue;
+          
+          if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
+            return {
+              isAcademy: true,
+              msAppId: price.metadata?.msAppId || null,
+              msPriceId: price.metadata?.msPriceId || price.id || null
+            };
+          }
+          
+          if (price.metadata?.msAppId === ACADEMY_APP_ID) {
+            return {
+              isAcademy: true,
+              msAppId: price.metadata.msAppId,
+              msPriceId: price.metadata?.msPriceId || price.id || null
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[stripe-webhook] Failed to retrieve checkout session line items: ${err.message}`);
+    }
+  }
+  
+  // Check 3: Subscription items (customer.subscription.* events)
+  if (obj?.items?.data) {
+    for (const item of obj.items.data) {
+      const price = item?.price;
+      if (!price) continue;
+      
+      if (price.id && ACADEMY_ANNUAL_PRICE_IDS.includes(price.id)) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata?.msAppId || null,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
+      
+      if (price.metadata?.msAppId === ACADEMY_APP_ID) {
+        return {
+          isAcademy: true,
+          msAppId: price.metadata.msAppId,
+          msPriceId: price.metadata?.msPriceId || price.id || null
+        };
+      }
     }
   }
   
@@ -106,21 +167,35 @@ function isAcademyEvent(obj) {
  */
 async function lookupMsMemberId(stripeCustomerId, customerEmail) {
   try {
-    // First try by Stripe customer ID (if stored in member cache)
+    // First try by Stripe customer ID (check if stored in raw JSONB or plan_summary)
     if (stripeCustomerId) {
-      // Note: This assumes you store Stripe customer ID in ms_members_cache
-      // If not, you may need to add a stripe_customer_id column
-      // For now, try email lookup
+      // Check if stripe_customer_id is stored in the raw JSONB field
+      const { data, error } = await supabaseAdmin
+        .from('ms_members_cache')
+        .select('member_id, raw')
+        .limit(100); // Get a batch to check
+      
+      if (!error && data) {
+        for (const member of data) {
+          // Check raw JSONB for stripe customer ID
+          const raw = member.raw || {};
+          if (raw.stripe_customer_id === stripeCustomerId || 
+              raw.stripeCustomerId === stripeCustomerId ||
+              raw.customer_id === stripeCustomerId) {
+            return member.member_id;
+          }
+        }
+      }
     }
     
-    // Try by email
+    // Try by email (more reliable)
     if (customerEmail) {
       const { data, error } = await supabaseAdmin
         .from('ms_members_cache')
         .select('member_id')
         .eq('email', customerEmail)
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (!error && data?.member_id) {
         return data.member_id;
@@ -184,13 +259,18 @@ module.exports = async (req, res) => {
   try {
     const obj = event.data?.object;
     const meta = extractMemberstackMeta(obj);
+    const stripe = getStripe();
 
     // Check if this is an Academy event by examining price IDs and metadata
-    const academyCheck = isAcademyEvent(obj);
+    const academyCheck = await isAcademyEvent(obj, stripe);
     
     if (!academyCheck.isAcademy) {
-      console.log(`[stripe-webhook] Skipping event ${event.type} - not Academy-related`);
-      return res.status(200).json({ received: true, skipped: true, reason: 'not_academy_event' });
+      console.log(`[stripe-webhook] Event ${event.type} is not Academy-related`);
+      return res.status(200).json({ 
+        received: true, 
+        stored: false, 
+        reason: 'not_academy_event' 
+      });
     }
 
     // Extract Stripe IDs (format varies by event type)
@@ -199,16 +279,19 @@ module.exports = async (req, res) => {
     const stripeInvoiceId = obj?.invoice || (obj?.object === 'invoice' ? obj?.id : null) || null;
     const customerEmail = obj?.customer_email || obj?.customer_details?.email || null;
 
-    // Try to look up ms_member_id from ms_members_cache
+    // Try to resolve ms_member_id (but don't skip if not found)
+    // First try metadata, then lookup
     let msMemberId = meta.msMemberId || null;
     if (!msMemberId && (stripeCustomerId || customerEmail)) {
       msMemberId = await lookupMsMemberId(stripeCustomerId, customerEmail);
       if (msMemberId) {
-        console.log(`[stripe-webhook] Found ms_member_id via lookup: ${msMemberId}`);
+        console.log(`[stripe-webhook] Resolved ms_member_id via lookup: ${msMemberId}`);
+      } else {
+        console.log(`[stripe-webhook] Could not resolve ms_member_id (will store as null)`);
       }
     }
 
-    // Use Academy app ID from price metadata if available, otherwise from object metadata
+    // Use Academy app ID and price ID from price metadata (most reliable)
     const msAppId = academyCheck.msAppId || meta.msAppId || null;
     const msPriceId = academyCheck.msPriceId || meta.msPriceId || null;
 
@@ -237,21 +320,24 @@ module.exports = async (req, res) => {
       // If duplicate stripe_event_id, treat as success (idempotent)
       if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
         console.log(`[stripe-webhook] Event ${event.id} already processed (idempotent)`);
-        return res.status(200).json({ received: true, duplicate: true });
+        return res.status(200).json({ 
+          received: true, 
+          stored: false, 
+          reason: 'duplicate' 
+        });
       }
       
       console.error('[stripe-webhook] Database insert error:', error);
       throw error;
     }
 
-    console.log(`[stripe-webhook] Stored event ${event.type} (event ID: ${event.id})${msMemberId ? ` for member ${msMemberId}` : ' (ms_member_id not found)'}`);
+    console.log(`[stripe-webhook] Stored Academy event ${event.type} (event ID: ${event.id})${msMemberId ? ` for member ${msMemberId}` : ' (ms_member_id: null)'}`);
     
     return res.status(200).json({ 
       received: true, 
-      event_type: event.type,
-      ms_member_id: msMemberId,
       stored: true,
-      academy_event: true
+      event_type: event.type,
+      ms_member_id: msMemberId
     });
 
   } catch (err) {
