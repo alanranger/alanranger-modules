@@ -533,10 +533,14 @@ module.exports = async (req, res) => {
       stripeError = {
         message: error.message,
         stack: error.stack,
-        code: error.code
+        code: error.code,
+        debugInfo: error.debugInfo || null
       };
       console.error('[overview] Error fetching Stripe metrics:', error.message);
       console.error('[overview] Error stack:', error.stack);
+      if (error.debugInfo) {
+        console.error('[overview] Debug info:', JSON.stringify(error.debugInfo, null, 2));
+      }
       // Continue without Stripe data (don't break dashboard)
     }
 
@@ -634,7 +638,11 @@ module.exports = async (req, res) => {
         debug_invoices_found: stripeMetrics.debug_invoices_found,
         debug_annual_invoices_matched: stripeMetrics.debug_annual_invoices_matched,
         debug_annual_revenue_pennies_sum: stripeMetrics.debug_annual_revenue_pennies_sum
-      } : (stripeError ? { _error: stripeError.message, _errorCode: stripeError.code } : null)
+      } : (stripeError ? { 
+        _error: stripeError.message, 
+        _errorCode: stripeError.code,
+        _debugInfo: stripeError.debugInfo
+      } : null)
     });
 
   } catch (error) {
