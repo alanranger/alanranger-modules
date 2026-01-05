@@ -388,6 +388,11 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let nonGbpInvoicesCount = 0;
     let paidAnnualInvoicesCountAllTime = 0;
     const debugSampleAnnualInvoiceIds = [];
+    
+    // Debug counters
+    let invoicesFound = allPaidInvoices.length;
+    let annualInvoicesMatched = 0;
+    let annualRevenuePenniesSum = 0;
 
     // Build subscription ID to type map for faster lookup
     const subscriptionTypeMap = new Map();
@@ -397,6 +402,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
     // Process invoices (limit to first 1000 for performance)
     const invoicesToProcess = allPaidInvoices.slice(0, 1000);
+    console.log(`[stripe-metrics] Processing ${invoicesToProcess.length} paid invoices...`);
+    
     for (const invoice of invoicesToProcess) {
       // Skip non-GBP invoices
       if (invoice.currency !== 'gbp') {
@@ -405,8 +412,18 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
 
       // Use invoice.total (minimum correct approach - includes discounts, after refunds, before Stripe fees)
+      // invoice.total is in minor units (pence), so divide by 100
       const invoiceRevenue = getInvoiceRevenue(invoice);
-      if (invoiceRevenue === 0) continue;
+      
+      // Log invoice details for debugging
+      if (invoice.total && invoice.total > 0) {
+        console.log(`[stripe-metrics] Invoice ${invoice.id}: total=${invoice.total} (${invoice.total/100} GBP), billing_reason=${invoice.billing_reason || 'none'}, status=${invoice.status}`);
+      }
+      
+      if (invoiceRevenue === 0) {
+        console.log(`[stripe-metrics] Invoice ${invoice.id} has zero revenue, skipping`);
+        continue;
+      }
 
       const invoiceCreated = new Date(invoice.created * 1000);
       const isInLast30d = invoiceCreated >= thirtyDaysAgo;
@@ -421,7 +438,11 @@ async function calculateStripeMetrics(forceRefresh = false) {
       const containsAnnualPrice = invoiceContainsAnnualPrice(invoice);
       
       if (containsAnnualPrice) {
+        annualInvoicesMatched++;
         paidAnnualInvoicesCountAllTime++;
+        annualRevenuePenniesSum += invoice.total || 0;
+        
+        console.log(`[stripe-metrics] Found annual invoice: ${invoice.id}, total=${invoice.total} (${invoice.total/100} GBP), billing_reason=${invoice.billing_reason || 'none'}`);
         
         // Store sample invoice IDs for debug
         if (debugSampleAnnualInvoiceIds.length < 3) {
@@ -429,7 +450,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
             id: invoice.id,
             total: invoice.total / 100,
             created: new Date(invoice.created * 1000).toISOString(),
-            billing_reason: invoice.billing_reason || 'unknown'
+            billing_reason: invoice.billing_reason || 'unknown',
+            amount_paid: invoice.amount_paid ? invoice.amount_paid / 100 : null,
+            currency: invoice.currency
           });
         }
 
@@ -465,6 +488,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
         }
       }
     }
+    
+    console.log(`[stripe-metrics] Summary: invoicesFound=${invoicesFound}, annualInvoicesMatched=${annualInvoicesMatched}, annualRevenuePenniesSum=${annualRevenuePenniesSum}, annualRevenueNetAllTime=${annualRevenueNetAllTime}`);
 
     metrics.revenue_net_all_time_gbp = Math.round(revenueNetAllTime * 100) / 100;
     metrics.revenue_net_last_30d_gbp = Math.round(revenueNet30d * 100) / 100;
@@ -481,6 +506,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
     metrics.annual_price_id_used = ANNUAL_PRICE_ID;
     metrics.paid_annual_invoices_count_all_time = paidAnnualInvoicesCountAllTime;
     metrics.debug_sample_annual_invoice_ids = debugSampleAnnualInvoiceIds;
+    metrics.debug_invoices_found = invoicesFound;
+    metrics.debug_annual_invoices_matched = annualInvoicesMatched;
+    metrics.debug_annual_revenue_pennies_sum = annualRevenuePenniesSum;
 
     // I) ARR (Annual Run-Rate) from active annual subscriptions
     allActiveSubs.forEach(sub => {
@@ -492,25 +520,39 @@ async function calculateStripeMetrics(forceRefresh = false) {
     metrics.arr_gbp = Math.round(metrics.arr_gbp * 100) / 100;
 
     // J) Opportunity Revenue (if all trials convert)
-    // Get annual price from active annual subscriptions
+    // Use active trials count (not ended, not expiring - just active)
+    // Get annual price from active annual subscriptions or from paid invoices
     let annualPriceGross = 0;
-    if (allActiveSubs.length > 0) {
+    
+    // First, try to get from a paid annual invoice (most accurate, includes discounts)
+    if (debugSampleAnnualInvoiceIds.length > 0) {
+      // Use the first annual invoice's total as the price (includes any discounts)
+      annualPriceGross = debugSampleAnnualInvoiceIds[0].total;
+      console.log(`[stripe-metrics] Using annual price from paid invoice: £${annualPriceGross}`);
+    } else if (allActiveSubs.length > 0) {
+      // Fallback: get from active annual subscription
       const annualSub = allActiveSubs.find(sub => isAnnualSubscription(sub) && sub.status === 'active');
       if (annualSub && annualSub.items?.data?.length > 0) {
         const annualItem = annualSub.items.data.find(item => item.price?.recurring?.interval === 'year');
         if (annualItem && annualItem.price?.unit_amount) {
           annualPriceGross = annualItem.price.unit_amount / 100; // Convert to GBP
+          console.log(`[stripe-metrics] Using annual price from subscription: £${annualPriceGross}`);
         }
       }
     }
 
-    // If no active annuals, try to get from env or use default
+    // If still no price found, use default
     if (annualPriceGross === 0) {
       annualPriceGross = 79; // Default £79 annual price
+      console.log(`[stripe-metrics] Using default annual price: £${annualPriceGross}`);
     }
 
-    const opportunityGross = metrics.trials_active_count * annualPriceGross;
+    // Use active trials count (not ended, not expiring)
+    const activeTrialsCount = metrics.trials_active_count;
+    const opportunityGross = activeTrialsCount * annualPriceGross;
     const opportunityNetEstimate = opportunityGross * 0.97; // Estimate 3% Stripe fees
+
+    console.log(`[stripe-metrics] Opportunity: ${activeTrialsCount} active trials × £${annualPriceGross} = £${opportunityGross}`);
 
     metrics.opportunity_revenue_gross_gbp = Math.round(opportunityGross * 100) / 100;
     metrics.opportunity_revenue_net_estimate_gbp = Math.round(opportunityNetEstimate * 100) / 100;
@@ -540,10 +582,16 @@ module.exports = async (req, res) => {
     return res.status(200).json(metrics);
 
   } catch (error) {
-    console.error('[stripe-metrics] Error:', error);
+    console.error('[stripe-metrics] API Error:', error);
+    console.error('[stripe-metrics] Error stack:', error.stack);
+    
+    // Return error details in response for debugging
     return res.status(500).json({ 
       error: error.message,
-      details: 'Stripe metrics calculation failed'
+      details: 'Stripe metrics calculation failed',
+      debugError: error.message,
+      debugStack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      stripe_key_mode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test'
     });
   }
 };

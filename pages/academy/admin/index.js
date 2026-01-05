@@ -325,9 +325,27 @@ export default function AdminDashboard() {
                   </span>
                 </div>
                 <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Invoices Found:</span>
+                  <span style={{ marginLeft: '8px', fontWeight: 600 }}>
+                    {kpis.stripe.debug_invoices_found ?? 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Annual Invoices Matched:</span>
+                  <span style={{ marginLeft: '8px', fontWeight: 600 }}>
+                    {kpis.stripe.debug_annual_invoices_matched ?? 'N/A'}
+                  </span>
+                </div>
+                <div>
                   <span style={{ color: 'var(--ar-text-muted)' }}>Paid Annual Invoices:</span>
                   <span style={{ marginLeft: '8px', fontWeight: 600 }}>
                     {kpis.stripe.paid_annual_invoices_count_all_time || 0}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ar-text-muted)' }}>Annual Revenue (pennies):</span>
+                  <span style={{ marginLeft: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
+                    {kpis.stripe.debug_annual_revenue_pennies_sum ?? 'N/A'}
                   </span>
                 </div>
                 {kpis.stripe.debug_sample_annual_invoice_ids && kpis.stripe.debug_sample_annual_invoice_ids.length > 0 && (
@@ -346,9 +364,11 @@ export default function AdminDashboard() {
                         border: '1px solid var(--ar-border)'
                       }}>
                         <div><strong>ID:</strong> {inv.id}</div>
-                        <div><strong>Amount:</strong> £{inv.total.toFixed(2)}</div>
+                        <div><strong>Total:</strong> £{inv.total.toFixed(2)}</div>
+                        {inv.amount_paid && <div><strong>Amount Paid:</strong> £{inv.amount_paid.toFixed(2)}</div>}
                         <div><strong>Created:</strong> {new Date(inv.created).toLocaleString()}</div>
                         <div><strong>Billing Reason:</strong> {inv.billing_reason}</div>
+                        <div><strong>Currency:</strong> {inv.currency}</div>
                       </div>
                     ))}
                   </div>

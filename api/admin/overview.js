@@ -607,7 +607,10 @@ module.exports = async (req, res) => {
         stripe_key_mode: stripeMetrics.stripe_key_mode,
         annual_price_id_used: stripeMetrics.annual_price_id_used,
         paid_annual_invoices_count_all_time: stripeMetrics.paid_annual_invoices_count_all_time,
-        debug_sample_annual_invoice_ids: stripeMetrics.debug_sample_annual_invoice_ids
+        debug_sample_annual_invoice_ids: stripeMetrics.debug_sample_annual_invoice_ids,
+        debug_invoices_found: stripeMetrics.debug_invoices_found,
+        debug_annual_invoices_matched: stripeMetrics.debug_annual_invoices_matched,
+        debug_annual_revenue_pennies_sum: stripeMetrics.debug_annual_revenue_pennies_sum
       } : null
     });
 
