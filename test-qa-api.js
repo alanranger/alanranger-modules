@@ -26,7 +26,8 @@ if (typeof globalThis.fetch !== 'undefined') {
 }
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000';
-const API_URL = `${API_BASE}/api/academy/qa/questions`;
+// Try both possible routes (nested and flat)
+const API_URL = process.env.QA_API_URL || `${API_BASE}/api/academy-qa-questions`;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
