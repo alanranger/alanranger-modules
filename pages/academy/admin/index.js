@@ -781,9 +781,11 @@ export default function AdminDashboard() {
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== undefined
-                ? `£${kpis.stripe.revenue_from_conversions_net_all_time_gbp.toFixed(2)}`
-                : '£0.00'}
+              {kpis?.bi?.revenueFromConversionsAllTime !== null && kpis?.bi?.revenueFromConversionsAllTime !== undefined
+                ? `£${kpis.bi.revenueFromConversionsAllTime.toFixed(2)}`
+                : (kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== undefined
+                  ? `£${kpis.stripe.revenue_from_conversions_net_all_time_gbp.toFixed(2)}`
+                  : '£0.00')}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
@@ -847,9 +849,11 @@ export default function AdminDashboard() {
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== undefined
-                ? `£${kpis.stripe.revenue_from_conversions_net_30d_gbp.toFixed(2)}`
-                : '£0.00'}
+              {kpis?.bi?.revenueFromConversions30d !== null && kpis?.bi?.revenueFromConversions30d !== undefined
+                ? `£${kpis.bi.revenueFromConversions30d.toFixed(2)}`
+                : (kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== undefined
+                  ? `£${kpis.stripe.revenue_from_conversions_net_30d_gbp.toFixed(2)}`
+                  : '£0.00')}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
           </div>

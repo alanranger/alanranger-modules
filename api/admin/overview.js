@@ -631,13 +631,15 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics (from Stripe if available, else fallback to Memberstack)
+        // Conversion metrics (from academy_plan_events - source of truth)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? trialsConvertedAllTime.length,
-        trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? trialsConverted30d.length,
-        trialToAnnualConversionRateAllTime: stripeMetrics?.conversion_rate_all_time ?? trialToAnnualConversionRateAllTime,
-        trialConversionRate30d: stripeMetrics?.conversion_rate_last_30d ?? trialConversionRate30d,
+        trialToAnnualConversionsAllTime: allConversions.length,
+        trialToAnnualConversions30d: conversions30d.length,
+        trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
+        trialConversionRate30d: trialConversionRate30d,
+        revenueFromConversionsAllTime: Math.round(revenueFromConversionsAllTime * 100) / 100,
+        revenueFromConversions30d: Math.round(revenueFromConversions30d * 100) / 100,
         
         // Drop-off (from Stripe if available)
         trialDropOff30d: stripeMetrics?.trials_ended_last_30d ? (stripeMetrics.trials_ended_last_30d - stripeMetrics.conversions_trial_to_annual_last_30d) : trialDropOff30d,
