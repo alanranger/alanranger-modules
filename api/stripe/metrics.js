@@ -279,7 +279,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
     console.log('[stripe-metrics] Calculating revenue from paid invoices...');
     
     // Annual Price ID (from Stripe dashboard)
-    const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btfTbxoxk';
+    // NOTE: Capital 'I' not lowercase 'f' - price_1Sie474mPKLoo2btIfTbxoxk
+    const ANNUAL_PRICE_ID = 'price_1Sie474mPKLoo2btIfTbxoxk';
     
     // Detect Stripe key mode
     const stripeKeyMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'live' : 'test';
