@@ -145,11 +145,6 @@ export default function QAPage() {
     );
   }
 
-  function extractFirstName(name) {
-    if (!name) return null;
-    const parts = name.trim().split(/\s+/);
-    return parts[0];
-  }
 
   return (
     <div className="ar-admin-container">
@@ -303,9 +298,6 @@ export default function QAPage() {
                   Member
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
-                  Page
-                </th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
                   Question
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
@@ -333,30 +325,21 @@ export default function QAPage() {
                     {formatDate(question.created_at)}
                   </td>
                   <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '13px' }}>
-                    <div>{extractFirstName(question.member_name) || question.member_email || 'Unknown'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--ar-text-muted)' }}>
-                      {question.member_id?.substring(0, 12)}...
+                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>
+                      {question.member_name || 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>
+                      {question.member_email || 'No email'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--ar-text-muted)', marginTop: '2px', fontFamily: 'monospace' }}>
+                      {question.member_id || 'No ID'}
                     </div>
                   </td>
-                  <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '12px' }}>
-                    {question.page_url ? (
-                      <a 
-                        href={question.page_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--ar-orange)', textDecoration: 'none' }}
-                      >
-                        {question.page_url.replace('https://www.alanranger.com', '').substring(0, 30)}...
-                      </a>
-                    ) : '-'}
-                  </td>
-                  <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '13px', maxWidth: '300px' }}>
+                  <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '13px', maxWidth: '400px' }}>
                     <div style={{ 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
-                      whiteSpace: 'nowrap',
-                      cursor: 'help',
-                      title: question.question
+                      whiteSpace: 'normal',
+                      wordWrap: 'break-word',
+                      lineHeight: '1.5'
                     }}>
                       {question.question}
                     </div>

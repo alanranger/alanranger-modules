@@ -127,9 +127,10 @@ module.exports = async function handler(req, res) {
     const limit = Math.max(1, Math.min(50, parseInt(limitRaw, 10) || 25));
 
     // Only return questions for the authenticated member
+    // Include answer fields so members can see admin and AI answers
     const { data, error } = await supabase
       .from("academy_qa_questions")
-      .select("id, question, member_id, member_name, page_url, status, created_at")
+      .select("id, question, member_id, member_name, page_url, status, created_at, admin_answer, admin_answered_at, ai_answer, ai_answered_at, answer_source")
       .eq("member_id", auth.memberId) // CRITICAL: Filter by authenticated member only
       .order("created_at", { ascending: false })
       .limit(limit);

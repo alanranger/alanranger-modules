@@ -122,12 +122,12 @@ module.exports = async function handler(req, res) {
         console.error("[qa-count-api] Error counting asked:", askedError);
       }
 
-      // Get answered count (status = 'closed')
+      // Get answered count (status = 'answered' or 'closed', or has admin_answer)
       const { count: answeredCount, error: answeredError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
         .eq("member_id", auth.memberId)
-        .eq("status", "closed");
+        .or("status.eq.answered,status.eq.closed,admin_answer.not.is.null");
 
       if (answeredError) {
         console.error("[qa-count-api] Error counting answered:", answeredError);
