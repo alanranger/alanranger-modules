@@ -31,7 +31,31 @@ module.exports = async (req, res) => {
 
     if (error) throw error;
 
-    // Aggregate by member
+    // Get all-time events for all-time login days calculation
+    const { data: allTimeEvents, error: allTimeError } = await supabase
+      .from('academy_events')
+      .select('member_id, created_at')
+      .not('member_id', 'is', null);
+
+    if (allTimeError) throw allTimeError;
+
+    // Build all-time login days map (member_id -> Set of distinct dates)
+    const allTimeLoginMap = {};
+    if (allTimeEvents) {
+      allTimeEvents.forEach(event => {
+        const key = event.member_id;
+        if (!allTimeLoginMap[key]) {
+          allTimeLoginMap[key] = new Set();
+        }
+        if (event.created_at) {
+          const eventDate = new Date(event.created_at);
+          const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          allTimeLoginMap[key].add(dateOnly);
+        }
+      });
+    }
+
+    // Aggregate by member (for period-specific data)
     const memberMap = {};
     events.forEach(event => {
       const key = event.member_id;
@@ -41,7 +65,7 @@ module.exports = async (req, res) => {
           email: event.email || null,
           event_count: 0,
           module_opens: 0,
-          login_dates: new Set(), // Track distinct dates
+          login_dates: new Set(), // Track distinct dates in period
           last_login: null // Track most recent event date
         };
       }
@@ -50,7 +74,7 @@ module.exports = async (req, res) => {
         memberMap[key].module_opens++;
       }
       
-      // Track login dates (distinct days with activity)
+      // Track login dates (distinct days with activity in period)
       if (event.created_at) {
         const eventDate = new Date(event.created_at);
         const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -63,10 +87,12 @@ module.exports = async (req, res) => {
       }
     });
     
-    // Convert Sets to counts and format dates
+    // Convert Sets to counts and add all-time login days
     Object.keys(memberMap).forEach(key => {
-      memberMap[key].login_days = memberMap[key].login_dates.size;
+      memberMap[key].login_days_30d = memberMap[key].login_dates.size;
       delete memberMap[key].login_dates; // Remove Set, keep count
+      // Add all-time login days from the all-time map
+      memberMap[key].login_days_alltime = allTimeLoginMap[key] ? allTimeLoginMap[key].size : 0;
     });
 
     // Convert to array

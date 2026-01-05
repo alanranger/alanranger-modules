@@ -1121,7 +1121,8 @@ function TopMembersList({ refreshTrigger }) {
       <thead>
         <tr>
           <th>Member</th>
-          <th>Login Days</th>
+          <th>Login Days (30d)</th>
+          <th>Login Days (All-time)</th>
           <th>Last Login</th>
           <th>Events</th>
           <th>Modules</th>
@@ -1131,7 +1132,8 @@ function TopMembersList({ refreshTrigger }) {
         {members.map((member, idx) => (
           <tr key={idx}>
             <td>{member.email || member.member_id || 'Unknown'}</td>
-            <td>{member.login_days || 0}</td>
+            <td>{member.login_days_30d || 0}</td>
+            <td>{member.login_days_alltime || 0}</td>
             <td>{formatDate(member.last_login)}</td>
             <td>{member.event_count}</td>
             <td>{member.module_opens}</td>
