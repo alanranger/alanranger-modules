@@ -1870,6 +1870,63 @@ Keeps all styling + elements. Access guard still runs on live site.
       });
     }
 
+    function loadQAQuestionCounts(member, ms) {
+      var askedEl = document.getElementById("qa-asked-count");
+      var answeredEl = document.getElementById("qa-answered-count");
+      var outstandingEl = document.getElementById("qa-outstanding-count");
+      
+      if (!askedEl || !answeredEl || !outstandingEl) {
+        console.warn("[Dashboard] Q&A count elements not found");
+        return;
+      }
+      
+      // Get member ID
+      var memberId = null;
+      if (member) {
+        memberId = member.id || (member.data && member.data.id) || null;
+      }
+      
+      if (!memberId) {
+        console.warn("[Dashboard] No member ID for Q&A counts");
+        askedEl.textContent = "—";
+        answeredEl.textContent = "—";
+        outstandingEl.textContent = "—";
+        return;
+      }
+      
+      var apiBase = "https://alanranger-modules.vercel.app";
+      var url = apiBase + "/api/academy-qa-questions-count";
+      var headers = {
+        "Content-Type": "application/json",
+        "X-Memberstack-Id": memberId
+      };
+      
+      fetch(url, {
+        method: "GET",
+        headers: headers,
+        credentials: "include"
+      })
+      .then(function(r) {
+        if (!r.ok) {
+          console.error("[Dashboard] Q&A counts API failed:", r.status);
+          throw new Error("Failed to fetch Q&A counts");
+        }
+        return r.json();
+      })
+      .then(function(data) {
+        console.log("[Dashboard] Q&A counts received:", data);
+        askedEl.textContent = data.asked || 0;
+        answeredEl.textContent = data.answered || 0;
+        outstandingEl.textContent = data.outstanding || 0;
+      })
+      .catch(function(err) {
+        console.error("[Dashboard] Error loading Q&A counts:", err);
+        askedEl.textContent = "—";
+        answeredEl.textContent = "—";
+        outstandingEl.textContent = "—";
+      });
+    }
+
     function updatePaidResourceTiles(isTrial) {
       var practicePacksTile = document.getElementById("arp-practice-packs-tile");
       var ebookTile = document.getElementById("arp-ebook-tile");
