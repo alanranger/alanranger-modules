@@ -433,7 +433,7 @@ export default function QAPage() {
             <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--ar-card)', borderRadius: '8px' }}>
               <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Member</div>
               <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
-                {extractFirstName(selectedQuestion.member_name) || selectedQuestion.member_email || 'Unknown'}
+                {selectedQuestion.member_name || selectedQuestion.member_email || 'Unknown'}
               </div>
               <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Page</div>
               <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
