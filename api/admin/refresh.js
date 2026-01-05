@@ -15,10 +15,23 @@ function safeIso(d) {
 }
 
 module.exports = async (req, res) => {
+  console.log('[refresh-api-dir] Request received:', { 
+    method: req.method, 
+    url: req.url,
+    endpoint: 'api/admin/refresh'
+  });
+  
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
+      console.error('[refresh-api-dir] Method not allowed:', req.method);
+      return res.status(405).json({ 
+        error: `Method Not Allowed. Expected POST, got ${req.method}`,
+        received: req.method,
+        endpoint: 'api/admin/refresh'
+      });
     }
+    
+    console.log('[refresh-api-dir] POST request validated, proceeding...');
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
     const supabase = createClient(
