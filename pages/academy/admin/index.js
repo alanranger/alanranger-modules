@@ -380,8 +380,8 @@ export default function AdminDashboard() {
                         border: '1px solid var(--ar-border)'
                       }}>
                         <div><strong>ID:</strong> {inv.id}</div>
-                        <div><strong>Total:</strong> £{inv.total.toFixed(2)}</div>
-                        {inv.amount_paid && <div><strong>Amount Paid:</strong> £{inv.amount_paid.toFixed(2)}</div>}
+                        <div><strong>Total:</strong> £{Math.round(inv.total)}</div>
+                        {inv.amount_paid && <div><strong>Amount Paid:</strong> £{Math.round(inv.amount_paid)}</div>}
                         <div><strong>Created:</strong> {new Date(inv.created).toLocaleString()}</div>
                         <div><strong>Billing Reason:</strong> {inv.billing_reason}</div>
                         <div><strong>Currency:</strong> {inv.currency}</div>
@@ -707,7 +707,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.bi?.revenueAtRiskNext30d !== null && kpis?.bi?.revenueAtRiskNext30d !== undefined
-                ? `£${kpis.bi.revenueAtRiskNext30d.toFixed(2)}`
+                ? `£${Math.round(kpis.bi.revenueAtRiskNext30d)}`
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">
@@ -734,8 +734,8 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.revenue_net_all_time_gbp !== null && kpis?.stripe?.revenue_net_all_time_gbp !== undefined
-                ? `£${kpis.stripe.revenue_net_all_time_gbp.toFixed(2)}`
-                : '£0.00'}
+                ? `£${Math.round(kpis.stripe.revenue_net_all_time_gbp)}`
+                : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time (all plans)</div>
           </div>
@@ -750,8 +750,8 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.revenue_net_last_30d_gbp !== null && kpis?.stripe?.revenue_net_last_30d_gbp !== undefined
-                ? `£${kpis.stripe.revenue_net_last_30d_gbp.toFixed(2)}`
-                : '£0.00'}
+                ? `£${Math.round(kpis.stripe.revenue_net_last_30d_gbp)}`
+                : '£0'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
           </div>
@@ -766,8 +766,8 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.annual_revenue_net_all_time_gbp !== null && kpis?.stripe?.annual_revenue_net_all_time_gbp !== undefined
-                ? `£${kpis.stripe.annual_revenue_net_all_time_gbp.toFixed(2)}`
-                : '£0.00'}
+                ? `£${Math.round(kpis.stripe.annual_revenue_net_all_time_gbp)}`
+                : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
@@ -782,10 +782,10 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.bi?.revenueFromConversionsAllTime !== null && kpis?.bi?.revenueFromConversionsAllTime !== undefined
-                ? `£${kpis.bi.revenueFromConversionsAllTime.toFixed(2)}`
+                ? `£${Math.round(kpis.bi.revenueFromConversionsAllTime)}`
                 : (kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_all_time_gbp !== undefined
-                  ? `£${kpis.stripe.revenue_from_conversions_net_all_time_gbp.toFixed(2)}`
-                  : '£0.00')}
+                  ? `£${Math.round(kpis.stripe.revenue_from_conversions_net_all_time_gbp)}`
+                  : '£0')}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
@@ -800,8 +800,8 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.revenue_from_direct_annual_net_all_time_gbp !== null && kpis?.stripe?.revenue_from_direct_annual_net_all_time_gbp !== undefined
-                ? `£${kpis.stripe.revenue_from_direct_annual_net_all_time_gbp.toFixed(2)}`
-                : '£0.00'}
+                ? `£${Math.round(kpis.stripe.revenue_from_direct_annual_net_all_time_gbp)}`
+                : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
           </div>
@@ -816,8 +816,8 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.opportunity_revenue_gross_gbp !== null && kpis?.stripe?.opportunity_revenue_gross_gbp !== undefined
-                ? `£${kpis.stripe.opportunity_revenue_gross_gbp.toFixed(2)}`
-                : '£0.00'}
+                ? `£${Math.round(kpis.stripe.opportunity_revenue_gross_gbp)}`
+                : '£0'}
             </div>
             <div className="ar-admin-kpi-period">
               Gross ({kpis?.trials || 0} trials)
@@ -834,7 +834,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.stripe?.arr_gbp !== null && kpis?.stripe?.arr_gbp !== undefined
-                ? `£${kpis.stripe.arr_gbp.toFixed(2)}`
+                ? `£${Math.round(kpis.stripe.arr_gbp)}`
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">From active annuals</div>
@@ -850,10 +850,10 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">
               {kpis?.bi?.revenueFromConversions30d !== null && kpis?.bi?.revenueFromConversions30d !== undefined
-                ? `£${kpis.bi.revenueFromConversions30d.toFixed(2)}`
+                ? `£${Math.round(kpis.bi.revenueFromConversions30d)}`
                 : (kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== null && kpis?.stripe?.revenue_from_conversions_net_30d_gbp !== undefined
-                  ? `£${kpis.stripe.revenue_from_conversions_net_30d_gbp.toFixed(2)}`
-                  : '£0.00')}
+                  ? `£${Math.round(kpis.stripe.revenue_from_conversions_net_30d_gbp)}`
+                  : '£0')}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
           </div>
