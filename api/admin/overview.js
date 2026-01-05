@@ -507,13 +507,33 @@ module.exports = async (req, res) => {
 
     // ===== STRIPE METRICS (Source of Truth - Subscriptions) =====
     let stripeMetrics = null;
+    let stripeError = null;
     
     try {
       // Call Stripe metrics calculation function directly (server-side)
-      const { calculateStripeMetrics } = require('../stripe/metrics');
+      // Path: api/admin/overview.js -> api/stripe/metrics.js
+      const stripeMetricsModule = require('../stripe/metrics');
+      const calculateStripeMetrics = stripeMetricsModule.calculateStripeMetrics;
+      
+      if (!calculateStripeMetrics || typeof calculateStripeMetrics !== 'function') {
+        throw new Error('calculateStripeMetrics function not found in stripe/metrics module');
+      }
+      
       stripeMetrics = await calculateStripeMetrics(false); // Use cache if available
+      console.log('[overview] Stripe metrics fetched successfully:', {
+        annual_active: stripeMetrics?.annual_active_count,
+        revenue_all_time: stripeMetrics?.revenue_net_all_time_gbp,
+        invoices_found: stripeMetrics?.debug_invoices_found,
+        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
+      });
     } catch (error) {
-      console.warn('[overview] Error fetching Stripe metrics:', error.message);
+      stripeError = {
+        message: error.message,
+        stack: error.stack,
+        code: error.code
+      };
+      console.error('[overview] Error fetching Stripe metrics:', error.message);
+      console.error('[overview] Error stack:', error.stack);
       // Continue without Stripe data (don't break dashboard)
     }
 
@@ -611,7 +631,7 @@ module.exports = async (req, res) => {
         debug_invoices_found: stripeMetrics.debug_invoices_found,
         debug_annual_invoices_matched: stripeMetrics.debug_annual_invoices_matched,
         debug_annual_revenue_pennies_sum: stripeMetrics.debug_annual_revenue_pennies_sum
-      } : null
+      } : (stripeError ? { _error: stripeError.message, _errorCode: stripeError.code } : null)
     });
 
   } catch (error) {
