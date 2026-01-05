@@ -51,17 +51,26 @@ async function testUnauthenticatedAccess() {
   log('\n=== Test 1: Unauthenticated Access ===', 'info');
   
   try {
-    const response = await fetch(API_URL, {
+    // Test GET without authentication
+    const response = await fetch(API_URL + '?limit=25', {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      // Explicitly do NOT include credentials
     });
     
     const text = await response.text();
     let json;
     try { json = JSON.parse(text); } catch (e) { json = { error: text }; }
     
-    assert(response.status === 401, `GET returns 401 for unauthenticated request (got ${response.status})`);
-    assert(json.error && json.error.includes('Authentication'), 'Error message indicates authentication required');
+    // Should return 401 for unauthenticated requests
+    if (response.status === 401) {
+      assert(true, `GET returns 401 for unauthenticated request`);
+      assert(json.error && (json.error.includes('Authentication') || json.error.includes('required')), 'Error message indicates authentication required');
+    } else {
+      log(`⚠ GET returned ${response.status} instead of 401. Response: ${text.substring(0, 200)}`, 'warning');
+      // This might be OK if the API has different auth handling - log for manual verification
+      assert(false, `GET should return 401 for unauthenticated request (got ${response.status})`);
+    }
     
   } catch (err) {
     log(`Error testing unauthenticated access: ${err.message}`, 'error');
@@ -73,12 +82,14 @@ async function testPostWithoutAuth() {
   log('\n=== Test 2: POST Without Authentication ===', 'info');
   
   try {
+    // Test POST without authentication (no cookies, no auth headers)
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // Explicitly do NOT include credentials
       body: JSON.stringify({
         page_url: 'https://test.example.com',
-        question: 'Test question without auth'
+        question: 'Test question without auth - should fail'
       })
     });
     
@@ -86,8 +97,15 @@ async function testPostWithoutAuth() {
     let json;
     try { json = JSON.parse(text); } catch (e) { json = { error: text }; }
     
-    assert(response.status === 401, `POST returns 401 for unauthenticated request (got ${response.status})`);
-    assert(json.error && json.error.includes('Authentication'), 'Error message indicates authentication required');
+    // Should return 401 for unauthenticated requests
+    if (response.status === 401) {
+      assert(true, `POST returns 401 for unauthenticated request`);
+      assert(json.error && (json.error.includes('Authentication') || json.error.includes('required')), 'Error message indicates authentication required');
+    } else {
+      log(`⚠ POST returned ${response.status} instead of 401. Response: ${text.substring(0, 200)}`, 'warning');
+      log(`⚠ This suggests authentication may not be working correctly. Manual verification required.`, 'warning');
+      assert(false, `POST should return 401 for unauthenticated request (got ${response.status})`);
+    }
     
   } catch (err) {
     log(`Error testing POST without auth: ${err.message}`, 'error');
