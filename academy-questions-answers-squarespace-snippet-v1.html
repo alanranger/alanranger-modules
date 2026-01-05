@@ -43,16 +43,29 @@
   }
 
   async function safeFetchJson(url, options) {
-    const res = await fetch(url, options);
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
+    try {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
 
-    if (!res.ok) {
-      const err = json?.error || json?.message || ("HTTP " + res.status);
-      throw new Error(err);
+      if (!res.ok) {
+        const err = json?.error || json?.message || ("HTTP " + res.status);
+        throw new Error(err);
+      }
+      return json;
+    } catch (err) {
+      // Enhanced error logging for debugging
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        console.error("[Academy Q&A] Network error - possible causes:");
+        console.error("  1. CORS issue - check API CORS headers");
+        console.error("  2. Network connectivity problem");
+        console.error("  3. API endpoint not accessible:", url);
+        console.error("  4. Mixed content (HTTP/HTTPS)");
+        throw new Error("Network error: Unable to reach API. Please check your connection.");
+      }
+      throw err;
     }
-    return json;
   }
 
   function escapeHtml(str) {
