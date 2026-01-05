@@ -167,7 +167,7 @@ module.exports = async function handler(req, res) {
       question,
       member_id: auth.memberId, // From verified auth, not client
       member_name: auth.memberName, // First name only, extracted from Memberstack
-      status: 'ai_suggested' // Default status
+      status: 'queued' // Default status - queued for admin until AI service is connected
     };
 
     const { data, error } = await supabase
