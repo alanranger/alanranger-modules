@@ -118,6 +118,7 @@ module.exports = async function handler(req, res) {
     const auth = await getAuthenticatedMember(req);
     if (!auth || !auth.memberId) {
       console.log("[qa-api] GET: Unauthenticated request - returning 401");
+      console.log("[qa-api] GET: Headers received:", JSON.stringify(req.headers, null, 2));
       return res.status(401).json({ error: "Authentication required" });
     }
 
