@@ -129,13 +129,27 @@ async function sendAnswerNotification({ memberEmail, memberName, question, answe
     `
   };
 
-  if (emailProvider === 'resend') {
-    const resend = require('resend');
-    const resendClient = new resend.Resend(emailApiKey);
-    await resendClient.emails.send(emailContent);
-  } else if (emailProvider === 'sendgrid') {
-    const sgMail = require('@sendgrid/mail');
-    sgMail.setApiKey(emailApiKey);
-    await sgMail.send(emailContent);
+  try {
+    if (emailProvider === 'resend') {
+      try {
+        const resend = require('resend');
+        const resendClient = new resend.Resend(emailApiKey);
+        await resendClient.emails.send(emailContent);
+        console.log('[qa-admin-publish-ai] Email sent via Resend');
+      } catch (e) {
+        console.warn('[qa-admin-publish-ai] Resend package not installed, skipping email:', e.message);
+      }
+    } else if (emailProvider === 'sendgrid') {
+      try {
+        const sgMail = require('@sendgrid/mail');
+        sgMail.setApiKey(emailApiKey);
+        await sgMail.send(emailContent);
+        console.log('[qa-admin-publish-ai] Email sent via SendGrid');
+      } catch (e) {
+        console.warn('[qa-admin-publish-ai] SendGrid package not installed, skipping email:', e.message);
+      }
+    }
+  } catch (emailError) {
+    console.error('[qa-admin-publish-ai] Email sending failed:', emailError);
   }
 }

@@ -119,18 +119,8 @@ export default function QAPage() {
     return sortOrder === 'asc' ? ' ↑' : ' ↓';
   }
 
-  // Filter questions by search query (client-side for now)
-  const filteredQuestions = questions.filter(q => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      (q.question || '').toLowerCase().includes(query) ||
-      (q.member_name || '').toLowerCase().includes(query) ||
-      (q.member_email || '').toLowerCase().includes(query) ||
-      (q.admin_answer || '').toLowerCase().includes(query)
-    );
-  });
-
+  // Search is handled server-side via 'q' parameter
+  const filteredQuestions = questions;
   const totalPages = Math.ceil(totalQuestions / 50);
 
   function handleTileClick(filterType, filterValue) {
