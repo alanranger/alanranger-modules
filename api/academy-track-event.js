@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
           path: path || null,
           title: title || null,
           category: category || null,
-          meta: meta || null,
+          meta: meta || {}, // Default to empty object instead of null (required by DB constraint)
           created_at: new Date().toISOString()
         }
       ]);
