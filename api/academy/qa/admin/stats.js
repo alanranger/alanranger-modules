@@ -31,39 +31,44 @@ module.exports = async (req, res) => {
       startDate = new Date(0); // All time
     }
 
-    // Questions posted (last 30 days)
+    // Questions posted (last 30 days) - exclude example questions
     const { count: questionsPosted } = await supabase
       .from('academy_qa_questions')
       .select('*', { count: 'exact', head: true })
+      .eq('is_example', false)
       .gte('created_at', startDate.toISOString());
 
-    // Answered (last 30 days) - status = 'answered' or 'closed'
+    // Answered (last 30 days) - status = 'answered' or 'closed' - exclude example questions
     const { count: answered } = await supabase
       .from('academy_qa_questions')
       .select('*', { count: 'exact', head: true })
+      .eq('is_example', false)
       .in('status', ['answered', 'closed'])
       .gte('created_at', startDate.toISOString());
 
-    // Outstanding (no answer yet) - status = 'open', 'ai_suggested', or 'queued' without published answer
+    // Outstanding (no answer yet) - status = 'open', 'ai_suggested', or 'queued' without published answer - exclude example questions
     const { count: outstanding } = await supabase
       .from('academy_qa_questions')
       .select('*', { count: 'exact', head: true })
+      .eq('is_example', false)
       .in('status', ['open', 'ai_suggested', 'queued'])
       .is('answer', null);
 
-    // Answered by Robo-Ranger (AI answers, last 30 days)
+    // Answered by Robo-Ranger (AI answers, last 30 days) - exclude example questions
     const { count: answeredByAI } = await supabase
       .from('academy_qa_questions')
       .select('*', { count: 'exact', head: true })
+      .eq('is_example', false)
       .eq('answer_source', 'ai')
       .not('ai_answer', 'is', null)
       .gte('created_at', startDate.toISOString());
 
     // Avg response time (answered_at - created_at) for answered questions only
-    // Only include questions that have been answered (have admin_answered_at or ai_answered_at)
+    // Only include questions that have been answered (have admin_answered_at or ai_answered_at) - exclude example questions
     const { data: answeredQuestions } = await supabase
       .from('academy_qa_questions')
       .select('created_at, admin_answered_at, ai_answered_at')
+      .eq('is_example', false)
       .or('admin_answered_at.not.is.null,ai_answered_at.not.is.null')
       .gte('created_at', startDate.toISOString());
 
@@ -83,10 +88,11 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Members with outstanding (count of unique members with open questions)
+    // Members with outstanding (count of unique members with open questions) - exclude example questions
     const { data: outstandingQuestions } = await supabase
       .from('academy_qa_questions')
       .select('member_id')
+      .eq('is_example', false)
       .in('status', ['open', 'ai_suggested', 'queued'])
       .is('answer', null)
       .not('member_id', 'is', null);

@@ -34,7 +34,8 @@ module.exports = async (req, res) => {
 
     let query = supabase
       .from('academy_qa_questions')
-      .select('*', { count: 'exact' });
+      .select('*', { count: 'exact' })
+      .eq('is_example', false); // Exclude example questions from admin view
 
     // Apply filters
     if (status) {
