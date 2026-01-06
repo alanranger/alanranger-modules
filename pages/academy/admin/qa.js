@@ -119,20 +119,112 @@ export default function QAPage() {
     return sortOrder === 'asc' ? ' ↑' : ' ↓';
   }
 
-  // Format AI answer text - convert URLs to links
+  // Format AI answer text - convert markdown links and URLs to clickable links
   function formatAIAnswer(text) {
     if (!text) return '';
+    let formatted = String(text);
     
-    // Escape HTML first
-    let formatted = String(text)
+    // Helper to escape HTML
+    function escapeHtml(html) {
+      const div = document.createElement('div');
+      div.textContent = html;
+      return div.innerHTML;
+    }
+    
+    // Step 1: Convert markdown-style links [title](url) to HTML links
+    const placeholderPrefix = '__MDLINK_';
+    const placeholderSuffix = '__';
+    let linkCounter = 0;
+    const linkMap = {};
+    
+    formatted = formatted.replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      function(match, title, url) {
+        // Clean URL: trim and remove trailing )
+        let cleanUrl = url.trim();
+        while (cleanUrl.endsWith(')')) {
+          cleanUrl = cleanUrl.slice(0, -1);
+        }
+        // Validate URL
+        try {
+          new URL(cleanUrl);
+          const placeholder = placeholderPrefix + (linkCounter++) + placeholderSuffix;
+          linkMap[placeholder] = {
+            title: title,
+            url: cleanUrl
+          };
+          return placeholder;
+        } catch (e) {
+          return match;
+        }
+      }
+    );
+    
+    // Step 2: Escape HTML
+    formatted = formatted
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
     
-    // Convert URLs to clickable links
+    // Step 3: Replace placeholders with actual anchor tags
+    for (const placeholder in linkMap) {
+      const link = linkMap[placeholder];
+      const escapedTitle = escapeHtml(link.title);
+      const escapedUrl = escapeHtml(link.url);
+      while (formatted.includes(placeholder)) {
+        formatted = formatted.replace(
+          placeholder,
+          `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">${escapedTitle}</a>`
+        );
+      }
+    }
+    
+    // Step 4: Convert plain URLs to clickable links (but skip URLs already in anchor tags)
     formatted = formatted.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">$1</a>'
+      /(https?:\/\/[^\s\)<>]+)/g,
+      function(match, url, offset, fullString) {
+        // Check if this URL is already inside an href attribute
+        const beforeMatch = fullString.substring(0, offset);
+        const lastHref = beforeMatch.lastIndexOf('href="');
+        
+        if (lastHref !== -1) {
+          const afterHref = beforeMatch.substring(lastHref + 6);
+          const nextQuote = afterHref.indexOf('"');
+          if (nextQuote === -1 || (lastHref + 6 + nextQuote) > offset) {
+            return match; // Already in href, skip
+          }
+        }
+        
+        // Check if inside anchor tag content
+        const lastOpenTag = beforeMatch.lastIndexOf('<a');
+        const lastCloseTag = beforeMatch.lastIndexOf('</a>');
+        if (lastOpenTag !== -1 && (lastCloseTag === -1 || lastOpenTag > lastCloseTag)) {
+          const tagAfterOpen = beforeMatch.substring(lastOpenTag);
+          const tagCloseIndex = tagAfterOpen.indexOf('>');
+          if (tagCloseIndex !== -1) {
+            const anchorStart = lastOpenTag + tagCloseIndex + 1;
+            const afterMatch = fullString.substring(offset + match.length);
+            const nextCloseTag = afterMatch.indexOf('</a>');
+            if (nextCloseTag !== -1 && offset >= anchorStart) {
+              return match; // Inside anchor content, skip
+            }
+          }
+        }
+        
+        // Clean URL: remove trailing )
+        let cleanUrl = url;
+        while (cleanUrl.endsWith(')')) {
+          cleanUrl = cleanUrl.slice(0, -1);
+        }
+        
+        try {
+          new URL(cleanUrl);
+          const escapedUrl = escapeHtml(cleanUrl);
+          return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">${escapedUrl}</a>`;
+        } catch (e) {
+          return escapeHtml(url);
+        }
+      }
     );
     
     return formatted;
@@ -636,17 +728,42 @@ export default function QAPage() {
 
             {/* Question Details */}
             <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--ar-card)', borderRadius: '8px' }}>
-              <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Member</div>
-              <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
-                {selectedQuestion.member_name || selectedQuestion.member_email || 'Unknown'}
-              </div>
-              <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Page</div>
-              <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
-                {selectedQuestion.page_url || '-'}
-              </div>
-              <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Date Asked</div>
-              <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
-                {formatDate(selectedQuestion.created_at)}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Member</div>
+                  <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
+                    {selectedQuestion.member_name || selectedQuestion.member_email || 'Unknown'}
+                  </div>
+                  <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Page</div>
+                  <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
+                    {selectedQuestion.page_url || '-'}
+                  </div>
+                  <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Date Asked</div>
+                  <div style={{ color: 'var(--ar-text)', fontSize: '14px', marginBottom: '16px' }}>
+                    {formatDate(selectedQuestion.created_at)}
+                  </div>
+                </div>
+                <button
+                  onClick={handleGenerateAI}
+                  disabled={generatingAI}
+                  className="ar-admin-btn"
+                  style={{
+                    padding: '8px 16px',
+                    background: generatingAI ? '#6b7280' : '#3b82f6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: generatingAI ? 'not-allowed' : 'pointer',
+                    opacity: generatingAI ? 0.6 : 1,
+                    whiteSpace: 'nowrap',
+                    marginLeft: '16px'
+                  }}
+                  title="Regenerate AI answer for this question"
+                >
+                  {generatingAI ? '🔄 Regenerating...' : '🔄 Regenerate AI'}
+                </button>
               </div>
               <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginBottom: '8px' }}>Question</div>
               <div style={{ color: 'var(--ar-text)', fontSize: '14px', lineHeight: '1.6' }}>
