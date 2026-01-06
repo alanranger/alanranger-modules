@@ -21,12 +21,13 @@ export default function MembersDirectory() {
 
   useEffect(() => {
     // Read filters from URL query params
-    const { plan, status, search, last_seen, page } = router.query;
+    const { plan, status, search, last_seen, page, sort, order } = router.query;
     if (plan) setPlanFilter(plan);
     if (status) setStatusFilter(status);
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
     if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
+    if (sort) setSortConfig({ field: sort, direction: order || 'desc' });
     
     fetchMembers();
   }, [router.query]);
@@ -50,7 +51,37 @@ export default function MembersDirectory() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const data = await res.json();
-      setMembers(data.members || []);
+      let membersList = data.members || [];
+      
+      // Apply client-side sorting if sort config is set
+      if (sortConfig.field) {
+        membersList = [...membersList].sort((a, b) => {
+          let aVal = a[sortConfig.field];
+          let bVal = b[sortConfig.field];
+          
+          // Handle null/undefined values
+          if (aVal == null) aVal = '';
+          if (bVal == null) bVal = '';
+          
+          // Handle dates
+          if (sortConfig.field === 'signed_up' || sortConfig.field === 'last_seen' || sortConfig.field === 'plan_expiry_date') {
+            aVal = aVal ? new Date(aVal).getTime() : 0;
+            bVal = bVal ? new Date(bVal).getTime() : 0;
+          }
+          
+          // Handle strings
+          if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+          if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+          
+          if (sortConfig.direction === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+          } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+          }
+        });
+      }
+      
+      setMembers(membersList);
       setPagination(data.pagination || pagination);
     } catch (error) {
       console.error('Failed to fetch members:', error);
@@ -79,7 +110,17 @@ export default function MembersDirectory() {
     const newSortConfig = { field, direction };
     setSortConfig(newSortConfig);
     
-    // Sort members locally
+    // Update URL to persist sort
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...router.query,
+        sort: field,
+        order: direction
+      }
+    }, undefined, { shallow: true });
+    
+    // Sort members locally immediately
     const sorted = [...members].sort((a, b) => {
       let aVal = a[field];
       let bVal = b[field];
@@ -106,15 +147,6 @@ export default function MembersDirectory() {
     });
     
     setMembers(sorted);
-    
-    router.push({
-      pathname: '/academy/admin/members',
-      query: {
-        ...router.query,
-        sort: field,
-        order: direction
-      }
-    });
   }
 
   function getSortIcon(field) {

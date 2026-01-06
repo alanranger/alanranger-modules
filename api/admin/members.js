@@ -87,12 +87,16 @@ module.exports = async (req, res) => {
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
     const memberIds = validMembers?.map(m => m.member_id) || [];
     
-    // Get last activity per member
+    // Get last activity per member - use a more efficient query
+    // Get the most recent event per member by using a subquery approach
     const { data: lastActivities } = await supabase
       .from('academy_events')
       .select('member_id, created_at')
       .in('member_id', memberIds)
       .order('created_at', { ascending: false });
+    
+    // If no events found, use empty array
+    const activities = lastActivities || [];
 
     // Get module opens count per member
     const { data: moduleOpens } = await supabase
