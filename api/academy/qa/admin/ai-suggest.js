@@ -74,17 +74,30 @@ module.exports = async (req, res) => {
               if (url) {
                 return `- [${title}](${url})`;
               }
+              console.log('[qa-admin-ai-suggest] Article missing URL:', article);
               return null;
             })
             .filter(Boolean) // Remove null entries
             .join('\n');
           
           if (relatedGuides) {
-            // Append to answer text if not already present
-            if (!aiAnswer.includes('Related guides:')) {
+            // Remove any existing "Related guides:" section (plain text or markdown) and replace with new markdown links
+            // Match "Related guides:" followed by any content until end of string
+            const relatedGuidesPattern = /(\n\n)?Related guides:.*$/s;
+            if (relatedGuidesPattern.test(aiAnswer)) {
+              // Replace existing related guides section
+              aiAnswer = aiAnswer.replace(relatedGuidesPattern, '\n\nRelated guides:\n' + relatedGuides);
+              console.log('[qa-admin-ai-suggest] Replaced existing Related guides section with markdown links');
+            } else {
+              // Append if not present
               aiAnswer += '\n\nRelated guides:\n' + relatedGuides;
+              console.log('[qa-admin-ai-suggest] Appended Related guides section with markdown links');
             }
+          } else {
+            console.log('[qa-admin-ai-suggest] No valid articles with URLs found in structured data');
           }
+        } else {
+          console.log('[qa-admin-ai-suggest] No structured articles found in chat response');
         }
       } else {
         throw new Error(chatData.error || 'No answer from AI');
