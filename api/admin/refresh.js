@@ -4,6 +4,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
+const { createExampleQuestionsForMember } = require("../academy/qa/create-example-questions");
 
 function safeIso(d) {
   try {
@@ -221,7 +222,27 @@ module.exports = async (req, res) => {
             { onConflict: "member_id" }
           );
 
-        if (!upsertMemberErr) membersUpserted++;
+          if (!upsertMemberErr) {
+            membersUpserted++;
+            
+            // Create example questions for new members (if they don't already have them)
+            try {
+              const { data: existingExamples } = await supabase
+                .from('academy_qa_questions')
+                .select('id')
+                .eq('member_id', memberId)
+                .eq('is_example', true)
+                .limit(1);
+              
+              if (!existingExamples || existingExamples.length === 0) {
+                await createExampleQuestionsForMember(memberId, email, name);
+                console.log(`[refresh-api] Created example questions for new member: ${memberId}`);
+              }
+            } catch (exampleErr) {
+              console.error(`[refresh-api] Error creating example questions for ${memberId}:`, exampleErr);
+              // Don't fail the whole refresh if example questions fail
+            }
+          }
 
         const j = fullMemberData?.json || memberResponse?.json || memberResponse?.data?.json || {};
         const opened = j?.arAcademy?.modules?.opened || null;

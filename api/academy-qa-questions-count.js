@@ -112,32 +112,35 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-      // Get total questions asked (all statuses)
+      // Get total questions asked (all statuses) - exclude example questions
       const { count: askedCount, error: askedError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
-        .eq("member_id", auth.memberId);
+        .eq("member_id", auth.memberId)
+        .eq("is_example", false); // Exclude example questions from count
 
       if (askedError) {
         console.error("[qa-count-api] Error counting asked:", askedError);
       }
 
-      // Get answered count (has published answer field - Phase 3 consolidated field)
+      // Get answered count (has published answer field - Phase 3 consolidated field) - exclude example questions
       const { count: answeredCount, error: answeredError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
         .eq("member_id", auth.memberId)
+        .eq("is_example", false) // Exclude example questions from count
         .not("answer", "is", null); // Has published answer
 
       if (answeredError) {
         console.error("[qa-count-api] Error counting answered:", answeredError);
       }
 
-      // Get outstanding count (no published answer - includes AI drafts and queued)
+      // Get outstanding count (no published answer - includes AI drafts and queued) - exclude example questions
       const { count: outstandingCount, error: outstandingError } = await supabase
         .from("academy_qa_questions")
         .select("*", { count: "exact", head: true })
         .eq("member_id", auth.memberId)
+        .eq("is_example", false) // Exclude example questions from count
         .is("answer", null); // No published answer
 
       if (outstandingError) {
