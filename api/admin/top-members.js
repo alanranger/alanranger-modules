@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
     if (allTimeError) throw allTimeError;
 
     // Build all-time login days map (member_id -> Set of distinct dates)
-    // Count both dashboard_access and module_open events as "logins"
+    // Count member_login, dashboard_access, and module_open events as "logins"
     const allTimeLoginMap = {};
     if (allTimeEvents) {
       allTimeEvents.forEach(event => {
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
         if (!allTimeLoginMap[key]) {
           allTimeLoginMap[key] = new Set();
         }
-        if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
+        if (event.created_at && (event.event_type === 'member_login' || event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
           // Use UTC date directly from the timestamp (consistent with database storage)
           // The database stores timestamps in UTC, so we extract the date part
           const eventDate = new Date(event.created_at);
@@ -79,8 +79,8 @@ module.exports = async (req, res) => {
       }
       
       // Track login dates (distinct days with activity in period)
-      // Count both dashboard_access and module_open events as "logins"
-      if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
+      // Count member_login, dashboard_access, and module_open events as "logins"
+      if (event.created_at && (event.event_type === 'member_login' || event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
         // Use UTC date directly from the timestamp (consistent with database storage)
         const eventDate = new Date(event.created_at);
         // Extract date in UTC (YYYY-MM-DD format)
