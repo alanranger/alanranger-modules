@@ -652,6 +652,14 @@ export default function QAPage() {
               <div style={{ color: 'var(--ar-text)', fontSize: '14px', lineHeight: '1.6' }}>
                 {selectedQuestion.question}
               </div>
+              {/* 
+                AI DRAFT VISIBILITY POLICY:
+                
+                Admin UI shows AI draft when: answer IS NULL AND ai_answer IS NOT NULL
+                - This matches member UI behavior (member sees draft before publishing)
+                - Once published (answer IS NOT NULL), this section is hidden
+                - Admin can edit AI draft before publishing, or publish directly
+              */}
               {(selectedQuestion.ai_answer || aiDraft) && !selectedQuestion.answer && (
                 <>
                   <div style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '16px', marginBottom: '8px' }}>
