@@ -74,13 +74,30 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Update question with AI draft
+    /**
+     * AI DRAFT VISIBILITY POLICY:
+     * 
+     * When AI draft is generated:
+     * - Stores in ai_answer field (NOT answer field)
+     * - Sets status to 'ai_suggested'
+     * - Member can see AI draft: answer IS NULL AND ai_answer IS NOT NULL
+     * - Status badge: "AI Suggested" (orange)
+     * 
+     * Once admin publishes (via /publish-ai):
+     * - Copies ai_answer → answer field
+     * - Sets status to 'answered'
+     * - Member sees published answer only (ai_answer hidden)
+     * - Status badge: "Answered by AI Chat" (blue)
+     */
+    
+    // Update question with AI draft (draft only - not published to member yet)
     const updates = {
-      ai_answer: aiAnswer,
+      ai_answer: aiAnswer, // Draft stored here - visible to member
       ai_answered_at: new Date().toISOString(),
       ai_model: aiModel,
-      status: 'ai_suggested',
+      status: 'ai_suggested', // Status indicates AI draft exists
       updated_at: new Date().toISOString()
+      // Note: answer field remains NULL - member sees ai_answer as draft
     };
 
     const { data, error: updateError } = await supabase

@@ -43,17 +43,30 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'No AI answer draft available to publish' });
     }
 
-    // Publish AI answer
+    /**
+     * AI DRAFT VISIBILITY POLICY - Publishing:
+     * 
+     * When AI draft is published:
+     * - Copies ai_answer → answer field (published answer)
+     * - Sets status to 'answered'
+     * - Member now sees published answer only (ai_answer field is hidden)
+     * - Status badge changes from "AI Suggested" → "Answered by AI Chat"
+     * 
+     * Rule: Once answer field is populated, member only sees answer (not ai_answer)
+     */
+    
+    // Publish AI answer (copy draft to published answer field)
     const answeredTimestamp = question.ai_answered_at || new Date().toISOString();
     const updates = {
-      answer: question.ai_answer,
+      answer: question.ai_answer, // Copy AI draft to published answer field
       admin_answer: question.ai_answer, // Keep for backward compatibility
       answered_at: answeredTimestamp,
       admin_answered_at: answeredTimestamp,
       answered_by: 'Robo-Ranger',
       answer_source: 'ai',
-      status: 'answered',
+      status: 'answered', // Status changes to answered - member sees published answer
       updated_at: new Date().toISOString()
+      // Note: ai_answer field remains (for history), but member sees answer field only
     };
 
     if (notify_member) {
