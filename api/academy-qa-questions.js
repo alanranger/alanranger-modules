@@ -127,18 +127,24 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
+    // Phase 4: Member-safe fields only - NEVER expose AI draft fields
+    // Members must never see: ai_answer, ai_answered_at, ai_model
     const limitRaw = req.query.limit || "25";
-    const limit = Math.max(1, Math.min(50, parseInt(limitRaw, 10) || 25));
+    const limit = Math.max(1, Math.min(100, parseInt(limitRaw, 10) || 25));
+    const offsetRaw = req.query.offset || "0";
+    const offset = Math.max(0, parseInt(offsetRaw, 10) || 0);
 
-    // Only return questions for the authenticated member
-    // Include answer fields so members can see admin and AI answers
-    // Phase 3: Use consolidated 'answer' field (falls back to admin_answer or ai_answer)
-    const { data, error } = await supabase
+    // Member-safe select: only published answers, no draft fields
+    let query = supabase
       .from("academy_qa_questions")
-      .select("id, question, member_id, member_name, page_url, status, created_at, answer, answered_at, admin_answer, admin_answered_at, ai_answer, ai_answered_at, answer_source, updated_at")
+      .select("id, question, member_id, member_name, page_url, status, created_at, answer, answered_at, answered_by, answer_source, admin_answer, admin_answered_at")
       .eq("member_id", auth.memberId) // CRITICAL: Filter by authenticated member only
-      .order("created_at", { ascending: false })
-      .limit(limit);
+      .order("created_at", { ascending: false });
+
+    // Phase 4: Add pagination support
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("[qa-api] GET: Database error:", error);
