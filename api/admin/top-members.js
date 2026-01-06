@@ -49,8 +49,11 @@ module.exports = async (req, res) => {
           allTimeLoginMap[key] = new Set();
         }
         if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
+          // Use UTC date directly from the timestamp (consistent with database storage)
+          // The database stores timestamps in UTC, so we extract the date part
           const eventDate = new Date(event.created_at);
-          const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          // Extract date in UTC (YYYY-MM-DD format)
+          const dateOnly = eventDate.toISOString().split('T')[0];
           allTimeLoginMap[key].add(dateOnly);
         }
       });
@@ -78,8 +81,10 @@ module.exports = async (req, res) => {
       // Track login dates (distinct days with activity in period)
       // Count both dashboard_access and module_open events as "logins"
       if (event.created_at && (event.event_type === 'dashboard_access' || event.event_type === 'module_open')) {
+        // Use UTC date directly from the timestamp (consistent with database storage)
         const eventDate = new Date(event.created_at);
-        const dateOnly = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        // Extract date in UTC (YYYY-MM-DD format)
+        const dateOnly = eventDate.toISOString().split('T')[0];
         memberMap[key].login_dates.add(dateOnly);
         
         // Update last login if this event is more recent
