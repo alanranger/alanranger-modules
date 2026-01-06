@@ -62,6 +62,30 @@ module.exports = async (req, res) => {
       if (chatData.ok && chatData.answer) {
         aiAnswer = chatData.answer;
         aiModel = chatData.model || 'robo-ranger-v1';
+        
+        // Extract and append related articles from structured data
+        // Format: "Related guides:\n- [Article Title](url)\n- [Article Title](url)"
+        if (chatData.structured && chatData.structured.articles && Array.isArray(chatData.structured.articles) && chatData.structured.articles.length > 0) {
+          const articles = chatData.structured.articles.slice(0, 6); // Limit to 6 articles
+          const relatedGuides = articles
+            .map(article => {
+              const title = article.title || article.page_url || 'Guide';
+              const url = article.page_url || article.url || '';
+              if (url) {
+                return `- [${title}](${url})`;
+              }
+              return null;
+            })
+            .filter(Boolean) // Remove null entries
+            .join('\n');
+          
+          if (relatedGuides) {
+            // Append to answer text if not already present
+            if (!aiAnswer.includes('Related guides:')) {
+              aiAnswer += '\n\nRelated guides:\n' + relatedGuides;
+            }
+          }
+        }
       } else {
         throw new Error(chatData.error || 'No answer from AI');
       }
