@@ -197,6 +197,22 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
+    // Track event: question_asked
+    try {
+      await supabase.from("academy_events").insert([{
+        event_type: "question_asked",
+        member_id: auth.memberId,
+        email: auth.memberEmail || null,
+        path: page_url,
+        title: question.length > 100 ? question.substring(0, 100) + "..." : question,
+        category: "qa",
+        meta: { question_id: data.id },
+        created_at: new Date().toISOString()
+      }]);
+    } catch (eventError) {
+      console.error("[qa-api] POST: Event tracking error (non-fatal):", eventError);
+    }
+
     console.log(`[qa-api] POST: Created question ${data.id} for member ${auth.memberId}`);
     return res.status(200).json({ data });
   }

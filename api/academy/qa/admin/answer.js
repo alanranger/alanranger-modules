@@ -76,6 +76,26 @@ module.exports = async (req, res) => {
 
     if (updateError) throw updateError;
 
+    // Track event: question_answered
+    try {
+      await supabase.from("academy_events").insert([{
+        event_type: "question_answered",
+        member_id: question.member_id,
+        email: question.member_email || null,
+        path: question.page_url,
+        title: `Q&A: ${question.question.length > 80 ? question.question.substring(0, 80) + "..." : question.question}`,
+        category: "qa",
+        meta: { 
+          question_id: question_id,
+          answered_by: updates.answered_by,
+          answer_source: updates.answer_source
+        },
+        created_at: new Date().toISOString()
+      }]);
+    } catch (eventError) {
+      console.error('[qa-admin-answer] Event tracking error (non-fatal):', eventError);
+    }
+
     // Send notification if requested
     if (notify_member && question.member_email) {
       try {

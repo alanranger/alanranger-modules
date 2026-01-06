@@ -150,6 +150,27 @@ module.exports = async (req, res) => {
       return res.status(404).json({ error: 'Question not found' });
     }
 
+    // Track event: question_ai_generated (AI draft created)
+    try {
+      if (data) {
+        await supabase.from("academy_events").insert([{
+          event_type: "question_ai_generated",
+          member_id: data.member_id,
+          email: data.member_email || null,
+          path: data.page_url,
+          title: `Q&A: ${data.question.length > 80 ? data.question.substring(0, 80) + "..." : data.question}`,
+          category: "qa",
+          meta: { 
+            question_id: question_id,
+            ai_model: aiModel
+          },
+          created_at: new Date().toISOString()
+        }]);
+      }
+    } catch (eventError) {
+      console.error('[qa-admin-ai-suggest] Event tracking error (non-fatal):', eventError);
+    }
+
     return res.status(200).json({ 
       question: data,
       ai_answer: aiAnswer,
