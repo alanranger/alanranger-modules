@@ -327,6 +327,41 @@ export default function QAPage() {
     }
   }
 
+  async function handleDeleteQuestion() {
+    if (!selectedQuestion) return;
+    
+    if (!confirm(`Are you sure you want to permanently delete this question?\n\n"${selectedQuestion.question.substring(0, 100)}${selectedQuestion.question.length > 100 ? '...' : ''}"\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/academy/qa/admin/questions/${selectedQuestion.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errorData.error || 'Failed to delete question');
+      }
+
+      // Close modal and refresh questions list
+      setSelectedQuestion(null);
+      setAnswerText('');
+      setAiDraft(null);
+      setNotifyMember(false);
+      await fetchQuestions();
+      alert('Question deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete question:', error);
+      alert(`Failed to delete question: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSaveAnswer() {
     if (!selectedQuestion) return;
     
@@ -897,6 +932,23 @@ export default function QAPage() {
                 }}
               >
                 {saving ? 'Saving...' : notifyMember ? 'Save & Notify' : 'Save Answer'}
+              </button>
+              <button
+                onClick={handleDeleteQuestion}
+                disabled={saving}
+                style={{
+                  padding: '10px 20px',
+                  background: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.5 : 1
+                }}
+              >
+                🗑️ Delete
               </button>
               <button
                 onClick={() => {

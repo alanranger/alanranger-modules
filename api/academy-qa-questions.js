@@ -135,10 +135,12 @@ module.exports = async function handler(req, res) {
     const offset = Math.max(0, parseInt(offsetRaw, 10) || 0);
 
     // Member-safe select: only published answers, no draft fields
+    // Exclude archived questions from member view (but they still count in dashboard stats)
     let query = supabase
       .from("academy_qa_questions")
       .select("id, question, member_id, member_name, page_url, status, created_at, answer, answered_at, answered_by, answer_source, admin_answer, admin_answered_at")
       .eq("member_id", auth.memberId) // CRITICAL: Filter by authenticated member only
+      .eq("archived", false) // Exclude archived questions from member view
       .order("created_at", { ascending: false });
 
     // Phase 4: Add pagination support

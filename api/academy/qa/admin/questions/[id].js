@@ -1,80 +1,66 @@
 // /api/academy/qa/admin/questions/[id].js
-// Updates a Q&A question (save/edit answer)
+// Delete a question (admin-only)
+// Permanently deletes the question from the database
 
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
 const { checkAdminAccess } = require(path.resolve(__dirname, "../../../../admin/_auth.js"));
 
-module.exports = async (req, res) => {
-  // Check admin access - Phase 3: Security enforcement
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+module.exports = async function handler(req, res) {
+  // Check admin access
   const { isAdmin, error } = await checkAdminAccess(req);
   if (!isAdmin) {
     return res.status(403).json({ error: error || "Admin access required" });
   }
 
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "DELETE") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const questionId = req.query.id || req.query.question_id;
+  if (!questionId) {
+    return res.status(400).json({ error: "Question ID is required" });
+  }
+
   try {
-    if (req.method !== 'PATCH') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const { id } = req.query;
-    const { answer, answer_source, answered_by } = req.body;
-
-    if (!id) {
-      return res.status(400).json({ error: 'Question ID is required' });
-    }
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    // Build update object
-    const updates = {
-      updated_at: new Date().toISOString()
-    };
-
-    // If answer is provided, update answer fields
-    if (answer !== undefined) {
-      if (answer === null || answer.trim() === '') {
-        // Clearing answer
-        updates.admin_answer = null;
-        updates.admin_answered_at = null;
-        updates.answered_by = null;
-        updates.status = 'queued'; // Reset to queued if answer cleared
-      } else {
-        // Setting answer - ensure all metadata is stored
-        updates.answer = answer.trim();
-        updates.admin_answer = answer.trim(); // Keep for backward compatibility
-        updates.answered_at = new Date().toISOString();
-        updates.admin_answered_at = new Date().toISOString();
-        updates.answered_by = answered_by || 'Alan'; // Default to 'Alan' for admin answers
-        updates.answer_source = 'manual'; // Ensure answer_source is set
-        updates.status = 'answered';
-      }
-    }
-
-    if (answer_source) {
-      updates.answer_source = answer_source;
-    }
-
-    // Update the question
-    const { data, error } = await supabase
-      .from('academy_qa_questions')
-      .update(updates)
-      .eq('id', id)
-      .select()
+    // Verify question exists
+    const { data: question, error: fetchError } = await supabase
+      .from("academy_qa_questions")
+      .select("id, question, member_id")
+      .eq("id", questionId)
       .single();
 
-    if (error) throw error;
-
-    if (!data) {
-      return res.status(404).json({ error: 'Question not found' });
+    if (fetchError || !question) {
+      return res.status(404).json({ error: "Question not found" });
     }
 
-    return res.status(200).json({ question: data });
+    // Delete the question
+    const { error: deleteError } = await supabase
+      .from("academy_qa_questions")
+      .delete()
+      .eq("id", questionId);
+
+    if (deleteError) {
+      console.error("[qa-admin-delete] Delete error:", deleteError);
+      return res.status(500).json({ error: deleteError.message });
+    }
+
+    console.log(`[qa-admin-delete] Deleted question ${questionId}`);
+    return res.status(200).json({ 
+      success: true,
+      message: "Question deleted permanently"
+    });
   } catch (error) {
-    console.error('[qa-admin-questions-id] Error:', error);
+    console.error("[qa-admin-delete] Error:", error);
     return res.status(500).json({ error: error.message });
   }
 };
