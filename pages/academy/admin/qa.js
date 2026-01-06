@@ -347,12 +347,13 @@ export default function QAPage() {
         throw new Error(errorData.error || 'Failed to delete question');
       }
 
-      // Close modal and refresh questions list
+      // Close modal and refresh questions list and stats
       setSelectedQuestion(null);
       setAnswerText('');
       setAiDraft(null);
       setNotifyMember(false);
       await fetchQuestions();
+      await fetchStats(); // Refresh stats to update tile counts
       alert('Question deleted successfully');
     } catch (error) {
       console.error('Failed to delete question:', error);
