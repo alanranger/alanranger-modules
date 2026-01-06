@@ -1138,6 +1138,7 @@ function TopMembersList({ refreshTrigger }) {
           <th>Last Login</th>
           <th>Events</th>
           <th>Modules</th>
+          <th>Questions</th>
         </tr>
       </thead>
       <tbody>
@@ -1149,6 +1150,7 @@ function TopMembersList({ refreshTrigger }) {
             <td>{formatDate(member.last_login)}</td>
             <td>{member.event_count}</td>
             <td>{member.module_opens}</td>
+            <td>{member.questions_asked || 0}</td>
           </tr>
         ))}
       </tbody>

@@ -102,6 +102,39 @@ module.exports = async (req, res) => {
       memberMap[key].login_days_alltime = allTimeLoginMap[key] ? allTimeLoginMap[key].size : 0;
     });
 
+    // Get question counts per member (excluding example questions)
+    const memberIds = Object.keys(memberMap);
+    if (memberIds.length > 0) {
+      const { data: questionCounts, error: qaError } = await supabase
+        .from('academy_qa_questions')
+        .select('member_id')
+        .in('member_id', memberIds)
+        .eq('is_example', false); // Exclude example questions
+      
+      if (!qaError && questionCounts) {
+        // Count questions per member
+        const questionCountMap = {};
+        questionCounts.forEach(q => {
+          questionCountMap[q.member_id] = (questionCountMap[q.member_id] || 0) + 1;
+        });
+        
+        // Add question counts to member data
+        Object.keys(memberMap).forEach(key => {
+          memberMap[key].questions_asked = questionCountMap[key] || 0;
+        });
+      } else {
+        // If error, set all to 0
+        Object.keys(memberMap).forEach(key => {
+          memberMap[key].questions_asked = 0;
+        });
+      }
+    } else {
+      // No members, set all to 0
+      Object.keys(memberMap).forEach(key => {
+        memberMap[key].questions_asked = 0;
+      });
+    }
+
     // Convert to array
     const members = Object.values(memberMap);
 
