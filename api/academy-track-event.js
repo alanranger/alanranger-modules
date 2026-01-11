@@ -93,6 +93,18 @@ module.exports = async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     
+    // For login events, include date in path to allow multiple logins per distinct date
+    // This works around the unique constraint (member_id, event_type, path)
+    // Each day will have a unique path: /academy/dashboard?date=2026-01-11
+    let eventPath = path || null;
+    if (event_type === "member_login") {
+      const today = new Date();
+      const dateStr = today.getFullYear() + "-" + 
+                     String(today.getMonth() + 1).padStart(2, "0") + "-" + 
+                     String(today.getDate()).padStart(2, "0");
+      eventPath = (path || "/academy/dashboard") + "?date=" + dateStr;
+    }
+    
     const { error: insertError } = await supabase
       .from("academy_events")
       .insert([
@@ -100,7 +112,7 @@ module.exports = async function handler(req, res) {
           event_type,
           member_id: auth.memberId,
           email: auth.email,
-          path: path || null,
+          path: eventPath,
           title: title || null,
           category: category || null,
           meta: meta || {}, // Default to empty object instead of null (required by DB constraint)
@@ -109,6 +121,12 @@ module.exports = async function handler(req, res) {
       ]);
     
     if (insertError) {
+      // For non-login events, if it's a duplicate key error, that's expected
+      // (the unique constraint prevents duplicate events for same member/type/path)
+      if (insertError.message && insertError.message.includes('duplicate key') && event_type !== "member_login") {
+        // For non-login events, duplicate is expected - return success silently
+        return res.status(200).json({ success: true, message: "Event already exists" });
+      }
       console.error("[track-event] Insert error:", insertError);
       return res.status(500).json({ error: insertError.message });
     }
