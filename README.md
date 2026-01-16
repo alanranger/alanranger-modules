@@ -25,6 +25,8 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 - **`academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block
   - Displays exam progress summary on academy dashboard
   - Auto-refreshes every 30 seconds and on page visibility change
+  - **Inactivity logout** - Automatically logs out users after 30 minutes of inactivity
+  - Tracks user activity (clicks, mouse, keyboard, scroll, touch, focus) to reset timer
 
 ### API Endpoints
 Located in `api/exams/`:
@@ -52,7 +54,9 @@ API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 1. Copy contents of `squarespace-v2.2.html` to Exams & Certification page code block
 2. Copy contents of `academy-dashboard-squarespace-snippet-v1.html` to Dashboard page code block
 
-## Recent Updates (v2.2.1)
+## Recent Updates
+
+### v2.2.1 (2025-09)
 - ✅ Fixed Master Certificate download (now uses Memberstack authentication)
 - ✅ Fixed Module Results download (now includes complete details field)
 - ✅ Updated API endpoint `/api/exams/status` to include `details` field in response
@@ -63,6 +67,12 @@ API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 - ✅ Fixed blank page issue on initial load
 - ✅ Auto-save functionality after exam submission
 - ✅ Debug panel hidden by default (Ctrl+Shift+D to show)
+
+### Latest Updates (2026-01-16)
+- ✅ **Sortable columns** added to Most Active Members table in admin dashboard
+- ✅ **Inactivity logout** - Automatic logout after 30 minutes of inactivity on Academy pages
+- ✅ **Member management scripts** - Utilities for deleting members from Supabase and Memberstack
+- ✅ **Enhanced documentation** - Updated all MD files with latest features and workflows
 
 ## Debug Panel
 The debug panel is hidden by default. Press **Ctrl+Shift+D** (or Cmd+Shift+D on Mac) to toggle visibility. The panel shows:
@@ -82,6 +92,14 @@ Utility scripts for managing member records are available in the `scripts/` dire
 - `scripts/delete-member-by-email.js` - Delete member from Supabase by email
 - `scripts/delete-member-memberstack.js` - Delete member from Memberstack by email
 - `scripts/cleanup-orphaned-records.js` - Clean up orphaned Supabase records
+
+## Quick Reference
+
+For AI agents and developers, see [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) for:
+- Key features and locations
+- Common tasks and commands
+- Recent changes summary
+- Documentation file guide
 
 ## Support
 For issues or questions, check the debug panel for diagnostic information.

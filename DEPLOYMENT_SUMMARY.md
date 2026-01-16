@@ -128,8 +128,9 @@ All endpoints:
 
 **Note**: The `/api/exams/status` endpoint now includes the `details` field (JSONB) in its response, which contains complete exam information needed for PDF generation and results display.
 
-## Recent Updates (v2.2.1)
+## Recent Updates
 
+### v2.2.1 (2025-09)
 - ✅ **Master Certificate Download Fix**: Now uses Memberstack authentication and queries `module_results_ms` table
 - ✅ **Module Results Download Fix**: Now includes complete `details` field with all exam information
 - ✅ **API Endpoint Update**: `/api/exams/status` now includes `details` field in response
@@ -140,6 +141,12 @@ All endpoints:
 - ✅ Enhanced error handling and validation
 - ✅ Blank page prevention
 - ✅ Dashboard auto-refresh improvements
+
+### Latest Updates (2026-01-16)
+- ✅ **Admin Dashboard Sortable Columns**: Most Active Members table now has sortable columns with icons
+- ✅ **Inactivity Logout**: Automatic logout after 30 minutes of inactivity on Academy pages
+- ✅ **Member Management Scripts**: Utilities for deleting members from Supabase and Memberstack
+- ✅ **Documentation Updates**: All MD files updated with latest features and workflows
 
 ## Rollback
 

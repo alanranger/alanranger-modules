@@ -7,6 +7,10 @@
 - [x] Admin dashboard pages created (Next.js)
 - [x] Admin API routes created (KPIs, activity, modules, members, exams)
 - [x] Environment variables set in Vercel (`AR_ANALYTICS_KEY`)
+- [x] **Sortable columns** added to Most Active Members table (2026-01-16)
+- [x] **Inactivity logout** implemented for Academy pages (2026-01-16)
+- [x] **Member management scripts** created for Supabase and Memberstack (2026-01-16)
+- [x] **Documentation** updated across all MD files (2026-01-16)
 
 ## 🚀 Deployment Steps
 

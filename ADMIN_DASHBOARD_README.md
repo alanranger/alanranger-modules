@@ -219,6 +219,23 @@ Matches Academy Dashboard dark theme:
 - Accent: `#E57200` (orange)
 - Text: `#f9fafb`
 
+## Recent Features (2026-01-16)
+
+### Sortable Tables
+- **Most Active Members table** now has sortable columns with visual indicators
+- All columns are sortable: Member, Login Days (30d), Login Days (All-time), Last Login, Events, Modules, Questions
+- Click column headers to sort ascending/descending
+- Sort icons: `↕` (unsorted), `↑` (ascending), `↓` (descending)
+- Active sort column highlighted in orange
+- Hover effects on sortable headers
+
+### Inactivity Logout
+- Automatic logout after 30 minutes of inactivity on Academy pages
+- Tracks user activity: clicks, mouse movement, keyboard, scroll, touch, focus
+- Resets timer on page visibility changes
+- Redirects to login page with `?reason=timeout` parameter
+- Implemented in `academy-dashboard-squarespace-snippet-v1.html`
+
 ## Next Steps
 
 1. Add authentication to admin routes (e.g., session-based auth)
@@ -226,6 +243,7 @@ Matches Academy Dashboard dark theme:
 3. Add CSV export functionality
 4. Add date range picker for custom periods
 5. Add pagination for large datasets
+6. Add sortable columns to other admin tables (Modules, Activity, etc.)
 
 ## File Structure
 
