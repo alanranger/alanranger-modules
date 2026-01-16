@@ -1088,6 +1088,8 @@ function VersionBadge() {
 function TopMembersList({ refreshTrigger }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
 
   useEffect(() => {
     fetchMembers();
@@ -1104,6 +1106,93 @@ function TopMembersList({ refreshTrigger }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSort(column) {
+    if (sortColumn === column) {
+      // Toggle direction if clicking the same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to descending
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  }
+
+  function getSortedMembers() {
+    if (!sortColumn) return members;
+
+    const sorted = [...members].sort((a, b) => {
+      let aVal, bVal;
+
+      switch (sortColumn) {
+        case 'email':
+          aVal = (a.email || a.member_id || 'Unknown').toLowerCase();
+          bVal = (b.email || b.member_id || 'Unknown').toLowerCase();
+          break;
+        case 'login_days_30d':
+          aVal = a.login_days_30d || 0;
+          bVal = b.login_days_30d || 0;
+          break;
+        case 'login_days_alltime':
+          aVal = a.login_days_alltime || 0;
+          bVal = b.login_days_alltime || 0;
+          break;
+        case 'last_login':
+          aVal = a.last_login ? new Date(a.last_login).getTime() : 0;
+          bVal = b.last_login ? new Date(b.last_login).getTime() : 0;
+          break;
+        case 'event_count':
+          aVal = a.event_count || 0;
+          bVal = b.event_count || 0;
+          break;
+        case 'module_opens':
+          aVal = a.module_opens || 0;
+          bVal = b.module_opens || 0;
+          break;
+        case 'questions_asked':
+          aVal = a.questions_asked || 0;
+          bVal = b.questions_asked || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aVal === 'string') {
+        return sortDirection === 'asc' 
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      } else {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+    });
+
+    return sorted;
+  }
+
+  function SortIcon({ column }) {
+    if (sortColumn !== column) {
+      return (
+        <span style={{ 
+          marginLeft: '6px', 
+          opacity: 0.3,
+          fontSize: '12px',
+          display: 'inline-block',
+          width: '12px'
+        }}>↕</span>
+      );
+    }
+    return (
+      <span style={{ 
+        marginLeft: '6px', 
+        fontSize: '12px',
+        color: 'var(--ar-orange)',
+        display: 'inline-block',
+        width: '12px'
+      }}>
+        {sortDirection === 'asc' ? '↑' : '↓'}
+      </span>
+    );
   }
 
   if (loading) return <div className="ar-admin-loading">Loading...</div>;
@@ -1128,21 +1217,58 @@ function TopMembersList({ refreshTrigger }) {
     }
   }
 
+  const sortedMembers = getSortedMembers();
+
   return (
     <table className="ar-admin-table">
       <thead>
         <tr>
-          <th>Member</th>
-          <th>Login Days (30d)</th>
-          <th>Login Days (All-time)</th>
-          <th>Last Login</th>
-          <th>Events</th>
-          <th>Modules</th>
-          <th>Questions</th>
+          <th 
+            onClick={() => handleSort('email')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Member <SortIcon column="email" />
+          </th>
+          <th 
+            onClick={() => handleSort('login_days_30d')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Login Days (30d) <SortIcon column="login_days_30d" />
+          </th>
+          <th 
+            onClick={() => handleSort('login_days_alltime')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Login Days (All-time) <SortIcon column="login_days_alltime" />
+          </th>
+          <th 
+            onClick={() => handleSort('last_login')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Last Login <SortIcon column="last_login" />
+          </th>
+          <th 
+            onClick={() => handleSort('event_count')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Events <SortIcon column="event_count" />
+          </th>
+          <th 
+            onClick={() => handleSort('module_opens')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Modules <SortIcon column="module_opens" />
+          </th>
+          <th 
+            onClick={() => handleSort('questions_asked')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            Questions <SortIcon column="questions_asked" />
+          </th>
         </tr>
       </thead>
       <tbody>
-        {members.map((member, idx) => (
+        {sortedMembers.map((member, idx) => (
           <tr key={idx}>
             <td>{member.email || member.member_id || 'Unknown'}</td>
             <td>{member.login_days_30d || 0}</td>

@@ -72,5 +72,16 @@ The debug panel is hidden by default. Press **Ctrl+Shift+D** (or Cmd+Shift+D on 
 - Error messages
 - Cookie information
 
+## Admin Tools
+
+### Member Management Scripts
+
+Utility scripts for managing member records are available in the `scripts/` directory. See [ADMIN_DASHBOARD_README.md](./ADMIN_DASHBOARD_README.md#member-management-scripts) for detailed documentation.
+
+**Quick reference:**
+- `scripts/delete-member-by-email.js` - Delete member from Supabase by email
+- `scripts/delete-member-memberstack.js` - Delete member from Memberstack by email
+- `scripts/cleanup-orphaned-records.js` - Clean up orphaned Supabase records
+
 ## Support
 For issues or questions, check the debug panel for diagnostic information.

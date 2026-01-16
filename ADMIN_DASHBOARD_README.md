@@ -95,6 +95,121 @@ fetch('https://your-domain.vercel.app/api/academy/event', {
 - RLS is enabled but no public policies (service role only)
 - Rate limiting on event ingestion (100 req/min per IP)
 
+## Member Management Scripts
+
+Utility scripts for managing member records in both Memberstack and Supabase. Located in the `scripts/` directory.
+
+### Prerequisites
+
+All scripts require environment variables in `.env.local`:
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for database operations)
+- `MEMBERSTACK_SECRET_KEY` - Memberstack secret key (for Memberstack operations)
+
+### Available Scripts
+
+#### 1. Delete Member from Supabase (`delete-member-by-email.js`)
+
+Deletes a member and all related records from Supabase by email address.
+
+**Usage:**
+```bash
+node scripts/delete-member-by-email.js <email>
+```
+
+**Example:**
+```bash
+node scripts/delete-member-by-email.js user@example.com
+```
+
+**What it deletes:**
+- Member record from `ms_members_cache`
+- All `academy_events` records for the member
+- All `module_results_ms` records (by member_id and email)
+- All `academy_plan_events` records
+- All `exam_member_links` records
+
+**Features:**
+- Case-insensitive email search
+- Shows similar emails if exact match not found
+- Displays count of related records before deletion
+- Comprehensive error handling
+
+#### 2. Delete Member from Memberstack (`delete-member-memberstack.js`)
+
+Finds and deletes a member from Memberstack by email address.
+
+**Usage:**
+```bash
+node scripts/delete-member-memberstack.js <email>
+```
+
+**Example:**
+```bash
+node scripts/delete-member-memberstack.js user@example.com
+```
+
+**What it does:**
+- Searches through all Memberstack members to find matching email
+- Displays member information (ID, email, name, status, plan connections)
+- Permanently deletes the member from Memberstack
+
+**Note:** This action cannot be undone. The member will be permanently removed from Memberstack.
+
+#### 3. Cleanup Orphaned Records (`cleanup-orphaned-records.js`)
+
+Cleans up orphaned records in Supabase for a member that has already been deleted from Memberstack.
+
+**Usage:**
+```bash
+node scripts/cleanup-orphaned-records.js <member_id> [email]
+```
+
+**Example:**
+```bash
+node scripts/cleanup-orphaned-records.js mem_abc123xyz user@example.com
+```
+
+**What it cleans up:**
+- `academy_events` records
+- `module_results_ms` records (by member_id and email)
+- `academy_plan_events` records
+- `exam_member_links` records
+- `ms_members_cache` records
+- `academy_qa_questions` records
+
+**Use case:** When a member has been deleted from Memberstack but orphaned records remain in Supabase.
+
+### Complete Member Deletion Workflow
+
+To completely remove a member from both systems:
+
+1. **First, delete from Memberstack:**
+   ```bash
+   node scripts/delete-member-memberstack.js user@example.com
+   ```
+   This will show you the member ID if found.
+
+2. **Then, clean up Supabase records:**
+   ```bash
+   node scripts/cleanup-orphaned-records.js <member_id> user@example.com
+   ```
+
+3. **Alternatively, if member exists in Supabase cache:**
+   ```bash
+   node scripts/delete-member-by-email.js user@example.com
+   ```
+   This handles both Supabase deletion and can be followed by Memberstack deletion if needed.
+
+### Important Notes
+
+⚠️ **Warning:** All deletion operations are permanent and cannot be undone. Always verify the member email/ID before running deletion scripts.
+
+- Scripts will show you what will be deleted before proceeding
+- Memberstack deletion requires the member to exist in Memberstack
+- Supabase deletion requires the member to exist in `ms_members_cache` or you need the member_id
+- Orphaned records cleanup is useful when members were deleted from Memberstack but records remain in Supabase
+
 ## Styling
 
 Matches Academy Dashboard dark theme:
@@ -137,6 +252,11 @@ alanranger-academy-assesment/
 │           ├── modules.js   # Modules page
 │           ├── members.js   # Members page
 │           └── exams.js     # Exams page
+├── scripts/
+│   ├── delete-member-by-email.js      # Delete member from Supabase
+│   ├── delete-member-memberstack.js  # Delete member from Memberstack
+│   ├── cleanup-orphaned-records.js   # Clean up orphaned Supabase records
+│   └── populate-example-questions.js # Populate example Q&A questions
 ├── styles/
 │   └── admin-globals.css    # Global styles
 ├── supabase-academy-events-migration.sql
