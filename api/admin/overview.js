@@ -25,14 +25,33 @@ module.exports = async (req, res) => {
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
     // 1. Total members (all-time from cache)
-    const { count: totalMembers } = await supabase
-      .from('ms_members_cache')
-      .select('*', { count: 'exact', head: true });
-
-    // 2. Plan breakdowns
-    const { data: allMembers } = await supabase
+    // Get all members first, then filter to only count those with valid plans
+    // This matches the Members page filter logic
+    const { data: allMembersRaw } = await supabase
       .from('ms_members_cache')
       .select('plan_summary, created_at');
+    
+    // Filter to only count members with valid plans (trial or annual, active/trialing status)
+    // This matches the Members page filter and excludes:
+    // - Members without plans
+    // - Members with canceled plans
+    // - Orphaned records (members deleted from Memberstack)
+    const validMembers = (allMembersRaw || []).filter(member => {
+      const plan = member.plan_summary || {};
+      const planType = plan.plan_type || '';
+      const status = (plan.status || '').toUpperCase();
+      
+      // Only include members with trial or annual plans that are ACTIVE or TRIALING
+      return (
+        (planType === 'trial' || planType === 'annual') &&
+        (status === 'ACTIVE' || status === 'TRIALING')
+      );
+    });
+    
+    const totalMembers = validMembers.length;
+
+    // 2. Plan breakdowns (use the same allMembersRaw data)
+    const allMembers = allMembersRaw;
 
     let trials = 0;
     let annual = 0;

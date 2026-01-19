@@ -158,7 +158,7 @@ node scripts/delete-member-memberstack.js user@example.com
 
 #### 3. Cleanup Orphaned Records (`cleanup-orphaned-records.js`)
 
-Cleans up orphaned records in Supabase for a member that has already been deleted from Memberstack.
+Cleans up orphaned records in Supabase for a specific member that has already been deleted from Memberstack.
 
 **Usage:**
 ```bash
@@ -178,7 +178,56 @@ node scripts/cleanup-orphaned-records.js mem_abc123xyz user@example.com
 - `ms_members_cache` records
 - `academy_qa_questions` records
 
-**Use case:** When a member has been deleted from Memberstack but orphaned records remain in Supabase.
+**Use case:** When a specific member has been deleted from Memberstack but orphaned records remain in Supabase.
+
+#### 4. Find and Cleanup All Orphaned Members (`cleanup-orphaned-members.js`)
+
+Automatically finds and cleans up ALL orphaned member records by comparing Memberstack with Supabase cache.
+
+**Usage:**
+```bash
+# Identify orphaned records (read-only)
+node scripts/cleanup-orphaned-members.js
+
+# Dry run (shows what would be deleted)
+node scripts/cleanup-orphaned-members.js --dry-run
+
+# Actually delete orphaned records
+node scripts/cleanup-orphaned-members.js --delete
+```
+
+**What it does:**
+1. Fetches all members from Memberstack
+2. Fetches all members from Supabase `ms_members_cache`
+3. Identifies orphaned records (in Supabase but not in Memberstack)
+4. Optionally deletes orphaned records and all related data
+
+**What it cleans up (for each orphaned member):**
+- `ms_members_cache` record
+- `academy_events` records
+- `module_results_ms` records (by member_id and email)
+- `academy_plan_events` records
+- `exam_member_links` records
+- `academy_qa_questions` records
+
+**Use case:** 
+- Regular maintenance to keep Supabase cache in sync with Memberstack
+- After bulk member deletions
+- When member counts don't match between systems
+
+**Example output:**
+```
+🔍 Finding orphaned member records...
+📥 Fetching members from Memberstack...
+✅ Found 47 members in Memberstack
+📥 Fetching members from Supabase cache...
+✅ Found 49 members in Supabase cache
+🔍 Found 2 orphaned member records:
+  1. user@example.com
+     Member ID: mem_abc123
+     Plan Type: none
+     Status: CANCELED
+```
 
 ### Complete Member Deletion Workflow
 
@@ -200,6 +249,23 @@ To completely remove a member from both systems:
    node scripts/delete-member-by-email.js user@example.com
    ```
    This handles both Supabase deletion and can be followed by Memberstack deletion if needed.
+
+### Regular Maintenance: Cleanup All Orphaned Members
+
+To keep Supabase cache in sync with Memberstack and fix member count discrepancies:
+
+```bash
+# First, identify orphaned records
+node scripts/cleanup-orphaned-members.js
+
+# Review the list, then delete them
+node scripts/cleanup-orphaned-members.js --delete
+```
+
+This is useful when:
+- Member counts don't match between Memberstack and admin dashboard
+- After bulk member deletions
+- Regular maintenance to keep systems in sync
 
 ### Important Notes
 
@@ -273,7 +339,9 @@ alanranger-academy-assesment/
 ├── scripts/
 │   ├── delete-member-by-email.js      # Delete member from Supabase
 │   ├── delete-member-memberstack.js  # Delete member from Memberstack
-│   ├── cleanup-orphaned-records.js   # Clean up orphaned Supabase records
+│   ├── cleanup-orphaned-records.js   # Clean up orphaned Supabase records (single member)
+│   ├── cleanup-orphaned-members.js  # Find and cleanup all orphaned members
+│   ├── find-member-discrepancy.js   # Compare Memberstack CSV with Supabase
 │   └── populate-example-questions.js # Populate example Q&A questions
 ├── styles/
 │   └── admin-globals.css    # Global styles
