@@ -1036,8 +1036,8 @@ function VersionBadge() {
       background: 'var(--ar-card)',
       border: '1px solid var(--ar-border)',
       borderRadius: '8px',
-      padding: '8px 12px',
-      fontSize: '11px',
+      padding: '12px 16px',
+      fontSize: '14px',
       color: 'var(--ar-text-muted)',
       fontFamily: 'monospace',
       zIndex: 100,
@@ -1045,7 +1045,7 @@ function VersionBadge() {
       cursor: 'default'
     }}>
       <div>Version: <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{version}</span></div>
-      <div style={{ fontSize: '10px', marginTop: '2px', opacity: 0.7 }}>
+      <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>
         {buildDate}
       </div>
     </div>
