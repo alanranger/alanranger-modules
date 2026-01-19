@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
       '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     };
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
     // 1. Total members (all-time from cache)
@@ -59,7 +60,7 @@ module.exports = async (req, res) => {
     let canceled = 0;
     let trialsExpiring30d = 0;
     let annualExpiring30d = 0;
-    let allPlansExpiring60d = 0;
+    let allPlansExpiring7d = 0;
     
     // 3. Get conversion data from academy_plan_events
     const { data: planEvents } = await supabase
@@ -90,9 +91,9 @@ module.exports = async (req, res) => {
               if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
                 trialsExpiring30d++;
               }
-              // Also count for 60-day window
-              if (expiryDate > now && expiryDate <= sixtyDaysFromNow) {
-                allPlansExpiring60d++;
+              // Also count for 7-day window
+              if (expiryDate > now && expiryDate <= sevenDaysFromNow) {
+                allPlansExpiring7d++;
               }
             } catch (e) {
               // Invalid date, skip
@@ -110,9 +111,9 @@ module.exports = async (req, res) => {
                 if (!isNaN(expiryDate.getTime()) && expiryDate > now && expiryDate <= thirtyDaysFromNow) {
                   annualExpiring30d++;
                 }
-                // Also count for 60-day window
-                if (expiryDate > now && expiryDate <= sixtyDaysFromNow) {
-                  allPlansExpiring60d++;
+                // Also count for 7-day window
+                if (expiryDate > now && expiryDate <= sevenDaysFromNow) {
+                  allPlansExpiring7d++;
                 }
               } catch (e) {
                 // Invalid date, skip
@@ -633,7 +634,7 @@ module.exports = async (req, res) => {
       canceled: canceled,
       trialsExpiring30d: trialsExpiring30d,
       annualExpiring30d: annualExpiring30d,
-      allPlansExpiring60d: allPlansExpiring60d,
+      allPlansExpiring7d: allPlansExpiring7d,
       
       // Signups
       signups24h: signups24h || 0,

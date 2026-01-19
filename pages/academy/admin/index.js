@@ -551,8 +551,8 @@ export default function AdminDashboard() {
         </Link>
         <Link href="/academy/admin/members?filter=all_expiring" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">All Plans Expiring</div>
-          <div className="ar-admin-kpi-value">{kpis?.allPlansExpiring60d || 0}</div>
-          <div className="ar-admin-kpi-period">Next 60 days</div>
+          <div className="ar-admin-kpi-value">{kpis?.allPlansExpiring7d || 0}</div>
+          <div className="ar-admin-kpi-period">Next 7 days</div>
         </Link>
       </div>
 
