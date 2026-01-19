@@ -602,21 +602,6 @@ export default function AdminDashboard() {
           <div className="ar-admin-kpi-value">{kpis?.uniqueModulesOpened30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
         </Link>
-        <Link href="/academy/admin/exams?period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Avg Exam Attempts</div>
-          <div className="ar-admin-kpi-value">{kpis?.avgExamAttempts30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days per member</div>
-        </Link>
-        <Link href="/academy/admin/exams?period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Exam Attempts</div>
-          <div className="ar-admin-kpi-value">{kpis?.examAttempts30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
-        </Link>
-        <Link href="/academy/admin/exams?period=30d&metric=pass_rate" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Pass Rate</div>
-          <div className="ar-admin-kpi-value">{kpis?.passRate30d ? `${kpis.passRate30d}%` : '0%'}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
-        </Link>
         <Link href="/academy/admin/activity?event_type=bookmark_add&period=30d" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Bookmarks Added</div>
           <div className="ar-admin-kpi-value">{kpis?.bookmarks30d || 0}</div>

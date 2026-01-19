@@ -10,9 +10,11 @@ export default function ExamsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState(null);
   const [search, setSearch] = useState(searchParam || '');
+  const [kpis, setKpis] = useState(null);
 
   useEffect(() => {
     fetchProgress();
+    fetchKPIs();
   }, [period, sort, searchParam]);
 
   async function fetchProgress() {
@@ -27,6 +29,17 @@ export default function ExamsPage() {
       console.error('Failed to fetch progress:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchKPIs() {
+    try {
+      const res = await fetch('/api/admin/overview');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setKpis(data);
+    } catch (error) {
+      console.error('Failed to fetch KPIs:', error);
     }
   }
 
@@ -170,6 +183,25 @@ export default function ExamsPage() {
           }}>
             Q&A
           </Link>
+        </div>
+      </div>
+
+      {/* Exam Metrics Tiles */}
+      <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <div className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Avg Exam Attempts</div>
+          <div className="ar-admin-kpi-value">{kpis?.avgExamAttempts30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days per member</div>
+        </div>
+        <div className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Exam Attempts</div>
+          <div className="ar-admin-kpi-value">{kpis?.examAttempts30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
+        </div>
+        <div className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Pass Rate</div>
+          <div className="ar-admin-kpi-value">{kpis?.passRate30d ? `${kpis.passRate30d}%` : '0%'}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
         </div>
       </div>
 

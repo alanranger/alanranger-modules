@@ -3,7 +3,7 @@
 // Usage: node scripts/cleanup-orphaned-members.js [--dry-run] [--delete]
 
 const { createClient } = require("@supabase/supabase-js");
-const Memberstack = require("@memberstack/admin");
+const memberstackAdmin = require("@memberstack/admin");
 require("dotenv").config({ path: ".env.local" });
 
 const supabase = createClient(
@@ -11,9 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const memberstack = new Memberstack.default({
-  secretKey: process.env.MEMBERSTACK_SECRET_KEY
-});
+const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const DELETE = process.argv.includes("--delete");
@@ -32,32 +30,48 @@ async function cleanupOrphanedMembers() {
   // Step 1: Get all members from Memberstack
   console.log("📥 Fetching members from Memberstack...");
   const memberstackMembers = [];
-  let cursor = null;
+  let after = null;
+  const limit = 100;
   let totalFetched = 0;
   
-  do {
+  while (true) {
     try {
-      const response = await memberstack.members.list({
-        limit: 100,
-        cursor: cursor
-      });
-      
-      if (response.data && Array.isArray(response.data)) {
-        memberstackMembers.push(...response.data);
-        totalFetched += response.data.length;
-        cursor = response.cursor || null;
-        console.log(`   Fetched ${totalFetched} members...`);
-      } else {
+      const params = { limit };
+      if (after) params.after = after;
+
+      const { data: members, error: listError } = await memberstack.members.list(params);
+
+      if (listError) {
+        console.error("❌ Error listing members:", listError);
         break;
       }
+
+      if (!members || members.length === 0) {
+        break;
+      }
+
+      memberstackMembers.push(...members);
+      totalFetched += members.length;
+      console.log(`   Fetched ${totalFetched} members...`);
+
+      // Check if there are more pages
+      if (members.length < limit) {
+        break;
+      }
+
+      after = members[members.length - 1]?.id || null;
+      if (!after) break;
     } catch (error) {
       console.error("❌ Error fetching from Memberstack:", error.message);
       break;
     }
-  } while (cursor);
+  }
   
   const memberstackEmails = new Set(
-    memberstackMembers.map(m => (m.email || "").toLowerCase().trim()).filter(Boolean)
+    memberstackMembers.map(m => {
+      const email = m.auth?.email || m.email || "";
+      return email.toLowerCase().trim();
+    }).filter(Boolean)
   );
   const memberstackIds = new Set(
     memberstackMembers.map(m => m.id).filter(Boolean)
