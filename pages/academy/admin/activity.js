@@ -8,6 +8,7 @@ export default function ActivityPage() {
   
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState(null);
   const [sortConfig, setSortConfig] = useState({ field: sort, direction: order });
   const [filters, setFilters] = useState({
     period: period,
@@ -19,6 +20,7 @@ export default function ActivityPage() {
 
   useEffect(() => {
     fetchEvents();
+    fetchKPIs();
   }, [router.query]);
 
   async function fetchEvents() {
@@ -39,6 +41,17 @@ export default function ActivityPage() {
       console.error('Failed to fetch events:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchKPIs() {
+    try {
+      const res = await fetch('/api/admin/overview');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setKpis(data);
+    } catch (error) {
+      console.error('Failed to fetch KPIs:', error);
     }
   }
 
@@ -209,6 +222,25 @@ export default function ActivityPage() {
             Q&A
           </Link>
         </div>
+      </div>
+
+      {/* Activity Metrics Tiles */}
+      <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <Link href="/academy/admin/modules?period=30d" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Avg Modules Opened</div>
+          <div className="ar-admin-kpi-value">{kpis?.avgModulesOpened30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days per member</div>
+        </Link>
+        <Link href="/academy/admin/modules?period=30d&unique=true" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Unique Modules</div>
+          <div className="ar-admin-kpi-value">{kpis?.uniqueModulesOpened30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
+        </Link>
+        <Link href="/academy/admin/activity?event_type=bookmark_add&period=30d" className="ar-admin-kpi-tile">
+          <div className="ar-admin-kpi-label">Bookmarks Added</div>
+          <div className="ar-admin-kpi-value">{kpis?.bookmarks30d || 0}</div>
+          <div className="ar-admin-kpi-period">30 days</div>
+        </Link>
       </div>
 
       <div className="ar-admin-filters">

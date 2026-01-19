@@ -590,24 +590,6 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      {/* Engagement Row */}
-      <div className="ar-admin-kpi-grid">
-        <Link href="/academy/admin/modules?period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Avg Modules Opened</div>
-          <div className="ar-admin-kpi-value">{kpis?.avgModulesOpened30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days per member</div>
-        </Link>
-        <Link href="/academy/admin/modules?period=30d&unique=true" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Unique Modules</div>
-          <div className="ar-admin-kpi-value">{kpis?.uniqueModulesOpened30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
-        </Link>
-        <Link href="/academy/admin/activity?event_type=bookmark_add&period=30d" className="ar-admin-kpi-tile">
-          <div className="ar-admin-kpi-label">Bookmarks Added</div>
-          <div className="ar-admin-kpi-value">{kpis?.bookmarks30d || 0}</div>
-          <div className="ar-admin-kpi-period">30 days</div>
-        </Link>
-      </div>
 
       {/* Revenue & Retention Row */}
       <div style={{ marginTop: '32px' }}>
