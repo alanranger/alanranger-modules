@@ -4,7 +4,16 @@
 // Schedule: Every 8 hours (0 */8 * * *)
 
 const path = require("path");
-const { cleanupMembersWithoutPlans } = require(path.join(process.cwd(), "scripts", "auto-cleanup-no-plan-members.js"));
+const fs = require("fs");
+
+// Resolve script path (works in both local and Vercel environments)
+const scriptPath = path.join(__dirname, "..", "..", "scripts", "auto-cleanup-no-plan-members.js");
+
+if (!fs.existsSync(scriptPath)) {
+  console.error(`[cleanup-cron] Script not found at: ${scriptPath}`);
+}
+
+const { cleanupMembersWithoutPlans } = require(scriptPath);
 
 module.exports = async (req, res) => {
   // Only allow POST requests (cron jobs typically use GET, but we'll allow both for flexibility)
