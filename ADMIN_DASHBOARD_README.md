@@ -267,6 +267,44 @@ This is useful when:
 - After bulk member deletions
 - Regular maintenance to keep systems in sync
 
+### Automated Cleanup (Cron Job)
+
+**Automatic cleanup runs every 8 hours** via Vercel Cron Jobs to:
+- Find and delete members without active plans from both Memberstack and Supabase
+- Clean up orphaned records (members deleted from Memberstack but still in Supabase)
+- Keep member counts synchronized automatically
+
+**Configuration:**
+- **Schedule:** Every 8 hours (`0 */8 * * *`)
+- **Endpoint:** `/api/admin/cleanup-cron`
+- **Config file:** `vercel.json` (cron configuration)
+
+**What it does:**
+1. Fetches all members from Memberstack
+2. Identifies members without active plans (no plan connections or all plans inactive/canceled)
+3. Deletes them from Memberstack
+4. Deletes them from Supabase (including all related records: events, module results, plan events, exam links, Q&A questions)
+5. Cleans up any orphaned records (members in Supabase but not in Memberstack)
+
+**Manual execution:**
+```bash
+# Run the cleanup script manually
+node scripts/auto-cleanup-no-plan-members.js
+
+# Or trigger the API endpoint
+curl https://your-domain.com/api/admin/cleanup-cron
+```
+
+**Security:**
+- Optional: Set `CRON_SECRET` environment variable in Vercel
+- Pass secret via query parameter: `?secret=your-secret` or header: `x-cron-secret: your-secret`
+- If `CRON_SECRET` is not set, endpoint is publicly accessible (Vercel cron jobs are authenticated by default)
+
+**Monitoring:**
+- Check Vercel Cron Jobs dashboard for execution logs
+- API endpoint returns JSON with cleanup results
+- Errors are logged to console and included in response
+
 ### Important Notes
 
 ⚠️ **Warning:** All deletion operations are permanent and cannot be undone. Always verify the member email/ID before running deletion scripts.
