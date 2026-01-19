@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     // This matches the Members page filter logic
     const { data: allMembersRaw } = await supabase
       .from('ms_members_cache')
-      .select('plan_summary, created_at');
+      .select('plan_summary, created_at, member_id, email');
     
     // Filter to only count members with valid plans (trial or annual, active/trialing status)
     // This matches the Members page filter and excludes:
@@ -125,21 +125,25 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 3. New signups (from cache created_at)
-    const { count: signups24h } = await supabase
-      .from('ms_members_cache')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', periods['24h'].toISOString());
+    // 3. New signups (from cache created_at) - only count valid members
+    // Filter validMembers by created_at date to get signups
+    const signups24h = validMembers.filter(m => {
+      if (!m.created_at) return false;
+      const created = new Date(m.created_at);
+      return created >= periods['24h'];
+    }).length;
 
-    const { count: signups7d } = await supabase
-      .from('ms_members_cache')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', periods['7d'].toISOString());
+    const signups7d = validMembers.filter(m => {
+      if (!m.created_at) return false;
+      const created = new Date(m.created_at);
+      return created >= periods['7d'];
+    }).length;
 
-    const { count: signups30d } = await supabase
-      .from('ms_members_cache')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', periods['30d'].toISOString());
+    const signups30d = validMembers.filter(m => {
+      if (!m.created_at) return false;
+      const created = new Date(m.created_at);
+      return created >= periods['30d'];
+    }).length;
 
     // 4. Active members (based on last activity in academy_events)
     const { data: active24h } = await supabase

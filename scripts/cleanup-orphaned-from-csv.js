@@ -1,83 +1,63 @@
-// Script to identify and clean up orphaned member records
-// Orphaned = members in Supabase ms_members_cache but not in Memberstack
-// Usage: node scripts/cleanup-orphaned-members.js [--dry-run] [--delete]
+// Script to clean up orphaned members using Memberstack CSV export
+// This is a workaround when API key issues prevent direct Memberstack API access
+// Usage: node scripts/cleanup-orphaned-from-csv.js <csv-file> [--delete]
+// Example: node scripts/cleanup-orphaned-from-csv.js csv/member-export-2026-01-19T12-28-20-919Z.csv --delete
 
 const { createClient } = require("@supabase/supabase-js");
-const memberstackAdmin = require("@memberstack/admin");
-require("dotenv").config({ path: ".env.local" });
+const fs = require("fs");
+const path = require("path");
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Hardcode credentials to avoid .env.local truncation issues
+const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
 
-const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const DRY_RUN = process.argv.includes("--dry-run");
 const DELETE = process.argv.includes("--delete");
+const csvFile = process.argv.find(arg => arg.endsWith('.csv'));
 
-async function cleanupOrphanedMembers() {
-  console.log("\n🔍 Finding orphaned member records...\n");
+if (!csvFile) {
+  console.error("❌ Error: Please provide a CSV file path");
+  console.log("Usage: node scripts/cleanup-orphaned-from-csv.js <csv-file> [--delete]");
+  process.exit(1);
+}
+
+async function cleanupFromCSV() {
+  console.log("\n🔍 Finding orphaned member records using CSV...\n");
   
-  if (DRY_RUN) {
-    console.log("⚠️  DRY RUN MODE - No changes will be made\n");
-  } else if (DELETE) {
+  if (DELETE) {
     console.log("🗑️  DELETE MODE - Orphaned records will be deleted\n");
   } else {
     console.log("ℹ️  IDENTIFY MODE - Use --delete to remove orphaned records\n");
   }
 
-  // Step 1: Get all members from Memberstack
-  console.log("📥 Fetching members from Memberstack...");
-  const memberstackMembers = [];
-  let after = null;
-  const limit = 100;
-  let totalFetched = 0;
+  // Step 1: Read CSV file
+  const csvPath = path.join(__dirname, "..", csvFile);
+  if (!fs.existsSync(csvPath)) {
+    console.error(`❌ CSV file not found: ${csvPath}`);
+    process.exit(1);
+  }
+
+  const csvContent = fs.readFileSync(csvPath, "utf-8");
+  const lines = csvContent.split("\n");
   
-  while (true) {
-    try {
-      const params = { limit };
-      if (after) params.after = after;
-
-      const { data: members, error: listError } = await memberstack.members.list(params);
-
-      if (listError) {
-        console.error("❌ Error listing members:", listError);
-        break;
-      }
-
-      if (!members || members.length === 0) {
-        break;
-      }
-
-      memberstackMembers.push(...members);
-      totalFetched += members.length;
-      console.log(`   Fetched ${totalFetched} members...`);
-
-      // Check if there are more pages
-      if (members.length < limit) {
-        break;
-      }
-
-      after = members[members.length - 1]?.id || null;
-      if (!after) break;
-    } catch (error) {
-      console.error("❌ Error fetching from Memberstack:", error.message);
-      break;
+  // Extract member IDs and emails from CSV (skip header)
+  const csvMemberIds = new Set();
+  const csvEmails = new Set();
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const parts = line.split(",");
+    if (parts.length > 1) {
+      const memberId = parts[0]?.trim();
+      const email = parts[1]?.toLowerCase().trim();
+      if (memberId) csvMemberIds.add(memberId);
+      if (email) csvEmails.add(email);
     }
   }
   
-  const memberstackEmails = new Set(
-    memberstackMembers.map(m => {
-      const email = m.auth?.email || m.email || "";
-      return email.toLowerCase().trim();
-    }).filter(Boolean)
-  );
-  const memberstackIds = new Set(
-    memberstackMembers.map(m => m.id).filter(Boolean)
-  );
-  
-  console.log(`✅ Found ${memberstackMembers.length} members in Memberstack\n`);
+  console.log(`✅ Found ${csvMemberIds.size} members in CSV (${csvEmails.size} emails)\n`);
 
   // Step 2: Get all members from Supabase cache
   console.log("📥 Fetching members from Supabase cache...");
@@ -94,18 +74,14 @@ async function cleanupOrphanedMembers() {
   console.log(`✅ Found ${supabaseMembers.length} members in Supabase cache\n`);
 
   // Step 3: Identify orphaned records
-  // A member is orphaned if BOTH email AND member_id are not found in Memberstack
   const orphaned = supabaseMembers.filter(m => {
     const email = (m.email || "").toLowerCase().trim();
     const memberId = m.member_id;
     
-    // Check if email exists in Memberstack
-    const emailExists = email && memberstackEmails.has(email);
-    // Check if member_id exists in Memberstack
-    const idExists = memberId && memberstackIds.has(memberId);
+    // Orphaned if BOTH email AND member_id are not in CSV
+    const emailExists = email && csvEmails.has(email);
+    const idExists = memberId && csvMemberIds.has(memberId);
     
-    // Orphaned if NEITHER email NOR member_id exists in Memberstack
-    // Also orphaned if both are missing/empty
     return !emailExists && !idExists;
   });
 
@@ -132,33 +108,20 @@ async function cleanupOrphanedMembers() {
   });
 
   // Step 4: Clean up orphaned records if requested
-  if (DELETE && !DRY_RUN) {
+  if (DELETE) {
     console.log(`\n🗑️  Deleting ${orphaned.length} orphaned records from Supabase...\n`);
     
     let deletedCount = 0;
     let errorCount = 0;
+    let totalRelatedDeleted = 0;
 
     for (const member of orphaned) {
       try {
-        // Delete from ms_members_cache
-        const { error: cacheError } = await supabase
-          .from("ms_members_cache")
-          .delete()
-          .eq("member_id", member.member_id);
-        
-        if (cacheError) {
-          console.error(`   ❌ Error deleting ${member.email}:`, cacheError.message);
-          errorCount++;
-          continue;
-        }
-
-        // Clean up related records using the cleanup script logic
         const memberId = member.member_id;
         const email = member.email;
-
         let relatedDeleted = 0;
 
-        // Delete academy_events (by member_id)
+        // Delete academy_events
         if (memberId) {
           const { count: eventsCount } = await supabase
             .from("academy_events")
@@ -174,7 +137,7 @@ async function cleanupOrphanedMembers() {
           }
         }
 
-        // Delete module_results_ms (by member_id and email)
+        // Delete module_results_ms
         if (memberId) {
           const { count: resultsCount } = await supabase
             .from("module_results_ms")
@@ -253,7 +216,20 @@ async function cleanupOrphanedMembers() {
           }
         }
 
+        // Finally, delete from ms_members_cache
+        const { error: cacheError } = await supabase
+          .from("ms_members_cache")
+          .delete()
+          .eq("member_id", memberId);
+        
+        if (cacheError) {
+          console.error(`   ❌ Error deleting ${member.email}:`, cacheError.message);
+          errorCount++;
+          continue;
+        }
+
         deletedCount++;
+        totalRelatedDeleted += relatedDeleted;
         console.log(`   ✅ Deleted: ${member.email || member.member_id} (${relatedDeleted} related records)`);
       } catch (err) {
         console.error(`   ❌ Error cleaning up ${member.email}:`, err.message);
@@ -262,15 +238,13 @@ async function cleanupOrphanedMembers() {
     }
 
     console.log(`\n✨ Cleanup complete!`);
-    console.log(`   Deleted: ${deletedCount}`);
+    console.log(`   Members deleted: ${deletedCount}`);
+    console.log(`   Related records deleted: ${totalRelatedDeleted}`);
     console.log(`   Errors: ${errorCount}\n`);
-  } else if (DRY_RUN) {
-    console.log(`\n⚠️  DRY RUN - Would delete ${orphaned.length} orphaned records`);
-    console.log(`   Run with --delete to actually remove them\n`);
   } else {
     console.log(`\nℹ️  To delete these orphaned records, run:`);
-    console.log(`   node scripts/cleanup-orphaned-members.js --delete\n`);
+    console.log(`   node scripts/cleanup-orphaned-from-csv.js ${csvFile} --delete\n`);
   }
 }
 
-cleanupOrphanedMembers().catch(console.error);
+cleanupFromCSV().catch(console.error);
