@@ -32,7 +32,7 @@ const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
 const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 
 // Academy upgrade URL - update this to your actual upgrade/signup page
-const UPGRADE_URL = process.env.ACADEMY_UPGRADE_URL || "https://alanranger.com/academy/signup";
+const UPGRADE_URL = process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/signup";
 
 // Create email transporter
 let emailTransporter = null;
