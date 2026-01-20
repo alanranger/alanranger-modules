@@ -318,7 +318,17 @@ async function calculateStripeMetrics(forceRefresh = false) {
             const trialEnd = new Date(sub.trial_end * 1000);
             if (trialEnd <= nowDate) {
               convertedAnnualSubIds.add(sub.id);
-              console.log(`[stripe-metrics] ✅ SAME-SUBSCRIPTION CONVERSION: Annual sub ${sub.id} had trial_end ${trialEnd.toISOString()}`);
+              console.log(`[stripe-metrics] ✅ SAME-SUBSCRIPTION CONVERSION: Annual sub ${sub.id} (type: ${typeof sub.id}) had trial_end ${trialEnd.toISOString()}, customer: ${customerId}`);
+            } else {
+              console.log(`[stripe-metrics] ⚠️  Annual sub ${sub.id} has trial_end ${trialEnd.toISOString()} but it's in the future (not ended yet)`);
+            }
+          } else {
+            // Debug: log if subscription doesn't have trial_end but we expected it might
+            if (sub.status === 'active' || sub.status === 'canceled') {
+              // Only log occasionally to avoid spam
+              if (Math.random() < 0.1) {
+                console.log(`[stripe-metrics] 🔍 DEBUG: Annual sub ${sub.id} (status: ${sub.status}) has no trial_end field`);
+              }
             }
           }
         }
