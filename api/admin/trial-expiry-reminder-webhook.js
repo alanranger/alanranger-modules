@@ -1,0 +1,355 @@
+// API endpoint to identify members with trials expiring soon and send reminder emails
+// This endpoint identifies members with trial plans expiring in X days and emails them automatically
+// Designed to be called by Zapier (2-step Zap: Schedule → Webhook)
+// Handles both finding expiring trials AND sending emails (no Gmail step needed)
+//
+// Query parameters:
+// - daysAhead: Number of days before expiry to send reminder (default: 7)
+//   Example: ?daysAhead=7 for 7-day reminder, ?daysAhead=1 for 24-hour reminder
+
+const { createClient } = require("@supabase/supabase-js");
+const memberstackAdmin = require("@memberstack/admin");
+const nodemailer = require("nodemailer");
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// Get Memberstack key from environment
+const MEMBERSTACK_SECRET_KEY = process.env.MEMBERSTACK_SECRET_KEY;
+
+if (!MEMBERSTACK_SECRET_KEY) {
+  console.error("Error: MEMBERSTACK_SECRET_KEY must be set in environment variables");
+}
+
+const memberstack = memberstackAdmin.init(MEMBERSTACK_SECRET_KEY);
+
+// Email configuration from environment variables
+const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
+const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
+const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
+const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
+
+// Academy upgrade URL - update this to your actual upgrade/signup page
+const UPGRADE_URL = process.env.ACADEMY_UPGRADE_URL || "https://alanranger.com/academy/signup";
+
+// Create email transporter
+let emailTransporter = null;
+if (EMAIL_FROM && EMAIL_PASSWORD) {
+  emailTransporter = nodemailer.createTransport({
+    host: EMAIL_SMTP_HOST,
+    port: EMAIL_SMTP_PORT,
+    secure: EMAIL_SMTP_PORT === 465, // true for 465, false for other ports
+    auth: {
+      user: EMAIL_FROM,
+      pass: EMAIL_PASSWORD
+    }
+  });
+}
+
+async function sendTrialExpiryReminder(member, daysUntilExpiry) {
+  if (!emailTransporter) {
+    console.warn("[trial-expiry-reminder] Email not configured - skipping email send");
+    return { sent: false, error: "Email not configured" };
+  }
+
+  // Format expiry date nicely
+  const expiryDate = member.trial_expiry_date 
+    ? new Date(member.trial_expiry_date).toLocaleDateString('en-GB', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })
+    : 'soon';
+
+  const timeRemaining = daysUntilExpiry === 1 
+    ? '24 hours' 
+    : `${daysUntilExpiry} days`;
+
+  const urgencyText = daysUntilExpiry === 1
+    ? '**URGENT:** Only 24 hours left!'
+    : `Your trial expires in ${timeRemaining}`;
+
+  const emailSubject = daysUntilExpiry === 1
+    ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
+    : `Your Academy Trial Expires in ${timeRemaining} - Upgrade to Continue Access`;
+
+  const emailBody = `
+Hi ${member.name || "there"},
+
+${urgencyText}
+
+Your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDate}**.
+
+**To continue enjoying full access to all Academy content, you'll need to upgrade to an annual plan.**
+
+**What happens if you don't upgrade?**
+- Your trial access will expire on ${expiryDate}
+- You'll lose access to all Academy modules, content, and resources
+- You'll need to sign up for an annual plan (£79) to regain access
+
+**Upgrade now for just £79/year and get:**
+✅ Full access to all Academy modules and content
+✅ Exclusive photography tutorials and guides
+✅ Community support and resources
+✅ Regular updates and new content
+✅ All the tools and knowledge to improve your photography
+
+**Upgrade your account now:**
+${UPGRADE_URL}
+
+Don't miss out on continuing your photography journey with us!
+
+If you have any questions or need help with the upgrade process, please contact us.
+
+Best regards,
+Alan Ranger Photography Academy
+
+---
+This is an automated reminder. Your trial expires on ${expiryDate} (${timeRemaining} remaining).
+  `.trim();
+
+  try {
+    const info = await emailTransporter.sendMail({
+      from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+      to: member.email,
+      bcc: "info@alanranger.com", // BCC so you get notified of all emails sent
+      subject: emailSubject,
+      text: emailBody,
+      html: emailBody.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    });
+
+    console.log(`[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`);
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[trial-expiry-reminder] Error sending email to ${member.email}:`, error.message);
+    return { sent: false, error: error.message };
+  }
+}
+
+async function getMembersWithExpiringTrials(daysAhead) {
+  const expiringMembers = [];
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + daysAhead);
+  
+  // Set to end of target day (23:59:59)
+  targetDate.setHours(23, 59, 59, 999);
+  
+  // Also set start of target day (00:00:00) for range
+  const targetDateStart = new Date(targetDate);
+  targetDateStart.setHours(0, 0, 0, 0);
+
+  try {
+    // Step 1: Get all members from Memberstack
+    console.log(`[trial-expiry-reminder] Fetching all members from Memberstack (looking for trials expiring in ${daysAhead} days)...`);
+    const memberstackMembers = [];
+    let after = null;
+    const limit = 100;
+    let totalFetched = 0;
+
+    while (true) {
+      try {
+        const params = { limit };
+        if (after) params.after = after;
+
+        const { data: members, error: listError } = await memberstack.members.list(params);
+
+        if (listError) {
+          console.error("[trial-expiry-reminder] Error listing members:", listError);
+          break;
+        }
+
+        if (!members || members.length === 0) {
+          break;
+        }
+
+        memberstackMembers.push(...members);
+        totalFetched += members.length;
+        console.log(`[trial-expiry-reminder] Fetched ${totalFetched} members...`);
+
+        if (members.length < limit) {
+          break;
+        }
+
+        after = members[members.length - 1]?.id || null;
+        if (!after) break;
+      } catch (error) {
+        console.error("[trial-expiry-reminder] Error fetching from Memberstack:", error.message);
+        break;
+      }
+    }
+
+    console.log(`[trial-expiry-reminder] Found ${memberstackMembers.length} total members in Memberstack`);
+
+    // Step 2: Identify members with trials expiring in the target timeframe
+    console.log(`[trial-expiry-reminder] Identifying members with trials expiring on ${targetDateStart.toISOString().split('T')[0]}...`);
+    
+    for (const member of memberstackMembers) {
+      const email = member.auth?.email || member.email || "";
+      const memberId = member.id;
+      const name = member.name || "N/A";
+      
+      // Check if member has an active TRIALING plan
+      let trialPlan = null;
+      let hasTrialPlan = false;
+      
+      if (member.planConnections && Array.isArray(member.planConnections)) {
+        trialPlan = member.planConnections.find(plan => {
+          const status = (plan?.status || plan.status || "").toUpperCase();
+          return status === "TRIALING";
+        });
+        hasTrialPlan = !!trialPlan;
+      }
+      
+      if (hasTrialPlan && trialPlan && email) {
+        // Check trial expiry date
+        // Memberstack trial plans typically have expiry_date or current_period_end
+        const expiryDateStr = trialPlan.expiry_date || trialPlan.current_period_end || trialPlan.expires_at;
+        
+        if (expiryDateStr) {
+          const expiryDate = new Date(expiryDateStr);
+          
+          // Check if expiry date falls within our target day (within the day range)
+          if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
+            const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+            
+            expiringMembers.push({
+              member_id: memberId,
+              email: email,
+              name: name,
+              trial_expiry_date: expiryDateStr,
+              days_until_expiry: daysUntilExpiry,
+              plan_id: trialPlan.plan_id || trialPlan.id || null,
+              plan_name: trialPlan.plan_name || "Academy Trial" || null
+            });
+            
+            console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
+          }
+        } else {
+          console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has trial plan but no expiry date found`);
+        }
+      }
+    }
+
+    console.log(`[trial-expiry-reminder] Found ${expiringMembers.length} members with trials expiring in ${daysAhead} days`);
+    return expiringMembers;
+
+  } catch (error) {
+    console.error("[trial-expiry-reminder] Fatal error:", error);
+    throw error;
+  }
+}
+
+module.exports = async (req, res) => {
+  // Allow GET and POST requests
+  if (req.method !== "GET" && req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  // Optional: Add a secret token for security
+  const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET; // Reuse same secret
+  const providedSecret = req.query.secret || req.headers["x-webhook-secret"];
+
+  if (webhookSecret && providedSecret && providedSecret !== webhookSecret) {
+    console.log("[trial-expiry-reminder] Invalid webhook secret provided");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  if (webhookSecret && !providedSecret) {
+    console.warn("[trial-expiry-reminder] Webhook secret configured but not provided in request");
+  }
+
+  try {
+    // Get daysAhead from query parameter (default: 7)
+    const daysAhead = parseInt(req.query.daysAhead || "7", 10);
+    
+    if (isNaN(daysAhead) || daysAhead < 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: "Invalid daysAhead parameter. Must be a positive number.",
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log(`[trial-expiry-reminder] Request received at ${new Date().toISOString()} (daysAhead: ${daysAhead})`);
+
+    // Check if Memberstack key is configured
+    if (!MEMBERSTACK_SECRET_KEY) {
+      console.error("[trial-expiry-reminder] MEMBERSTACK_SECRET_KEY not configured");
+      return res.status(500).json({
+        success: false,
+        error: "MEMBERSTACK_SECRET_KEY not configured",
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const expiringMembers = await getMembersWithExpiringTrials(daysAhead);
+
+    // Send emails to all members with expiring trials
+    const emailResults = [];
+    let emailsSent = 0;
+    let emailsFailed = 0;
+
+    if (expiringMembers.length > 0) {
+      console.log(`[trial-expiry-reminder] Sending emails to ${expiringMembers.length} members with expiring trials...`);
+      
+      for (const member of expiringMembers) {
+        try {
+          const result = await sendTrialExpiryReminder(member, member.days_until_expiry);
+          emailResults.push({
+            email: member.email,
+            name: member.name,
+            trial_expiry_date: member.trial_expiry_date,
+            days_until_expiry: member.days_until_expiry,
+            sent: result.sent,
+            error: result.error || null
+          });
+          
+          if (result.sent) {
+            emailsSent++;
+          } else {
+            emailsFailed++;
+          }
+        } catch (emailError) {
+          console.error(`[trial-expiry-reminder] Error sending email to ${member.email}:`, emailError.message);
+          emailResults.push({
+            email: member.email,
+            name: member.name,
+            sent: false,
+            error: emailError.message
+          });
+          emailsFailed++;
+        }
+      }
+    } else {
+      console.log(`[trial-expiry-reminder] No members with trials expiring in ${daysAhead} days`);
+    }
+
+    // Always return success (even if no members found or emails failed)
+    return res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      days_ahead: daysAhead,
+      expiring_trials_found: expiringMembers.length,
+      emails_sent: emailsSent,
+      emails_failed: emailsFailed,
+      email_configured: !!emailTransporter,
+      email_results: emailResults,
+      expiring_members: expiringMembers
+    });
+
+  } catch (error) {
+    console.error(`[trial-expiry-reminder] Failed:`, error);
+    return res.status(200).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      expiring_trials_found: 0,
+      emails_sent: 0,
+      emails_failed: 0
+    });
+  }
+};
