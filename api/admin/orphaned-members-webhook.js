@@ -75,6 +75,7 @@ This is an automated message. Your account was created ${member.hours_since_crea
     const info = await emailTransporter.sendMail({
       from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
       to: member.email,
+      bcc: "info@alanranger.com", // BCC so you get notified of all emails sent
       subject: emailSubject,
       text: emailBody,
       html: emailBody.replace(/\n/g, "<br>")
