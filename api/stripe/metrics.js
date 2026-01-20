@@ -335,6 +335,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
+    // Count conversions (convertedAnnualSubIds already built above for same-subscription conversions)
+    let conversions30d = 0;
+    let conversionsAllTime = convertedAnnualSubIds.size; // Start with same-subscription conversions
+    let trialsEnded30d = 0;
+    let trialsEndedAllTime = 0;
+    
     // Count same-subscription conversions in 30d
     allSubsForAnnualCheck.forEach(sub => {
       if (isAcademyAnnualSubscription(sub) && sub.trial_end && convertedAnnualSubIds.has(sub.id)) {
@@ -345,9 +351,6 @@ async function calculateStripeMetrics(forceRefresh = false) {
         }
       }
     });
-    
-    let trialsEnded30d = 0;
-    let trialsEndedAllTime = 0;
 
     console.log(`[stripe-metrics] Checking ${Object.keys(customerTrials).length} customers with trials for conversions`);
     console.log(`[stripe-metrics] Found ${Object.keys(customerAnnuals).length} customers with annual subscriptions`);
