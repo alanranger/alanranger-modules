@@ -159,6 +159,9 @@ async function getOrphanedMembers() {
           ? (now - createdAt) / (1000 * 60 * 60)
           : 999; // If no creation date, include them (edge case)
         
+        // Debug logging
+        console.log(`[orphaned-webhook] Member ${email}: hasActivePlan=${hasActivePlan}, hoursSinceCreation=${Math.round(hoursSinceCreation * 10) / 10}, createdAt=${member.createdAt}`);
+        
         // Only email if account was created 2+ hours ago
         // This ensures we don't email immediately and gives them time to complete signup
         if (hoursSinceCreation >= 2) {
@@ -170,13 +173,35 @@ async function getOrphanedMembers() {
             last_login: member.lastLoginAt || null,
             hours_since_creation: Math.round(hoursSinceCreation * 10) / 10
           });
+          console.log(`[orphaned-webhook] ✅ Added orphaned member: ${email} (${Math.round(hoursSinceCreation * 10) / 10} hours old)`);
         } else {
-          console.log(`[orphaned-webhook] Skipping ${email} - created ${Math.round(hoursSinceCreation * 10) / 10} hours ago (too recent)`);
+          console.log(`[orphaned-webhook] ⏳ Skipping ${email} - created ${Math.round(hoursSinceCreation * 10) / 10} hours ago (too recent, need 2+ hours)`);
         }
+      } else if (!hasActivePlan && !email) {
+        console.log(`[orphaned-webhook] ⚠️ Member ${memberId} has no active plan but also no email - skipping`);
       }
     }
 
     console.log(`[orphaned-webhook] Found ${orphanedMembers.length} orphaned members (no active plans, created 2+ hours ago)`);
+    
+    // Debug: Log all members without plans (regardless of timing)
+    const allMembersWithoutPlans = memberstackMembers.filter(m => {
+      const hasActivePlan = m.planConnections && 
+        Array.isArray(m.planConnections) && 
+        m.planConnections.length > 0 &&
+        m.planConnections.some(plan => {
+          const status = (plan.status || "").toUpperCase();
+          return status === "ACTIVE" || status === "TRIALING";
+        });
+      return !hasActivePlan && (m.auth?.email || m.email);
+    });
+    console.log(`[orphaned-webhook] Total members without plans (all ages): ${allMembersWithoutPlans.length}`);
+    allMembersWithoutPlans.forEach(m => {
+      const email = m.auth?.email || m.email || "";
+      const createdAt = m.createdAt ? new Date(m.createdAt) : null;
+      const hoursSinceCreation = createdAt ? (now - createdAt) / (1000 * 60 * 60) : 999;
+      console.log(`[orphaned-webhook]   - ${email}: ${Math.round(hoursSinceCreation * 10) / 10} hours old`);
+    });
 
     return orphanedMembers;
 
