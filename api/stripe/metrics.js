@@ -294,9 +294,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Find Academy annual subscriptions for these customers
-    allActiveSubs.forEach(sub => {
-      if (isAcademyAnnualSubscription(sub) && sub.status === 'active') {
+    // Find Academy annual subscriptions for these customers (check BOTH active and canceled)
+    // We need to check canceled subs too because they might have had paid invoices
+    const allSubsForAnnualCheck = [...allActiveSubs, ...canceledSubs];
+    
+    allSubsForAnnualCheck.forEach(sub => {
+      if (isAcademyAnnualSubscription(sub)) {
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
         if (customerId) {
           if (!customerAnnuals[customerId]) {
