@@ -271,14 +271,25 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // Get ALL trials (active trialing OR any trial that has ended)
     // This ensures we catch conversions even if trial ended >30d ago but conversion happened recently
     const trialCohort = allSubsForConversion.filter(sub => {
+      // Check if subscription has trial period (either currently trialing or had a trial_end)
       if (sub.status === 'trialing') return true;
       if (sub.trial_end) {
         const trialEnd = new Date(sub.trial_end * 1000);
         // Include all ended trials (not just last 30d) to catch all conversions
         return trialEnd <= nowDate;
       }
+      // Also check if subscription has items with trial price IDs
+      if (sub.items && sub.items.data) {
+        const hasTrialPrice = sub.items.data.some(item => {
+          const priceId = item.price?.id || '';
+          return priceId.includes('trial') || priceId.includes('30-day');
+        });
+        if (hasTrialPrice) return true;
+      }
       return false;
     });
+    
+    console.log(`[stripe-metrics] Found ${trialCohort.length} trial subscriptions in cohort`);
 
     // Group by customer to find conversions
     const customerTrials = {};
@@ -317,9 +328,16 @@ async function calculateStripeMetrics(forceRefresh = false) {
     let trialsEnded30d = 0;
     let trialsEndedAllTime = 0;
 
+    console.log(`[stripe-metrics] Checking ${Object.keys(customerTrials).length} customers with trials for conversions`);
+    console.log(`[stripe-metrics] Found ${Object.keys(customerAnnuals).length} customers with annual subscriptions`);
+
     Object.keys(customerTrials).forEach(customerId => {
       const trials = customerTrials[customerId];
       const annuals = customerAnnuals[customerId] || [];
+
+      if (annuals.length > 0) {
+        console.log(`[stripe-metrics] Customer ${customerId} has ${trials.length} trial(s) and ${annuals.length} annual subscription(s)`);
+      }
 
       trials.forEach(trial => {
         if (trial.trial_end) {
@@ -346,6 +364,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
               convertedAnnualSubIds.add(annual.id);
               conversionsAllTime++; // Always count as conversion
               
+              console.log(`[stripe-metrics] ✅ CONVERSION FOUND: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}`);
+              
               // Count conversion in 30d if annual subscription was CREATED in last 30d
               // (shows recent conversion activity, not a strict cohort)
               const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
@@ -357,6 +377,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
         }
       });
     });
+    
+    console.log(`[stripe-metrics] Total conversions found: ${conversionsAllTime} (30d: ${conversions30d})`);
+    console.log(`[stripe-metrics] Converted subscription IDs: ${Array.from(convertedAnnualSubIds).join(', ')}`);
 
     metrics.conversions_trial_to_annual_last_30d = conversions30d;
     metrics.conversions_trial_to_annual_all_time = conversionsAllTime;
@@ -569,21 +592,22 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
           // Only count first invoice for revenue breakdown
           if (isFirstInvoice) {
-            if (convertedAnnualSubIds.has(subscriptionId)) {
+            const isConversion = convertedAnnualSubIds.has(subscriptionId);
+            if (isConversion) {
               revenueFromConversionsNetAllTime += invoiceRevenue;
               if (isInLast30d) {
                 revenueFromConversionsNet30d += invoiceRevenue;
               }
-              console.log(`[stripe-metrics] Invoice ${invoice.id} classified as CONVERSION: £${invoiceRevenue}, subscription=${subscriptionId}`);
+              console.log(`[stripe-metrics] ✅ Invoice ${invoice.id} classified as CONVERSION: £${invoiceRevenue}, subscription=${subscriptionId}, total=${invoice.total}`);
             } else {
               revenueFromDirectAnnualNetAllTime += invoiceRevenue;
               if (isInLast30d) {
                 revenueFromDirectAnnualNet30d += invoiceRevenue;
               }
-              console.log(`[stripe-metrics] Invoice ${invoice.id} classified as DIRECT ANNUAL: £${invoiceRevenue}, subscription=${subscriptionId}`);
+              console.log(`[stripe-metrics] 📊 Invoice ${invoice.id} classified as DIRECT ANNUAL: £${invoiceRevenue}, subscription=${subscriptionId}, total=${invoice.total}, in_converted_set=${isConversion}`);
             }
           } else {
-            console.log(`[stripe-metrics] Skipping renewal invoice ${invoice.id} (billing_reason=${invoice.billing_reason})`);
+            console.log(`[stripe-metrics] ⏭️  Skipping renewal invoice ${invoice.id} (billing_reason=${invoice.billing_reason})`);
           }
         } else {
           // Invoice has annual price but no subscription (unlikely but handle it)
