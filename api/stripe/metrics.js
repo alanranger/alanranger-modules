@@ -9,6 +9,7 @@ const {
   isAcademyAnnualSubscription,
   getAcademyAnnualListPrice
 } = require('../../lib/academyStripeConfig');
+const { createClient } = require("@supabase/supabase-js");
 
 let getStripe;
 try {
@@ -98,6 +99,151 @@ function getSubscriptionRevenue(subscription) {
     total += amount * quantity;
   });
   return total / 100; // Convert from cents to GBP
+}
+
+// Helper to get conversion data from Supabase (more reliable than Stripe trial_end)
+async function getConversionsFromSupabase() {
+  try {
+    const SUPABASE_URL = process.env.SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.log('[stripe-metrics] ⚠️  SUPABASE_SERVICE_ROLE_KEY not set, skipping Supabase conversion check');
+      return { convertedSubscriptionIds: new Set(), convertedCustomerIds: new Set() };
+    }
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Get all annual members from Supabase
+    const { data: members } = await supabase
+      .from("ms_members_cache")
+      .select("member_id, email, plan_summary")
+      .order("created_at", { ascending: false });
+    
+    // Get plan events for conversion detection
+    const { data: planEvents } = await supabase
+      .from("academy_plan_events")
+      .select("ms_member_id, event_type, ms_price_id, created_at, stripe_invoice_id, payload")
+      .order("created_at", { ascending: true });
+    
+    const convertedSubscriptionIds = new Set();
+    const convertedCustomerIds = new Set();
+    const memberTimelines = {};
+    
+    // Build timelines for each member
+    if (planEvents) {
+      planEvents.forEach(event => {
+        if (!event.ms_member_id) return;
+        const memberId = event.ms_member_id;
+        if (!memberTimelines[memberId]) {
+          memberTimelines[memberId] = {
+            trialStartAt: null,
+            annualPaidAt: null,
+            annualInvoiceId: null,
+            events: []
+          };
+        }
+        
+        const timeline = memberTimelines[memberId];
+        const eventDate = new Date(event.created_at);
+        
+        // Detect trial start
+        if (event.event_type === 'checkout.session.completed') {
+          const priceId = event.ms_price_id || '';
+          if (priceId.includes('trial') || priceId.includes('30-day')) {
+            if (!timeline.trialStartAt || eventDate < timeline.trialStartAt) {
+              timeline.trialStartAt = eventDate;
+            }
+          }
+        }
+        
+        // Detect annual paid
+        if (event.event_type === 'invoice.paid') {
+          const priceId = event.ms_price_id || '';
+          if (priceId.includes('annual') || priceId === 'prc_annual-membership-jj7y0h89') {
+            if (!timeline.annualPaidAt || eventDate < timeline.annualPaidAt) {
+              timeline.annualPaidAt = eventDate;
+              timeline.annualInvoiceId = event.stripe_invoice_id;
+            }
+          }
+        }
+      });
+    }
+    
+    // Check each annual member for conversions
+    const annualMembers = (members || []).filter(m => {
+      const plan = m.plan_summary || {};
+      return plan.plan_type === 'annual' && (plan.status || '').toUpperCase() === 'ACTIVE';
+    });
+    
+    for (const member of annualMembers) {
+      const timeline = memberTimelines[member.member_id];
+      const plan = member.plan_summary || {};
+      
+      // Get annual subscription creation date
+      const memberEvents = (planEvents || []).filter(e => e.ms_member_id === member.member_id);
+      const annualSubscriptionCreated = memberEvents.find(e => 
+        e.event_type === 'customer.subscription.created' && 
+        (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+      );
+      
+      const memberCreatedAt = member.created_at ? new Date(member.created_at) : null;
+      const annualStartDate = annualSubscriptionCreated ? new Date(annualSubscriptionCreated.created_at) :
+                             (plan.current_period_start ? new Date(plan.current_period_start) : null) ||
+                             (memberCreatedAt);
+      
+      // Check if member had a trial
+      const hadTrialFromEvents = timeline?.trialStartAt !== null;
+      const likelyHadTrialFromTiming = memberCreatedAt && annualStartDate && 
+                                       (annualStartDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000);
+      
+      const hadTrial = hadTrialFromEvents || likelyHadTrialFromTiming;
+      
+      const annualPaidDate = timeline?.annualPaidAt || annualStartDate;
+      const trialStartDate = timeline?.trialStartAt || memberCreatedAt;
+      
+      // Check if annual was paid after trial started (no time limit)
+      const isConverted = hadTrial && 
+                         trialStartDate && 
+                         annualPaidDate && 
+                         annualPaidDate.getTime() > trialStartDate.getTime();
+      
+      if (isConverted) {
+        // Try to get Stripe customer ID and subscription ID from events
+        const subscriptionCreatedEvent = memberEvents.find(e => 
+          e.event_type === 'customer.subscription.created' &&
+          (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+        );
+        
+        if (subscriptionCreatedEvent && subscriptionCreatedEvent.payload) {
+          try {
+            const payload = typeof subscriptionCreatedEvent.payload === 'string' 
+              ? JSON.parse(subscriptionCreatedEvent.payload) 
+              : subscriptionCreatedEvent.payload;
+            
+            const subscriptionId = payload?.data?.object?.id;
+            const customerId = payload?.data?.object?.customer;
+            
+            if (subscriptionId) {
+              convertedSubscriptionIds.add(subscriptionId);
+              console.log(`[stripe-metrics] ✅ SUPABASE CONVERSION: Member ${member.email}, subscription ${subscriptionId}`);
+            }
+            if (customerId) {
+              convertedCustomerIds.add(typeof customerId === 'string' ? customerId : customerId.id);
+            }
+          } catch (e) {
+            console.warn(`[stripe-metrics] Could not parse subscription event payload for ${member.email}: ${e.message}`);
+          }
+        }
+      }
+    }
+    
+    console.log(`[stripe-metrics] Found ${convertedSubscriptionIds.size} conversions from Supabase`);
+    return { convertedSubscriptionIds, convertedCustomerIds };
+  } catch (error) {
+    console.error('[stripe-metrics] Error getting conversions from Supabase:', error.message);
+    return { convertedSubscriptionIds: new Set(), convertedCustomerIds: new Set() };
+  }
 }
 
 // Main calculation function (can be called directly or via API)
@@ -301,10 +447,15 @@ async function calculateStripeMetrics(forceRefresh = false) {
     
     console.log(`[stripe-metrics] Total subscriptions to check: ${allSubsForAnnualCheck.length} (${allActiveSubs.length} active, ${canceledSubs.length} canceled)`);
     
-    // Build convertedAnnualSubIds FIRST - check if annual subscriptions themselves had a trial_end
+    // CRITICAL FIX: Get conversions from Supabase (Stripe doesn't preserve trial_end after conversion)
+    console.log('[stripe-metrics] Getting conversions from Supabase (more reliable than Stripe trial_end)...');
+    const { convertedSubscriptionIds: supabaseConvertedIds, convertedCustomerIds: supabaseConvertedCustomerIds } = await getConversionsFromSupabase();
+    
+    // Build convertedAnnualSubIds - start with Supabase conversions
+    // Also check if annual subscriptions themselves had a trial_end (for same-subscription conversions)
     // In Stripe, when trial converts to annual, it's often the SAME subscription
     // that transitions from 'trialing' to 'active' (trial_end passes, subscription continues)
-    const convertedAnnualSubIds = new Set();
+    const convertedAnnualSubIds = new Set(supabaseConvertedIds);
     let academyAnnualCount = 0;
     let subscriptionsWithTrialEnd = 0;
     
@@ -322,7 +473,13 @@ async function calculateStripeMetrics(forceRefresh = false) {
           console.log(`[stripe-metrics] 🔍 Annual sub ${sub.id} (status: ${sub.status}, customer: ${customerId}): trial_end=${sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : 'NONE'}, created=${sub.created ? new Date(sub.created * 1000).toISOString() : 'NONE'}`);
           
           // If this annual subscription had a trial_end, it's DEFINITELY a conversion (same subscription)
-          if (sub.trial_end) {
+          // OR if it's already in Supabase conversions, mark it
+          if (supabaseConvertedIds.has(sub.id) || supabaseConvertedCustomerIds.has(customerId)) {
+            if (!convertedAnnualSubIds.has(sub.id)) {
+              convertedAnnualSubIds.add(sub.id);
+              console.log(`[stripe-metrics] ✅ CONVERSION FROM SUPABASE: Annual sub ${sub.id}, customer: ${customerId}`);
+            }
+          } else if (sub.trial_end) {
             subscriptionsWithTrialEnd++;
             const trialEnd = new Date(sub.trial_end * 1000);
             if (trialEnd <= nowDate) {
