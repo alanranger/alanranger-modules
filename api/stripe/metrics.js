@@ -332,22 +332,23 @@ async function calculateStripeMetrics(forceRefresh = false) {
           }
 
           // Check if customer has annual subscription started after trial end
-          // Removed 7-day window restriction - conversions can happen anytime after trial
+          // NO TIME RESTRICTION: If someone had a trial and later got annual, it's ALWAYS a conversion
+          // regardless of how long after the trial ended
           annuals.forEach(annual => {
             const annualStart = new Date(annual.created * 1000);
             const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
 
-            // Conversion if annual started after trial ended (no time limit)
+            // Conversion if annual started after trial ended (no time limit - can be months later)
             if (daysDiff >= 0) {
               convertedAnnualSubIds.add(annual.id);
+              conversionsAllTime++; // Always count as conversion
               
               // Count conversion in 30d if annual subscription was CREATED in last 30d
-              // (not based on when trial ended, but when annual started)
+              // (shows recent conversion activity, not a strict cohort)
               const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
               if (annualCreatedInLast30d) {
                 conversions30d++;
               }
-              conversionsAllTime++;
             }
           });
         }

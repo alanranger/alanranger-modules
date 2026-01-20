@@ -420,6 +420,8 @@ module.exports = async (req, res) => {
       });
     }
     
+    // Conversions in last 30d: filter by when annual subscription was CREATED/PAID (not when trial ended)
+    // This allows conversions that happened recently even if trial ended months ago
     const conversions30d = allConversions.filter(t => {
       if (!t.annualPaidAt) return false;
       try {
@@ -445,8 +447,9 @@ module.exports = async (req, res) => {
     });
     
     // Conversion rates - use trials ENDED, not trials STARTED (more accurate)
+    // IMPORTANT: No time restrictions on conversions - if someone had a trial and later got annual, it's ALWAYS a conversion
     // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
-    // Trials that ended in last 30d (define this BEFORE using it in conversion rate calculation)
+    // Trials that ended in last 30d (for reporting purposes only)
     const trialsEnded30d = Object.values(memberPlans).filter(m => 
       m.isTrial && 
       m.trialEndAt && 
@@ -454,56 +457,33 @@ module.exports = async (req, res) => {
       m.trialEndAt <= now
     );
     
-    // For 30d conversion rate: if we have conversions but no trials ended in 30d,
-    // check if any of those conversions had their trial end within a reasonable window (60 days)
-    // This handles cases where trial ended >30d ago but conversion happened recently
-    let trialsEndedFor30dConversion = trialsEnded30d.length;
-    if (conversions30d.length > 0 && trialsEnded30d.length === 0) {
-      // Check if any conversions in last 30d had their trial end within 60 days
-      const start60d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-      const trialsEndedForRecentConversions = conversions30d.filter(c => {
-        // Find the member plan for this conversion
-        const memberPlan = Object.values(memberPlans).find(m => m.member_id === c.ms_member_id);
-        if (!memberPlan || !memberPlan.trialEndAt) return false;
-        const trialEnd = memberPlan.trialEndAt instanceof Date ? memberPlan.trialEndAt : new Date(memberPlan.trialEndAt);
-        return trialEnd >= start60d && trialEnd <= now;
-      }).length;
-      // Use the count of conversions that had trials ending within 60d as denominator
-      trialsEndedFor30dConversion = Math.max(trialsEndedForRecentConversions, conversions30d.length);
-    }
-    
-    // Get all-time trials ended count
+    // Get all-time trials ended count (any trial that has ended)
     const allTrialsEndedCount = Object.values(memberPlans).filter(m => 
       m.isTrial && m.trialEndAt && m.trialEndAt <= now
     ).length;
     
+    // All-time conversion rate: all conversions / all trials ended
     const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
       ? Math.round((allConversions.length / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    const trialConversionRate30d = trialsEndedFor30dConversion > 0 
-      ? Math.round((conversions30d.length / trialsEndedFor30dConversion) * 100 * 10) / 10
+    // 30d conversion rate: conversions that happened in last 30d / trials that ended in last 30d
+    // Note: This shows recent conversion activity, not a strict cohort
+    const trialConversionRate30d = trialsEnded30d.length > 0 
+      ? Math.round((conversions30d.length / trialsEnded30d.length) * 100 * 10) / 10
       : null;
     
     // Revenue from conversions
     const revenueFromConversionsAllTime = allConversions.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
     const revenueFromConversions30d = conversions30d.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
 
-    // Trials that ended without converting
+    // Trials that ended without converting (exclude anyone who later converted, regardless of when)
+    // Build set of member IDs who converted (from allConversions)
+    const convertedMemberIds = new Set(allConversions.map(c => c.ms_member_id));
+    
     const trialsEndedWithoutConversion30d = trialsEnded30d.filter(m => {
-      try {
-        // Not converted if no annual start OR annual started after trial ended
-        if (!m.annualStartAt) return true;
-        if (!m.trialEndAt) return false;
-        
-        const annualStart = m.annualStartAt instanceof Date ? m.annualStartAt : new Date(m.annualStartAt);
-        const trialEnd = m.trialEndAt instanceof Date ? m.trialEndAt : new Date(m.trialEndAt);
-        
-        if (isNaN(annualStart.getTime()) || isNaN(trialEnd.getTime())) return false;
-        return annualStart > trialEnd;
-      } catch (e) {
-        return false;
-      }
+      // If this member converted (at any time), exclude them from "without conversion"
+      return !convertedMemberIds.has(m.member_id);
     });
 
     const trialDropOff30d = trialsEndedWithoutConversion30d.length;
@@ -568,19 +548,10 @@ module.exports = async (req, res) => {
       m.trialEndAt <= now
     );
 
+    // All-time trials ended without conversion (exclude anyone who later converted)
     const trialsEndedWithoutConversionAllTime = allTrialsEnded.filter(m => {
-      try {
-        if (!m.annualStartAt) return true;
-        if (!m.trialEndAt) return false;
-        
-        const annualStart = m.annualStartAt instanceof Date ? m.annualStartAt : new Date(m.annualStartAt);
-        const trialEnd = m.trialEndAt instanceof Date ? m.trialEndAt : new Date(m.trialEndAt);
-        
-        if (isNaN(annualStart.getTime()) || isNaN(trialEnd.getTime())) return false;
-        return annualStart > trialEnd;
-      } catch (e) {
-        return false;
-      }
+      // If this member converted (at any time), exclude them from "without conversion"
+      return !convertedMemberIds.has(m.member_id);
     });
 
     // Get annual price from Stripe metrics or use default (stripeMetrics is now initialized above)
@@ -825,7 +796,7 @@ module.exports = async (req, res) => {
         trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
-        trialsEnded30d: trialsEndedFor30dConversion, // Use adjusted count for 30d conversion rate
+        trialsEnded30d: trialsEnded30d.length, // Trials that ended in last 30d
         trialsEndedAllTime: allTrialsEndedCount,
         revenueFromConversionsAllTime: Math.round(revenueFromConversionsAllTime * 100) / 100,
         revenueFromConversions30d: Math.round(revenueFromConversions30d * 100) / 100,
