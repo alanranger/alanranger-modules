@@ -363,6 +363,7 @@ module.exports = async (req, res) => {
         const annualTime = t.annualPaidAt instanceof Date ? t.annualPaidAt.getTime() : new Date(t.annualPaidAt).getTime();
         if (annualTime > trialTime) {
           allConversions.push(t);
+          console.log(`[overview] ✅ Conversion from timeline: member_id=${t.ms_member_id}, trialStart=${t.trialStartAt}, annualPaid=${t.annualPaidAt}`);
         }
       }
     });
@@ -388,12 +389,22 @@ module.exports = async (req, res) => {
             const annualStartDate = plan.current_period_start ? new Date(plan.current_period_start) : null;
             
             // Check if annual subscription was created significantly after member creation
-            // (more than 7 days suggests they had a trial first)
-            if (memberCreatedAt && annualStartDate && 
-                !isNaN(memberCreatedAt.getTime()) && !isNaN(annualStartDate.getTime()) &&
-                (annualStartDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000)) {
-              // Find annual subscription creation event
-              const annualSubEvent = (planEvents || []).find(e => 
+            // (more than 1 day suggests they had a trial first - same logic as Stripe metrics)
+            const daysBetween = memberCreatedAt && annualStartDate && 
+                                !isNaN(memberCreatedAt.getTime()) && !isNaN(annualStartDate.getTime())
+                                ? (annualStartDate.getTime() - memberCreatedAt.getTime()) / (1000 * 60 * 60 * 24)
+                                : 0;
+            
+            if (daysBetween > 1) {
+              // Try to find invoice.paid event first (more accurate payment date)
+              const invoicePaidEvent = (planEvents || []).find(e => 
+                e && e.ms_member_id === memberId &&
+                e.event_type === 'invoice.paid' &&
+                (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+              );
+              
+              // Fall back to subscription.created if no invoice.paid found
+              const annualSubEvent = invoicePaidEvent || (planEvents || []).find(e => 
                 e && e.ms_member_id === memberId &&
                 e.event_type === 'customer.subscription.created' &&
                 (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
@@ -402,13 +413,30 @@ module.exports = async (req, res) => {
               if (annualSubEvent && annualSubEvent.created_at) {
                 const annualPaidDate = new Date(annualSubEvent.created_at);
                 if (!isNaN(annualPaidDate.getTime())) {
+                  // Extract amount from invoice.paid if available
+                  let annualAmount = 0;
+                  if (invoicePaidEvent && invoicePaidEvent.payload) {
+                    try {
+                      const payload = typeof invoicePaidEvent.payload === 'string' 
+                        ? JSON.parse(invoicePaidEvent.payload) 
+                        : invoicePaidEvent.payload;
+                      const amount = payload?.data?.object?.amount_paid || 
+                                   payload?.data?.object?.total || 
+                                   payload?.data?.object?.amount_due || 0;
+                      annualAmount = amount / 100;
+                    } catch (e) {
+                      // Ignore parse errors
+                    }
+                  }
+                  
                   allConversions.push({
                     ms_member_id: memberId,
                     trialStartAt: memberCreatedAt,
                     annualPaidAt: annualPaidDate,
-                    annualInvoiceId: null,
-                    annualAmount: 0
+                    annualInvoiceId: invoicePaidEvent?.stripe_invoice_id || null,
+                    annualAmount: annualAmount
                   });
+                  console.log(`[overview] ✅ Conversion from timing: member_id=${memberId}, email=${member.email}, daysBetween=${daysBetween.toFixed(1)}, annualPaid=${annualPaidDate.toISOString()}`);
                 }
               }
             }
@@ -424,35 +452,25 @@ module.exports = async (req, res) => {
     // This allows conversions that happened recently even if trial ended months ago
     const conversions30d = allConversions.filter(t => {
       if (!t.annualPaidAt) {
-        console.log('[overview] Conversion missing annualPaidAt:', t.ms_member_id);
+        console.log(`[overview] ⚠️  Conversion missing annualPaidAt: member_id=${t.ms_member_id}`);
         return false;
       }
       try {
         const annualPaidDate = t.annualPaidAt instanceof Date ? t.annualPaidAt : new Date(t.annualPaidAt);
         if (isNaN(annualPaidDate.getTime())) {
-          console.log('[overview] Conversion has invalid annualPaidAt date:', t.ms_member_id, t.annualPaidAt);
+          console.log(`[overview] ⚠️  Conversion has invalid annualPaidAt date: member_id=${t.ms_member_id}, date=${t.annualPaidAt}`);
           return false;
         }
         const isIn30d = annualPaidDate >= start30d;
-        if (!isIn30d) {
-          console.log('[overview] Conversion outside 30d window:', t.ms_member_id, 'annualPaidAt:', annualPaidDate.toISOString(), 'start30d:', start30d.toISOString());
-        }
+        console.log(`[overview] 🔍 Checking conversion 30d: member_id=${t.ms_member_id}, annualPaid=${annualPaidDate.toISOString()}, start30d=${start30d.toISOString()}, in30d=${isIn30d}`);
         return isIn30d;
       } catch (e) {
-        console.log('[overview] Error filtering conversion:', t.ms_member_id, e.message);
+        console.log(`[overview] ⚠️  Error filtering conversion: member_id=${t.ms_member_id}, error=${e.message}`);
         return false;
       }
     });
     
-    console.log('[overview] Conversion detection summary:', {
-      allConversions: allConversions.length,
-      conversions30d: conversions30d.length,
-      conversionDetails: allConversions.map(c => ({
-        member_id: c.ms_member_id,
-        annualPaidAt: c.annualPaidAt,
-        trialStartAt: c.trialStartAt
-      }))
-    });
+    console.log(`[overview] 📊 Conversion counts: allConversions=${allConversions.length}, conversions30d=${conversions30d.length}`);
     
     // Trial starts from events
     const trialsStartedAllTime = Object.values(memberTimelines).filter(t => t.trialStartAt);
@@ -495,8 +513,7 @@ module.exports = async (req, res) => {
     // - It started before or during the period (trialStartAt <= now)
     // - It ended after the start of the period (trialEndAt >= start30d) OR hasn't ended yet (trialEndAt is null or > now)
     // This shows: "Of trials active in the last 30 days, what % converted?"
-    // NOTE: stripeMetrics will be initialized later, so we'll use it if available
-    let conversionsCount30d = conversions30d.length;
+    const conversionsCount30d = conversions30d.length;
     
     // Count trials that were active at any point during the last 30 days
     const activeTrials30d = Object.values(memberPlans).filter(m => {
@@ -574,22 +591,11 @@ module.exports = async (req, res) => {
         annual_active: stripeMetrics?.annual_active_count,
         revenue_all_time: stripeMetrics?.revenue_net_all_time_gbp,
         invoices_found: stripeMetrics?.debug_invoices_found,
-        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched,
-        conversions_30d: stripeMetrics?.conversions_trial_to_annual_last_30d,
-        conversions_all_time: stripeMetrics?.conversions_trial_to_annual_all_time
+        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
       });
       
-      // NOTE: Use Stripe metrics conversion count if available (more reliable)
-      // Stripe metrics detects conversions from Supabase events more accurately
-      // Fall back to Supabase calculation if Stripe metrics unavailable
-      if (stripeMetrics?.conversions_trial_to_annual_last_30d !== undefined) {
-        console.log('[overview] Using Stripe metrics conversion count (30d):', stripeMetrics.conversions_trial_to_annual_last_30d, 'vs Supabase:', conversionsCount30d);
-        conversionsCount30d = stripeMetrics.conversions_trial_to_annual_last_30d;
-        // Recalculate rate with correct conversion count
-        trialConversionRate30d = activeTrials30dCount > 0 
-          ? Math.round((conversionsCount30d / activeTrials30dCount) * 100 * 10) / 10
-          : null;
-      }
+      // NOTE: Conversion rate calculation uses ONLY Supabase data (no Stripe dependency)
+      // Stripe metrics are used for revenue calculations only
     } catch (error) {
       console.error('[overview] Stripe metrics error:', error.message);
       console.error('[overview] Stripe metrics error stack:', error.stack);
@@ -854,11 +860,11 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics (use Stripe metrics if available for more accurate count)
+        // Conversion metrics (from Supabase - no Stripe dependency)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length,
-        trialToAnnualConversions30d: conversionsCount30d, // Use the count that may have been updated from Stripe metrics
+        trialToAnnualConversionsAllTime: allConversions.length,
+        trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
         activeTrials30d: activeTrials30dCount, // Trials that were active during last 30d
