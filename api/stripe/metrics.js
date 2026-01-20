@@ -220,7 +220,7 @@ async function getConversionsFromSupabase() {
       const isConverted = hadTrial;
       
       // Log conversion detection for ALL members
-      console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, hasTrialEvent=${hasTrialEvent}, fromTiming=${hadTrialFromTiming}), memberCreated=${memberCreatedAt?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted}`);
+      console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, hasTrialEvent=${hasTrialEvent}, fromTiming=${hadTrialFromTiming}), memberCreated=${memberCreatedAt?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted} (${isConverted ? 'CONVERSION' : 'DIRECT ANNUAL'})`);
       
       if (isConverted) {
         // Try multiple methods to get Stripe subscription ID:
