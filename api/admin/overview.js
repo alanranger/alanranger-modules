@@ -493,6 +493,54 @@ module.exports = async (req, res) => {
       ? Math.round((trialDropOff30d / trialsEnded30d.length) * 100 * 10) / 10
       : null;
 
+    // ===== STRIPE METRICS (Source of Truth - Subscriptions) =====
+    // Fetch Stripe metrics FIRST before using them in calculations below
+    let stripeMetrics = null;
+    let stripeError = null;
+    
+    try {
+      // Call Stripe metrics calculation function directly (server-side)
+      // In Next.js, require paths are relative to project root, not file location
+      // Path: api/admin/overview.js -> api/stripe/metrics.js
+      const path = require('path');
+      const stripeMetricsPath = path.join(process.cwd(), 'api', 'stripe', 'metrics');
+      
+      let stripeMetricsModule;
+      try {
+        stripeMetricsModule = require(stripeMetricsPath);
+      } catch (requireError) {
+        console.warn('[overview] Could not require stripe/metrics module:', requireError.message);
+        throw new Error(`Failed to load Stripe metrics module: ${requireError.message}`);
+      }
+      
+      const calculateStripeMetrics = stripeMetricsModule?.calculateStripeMetrics;
+      
+      if (!calculateStripeMetrics || typeof calculateStripeMetrics !== 'function') {
+        console.warn('[overview] calculateStripeMetrics function not found in module');
+        throw new Error('calculateStripeMetrics function not found in stripe/metrics module');
+      }
+      
+      stripeMetrics = await calculateStripeMetrics(false); // Use cache if available
+      console.log('[overview] Stripe metrics fetched successfully:', {
+        annual_active: stripeMetrics?.annual_active_count,
+        revenue_all_time: stripeMetrics?.revenue_net_all_time_gbp,
+        invoices_found: stripeMetrics?.debug_invoices_found,
+        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
+      });
+    } catch (error) {
+      console.error('[overview] Stripe metrics error:', error.message);
+      console.error('[overview] Stripe metrics error stack:', error.stack);
+      // Don't fail the entire endpoint if Stripe fails - continue with null metrics
+      stripeError = {
+        message: error.message || 'Unknown Stripe error',
+        code: error.code,
+        stack: error.stack,
+        debugInfo: error.debugInfo || null
+      };
+      console.error('[overview] Error fetching Stripe metrics:', error.message);
+      console.error('[overview] Error stack:', error.stack);
+    }
+
     // ===== LOST REVENUE OPPORTUNITY =====
     // Calculate lost revenue from trials that expired without converting (all-time)
     // This is the revenue opportunity if all expired trials had converted
@@ -517,7 +565,7 @@ module.exports = async (req, res) => {
       }
     });
 
-    // Get annual price from Stripe metrics or use default
+    // Get annual price from Stripe metrics or use default (stripeMetrics is now initialized above)
     const annualPrice = stripeMetrics?.academy_annual_list_price_gbp || 79;
     const lostRevenueOpportunityAllTime = Math.round(trialsEndedWithoutConversionAllTime.length * annualPrice * 100) / 100;
     const lostRevenueOpportunity30d = Math.round(trialsEndedWithoutConversion30d.length * annualPrice * 100) / 100;
