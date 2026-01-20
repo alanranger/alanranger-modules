@@ -469,15 +469,19 @@ module.exports = async (req, res) => {
       ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    // 30d conversion rate: conversions that happened in last 30d / trials that ended in last 30d
-    // Note: This shows recent conversion activity, not a strict cohort
+    // 30d conversion rate: conversions that happened in last 30d / all people who ever had a trial
+    // This shows: "Of all people who ever tried, what % converted in the last 30 days?"
+    // This is more meaningful than cohort-based (trials ended in 30d) because:
+    // 1. Avoids 0 denominator when no trials ended recently
+    // 2. Shows recent conversion activity regardless of when trial ended
+    // 3. More stable and actionable metric
     // Use Stripe metrics conversion count if available (more accurate)
     const conversionsCount30d = stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length;
-    // CRITICAL: If no trials ended in 30d but we have conversions, show the conversion count, not null
-    // This handles the case where conversions happened but trials ended outside the 30d window
-    const trialConversionRate30d = trialsEnded30d.length > 0 
-      ? Math.round((conversionsCount30d / trialsEnded30d.length) * 100 * 10) / 10
-      : (conversionsCount30d > 0 ? conversionsCount30d : null); // Show count if conversions exist but no trials ended
+    // Denominator: All people who ever had a trial (all-time)
+    const allTrialsStartedCount = trialsStartedAllTime.length;
+    const trialConversionRate30d = allTrialsStartedCount > 0 
+      ? Math.round((conversionsCount30d / allTrialsStartedCount) * 100 * 10) / 10
+      : null;
     
     // Revenue from conversions
     const revenueFromConversionsAllTime = allConversions.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
