@@ -592,7 +592,7 @@ export default function AdminDashboard() {
 
 
       {/* Revenue & Retention */}
-      <div style={{ marginTop: '12px' }}>
+      <div style={{ marginTop: '10px' }}>
         {/* Row 1: Conversion Metrics */}
         <div style={{ marginBottom: '4px' }}>
           <div style={{ 
@@ -607,7 +607,7 @@ export default function AdminDashboard() {
             Conversion Metrics
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Conversion rate: Of all people who ever had a trial, what % converted to annual in the last 30 days? Formula: (Conversions in last 30d) / (All people who ever had a trial) × 100. This shows recent conversion activity regardless of when the trial ended."
@@ -689,7 +689,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '4px 0'
+          margin: '3px 0'
         }}></div>
         
         {/* Row 2: Revenue - All-time */}
@@ -706,7 +706,7 @@ export default function AdminDashboard() {
             Revenue — All-time
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
@@ -798,7 +798,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '4px 0'
+          margin: '3px 0'
         }}></div>
         
         {/* Row 3: Revenue - 30 Days & Growth */}
@@ -815,7 +815,7 @@ export default function AdminDashboard() {
             Revenue — 30 Days & Growth
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Net paid revenue from annual subscriptions in the last 30 days. Includes both direct annual signups and trial conversions. Net = after Stripe fees."
@@ -905,7 +905,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '4px 0'
+          margin: '3px 0'
         }}></div>
         
         {/* Row 4: Risk & Opportunity */}

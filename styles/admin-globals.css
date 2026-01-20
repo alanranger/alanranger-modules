@@ -73,7 +73,7 @@ body {
 .ar-admin-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 32px;
 }
 
@@ -82,14 +82,14 @@ body {
   background: var(--ar-card);
   border: 2px solid var(--ar-border);
   border-radius: var(--ar-radius);
-  padding: 14px 14px 12px;
+  padding: 12px 12px 10px;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   text-decoration: none;
   color: inherit;
   display: block;
   overflow: hidden;
-  min-height: 100px;
+  min-height: 85px;
 }
 
 .ar-admin-kpi-tile::after {
@@ -167,22 +167,22 @@ body {
 }
 
 .ar-admin-kpi-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ar-text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .ar-admin-kpi-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--ar-orange);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .ar-admin-kpi-period {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ar-text-muted);
 }
 
