@@ -798,8 +798,10 @@ module.exports = async (req, res) => {
         trialConversionRate30d: trialConversionRate30d,
         trialsEnded30d: trialsEnded30d.length, // Trials that ended in last 30d
         trialsEndedAllTime: allTrialsEndedCount,
-        revenueFromConversionsAllTime: Math.round(revenueFromConversionsAllTime * 100) / 100,
-        revenueFromConversions30d: Math.round(revenueFromConversions30d * 100) / 100,
+        // Revenue from conversions - use Stripe metrics (source of truth from invoices)
+        // Fall back to calculated amount only if Stripe metrics unavailable
+        revenueFromConversionsAllTime: stripeMetrics?.revenue_from_conversions_net_all_time_gbp ?? Math.round(revenueFromConversionsAllTime * 100) / 100,
+        revenueFromConversions30d: stripeMetrics?.revenue_from_conversions_net_30d_gbp ?? Math.round(revenueFromConversions30d * 100) / 100,
         
         // Drop-off (from Stripe if available)
         trialDropOff30d: stripeMetrics?.trials_ended_last_30d ? (stripeMetrics.trials_ended_last_30d - stripeMetrics.conversions_trial_to_annual_last_30d) : trialDropOff30d,
