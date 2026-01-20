@@ -357,49 +357,65 @@ module.exports = async (req, res) => {
     
     // First, get conversions from timelines (trial start event + annual paid event)
     Object.values(memberTimelines).forEach(t => {
-      if (t.trialStartAt && t.annualPaidAt && t.annualPaidAt > t.trialStartAt) {
-        allConversions.push(t);
+      if (t.trialStartAt && t.annualPaidAt) {
+        // Use getTime() for reliable date comparison
+        const trialTime = t.trialStartAt instanceof Date ? t.trialStartAt.getTime() : new Date(t.trialStartAt).getTime();
+        const annualTime = t.annualPaidAt instanceof Date ? t.annualPaidAt.getTime() : new Date(t.annualPaidAt).getTime();
+        if (annualTime > trialTime) {
+          allConversions.push(t);
+        }
       }
     });
     
     // Also check annual members who were created significantly before their annual subscription
     // This catches cases where trial events weren't recorded but timing suggests conversion
-    if (allMembersForBI) {
+    if (allMembersForBI && Array.isArray(allMembersForBI)) {
       allMembersForBI.forEach(member => {
-        const plan = member.plan_summary || {};
-        if (plan.plan_type === 'annual' && (plan.status || '').toUpperCase() === 'ACTIVE') {
-          const memberId = member.member_id;
-          const timeline = memberTimelines[memberId];
-          
-          // Skip if already in conversions
-          if (allConversions.find(c => c.ms_member_id === memberId)) {
-            return;
-          }
-          
-          const memberCreatedAt = member.created_at ? new Date(member.created_at) : null;
-          const annualStartDate = plan.current_period_start ? new Date(plan.current_period_start) : null;
-          
-          // Check if annual subscription was created significantly after member creation
-          // (more than 7 days suggests they had a trial first)
-          if (memberCreatedAt && annualStartDate && 
-              (annualStartDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000)) {
-            // Find annual subscription creation event
-            const annualSubEvent = planEvents?.find(e => 
-              e.ms_member_id === memberId &&
-              e.event_type === 'customer.subscription.created' &&
-              (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
-            );
+        try {
+          const plan = member.plan_summary || {};
+          if (plan.plan_type === 'annual' && (plan.status || '').toUpperCase() === 'ACTIVE') {
+            const memberId = member.member_id;
+            if (!memberId) return;
             
-            if (annualSubEvent) {
-              allConversions.push({
-                ms_member_id: memberId,
-                trialStartAt: memberCreatedAt,
-                annualPaidAt: new Date(annualSubEvent.created_at),
-                annualInvoiceId: null,
-                annualAmount: 0
-              });
+            const timeline = memberTimelines[memberId];
+            
+            // Skip if already in conversions
+            if (allConversions.find(c => c.ms_member_id === memberId)) {
+              return;
+            }
+            
+            const memberCreatedAt = member.created_at ? new Date(member.created_at) : null;
+            const annualStartDate = plan.current_period_start ? new Date(plan.current_period_start) : null;
+            
+            // Check if annual subscription was created significantly after member creation
+            // (more than 7 days suggests they had a trial first)
+            if (memberCreatedAt && annualStartDate && 
+                !isNaN(memberCreatedAt.getTime()) && !isNaN(annualStartDate.getTime()) &&
+                (annualStartDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000)) {
+              // Find annual subscription creation event
+              const annualSubEvent = (planEvents || []).find(e => 
+                e && e.ms_member_id === memberId &&
+                e.event_type === 'customer.subscription.created' &&
+                (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+              );
+              
+              if (annualSubEvent && annualSubEvent.created_at) {
+                const annualPaidDate = new Date(annualSubEvent.created_at);
+                if (!isNaN(annualPaidDate.getTime())) {
+                  allConversions.push({
+                    ms_member_id: memberId,
+                    trialStartAt: memberCreatedAt,
+                    annualPaidAt: annualPaidDate,
+                    annualInvoiceId: null,
+                    annualAmount: 0
+                  });
+                }
+              }
             }
           }
+        } catch (e) {
+          // Skip members with errors, log for debugging
+          console.warn('[overview] Error processing member for conversion detection:', member?.email || member?.member_id, e.message);
         }
       });
     }
