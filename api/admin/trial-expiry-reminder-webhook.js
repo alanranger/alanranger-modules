@@ -380,6 +380,63 @@ module.exports = async (req, res) => {
       });
     }
 
+    // TEST MODE: If testEmail query parameter is provided, send test email to that address
+    const testEmail = req.query.testEmail;
+    if (testEmail) {
+      console.log(`[trial-expiry-reminder] TEST MODE: Sending test email to ${testEmail}`);
+      
+      // Fetch member data from Supabase
+      const { data: testMember, error: testError } = await supabase
+        .from('ms_members_cache')
+        .select('member_id, email, name, plan_summary')
+        .eq('email', testEmail)
+        .single();
+      
+      if (testError || !testMember) {
+        return res.status(400).json({
+          success: false,
+          error: `Test email ${testEmail} not found in database`,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Get expiry date from plan_summary
+      const planSummary = testMember.plan_summary || {};
+      const expiryDateStr = planSummary.expiry_date;
+      const now = new Date();
+      const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if not found
+      const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+      
+      // Create test member object
+      const testMemberObj = {
+        member_id: testMember.member_id,
+        email: testMember.email,
+        name: testMember.name || "Test User",
+        trial_expiry_date: expiryDateStr || expiryDate.toISOString(),
+        days_until_expiry: daysUntilExpiry
+      };
+      
+      // Send test email
+      const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry);
+      
+      return res.status(200).json({
+        success: true,
+        test_mode: true,
+        timestamp: new Date().toISOString(),
+        test_email: testEmail,
+        days_until_expiry: daysUntilExpiry,
+        email_sent: result.sent,
+        email_error: result.error || null,
+        message_id: result.messageId || null,
+        email_content_preview: {
+          subject: daysUntilExpiry === 1
+            ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
+            : `Your Academy Trial Expires in ${daysUntilExpiry === 1 ? '24 hours' : `${daysUntilExpiry} days`} - Upgrade to Continue Access`,
+          upgrade_url: UPGRADE_URL
+        }
+      });
+    }
+
     const expiringMembers = await getMembersWithExpiringTrials(daysAhead);
 
     // Send emails to all members with expiring trials
