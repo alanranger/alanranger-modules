@@ -592,13 +592,9 @@ export default function AdminDashboard() {
 
 
       {/* Revenue & Retention */}
-      <div style={{ marginTop: '32px' }}>
-        <h2 className="ar-admin-card-title" style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 700 }}>
-          Revenue & Retention
-        </h2>
-        
+      <div style={{ marginTop: '16px' }}>
         {/* Row 1: Conversion Metrics */}
-        <div style={{ marginBottom: '8px' }}>
+        <div style={{ marginBottom: '4px' }}>
           <div style={{ 
             fontSize: '11px', 
             fontWeight: 300, 
@@ -606,7 +602,7 @@ export default function AdminDashboard() {
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '8px',
-            opacity: 0.6
+            opacity: 0.9
           }}>
             Conversion Metrics
           </div>
@@ -693,11 +689,11 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '16px 0'
+          margin: '8px 0'
         }}></div>
         
         {/* Row 2: Revenue - All-time */}
-        <div style={{ marginBottom: '8px' }}>
+        <div style={{ marginBottom: '4px' }}>
           <div style={{ 
             fontSize: '11px', 
             fontWeight: 300, 
@@ -705,7 +701,7 @@ export default function AdminDashboard() {
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '8px',
-            opacity: 0.6
+            opacity: 0.9
           }}>
             Revenue — All-time
           </div>
@@ -802,11 +798,11 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '16px 0'
+          margin: '8px 0'
         }}></div>
         
         {/* Row 3: Revenue - 30 Days & Growth */}
-        <div style={{ marginBottom: '8px' }}>
+        <div style={{ marginBottom: '4px' }}>
           <div style={{ 
             fontSize: '11px', 
             fontWeight: 300, 
@@ -814,7 +810,7 @@ export default function AdminDashboard() {
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '8px',
-            opacity: 0.6
+            opacity: 0.9
           }}>
             Revenue — 30 Days & Growth
           </div>
@@ -909,11 +905,11 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '16px 0'
+          margin: '8px 0'
         }}></div>
         
         {/* Row 4: Risk & Opportunity */}
-        <div style={{ marginBottom: '8px' }}>
+        <div style={{ marginBottom: '4px' }}>
           <div style={{ 
             fontSize: '11px', 
             fontWeight: 300, 
@@ -921,7 +917,7 @@ export default function AdminDashboard() {
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '8px',
-            opacity: 0.6
+            opacity: 0.9
           }}>
             Risk & Opportunity
           </div>
