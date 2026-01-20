@@ -368,8 +368,9 @@ module.exports = async (req, res) => {
       }
     });
     
-    // Also check annual members who were created significantly before their annual subscription
+    // Also check annual members using the SAME logic as Stripe metrics
     // This catches cases where trial events weren't recorded but timing suggests conversion
+    // CRITICAL: Use the EXACT same logic as getConversionsFromSupabase in stripe/metrics.js
     if (allMembersForBI && Array.isArray(allMembersForBI)) {
       allMembersForBI.forEach(member => {
         try {
@@ -386,35 +387,66 @@ module.exports = async (req, res) => {
             }
             
             const memberCreatedAt = member.created_at ? new Date(member.created_at) : null;
-            const annualStartDate = plan.current_period_start ? new Date(plan.current_period_start) : null;
             
-            // Check if annual subscription was created significantly after member creation
-            // (more than 1 day suggests they had a trial first - same logic as Stripe metrics)
-            const daysBetween = memberCreatedAt && annualStartDate && 
-                                !isNaN(memberCreatedAt.getTime()) && !isNaN(annualStartDate.getTime())
-                                ? (annualStartDate.getTime() - memberCreatedAt.getTime()) / (1000 * 60 * 60 * 24)
-                                : 0;
+            // Get member events for this member
+            const memberEvents = (planEvents || []).filter(e => e.ms_member_id === memberId);
             
-            if (daysBetween > 1) {
-              // Try to find invoice.paid event first (more accurate payment date)
-              const invoicePaidEvent = (planEvents || []).find(e => 
-                e && e.ms_member_id === memberId &&
-                e.event_type === 'invoice.paid' &&
-                (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
-              );
+            // Get annual subscription creation date from events
+            const annualSubscriptionCreated = memberEvents.find(e => 
+              e.event_type === 'customer.subscription.created' &&
+              (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+            );
+            const annualStartDate = annualSubscriptionCreated ? new Date(annualSubscriptionCreated.created_at) :
+                                   (plan.current_period_start ? new Date(plan.current_period_start) : null);
+            
+            // Check 1: Trial event exists in timeline
+            const hadTrialFromEvents = timeline?.trialStartAt !== null;
+            
+            // Check 2: Any trial-related event in their history
+            const hasTrialEvent = memberEvents.some(e => 
+              e.event_type === 'checkout.session.completed' &&
+              (e.ms_price_id?.includes('trial') || e.ms_price_id?.includes('30-day'))
+            );
+            
+            // Check 3: Member was created SIGNIFICANTLY before annual subscription/paid date
+            // Use annualPaidAt from timeline if available, otherwise use annualStartDate
+            // CRITICAL: Same-day signups (member created = annual paid same day) are NOT conversions
+            const annualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : annualStartDate;
+            const daysBetween = memberCreatedAt && annualPaidDate ? 
+                               (annualPaidDate.getTime() - memberCreatedAt.getTime()) / (1000 * 60 * 60 * 24) : 0;
+            const hadTrialFromTiming = daysBetween > 1; // Must be more than 1 day gap
+            
+            // If ANY check is true, they had a trial
+            const hadTrial = hadTrialFromEvents || hasTrialEvent || hadTrialFromTiming;
+            
+            // If they had a trial AND now have annual, it's a conversion
+            if (hadTrial) {
+              // Use annualPaidAt from timeline if available, otherwise find from events
+              let finalAnnualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : null;
               
-              // Fall back to subscription.created if no invoice.paid found
-              const annualSubEvent = invoicePaidEvent || (planEvents || []).find(e => 
-                e && e.ms_member_id === memberId &&
-                e.event_type === 'customer.subscription.created' &&
-                (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
-              );
+              if (!finalAnnualPaidDate) {
+                // Try to find invoice.paid event first (more accurate payment date)
+                const invoicePaidEvent = memberEvents.find(e => 
+                  e.event_type === 'invoice.paid' &&
+                  (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+                );
+                
+                // Fall back to subscription.created if no invoice.paid found
+                const annualSubEvent = invoicePaidEvent || annualSubscriptionCreated;
+                
+                if (annualSubEvent && annualSubEvent.created_at) {
+                  finalAnnualPaidDate = new Date(annualSubEvent.created_at);
+                }
+              }
               
-              if (annualSubEvent && annualSubEvent.created_at) {
-                const annualPaidDate = new Date(annualSubEvent.created_at);
-                if (!isNaN(annualPaidDate.getTime())) {
-                  // Extract amount from invoice.paid if available
-                  let annualAmount = 0;
+              if (finalAnnualPaidDate && !isNaN(finalAnnualPaidDate.getTime())) {
+                // Extract amount from timeline or invoice.paid if available
+                let annualAmount = timeline?.annualAmount || 0;
+                if (annualAmount === 0) {
+                  const invoicePaidEvent = memberEvents.find(e => 
+                    e.event_type === 'invoice.paid' &&
+                    (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
+                  );
                   if (invoicePaidEvent && invoicePaidEvent.payload) {
                     try {
                       const payload = typeof invoicePaidEvent.payload === 'string' 
@@ -428,16 +460,19 @@ module.exports = async (req, res) => {
                       // Ignore parse errors
                     }
                   }
-                  
-                  allConversions.push({
-                    ms_member_id: memberId,
-                    trialStartAt: memberCreatedAt,
-                    annualPaidAt: annualPaidDate,
-                    annualInvoiceId: invoicePaidEvent?.stripe_invoice_id || null,
-                    annualAmount: annualAmount
-                  });
-                  console.log(`[overview] ✅ Conversion from timing: member_id=${memberId}, email=${member.email}, daysBetween=${daysBetween.toFixed(1)}, annualPaid=${annualPaidDate.toISOString()}`);
                 }
+                
+                // Use trialStartAt from timeline if available, otherwise use memberCreatedAt
+                const trialStartDate = timeline?.trialStartAt ? new Date(timeline.trialStartAt) : memberCreatedAt;
+                
+                allConversions.push({
+                  ms_member_id: memberId,
+                  trialStartAt: trialStartDate,
+                  annualPaidAt: finalAnnualPaidDate,
+                  annualInvoiceId: timeline?.annualInvoiceId || null,
+                  annualAmount: annualAmount
+                });
+                console.log(`[overview] ✅ Conversion from fallback: member_id=${memberId}, email=${member.email}, hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, hasTrialEvent=${hasTrialEvent}, fromTiming=${hadTrialFromTiming}), trialStart=${trialStartDate?.toISOString() || 'N/A'}, annualPaid=${finalAnnualPaidDate.toISOString()}`);
               }
             }
           }
