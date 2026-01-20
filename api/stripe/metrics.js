@@ -556,28 +556,44 @@ async function calculateStripeMetrics(forceRefresh = false) {
         }
 
         // Classify as conversion or direct (if subscription exists)
+        // IMPORTANT: Only count the FIRST invoice for each subscription (billing_reason='subscription_create')
+        // Renewal invoices (billing_reason='subscription_cycle') should NOT be counted in initial revenue
+        const isFirstInvoice = !invoice.billing_reason || 
+                              invoice.billing_reason === 'subscription_create' ||
+                              invoice.billing_reason === 'manual';
+        
         if (invoice.subscription) {
           const subscriptionId = typeof invoice.subscription === 'string' 
             ? invoice.subscription 
             : invoice.subscription.id;
 
-          if (convertedAnnualSubIds.has(subscriptionId)) {
-            revenueFromConversionsNetAllTime += invoiceRevenue;
-            if (isInLast30d) {
-              revenueFromConversionsNet30d += invoiceRevenue;
+          // Only count first invoice for revenue breakdown
+          if (isFirstInvoice) {
+            if (convertedAnnualSubIds.has(subscriptionId)) {
+              revenueFromConversionsNetAllTime += invoiceRevenue;
+              if (isInLast30d) {
+                revenueFromConversionsNet30d += invoiceRevenue;
+              }
+              console.log(`[stripe-metrics] Invoice ${invoice.id} classified as CONVERSION: £${invoiceRevenue}, subscription=${subscriptionId}`);
+            } else {
+              revenueFromDirectAnnualNetAllTime += invoiceRevenue;
+              if (isInLast30d) {
+                revenueFromDirectAnnualNet30d += invoiceRevenue;
+              }
+              console.log(`[stripe-metrics] Invoice ${invoice.id} classified as DIRECT ANNUAL: £${invoiceRevenue}, subscription=${subscriptionId}`);
             }
           } else {
+            console.log(`[stripe-metrics] Skipping renewal invoice ${invoice.id} (billing_reason=${invoice.billing_reason})`);
+          }
+        } else {
+          // Invoice has annual price but no subscription (unlikely but handle it)
+          // Only count if it's a first invoice
+          if (isFirstInvoice) {
+            // Treat as direct annual
             revenueFromDirectAnnualNetAllTime += invoiceRevenue;
             if (isInLast30d) {
               revenueFromDirectAnnualNet30d += invoiceRevenue;
             }
-          }
-        } else {
-          // Invoice has annual price but no subscription (unlikely but handle it)
-          // Treat as direct annual
-          revenueFromDirectAnnualNetAllTime += invoiceRevenue;
-          if (isInLast30d) {
-            revenueFromDirectAnnualNet30d += invoiceRevenue;
           }
         }
       }
