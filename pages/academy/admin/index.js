@@ -591,12 +591,27 @@ export default function AdminDashboard() {
       </div>
 
 
-      {/* Revenue & Retention Row */}
+      {/* Revenue & Retention */}
       <div style={{ marginTop: '32px' }}>
         <h2 className="ar-admin-card-title" style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 700 }}>
           Revenue & Retention
         </h2>
-        <div className="ar-admin-kpi-grid">
+        
+        {/* Row 1: Conversion Metrics */}
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: 300, 
+            color: 'var(--ar-text-muted)', 
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
+            opacity: 0.6
+          }}>
+            Conversion Metrics
+          </div>
+        </div>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Conversion rate: Of all people who ever had a trial, what % converted to annual in the last 30 days? Formula: (Conversions in last 30d) / (All people who ever had a trial) × 100. This shows recent conversion activity regardless of when the trial ended."
@@ -619,6 +634,18 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
+            title="Total number of members who started a trial and later converted to annual plan. All-time count."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Conversions — Trial → Annual
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}</div>
+            <div className="ar-admin-kpi-period">All-time</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
             title="Trials that ended in the last 30 days without converting to annual, divided by total trials ended in the period. Conversion window: 7 days after trial end."
             style={{ cursor: 'help' }}
           >
@@ -637,6 +664,18 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
+            title="Total number of trials that ended (all-time). Supporting stat for conversion calculations."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Trials Ended
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.trialsEnded30d || 0}</div>
+            <div className="ar-admin-kpi-period">Last 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
             title="Trials expiring in 7d with low activation (under 3 module opens and 0 exam attempts)."
             style={{ cursor: 'help' }}
           >
@@ -647,48 +686,31 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskTrialsNext7d || 0}</div>
             <div className="ar-admin-kpi-period">Next 7 days</div>
           </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Annual subscriptions with status='canceled' and ended_at within last 90 days. Churn rate = churned / (active at start + churned)."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              Annual Churn
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">
-              {kpis?.bi?.annualChurnRate90d !== null && kpis?.bi?.annualChurnRate90d !== undefined
-                ? `${kpis.bi.annualChurnRate90d}%`
-                : '—'}
-            </div>
-            <div className="ar-admin-kpi-period">
-              {kpis?.bi?.annualChurnCount90d || 0} churned (90d)
-            </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Sum of subscription revenue for these at-risk subscriptions."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              Revenue at Risk
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">
-              {kpis?.bi?.revenueAtRiskNext30d !== null && kpis?.bi?.revenueAtRiskNext30d !== undefined
-                ? `£${Math.round(kpis.bi.revenueAtRiskNext30d)}`
-                : '—'}
-            </div>
-            <div className="ar-admin-kpi-period">
-              {kpis?.bi?.atRiskAnnualCount || 0} at-risk (next 30d)
-            </div>
+        </div>
+        
+        {/* Divider */}
+        <div style={{ 
+          height: '1px', 
+          background: 'var(--ar-border)', 
+          opacity: 0.3,
+          margin: '16px 0'
+        }}></div>
+        
+        {/* Row 2: Revenue - All-time */}
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: 300, 
+            color: 'var(--ar-text-muted)', 
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
+            opacity: 0.6
+          }}>
+            Revenue — All-time
           </div>
         </div>
-      </div>
-
-      {/* Revenue & Growth Row */}
-      <div style={{ marginTop: '32px' }}>
-        <div className="ar-admin-kpi-grid">
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
@@ -704,22 +726,6 @@ export default function AdminDashboard() {
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time (all plans)</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Net paid revenue from annual subscriptions in the last 30 days. Includes both direct annual signups and trial conversions. Net = after Stripe fees."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              Annual Revenue (Net)
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.annual_revenue_net_30d_gbp !== null && kpis?.stripe?.annual_revenue_net_30d_gbp !== undefined
-                ? `£${Math.round(kpis.stripe.annual_revenue_net_30d_gbp)}`
-                : '£0'}
-            </div>
-            <div className="ar-admin-kpi-period">Last 30 days</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
@@ -757,21 +763,19 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Potential revenue if all active trials convert to annual. Gross = active trials × annual price."
+            title="Annual Run-Rate: Sum of annual subscription revenue from all active annual subscriptions (price × quantity per year)."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
-              Trial Opportunity (if 100% convert)
+              ARR (Annual Run-Rate)
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.opportunity_revenue_gross_gbp !== null && kpis?.stripe?.opportunity_revenue_gross_gbp !== undefined
-                ? `£${Math.round(kpis.stripe.opportunity_revenue_gross_gbp)}`
-                : '£0'}
+              {kpis?.stripe?.arr_gbp !== null && kpis?.stripe?.arr_gbp !== undefined
+                ? `£${Math.round(kpis.stripe.arr_gbp)}`
+                : '—'}
             </div>
-            <div className="ar-admin-kpi-period">
-              Gross ({kpis?.trials || 0} active trials)
-            </div>
+            <div className="ar-admin-kpi-period">From active annuals</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
@@ -791,34 +795,43 @@ export default function AdminDashboard() {
               {kpis?.bi?.trialsEndedWithoutConversionAllTime ?? 0} expired (all-time)
             </div>
           </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Annual Run-Rate: Sum of annual subscription revenue from all active annual subscriptions (price × quantity per year)."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              ARR (Annual Run-Rate)
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.arr_gbp !== null && kpis?.stripe?.arr_gbp !== undefined
-                ? `£${Math.round(kpis.stripe.arr_gbp)}`
-                : '—'}
-            </div>
-            <div className="ar-admin-kpi-period">From active annuals</div>
+        </div>
+        
+        {/* Divider */}
+        <div style={{ 
+          height: '1px', 
+          background: 'var(--ar-border)', 
+          opacity: 0.3,
+          margin: '16px 0'
+        }}></div>
+        
+        {/* Row 3: Revenue - 30 Days & Growth */}
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: 300, 
+            color: 'var(--ar-text-muted)', 
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
+            opacity: 0.6
+          }}>
+            Revenue — 30 Days & Growth
           </div>
+        </div>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from direct annual signups (no trial first) in the last 30 days. Net = after Stripe fees."
+            title="Net paid revenue from annual subscriptions in the last 30 days. Includes both direct annual signups and trial conversions. Net = after Stripe fees."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
-              Revenue from Direct Annual (30d)
+              Annual Revenue (Net)
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
             <div className="ar-admin-kpi-value">
-              {kpis?.stripe?.revenue_from_direct_annual_net_30d_gbp !== null && kpis?.stripe?.revenue_from_direct_annual_net_30d_gbp !== undefined
-                ? `£${Math.round(kpis.stripe.revenue_from_direct_annual_net_30d_gbp)}`
+              {kpis?.stripe?.annual_revenue_net_30d_gbp !== null && kpis?.stripe?.annual_revenue_net_30d_gbp !== undefined
+                ? `£${Math.round(kpis.stripe.annual_revenue_net_30d_gbp)}`
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
@@ -843,39 +856,19 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Total number of trials that ended (all-time). Supporting stat for conversion calculations."
+            title="Net paid revenue from direct annual signups (no trial first) in the last 30 days. Net = after Stripe fees."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
-              Trials Ended
+              Revenue from Direct Annual (30d)
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
-            <div className="ar-admin-kpi-value">{kpis?.bi?.trialsEnded30d || 0}</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.revenue_from_direct_annual_net_30d_gbp !== null && kpis?.stripe?.revenue_from_direct_annual_net_30d_gbp !== undefined
+                ? `£${Math.round(kpis.stripe.revenue_from_direct_annual_net_30d_gbp)}`
+                : '£0'}
+            </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Total number of members who started a trial and later converted to annual plan. All-time count."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              Conversions — Trial → Annual
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}</div>
-            <div className="ar-admin-kpi-period">All-time</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
-            title="Number of annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Supporting stat for revenue at risk."
-            style={{ cursor: 'help' }}
-          >
-            <div className="ar-admin-kpi-label">
-              At-Risk Annual
-              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
-            </div>
-            <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskAnnualCount || 0}</div>
-            <div className="ar-admin-kpi-period">Next 30 days</div>
           </div>
           <div 
             className="ar-admin-kpi-tile" 
@@ -910,7 +903,99 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">30 days (new annual - churned)</div>
           </div>
         </div>
+        
+        {/* Divider */}
+        <div style={{ 
+          height: '1px', 
+          background: 'var(--ar-border)', 
+          opacity: 0.3,
+          margin: '16px 0'
+        }}></div>
+        
+        {/* Row 4: Risk & Opportunity */}
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: 300, 
+            color: 'var(--ar-text-muted)', 
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
+            opacity: 0.6
+          }}>
+            Risk & Opportunity
+          </div>
+        </div>
+        <div className="ar-admin-kpi-grid">
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Annual subscriptions with status='canceled' and ended_at within last 90 days. Churn rate = churned / (active at start + churned)."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Annual Churn
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.annualChurnRate90d !== null && kpis?.bi?.annualChurnRate90d !== undefined
+                ? `${kpis.bi.annualChurnRate90d}%`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.annualChurnCount90d || 0} churned (90d)
+            </div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Sum of subscription revenue for these at-risk subscriptions."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Revenue at Risk
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.revenueAtRiskNext30d !== null && kpis?.bi?.revenueAtRiskNext30d !== undefined
+                ? `£${Math.round(kpis.bi.revenueAtRiskNext30d)}`
+                : '—'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.atRiskAnnualCount || 0} at-risk (next 30d)
+            </div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Number of annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Supporting stat for revenue at risk."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              At-Risk Annual
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskAnnualCount || 0}</div>
+            <div className="ar-admin-kpi-period">Next 30 days</div>
+          </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Potential revenue if all active trials convert to annual. Gross = active trials × annual price."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Trial Opportunity (if 100% convert)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.stripe?.opportunity_revenue_gross_gbp !== null && kpis?.stripe?.opportunity_revenue_gross_gbp !== undefined
+                ? `£${Math.round(kpis.stripe.opportunity_revenue_gross_gbp)}`
+                : '£0'}
+            </div>
+            <div className="ar-admin-kpi-period">
+              Gross ({kpis?.trials || 0} active trials)
+            </div>
+          </div>
+        </div>
       </div>
+
 
       {/* Top Lists */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
