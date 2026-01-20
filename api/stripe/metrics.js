@@ -349,10 +349,9 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Build map of converted annual subscription IDs and count conversions
-    const convertedAnnualSubIds = new Set();
-    let conversions30d = 0;
-    let conversionsAllTime = 0;
+    // Count conversions (convertedAnnualSubIds already built above for same-subscription conversions)
+    let conversions30d = convertedAnnualSubIds.size; // Start with same-subscription conversions
+    let conversionsAllTime = convertedAnnualSubIds.size;
     let trialsEnded30d = 0;
     let trialsEndedAllTime = 0;
 
@@ -388,13 +387,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
             const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
 
             // Conversion if annual started after trial ended (no time limit - can be months later)
-            // OR if this is the same subscription (trial.id === annual.id) - same subscription conversion
-            const isSameSubscription = trial.id === annual.id || trial.id === annual.id + '_trial';
-            if (daysDiff >= 0 || isSameSubscription) {
+            // Only add if not already in set (avoid double counting same-subscription conversions)
+            if (daysDiff >= 0 && !convertedAnnualSubIds.has(annual.id)) {
               convertedAnnualSubIds.add(annual.id);
               conversionsAllTime++; // Always count as conversion
               
-              console.log(`[stripe-metrics] ✅ CONVERSION FOUND: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}, same_sub: ${isSameSubscription}`);
+              console.log(`[stripe-metrics] ✅ DIFFERENT-SUBSCRIPTION CONVERSION: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}`);
               
               // Count conversion in 30d if annual subscription was CREATED in last 30d
               // (shows recent conversion activity, not a strict cohort)
@@ -402,6 +400,8 @@ async function calculateStripeMetrics(forceRefresh = false) {
               if (annualCreatedInLast30d) {
                 conversions30d++;
               }
+            } else if (convertedAnnualSubIds.has(annual.id)) {
+              console.log(`[stripe-metrics] ⏭️  Skipping ${annual.id} - already counted as same-subscription conversion`);
             }
           });
         }
