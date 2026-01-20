@@ -1,15 +1,19 @@
 # Trial Expiry Email Templates
 
+**Status:** All 4 email templates implemented and ready. 3 of 4 Zaps active.
+
 This document shows all 4 email templates for trial expiry reminders.
 
 ## Email Schedule
 
-1. **15 days before expiry** - Soft, friendly reminder
-2. **7 days before expiry** - Harder reminder with more urgency
-3. **1 day before expiry** - Final urgent reminder
-4. **1 day after expiry** - Expired notification
+1. **15 days before expiry** - Soft, friendly reminder ✅ **ACTIVE**
+2. **7 days before expiry** - Harder reminder with more urgency ✅ **ACTIVE**
+3. **1 day before expiry** - Final urgent reminder ⏸️ **PENDING** (Zap not created - Zapier limit)
+4. **1 day after expiry** - Expired notification ✅ **ACTIVE**
 
 All emails include a personalized Stripe checkout URL that takes members directly to checkout for the annual plan (£79/year).
+
+**Note:** The 1-day final reminder (Zap 3) is not yet active due to Zapier free plan limit. Review in next 2 weeks to complete setup.
 
 ---
 

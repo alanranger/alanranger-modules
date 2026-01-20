@@ -1,11 +1,14 @@
 # Zapier Setup Instructions - Trial Expiry Reminders
 
+**Status:** 3 of 4 Zaps Active (1-Day Final Reminder pending - Zapier free plan limit reached)
+
 This guide will walk you through setting up 4 separate Zaps in Zapier to send automated trial expiry reminder emails.
 
 ## Prerequisites
 
 - Zapier account (free tier works - each Zap only needs 2 steps)
 - Access to your Zapier dashboard
+- **Note:** Free plan has 5 Zap limit - currently all slots used
 
 ---
 
@@ -13,10 +16,18 @@ This guide will walk you through setting up 4 separate Zaps in Zapier to send au
 
 You'll create **4 separate Zaps**, one for each reminder stage:
 
-1. **Zap 1:** 15-Day Soft Reminder
-2. **Zap 2:** 7-Day Harder Reminder  
-3. **Zap 3:** 1-Day Final Reminder
-4. **Zap 4:** 1-Day After Expiry (Expired Notification)
+1. **Zap 1:** 15-Day Soft Reminder ✅ **ACTIVE**
+2. **Zap 2:** 7-Day Harder Reminder ✅ **ACTIVE**
+3. **Zap 3:** 1-Day Final Reminder ⏸️ **PENDING** (Zapier limit reached)
+4. **Zap 4:** 1-Day After Expiry (Expired Notification) ✅ **ACTIVE**
+
+**Current Status:**
+- ✅ Zap 1: "Academy 15 days left trial reminder" - Running
+- ✅ Zap 2: "Academy - 7-Day Final Trial Reminder" - Running
+- ⏸️ Zap 3: **NOT CREATED** - Need to free up a Zap slot or upgrade plan
+- ✅ Zap 4: "Academy - 1-day after trial expiry" - Running
+
+**Action Required:** Review in next 2 weeks to complete Zap 3 (1-Day Final Reminder - highest priority for conversions)
 
 Each Zap follows the same pattern:
 - **Step 1:** Schedule Trigger (runs daily)
