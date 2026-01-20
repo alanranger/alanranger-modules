@@ -617,29 +617,17 @@ async function calculateStripeMetrics(forceRefresh = false) {
             trialsEndedAllTime++;
           }
 
-          // Check if customer has annual subscription started after trial end
-          // NO TIME RESTRICTION: If someone had a trial and later got annual, it's ALWAYS a conversion
-          // regardless of how long after the trial ended
+          // NOTE: We're NOT doing customer-level matching here anymore because:
+          // 1. Stripe doesn't preserve trial_end after conversion
+          // 2. Supabase is the source of truth for conversions (already built convertedAnnualSubIds above)
+          // 3. This would double-count conversions
+          // 
+          // All conversions should come from Supabase detection above.
+          // This loop is only for counting trials ended, not for finding conversions.
           annuals.forEach(annual => {
-            const annualStart = new Date(annual.created * 1000);
-            const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
-
-            // Conversion if annual started after trial ended (no time limit - can be months later)
-            // Only add if not already in set (avoid double counting same-subscription conversions)
-            if (daysDiff >= 0 && !convertedAnnualSubIds.has(annual.id)) {
-              convertedAnnualSubIds.add(annual.id);
-              conversionsAllTime++; // Always count as conversion
-              
-              console.log(`[stripe-metrics] ✅ DIFFERENT-SUBSCRIPTION CONVERSION: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}`);
-              
-              // Count conversion in 30d if annual subscription was CREATED in last 30d
-              // (shows recent conversion activity, not a strict cohort)
-              const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
-              if (annualCreatedInLast30d) {
-                conversions30d++;
-              }
-            } else if (convertedAnnualSubIds.has(annual.id)) {
-              console.log(`[stripe-metrics] ⏭️  Skipping ${annual.id} - already counted as same-subscription conversion`);
+            // Just log if we find a match, but don't add to convertedAnnualSubIds (already done from Supabase)
+            if (convertedAnnualSubIds.has(annual.id)) {
+              console.log(`[stripe-metrics] ✅ Conversion already detected from Supabase: ${annual.id}`);
             }
           });
         }
