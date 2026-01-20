@@ -295,29 +295,31 @@ async function calculateStripeMetrics(forceRefresh = false) {
     const customerTrials = {};
     const customerAnnuals = {};
     
-    // IMPORTANT: Also check if annual subscriptions themselves had a trial_end
+    // Find Academy annual subscriptions for these customers (check BOTH active and canceled)
+    // We need to check canceled subs too because they might have had paid invoices
+    const allSubsForAnnualCheck = [...allActiveSubs, ...canceledSubs];
+    
+    // Build convertedAnnualSubIds FIRST - check if annual subscriptions themselves had a trial_end
     // In Stripe, when trial converts to annual, it's often the SAME subscription
     // that transitions from 'trialing' to 'active' (trial_end passes, subscription continues)
-    // We need to catch these "same subscription" conversions
+    const convertedAnnualSubIds = new Set();
+    
     allSubsForAnnualCheck.forEach(sub => {
-      if (isAcademyAnnualSubscription(sub) && sub.trial_end) {
-        const trialEnd = new Date(sub.trial_end * 1000);
-        // If this annual subscription had a trial that ended, it's a conversion
-        if (trialEnd <= nowDate) {
-          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
-          if (customerId) {
-            // Add to customerTrials as a synthetic trial entry
-            if (!customerTrials[customerId]) {
-              customerTrials[customerId] = [];
+      if (isAcademyAnnualSubscription(sub)) {
+        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+        if (customerId) {
+          if (!customerAnnuals[customerId]) {
+            customerAnnuals[customerId] = [];
+          }
+          customerAnnuals[customerId].push(sub);
+          
+          // If this annual subscription had a trial_end, it's DEFINITELY a conversion (same subscription)
+          if (sub.trial_end) {
+            const trialEnd = new Date(sub.trial_end * 1000);
+            if (trialEnd <= nowDate) {
+              convertedAnnualSubIds.add(sub.id);
+              console.log(`[stripe-metrics] ✅ SAME-SUBSCRIPTION CONVERSION: Annual sub ${sub.id} had trial_end ${trialEnd.toISOString()}`);
             }
-            // Create a synthetic trial entry for this subscription
-            customerTrials[customerId].push({
-              id: sub.id + '_trial',
-              trial_end: sub.trial_end,
-              customer: sub.customer,
-              status: 'converted_same_sub'
-            });
-            console.log(`[stripe-metrics] Found annual subscription ${sub.id} that had a trial_end (same subscription conversion)`);
           }
         }
       }
@@ -333,25 +335,17 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Find Academy annual subscriptions for these customers (check BOTH active and canceled)
-    // We need to check canceled subs too because they might have had paid invoices
-    const allSubsForAnnualCheck = [...allActiveSubs, ...canceledSubs];
-    
+    // Count same-subscription conversions in 30d
     allSubsForAnnualCheck.forEach(sub => {
-      if (isAcademyAnnualSubscription(sub)) {
-        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
-        if (customerId) {
-          if (!customerAnnuals[customerId]) {
-            customerAnnuals[customerId] = [];
-          }
-          customerAnnuals[customerId].push(sub);
+      if (isAcademyAnnualSubscription(sub) && sub.trial_end && convertedAnnualSubIds.has(sub.id)) {
+        const annualStart = new Date(sub.created * 1000);
+        const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
+        if (annualCreatedInLast30d) {
+          conversions30d++;
         }
       }
     });
-
-    // Count conversions (convertedAnnualSubIds already built above for same-subscription conversions)
-    let conversions30d = convertedAnnualSubIds.size; // Start with same-subscription conversions
-    let conversionsAllTime = convertedAnnualSubIds.size;
+    
     let trialsEnded30d = 0;
     let trialsEndedAllTime = 0;
 
