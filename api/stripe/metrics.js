@@ -114,10 +114,10 @@ async function getConversionsFromSupabase() {
     
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Get all annual members from Supabase
+    // Get all annual members from Supabase (include plan_history if available)
     const { data: members } = await supabase
       .from("ms_members_cache")
-      .select("member_id, email, plan_summary")
+      .select("member_id, email, plan_summary, created_at")
       .order("created_at", { ascending: false });
     
     // Get plan events for conversion detection
@@ -194,21 +194,33 @@ async function getConversionsFromSupabase() {
                              (plan.current_period_start ? new Date(plan.current_period_start) : null) ||
                              (memberCreatedAt);
       
-      // SIMPLE LOGIC: Did they have a trial? Check:
-      // 1. Trial event exists (timeline.trialStartAt)
-      // 2. Member was created before annual subscription (evidence of trial period)
+      // SIMPLE LOGIC: Did they EVER have a trial?
+      // Since every member has either trial OR annual (orphaned ones cleaned up),
+      // if they have annual NOW and EVER had a trial = conversion
+      
+      // Check 1: Trial event exists in timeline
       const hadTrialFromEvents = timeline?.trialStartAt !== null;
+      
+      // Check 2: Any trial-related event in their history
+      const hasTrialEvent = memberEvents.some(e => 
+        e.event_type === 'checkout.session.completed' &&
+        (e.ms_price_id?.includes('trial') || e.ms_price_id?.includes('30-day'))
+      );
+      
+      // Check 3: Member was created before annual subscription/paid date
+      // (If member created before annual, they likely had a trial period)
       const annualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : annualStartDate;
       const hadTrialFromTiming = memberCreatedAt && annualPaidDate && 
                                  memberCreatedAt.getTime() < annualPaidDate.getTime();
       
-      const hadTrial = hadTrialFromEvents || hadTrialFromTiming;
+      // If ANY check is true, they had a trial
+      const hadTrial = hadTrialFromEvents || hasTrialEvent || hadTrialFromTiming;
       
-      // SIMPLE: If they had a trial AND now have annual, it's a conversion (no time restrictions)
+      // SIMPLE: If they had a trial AND now have annual, it's a conversion
       const isConverted = hadTrial;
       
       // Log conversion detection for ALL members
-      console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, fromTiming=${likelyHadTrialFromTiming}), trialStart=${trialStartDate?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted}`);
+      console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, hasTrialEvent=${hasTrialEvent}, fromTiming=${hadTrialFromTiming}), memberCreated=${memberCreatedAt?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted}`);
       
       if (isConverted) {
         // Try multiple methods to get Stripe subscription ID:
