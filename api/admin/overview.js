@@ -423,14 +423,35 @@ module.exports = async (req, res) => {
     // Conversions in last 30d: filter by when annual subscription was CREATED/PAID (not when trial ended)
     // This allows conversions that happened recently even if trial ended months ago
     const conversions30d = allConversions.filter(t => {
-      if (!t.annualPaidAt) return false;
-      try {
-        const annualPaidDate = t.annualPaidAt instanceof Date ? t.annualPaidAt : new Date(t.annualPaidAt);
-        if (isNaN(annualPaidDate.getTime())) return false;
-        return annualPaidDate >= start30d;
-      } catch (e) {
+      if (!t.annualPaidAt) {
+        console.log('[overview] Conversion missing annualPaidAt:', t.ms_member_id);
         return false;
       }
+      try {
+        const annualPaidDate = t.annualPaidAt instanceof Date ? t.annualPaidAt : new Date(t.annualPaidAt);
+        if (isNaN(annualPaidDate.getTime())) {
+          console.log('[overview] Conversion has invalid annualPaidAt date:', t.ms_member_id, t.annualPaidAt);
+          return false;
+        }
+        const isIn30d = annualPaidDate >= start30d;
+        if (!isIn30d) {
+          console.log('[overview] Conversion outside 30d window:', t.ms_member_id, 'annualPaidAt:', annualPaidDate.toISOString(), 'start30d:', start30d.toISOString());
+        }
+        return isIn30d;
+      } catch (e) {
+        console.log('[overview] Error filtering conversion:', t.ms_member_id, e.message);
+        return false;
+      }
+    });
+    
+    console.log('[overview] Conversion detection summary:', {
+      allConversions: allConversions.length,
+      conversions30d: conversions30d.length,
+      conversionDetails: allConversions.map(c => ({
+        member_id: c.ms_member_id,
+        annualPaidAt: c.annualPaidAt,
+        trialStartAt: c.trialStartAt
+      }))
     });
     
     // Trial starts from events
@@ -474,7 +495,8 @@ module.exports = async (req, res) => {
     // - It started before or during the period (trialStartAt <= now)
     // - It ended after the start of the period (trialEndAt >= start30d) OR hasn't ended yet (trialEndAt is null or > now)
     // This shows: "Of trials active in the last 30 days, what % converted?"
-    const conversionsCount30d = conversions30d.length;
+    // NOTE: stripeMetrics will be initialized later, so we'll use it if available
+    let conversionsCount30d = conversions30d.length;
     
     // Count trials that were active at any point during the last 30 days
     const activeTrials30d = Object.values(memberPlans).filter(m => {
@@ -552,11 +574,22 @@ module.exports = async (req, res) => {
         annual_active: stripeMetrics?.annual_active_count,
         revenue_all_time: stripeMetrics?.revenue_net_all_time_gbp,
         invoices_found: stripeMetrics?.debug_invoices_found,
-        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
+        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched,
+        conversions_30d: stripeMetrics?.conversions_trial_to_annual_last_30d,
+        conversions_all_time: stripeMetrics?.conversions_trial_to_annual_all_time
       });
       
-      // NOTE: Conversion rate calculation uses ONLY Supabase data (no Stripe dependency)
-      // Stripe metrics are used for revenue calculations only
+      // NOTE: Use Stripe metrics conversion count if available (more reliable)
+      // Stripe metrics detects conversions from Supabase events more accurately
+      // Fall back to Supabase calculation if Stripe metrics unavailable
+      if (stripeMetrics?.conversions_trial_to_annual_last_30d !== undefined) {
+        console.log('[overview] Using Stripe metrics conversion count (30d):', stripeMetrics.conversions_trial_to_annual_last_30d, 'vs Supabase:', conversionsCount30d);
+        conversionsCount30d = stripeMetrics.conversions_trial_to_annual_last_30d;
+        // Recalculate rate with correct conversion count
+        trialConversionRate30d = activeTrials30dCount > 0 
+          ? Math.round((conversionsCount30d / activeTrials30dCount) * 100 * 10) / 10
+          : null;
+      }
     } catch (error) {
       console.error('[overview] Stripe metrics error:', error.message);
       console.error('[overview] Stripe metrics error stack:', error.stack);
@@ -821,11 +854,11 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics (from Supabase - no Stripe dependency)
+        // Conversion metrics (use Stripe metrics if available for more accurate count)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: allConversions.length,
-        trialToAnnualConversions30d: conversions30d.length,
+        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length,
+        trialToAnnualConversions30d: conversionsCount30d, // Use the count that may have been updated from Stripe metrics
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
         activeTrials30d: activeTrials30dCount, // Trials that were active during last 30d
