@@ -469,18 +469,12 @@ module.exports = async (req, res) => {
       ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    // 30d conversion rate: conversions that happened in last 30d / all people who ever had a trial
-    // This shows: "Of all people who ever tried, what % converted in the last 30 days?"
-    // This is more meaningful than cohort-based (trials ended in 30d) because:
-    // 1. Avoids 0 denominator when no trials ended recently
-    // 2. Shows recent conversion activity regardless of when trial ended
-    // 3. More stable and actionable metric
-    // Use Stripe metrics conversion count if available (more accurate)
-    const conversionsCount30d = stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length;
-    // Denominator: All people who ever had a trial (all-time)
+    // NOTE: stripeMetrics is initialized later, so we'll calculate this after it's available
+    // For now, use the fallback values
+    const conversionsCount30dForRate = conversions30d.length;
     const allTrialsStartedCount = trialsStartedAllTime.length;
-    const trialConversionRate30d = allTrialsStartedCount > 0 
-      ? Math.round((conversionsCount30d / allTrialsStartedCount) * 100 * 10) / 10
+    let trialConversionRate30d = allTrialsStartedCount > 0 
+      ? Math.round((conversionsCount30dForRate / allTrialsStartedCount) * 100 * 10) / 10
       : null;
     
     // Revenue from conversions
@@ -535,6 +529,14 @@ module.exports = async (req, res) => {
         invoices_found: stripeMetrics?.debug_invoices_found,
         annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
       });
+      
+      // Update 30d conversion rate with Stripe metrics if available (more accurate)
+      if (stripeMetrics?.conversions_trial_to_annual_last_30d !== undefined) {
+        const conversionsCount30d = stripeMetrics.conversions_trial_to_annual_last_30d;
+        trialConversionRate30d = allTrialsStartedCount > 0 
+          ? Math.round((conversionsCount30d / allTrialsStartedCount) * 100 * 10) / 10
+          : null;
+      }
     } catch (error) {
       console.error('[overview] Stripe metrics error:', error.message);
       console.error('[overview] Stripe metrics error stack:', error.stack);
