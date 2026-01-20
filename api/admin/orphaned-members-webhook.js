@@ -143,13 +143,36 @@ async function getOrphanedMembers() {
       const createdAt = member.createdAt ? new Date(member.createdAt) : null;
       
       // Check if member has any active plans
-      const hasActivePlan = member.planConnections && 
-        Array.isArray(member.planConnections) && 
-        member.planConnections.length > 0 &&
-        member.planConnections.some(plan => {
-          const status = (plan.status || "").toUpperCase();
+      // Handle both planConnections (array) and planConnections as nested object
+      let hasActivePlan = false;
+      
+      if (member.planConnections) {
+        if (Array.isArray(member.planConnections)) {
+          // Standard array format
+          hasActivePlan = member.planConnections.length > 0 &&
+            member.planConnections.some(plan => {
+              const status = (plan.status || plan?.status || "").toUpperCase();
+              return status === "ACTIVE" || status === "TRIALING";
+            });
+        } else if (typeof member.planConnections === 'object') {
+          // Might be an object with nested structure
+          const connections = member.planConnections.data || member.planConnections.items || [];
+          hasActivePlan = Array.isArray(connections) && connections.length > 0 &&
+            connections.some(plan => {
+              const status = (plan.status || plan?.status || "").toUpperCase();
+              return status === "ACTIVE" || status === "TRIALING";
+            });
+        }
+      }
+      
+      // Also check if member has plans in other possible fields
+      if (!hasActivePlan && member.plans) {
+        const plans = Array.isArray(member.plans) ? member.plans : [];
+        hasActivePlan = plans.length > 0 && plans.some(plan => {
+          const status = (plan.status || plan?.status || "").toUpperCase();
           return status === "ACTIVE" || status === "TRIALING";
         });
+      }
 
       if (!hasActivePlan && email) {
         // Only include members created more than 2 hours ago
