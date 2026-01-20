@@ -833,7 +833,7 @@ module.exports = async (req, res) => {
         // Drop-off (from Stripe if available)
         trialDropOff30d: stripeMetrics?.trials_ended_last_30d ? (stripeMetrics.trials_ended_last_30d - stripeMetrics.conversions_trial_to_annual_last_30d) : trialDropOff30d,
         trialDropoffRate30d: stripeMetrics?.trial_dropoff_last_30d ?? trialDropoffRate30d,
-        trialsEnded30d: stripeMetrics?.trials_ended_last_30d ?? trialsEnded30d.length,
+        // Note: trialsEnded30d already set above with adjusted count for conversion rate
         medianDaysToConvert30d: medianDaysToConvert30d,
         
         // At-risk and churn (from Stripe)
