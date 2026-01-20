@@ -818,11 +818,11 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics (from academy_plan_events - source of truth)
+        // Conversion metrics (use Stripe metrics if available, otherwise fall back to academy_plan_events)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: allConversions.length,
-        trialToAnnualConversions30d: conversions30d.length,
+        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length,
+        trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
         trialsEnded30d: trialsEndedFor30dConversion, // Use adjusted count for 30d conversion rate
