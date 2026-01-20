@@ -328,12 +328,14 @@ async function calculateStripeMetrics(forceRefresh = false) {
             trialsEndedAllTime++;
           }
 
-          // Check if customer has annual subscription started within 7 days of trial end
+          // Check if customer has annual subscription started after trial end
+          // Removed 7-day window restriction - conversions can happen anytime after trial
           annuals.forEach(annual => {
             const annualStart = new Date(annual.created * 1000);
             const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
 
-            if (daysDiff >= 0 && daysDiff <= 7) {
+            // Conversion if annual started after trial ended (no time limit)
+            if (daysDiff >= 0) {
               convertedAnnualSubIds.add(annual.id);
               if (isInLast30d) {
                 conversions30d++;
