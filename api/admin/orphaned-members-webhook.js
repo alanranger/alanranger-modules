@@ -143,15 +143,16 @@ async function getOrphanedMembers() {
       const createdAt = member.createdAt ? new Date(member.createdAt) : null;
       
       // Check if member has any active plans
-      // Handle both planConnections (array) and planConnections as nested object
+      // Members without plans will have planConnections as null, undefined, or empty array
       let hasActivePlan = false;
       
+      // Check planConnections field (primary check)
       if (member.planConnections) {
         if (Array.isArray(member.planConnections)) {
-          // Standard array format
+          // Standard array format - check if any plan is ACTIVE or TRIALING
           hasActivePlan = member.planConnections.length > 0 &&
             member.planConnections.some(plan => {
-              const status = (plan.status || plan?.status || "").toUpperCase();
+              const status = (plan?.status || plan.status || "").toUpperCase();
               return status === "ACTIVE" || status === "TRIALING";
             });
         } else if (typeof member.planConnections === 'object') {
@@ -159,7 +160,7 @@ async function getOrphanedMembers() {
           const connections = member.planConnections.data || member.planConnections.items || [];
           hasActivePlan = Array.isArray(connections) && connections.length > 0 &&
             connections.some(plan => {
-              const status = (plan.status || plan?.status || "").toUpperCase();
+              const status = (plan?.status || plan.status || "").toUpperCase();
               return status === "ACTIVE" || status === "TRIALING";
             });
         }
@@ -169,10 +170,13 @@ async function getOrphanedMembers() {
       if (!hasActivePlan && member.plans) {
         const plans = Array.isArray(member.plans) ? member.plans : [];
         hasActivePlan = plans.length > 0 && plans.some(plan => {
-          const status = (plan.status || plan?.status || "").toUpperCase();
+          const status = (plan?.status || plan.status || "").toUpperCase();
           return status === "ACTIVE" || status === "TRIALING";
         });
       }
+      
+      // If planConnections is null/undefined/empty, member has no active plan
+      // This is the key check for orphaned members
 
       if (!hasActivePlan && email) {
         // Only include members created more than 2 hours ago
