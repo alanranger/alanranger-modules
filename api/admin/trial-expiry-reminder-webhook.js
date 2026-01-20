@@ -68,6 +68,9 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
  */
 async function generateCheckoutUrl(memberId, memberEmail, memberName) {
   try {
+    // Debug: Log Stripe configuration status
+    console.log(`[trial-expiry-reminder] Stripe config check: stripeClient=${!!stripeClient}, STRIPE_PRICE_ID=${!!STRIPE_PRICE_ID}, priceId=${STRIPE_PRICE_ID || 'NOT SET'}`);
+    
     // If Stripe is configured, create a checkout session directly
     if (stripeClient && STRIPE_PRICE_ID) {
       const session = await stripeClient.checkout.sessions.create({
@@ -97,7 +100,7 @@ async function generateCheckoutUrl(memberId, memberEmail, memberName) {
 
     // Fallback: Create a link to checkout page that uses Memberstack client-side checkout
     // This page will automatically initiate checkout for the member
-    console.warn(`[trial-expiry-reminder] Stripe not fully configured, using checkout page for member ${memberId}`);
+    console.warn(`[trial-expiry-reminder] Stripe not fully configured (stripeClient: ${!!stripeClient}, STRIPE_PRICE_ID: ${!!STRIPE_PRICE_ID}), using checkout page for member ${memberId}`);
     return `https://www.alanranger.com/academy/checkout?memberId=${encodeURIComponent(memberId)}&priceId=${encodeURIComponent(ANNUAL_MEMBERSHIP_PRICE_ID)}`;
   } catch (error) {
     console.error(`[trial-expiry-reminder] Error generating checkout URL for member ${memberId}:`, error.message);
