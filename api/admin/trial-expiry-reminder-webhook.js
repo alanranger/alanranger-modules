@@ -477,6 +477,9 @@ module.exports = async (req, res) => {
         days_until_expiry: daysUntilExpiry
       };
       
+      // Generate checkout URL for test
+      const checkoutUrl = await generateCheckoutUrl(testMemberObj.member_id, testMemberObj.email, testMemberObj.name);
+      
       // Send test email
       const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry);
       
@@ -485,6 +488,7 @@ module.exports = async (req, res) => {
         test_mode: true,
         timestamp: new Date().toISOString(),
         test_email: testEmail,
+        member_id: testMemberObj.member_id,
         days_until_expiry: daysUntilExpiry,
         email_sent: result.sent,
         email_error: result.error || null,
@@ -493,7 +497,7 @@ module.exports = async (req, res) => {
           subject: daysUntilExpiry === 1
             ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
             : `Your Academy Trial Expires in ${daysUntilExpiry === 1 ? '24 hours' : `${daysUntilExpiry} days`} - Upgrade to Continue Access`,
-          upgrade_url: UPGRADE_URL
+          upgrade_url: checkoutUrl
         }
       });
     }
