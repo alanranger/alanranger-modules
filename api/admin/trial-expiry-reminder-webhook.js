@@ -206,30 +206,50 @@ async function getMembersWithExpiringTrials(daysAhead) {
       
       if (hasTrialPlan && trialPlan && email) {
         // Check trial expiry date
-        // Memberstack trial plans typically have expiry_date or current_period_end
-        const expiryDateStr = trialPlan.expiry_date || trialPlan.current_period_end || trialPlan.expires_at;
+        // Memberstack trial plans may have expiry_date, current_period_end, expires_at, or endDate
+        // Also check nested fields in case the structure is different
+        const expiryDateStr = trialPlan.expiry_date || 
+                             trialPlan.current_period_end || 
+                             trialPlan.expires_at || 
+                             trialPlan.endDate ||
+                             trialPlan.end_date ||
+                             (trialPlan.plan && trialPlan.plan.expiry_date) ||
+                             (trialPlan.plan && trialPlan.plan.current_period_end);
+        
+        // Debug: Log the trial plan structure to understand what fields are available
+        if (!expiryDateStr) {
+          console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has trial plan but no expiry date found. Plan structure:`, JSON.stringify(trialPlan, null, 2));
+        }
         
         if (expiryDateStr) {
           const expiryDate = new Date(expiryDateStr);
           
-          // Check if expiry date falls within our target day (within the day range)
-          if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
-            const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-            
-            expiringMembers.push({
-              member_id: memberId,
-              email: email,
-              name: name,
-              trial_expiry_date: expiryDateStr,
-              days_until_expiry: daysUntilExpiry,
-              plan_id: trialPlan.plan_id || trialPlan.id || null,
-              plan_name: trialPlan.plan_name || "Academy Trial" || null
-            });
-            
-            console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
+          if (isNaN(expiryDate.getTime())) {
+            console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has invalid expiry date: ${expiryDateStr}`);
+          } else {
+            // Check if expiry date falls within our target day (within the day range)
+            if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
+              const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+              
+              expiringMembers.push({
+                member_id: memberId,
+                email: email,
+                name: name,
+                trial_expiry_date: expiryDateStr,
+                days_until_expiry: daysUntilExpiry,
+                plan_id: trialPlan.plan_id || trialPlan.id || null,
+                plan_name: trialPlan.plan_name || "Academy Trial" || null
+              });
+              
+              console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
+            } else {
+              // Debug: Log trials that don't match (for troubleshooting)
+              const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+              if (daysUntilExpiry > 0 && daysUntilExpiry <= 10) {
+                console.log(`[trial-expiry-reminder] ℹ️ Member ${email} trial expires in ${daysUntilExpiry} days (not in target range of ${daysAhead} days)`);
+              }
+            }
           }
-        } else {
-          console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has trial plan but no expiry date found`);
         }
       }
     }
