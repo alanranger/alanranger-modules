@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-01-20] - Conversion Detection & Revenue Metrics Fixes
+
+### Fixed
+- **Conversion detection logic** - Overview API now uses identical logic to Stripe metrics
+  - Fixed issue where only 1 conversion was detected instead of 2
+  - Replicated exact 3-check system from `getConversionsFromSupabase`:
+    1. Trial event exists in timeline
+    2. Any trial-related event in history
+    3. Member created >1 day before annual paid (timing-based)
+  - Uses `annualPaidAt` from timeline (not `annualStartDate` from plan)
+  - Uses `trialStartAt` from timeline if available
+- **Trial → Annual Conversion Rate** - Fixed calculation to use active trials in 30d window
+  - Changed from all-time trials to trials active during last 30 days
+  - Shows: "Of trials active in the last 30 days, what % converted?"
+- **Removed Stripe dependency** from conversion rate calculation
+  - Conversion rate now uses only Supabase data (faster, more reliable)
+  - Eliminated HTTP 500 errors from accessing `stripeMetrics` before initialization
+- **Revenue breakdown** - Accurately separates revenue from conversions vs direct annual signups
+
+### Changed
+- **Dashboard tiles reorganization**
+  - Moved "AVG EXAM ATTEMPTS", "EXAM ATTEMPTS", "PASS RATE" to Exams tab
+  - Moved "AVG MODULES OPENED", "UNIQUE MODULES", "BOOKMARKS ADDED" to Activity tab
+  - Changed "ALL PLANS EXPIRING" from 60 days to 7 days
+  - Increased version badge size for better readability
+- **Conversion rate tooltip** - Updated to explain new calculation method
+
+### Documentation
+- Updated `ADMIN_DASHBOARD_README.md` with conversion detection details
+- Updated `CHANGELOG.md` with latest fixes
+- Updated `QUICK_REFERENCE.md` with recent changes
+
 ## [2026-01-16] - Admin Dashboard Enhancements & Security
 
 ### Added

@@ -68,7 +68,14 @@ API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 - ✅ Auto-save functionality after exam submission
 - ✅ Debug panel hidden by default (Ctrl+Shift+D to show)
 
-### Latest Updates (2026-01-16)
+### Latest Updates (2026-01-20)
+- ✅ **Conversion detection fixed** - Overview API now uses identical logic to Stripe metrics, correctly finding all 2 conversions
+- ✅ **Conversion rate calculation** - Fixed to use active trials in 30d window instead of all-time trials
+- ✅ **Removed Stripe dependency** - Conversion rate now uses only Supabase data (faster, more reliable)
+- ✅ **Dashboard tiles reorganized** - Moved exam/activity tiles to appropriate tabs
+- ✅ **Revenue breakdown** - Accurately separates revenue from conversions vs direct annual signups
+
+### Previous Updates (2026-01-16)
 - ✅ **Sortable columns** added to Most Active Members table in admin dashboard
 - ✅ **Inactivity logout** - Automatic logout after 30 minutes of inactivity on Academy pages
 - ✅ **Member management scripts** - Utilities for deleting members from Supabase and Memberstack

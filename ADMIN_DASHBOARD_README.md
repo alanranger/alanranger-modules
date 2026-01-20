@@ -323,9 +323,25 @@ Matches Academy Dashboard dark theme:
 - Accent: `#E57200` (orange)
 - Text: `#f9fafb`
 
-## Recent Features (2026-01-16)
+## Recent Features (2026-01-20)
 
-### Sortable Tables
+### Conversion Detection & Revenue Metrics
+- **Fixed conversion detection logic** - Overview API now uses identical logic to Stripe metrics
+- **Trial → Annual Conversion Rate** - Shows conversion rate based on active trials in last 30 days
+- **Conversion calculation** - Uses 3-check system:
+  1. Trial event exists in timeline
+  2. Any trial-related event in history
+  3. Member created >1 day before annual paid (timing-based)
+- **Revenue breakdown** - Accurately separates revenue from conversions vs direct annual signups
+- **No Stripe dependency** - Conversion rate calculation uses only Supabase data (faster, more reliable)
+
+### Dashboard Tiles Reorganization
+- **Exams tab** - Moved "AVG EXAM ATTEMPTS", "EXAM ATTEMPTS", and "PASS RATE" tiles to top
+- **Activity tab** - Moved "AVG MODULES OPENED", "UNIQUE MODULES", and "BOOKMARKS ADDED" tiles to top
+- **Plans Expiring** - Changed from 60 days to 7 days window
+- **Version badge** - Increased size for better readability
+
+### Sortable Tables (2026-01-16)
 - **Most Active Members table** now has sortable columns with visual indicators
 - All columns are sortable: Member, Login Days (30d), Login Days (All-time), Last Login, Events, Modules, Questions
 - Click column headers to sort ascending/descending
@@ -333,7 +349,7 @@ Matches Academy Dashboard dark theme:
 - Active sort column highlighted in orange
 - Hover effects on sortable headers
 
-### Inactivity Logout
+### Inactivity Logout (2026-01-16)
 - Automatic logout after 30 minutes of inactivity on Academy pages
 - Tracks user activity: clicks, mouse movement, keyboard, scroll, touch, focus
 - Resets timer on page visibility changes

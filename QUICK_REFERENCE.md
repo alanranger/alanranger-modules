@@ -1,6 +1,6 @@
 # Quick Reference Guide - Academy Assessment System
 
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-01-20
 
 This guide provides quick reference for AI agents and developers working on the Academy Assessment System.
 
@@ -123,7 +123,15 @@ Required in `.env.local`:
 - **EVENT_TRACKING_INTEGRATION.md** - Event tracking guide
 - **NEXT_STEPS.md** - Future enhancements
 
-## 🚀 Recent Changes (2026-01-16)
+## 🚀 Recent Changes (2026-01-20)
+
+1. **Conversion detection fixed** - Now correctly finds all conversions (2 instead of 1)
+2. **Conversion rate calculation** - Uses active trials in 30d window (not all-time)
+3. **Removed Stripe dependency** from conversion rate (uses only Supabase, faster)
+4. **Dashboard tiles reorganized** - Moved tiles to appropriate tabs
+5. **Revenue breakdown** - Accurately separates conversions vs direct annual
+
+## Previous Changes (2026-01-16)
 
 1. **Sortable columns** added to Most Active Members table
 2. **Inactivity logout** implemented (30-minute timeout)

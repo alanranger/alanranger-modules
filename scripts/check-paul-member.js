@@ -95,6 +95,17 @@ async function checkPaulMember() {
     
     console.log(`   Trial Start: ${trialStart ? trialStart.created_at : 'NOT FOUND'}`);
     console.log(`   Annual Paid: ${annualPaid ? annualPaid.created_at : 'NOT FOUND'}`);
+    if (annualPaid && annualPaid.payload) {
+      try {
+        const payload = typeof annualPaid.payload === 'string' ? JSON.parse(annualPaid.payload) : annualPaid.payload;
+        const amount = payload?.data?.object?.amount_paid || payload?.data?.object?.total || payload?.data?.object?.amount_due || 0;
+        const amountGBP = amount / 100;
+        console.log(`   Annual Paid Amount: £${amountGBP} (${amount} pence)`);
+        console.log(`   Invoice ID: ${annualPaid.stripe_invoice_id || 'N/A'}`);
+      } catch (e) {
+        console.log(`   Could not parse invoice.paid payload: ${e.message}`);
+      }
+    }
     console.log(`   Subscription Created: ${subscriptionCreated ? subscriptionCreated.created_at : 'NOT FOUND'}`);
     
     if (trialStart && annualPaid) {

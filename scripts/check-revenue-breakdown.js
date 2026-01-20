@@ -2,12 +2,26 @@
 // Usage: node scripts/check-revenue-breakdown.js
 
 const { createClient } = require("@supabase/supabase-js");
+const path = require('path');
 require("dotenv").config({ path: ".env.local" });
 
 const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// Get Stripe client
+let getStripe;
+try {
+  const stripePath = path.join(process.cwd(), 'lib', 'stripe');
+  getStripe = require(stripePath);
+} catch (requireError) {
+  try {
+    getStripe = require('../../lib/stripe');
+  } catch (fallbackError) {
+    throw new Error(`Failed to load Stripe module: ${requireError.message}`);
+  }
+}
 
 async function checkRevenueBreakdown() {
   console.log("\n🔍 Checking revenue breakdown from database...\n");
@@ -86,15 +100,17 @@ async function checkRevenueBreakdown() {
             timeline.annualPaidAt = eventDate;
             timeline.annualInvoiceId = event.stripe_invoice_id;
             
-            // Try to extract amount from payload
+            // Try to extract amount from payload first
             try {
               const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
               const amount = payload?.data?.object?.amount_paid || 
                            payload?.data?.object?.total || 
                            payload?.data?.object?.amount_due || 0;
-              timeline.annualAmount = amount / 100; // Convert from pennies
+              if (amount > 0) {
+                timeline.annualAmount = amount / 100; // Convert from pennies
+              }
             } catch (e) {
-              console.warn(`Could not parse payload for ${memberId}:`, e.message);
+              // Will fetch from Stripe API if payload fails
             }
           }
         }
@@ -173,14 +189,32 @@ async function checkRevenueBreakdown() {
 
   console.log(`\n🎯 DIRECT ANNUAL SIGNUPS: ${direct.length}\n`);
   let directTotal = 0;
-  direct.forEach((m, idx) => {
-    console.log(`   ${idx + 1}. ${m.email} (${m.name || 'N/A'})`);
+  
+  // Fetch invoice amounts from Stripe for any missing amounts
+  const stripe = getStripe();
+  for (const m of direct) {
+    let amount = m.annual_amount || 0;
+    
+    // If amount is 0 or missing, try to fetch from Stripe invoice
+    if ((amount === 0 || !m.annual_invoice_id) && m.annual_invoice_id) {
+      try {
+        const invoice = await stripe.invoices.retrieve(m.annual_invoice_id);
+        if (invoice.total && invoice.currency === 'gbp') {
+          amount = invoice.total / 100;
+          console.log(`   ⚠️  Fetched amount from Stripe for ${m.email}: £${amount}`);
+        }
+      } catch (e) {
+        console.warn(`   ⚠️  Could not fetch invoice ${m.annual_invoice_id} for ${m.email}: ${e.message}`);
+      }
+    }
+    
+    console.log(`   ${direct.indexOf(m) + 1}. ${m.email} (${m.name || 'N/A'})`);
     console.log(`      Created: ${m.created_at ? new Date(m.created_at).toLocaleDateString() : 'N/A'}`);
     console.log(`      Annual start: ${m.annual_start ? new Date(m.annual_start).toLocaleDateString() : 'N/A'}`);
-    console.log(`      Amount: £${m.annual_amount || 0}`);
+    console.log(`      Amount: £${amount}`);
     console.log(`      Invoice ID: ${m.annual_invoice_id || 'N/A'}`);
-    directTotal += m.annual_amount || 0;
-  });
+    directTotal += amount;
+  }
   console.log(`\n   💰 TOTAL REVENUE FROM DIRECT ANNUAL: £${directTotal}\n`);
 
   console.log(`\n✨ SUMMARY:\n`);
