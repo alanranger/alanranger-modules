@@ -10,6 +10,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
+const stripe = require("stripe");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
@@ -31,8 +32,21 @@ const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_
 const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
 const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 
-// Academy upgrade URL - update this to your actual upgrade/signup page
-const UPGRADE_URL = process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/signup";
+// Academy upgrade URL - fallback if checkout generation fails
+const UPGRADE_URL_FALLBACK = process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/signup";
+
+// Annual membership price ID from Memberstack
+const ANNUAL_MEMBERSHIP_PRICE_ID = "prc_annual-membership-jj7y0h89";
+
+// Stripe configuration
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_PRICE_ID = process.env.STRIPE_ANNUAL_PRICE_ID; // Stripe price ID for annual membership
+
+// Initialize Stripe if key is available
+let stripeClient = null;
+if (STRIPE_SECRET_KEY) {
+  stripeClient = stripe(STRIPE_SECRET_KEY);
+}
 
 // Create email transporter
 let emailTransporter = null;
@@ -46,6 +60,50 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
       pass: EMAIL_PASSWORD
     }
   });
+}
+
+/**
+ * Generate a personalized Stripe checkout URL for a member to upgrade to annual membership
+ * Creates a Stripe checkout session linked to the member's email and ID
+ */
+async function generateCheckoutUrl(memberId, memberEmail, memberName) {
+  try {
+    // If Stripe is configured, create a checkout session directly
+    if (stripeClient && STRIPE_PRICE_ID) {
+      const session = await stripeClient.checkout.sessions.create({
+        customer_email: memberEmail,
+        line_items: [
+          {
+            price: STRIPE_PRICE_ID,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `https://www.alanranger.com/academy/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: 'https://www.alanranger.com/academy/login',
+        metadata: {
+          memberstack_member_id: memberId,
+          memberstack_price_id: ANNUAL_MEMBERSHIP_PRICE_ID,
+          member_name: memberName || '',
+        },
+        allow_promotion_codes: true,
+      });
+
+      if (session && session.url) {
+        console.log(`[trial-expiry-reminder] Generated Stripe checkout URL for member ${memberId}`);
+        return session.url;
+      }
+    }
+
+    // Fallback: Create a link to checkout page that uses Memberstack client-side checkout
+    // This page will automatically initiate checkout for the member
+    console.warn(`[trial-expiry-reminder] Stripe not fully configured, using checkout page for member ${memberId}`);
+    return `https://www.alanranger.com/academy/checkout?memberId=${encodeURIComponent(memberId)}&priceId=${encodeURIComponent(ANNUAL_MEMBERSHIP_PRICE_ID)}`;
+  } catch (error) {
+    console.error(`[trial-expiry-reminder] Error generating checkout URL for member ${memberId}:`, error.message);
+    // Return fallback URL if checkout generation fails
+    return UPGRADE_URL_FALLBACK;
+  }
 }
 
 async function sendTrialExpiryReminder(member, daysUntilExpiry) {
@@ -76,6 +134,9 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry) {
     ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
     : `Your Academy Trial Expires in ${timeRemaining} - Upgrade to Continue Access`;
 
+  // Generate personalized checkout URL for this member
+  const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name);
+
   const emailBody = `
 Hi ${member.name || "there"},
 
@@ -98,7 +159,7 @@ Your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDat
 ✅ All the tools and knowledge to improve your photography
 
 **Upgrade your account now:**
-${UPGRADE_URL}
+${checkoutUrl}
 
 Don't miss out on continuing your photography journey with us!
 
