@@ -42,10 +42,16 @@ const ANNUAL_MEMBERSHIP_PRICE_ID = "prc_annual-membership-jj7y0h89";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PRICE_ID = process.env.STRIPE_ANNUAL_PRICE_ID; // Stripe price ID for annual membership
 
+// Debug: Log Stripe configuration at module load
+console.log(`[trial-expiry-reminder] Module load - STRIPE_SECRET_KEY exists: ${!!STRIPE_SECRET_KEY}, STRIPE_ANNUAL_PRICE_ID exists: ${!!STRIPE_PRICE_ID}, value: ${STRIPE_PRICE_ID || 'NOT SET'}`);
+
 // Initialize Stripe if key is available
 let stripeClient = null;
 if (STRIPE_SECRET_KEY) {
   stripeClient = stripe(STRIPE_SECRET_KEY);
+  console.log(`[trial-expiry-reminder] Stripe client initialized: ${!!stripeClient}`);
+} else {
+  console.warn(`[trial-expiry-reminder] STRIPE_SECRET_KEY not found, Stripe client not initialized`);
 }
 
 // Create email transporter
