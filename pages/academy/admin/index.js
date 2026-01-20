@@ -137,9 +137,9 @@ export default function AdminDashboard() {
 
       <div className="ar-admin-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <div>
-            <h1 className="ar-admin-title">Admin Analytics Dashboard</h1>
-            <p className="ar-admin-subtitle">Academy activity and engagement metrics</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+            <h1 className="ar-admin-title" style={{ margin: 0 }}>Admin Analytics Dashboard</h1>
+            <p className="ar-admin-subtitle" style={{ margin: 0 }}>Academy activity and engagement metrics</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
