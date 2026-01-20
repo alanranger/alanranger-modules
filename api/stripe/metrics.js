@@ -196,15 +196,19 @@ async function getConversionsFromSupabase() {
       
       // Check if member had a trial
       const hadTrialFromEvents = timeline?.trialStartAt !== null;
-      const likelyHadTrialFromTiming = memberCreatedAt && annualStartDate && 
-                                       (annualStartDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000);
+      
+      // CRITICAL FIX: Use annual PAID date (not subscription created date) for timing check
+      // If member was created >7 days before annual was paid, they likely had a trial
+      const annualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : annualStartDate;
+      const likelyHadTrialFromTiming = memberCreatedAt && annualPaidDate && 
+                                       (annualPaidDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000);
       
       const hadTrial = hadTrialFromEvents || likelyHadTrialFromTiming;
       
-      const annualPaidDate = timeline?.annualPaidAt || annualStartDate;
       const trialStartDate = timeline?.trialStartAt || memberCreatedAt;
       
       // Check if annual was paid after trial started (no time limit)
+      // CRITICAL: Use annualPaidDate (from timeline or annualStartDate) for comparison
       const isConverted = hadTrial && 
                          trialStartDate && 
                          annualPaidDate && 
