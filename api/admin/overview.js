@@ -473,8 +473,19 @@ module.exports = async (req, res) => {
 
     // Trials that ended without converting
     const trialsEndedWithoutConversion30d = trialsEnded30d.filter(m => {
-      // Not converted if no annual start OR annual started after trial ended
-      return !m.annualStartAt || m.annualStartAt > m.trialEndAt;
+      try {
+        // Not converted if no annual start OR annual started after trial ended
+        if (!m.annualStartAt) return true;
+        if (!m.trialEndAt) return false;
+        
+        const annualStart = m.annualStartAt instanceof Date ? m.annualStartAt : new Date(m.annualStartAt);
+        const trialEnd = m.trialEndAt instanceof Date ? m.trialEndAt : new Date(m.trialEndAt);
+        
+        if (isNaN(annualStart.getTime()) || isNaN(trialEnd.getTime())) return false;
+        return annualStart > trialEnd;
+      } catch (e) {
+        return false;
+      }
     });
 
     const trialDropOff30d = trialsEndedWithoutConversion30d.length;
@@ -492,7 +503,18 @@ module.exports = async (req, res) => {
     );
 
     const trialsEndedWithoutConversionAllTime = allTrialsEnded.filter(m => {
-      return !m.annualStartAt || m.annualStartAt > m.trialEndAt;
+      try {
+        if (!m.annualStartAt) return true;
+        if (!m.trialEndAt) return false;
+        
+        const annualStart = m.annualStartAt instanceof Date ? m.annualStartAt : new Date(m.annualStartAt);
+        const trialEnd = m.trialEndAt instanceof Date ? m.trialEndAt : new Date(m.trialEndAt);
+        
+        if (isNaN(annualStart.getTime()) || isNaN(trialEnd.getTime())) return false;
+        return annualStart > trialEnd;
+      } catch (e) {
+        return false;
+      }
     });
 
     // Get annual price from Stripe metrics or use default
@@ -503,8 +525,18 @@ module.exports = async (req, res) => {
     // Median days to convert (from conversions30d timeline)
     const daysToConvert = conversions30d
       .map(t => {
-        if (!t.trialStartAt || !t.annualPaidAt) return null;
-        return Math.floor((t.annualPaidAt - t.trialStartAt) / 86400000);
+        try {
+          if (!t.trialStartAt || !t.annualPaidAt) return null;
+          
+          const trialStart = t.trialStartAt instanceof Date ? t.trialStartAt : new Date(t.trialStartAt);
+          const annualPaid = t.annualPaidAt instanceof Date ? t.annualPaidAt : new Date(t.annualPaidAt);
+          
+          if (isNaN(trialStart.getTime()) || isNaN(annualPaid.getTime())) return null;
+          
+          return Math.floor((annualPaid.getTime() - trialStart.getTime()) / 86400000);
+        } catch (e) {
+          return null;
+        }
       })
       .filter(d => d !== null && d >= 0);
     const medianDaysToConvert30d = daysToConvert.length > 0
@@ -845,6 +877,15 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('[overview] Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('[overview] Error stack:', error.stack);
+    console.error('[overview] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
+    return res.status(500).json({ 
+      error: error.message || 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
