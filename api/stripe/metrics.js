@@ -262,17 +262,20 @@ async function calculateStripeMetrics(forceRefresh = false) {
       : null;
 
     // F) Trial → Annual conversions
-    // Build trial cohort (trialing or ended with trial_end in last 30d)
+    // Build trial cohort (ALL trials, not just those ending in 30d, to catch all conversions)
     console.log('[stripe-metrics] Calculating trial conversions...');
     
     // Use subscriptions we already fetched (active, trialing, canceled) instead of making another API call
     const allSubsForConversion = [...allActiveSubs, ...canceledSubs];
     
+    // Get ALL trials (active trialing OR any trial that has ended)
+    // This ensures we catch conversions even if trial ended >30d ago but conversion happened recently
     const trialCohort = allSubsForConversion.filter(sub => {
       if (sub.status === 'trialing') return true;
       if (sub.trial_end) {
         const trialEnd = new Date(sub.trial_end * 1000);
-        return trialEnd >= thirtyDaysAgo && trialEnd <= nowDate;
+        // Include all ended trials (not just last 30d) to catch all conversions
+        return trialEnd <= nowDate;
       }
       return false;
     });
@@ -337,7 +340,11 @@ async function calculateStripeMetrics(forceRefresh = false) {
             // Conversion if annual started after trial ended (no time limit)
             if (daysDiff >= 0) {
               convertedAnnualSubIds.add(annual.id);
-              if (isInLast30d) {
+              
+              // Count conversion in 30d if annual subscription was CREATED in last 30d
+              // (not based on when trial ended, but when annual started)
+              const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
+              if (annualCreatedInLast30d) {
                 conversions30d++;
               }
               conversionsAllTime++;
