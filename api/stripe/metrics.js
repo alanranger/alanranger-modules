@@ -213,6 +213,7 @@ async function getConversionsFromSupabase() {
         // 1. From customer.subscription.created event
         // 2. From invoice.paid event (which has subscription field)
         // 3. From plan_summary in member record
+        // 4. From ALL invoice.paid events for this member (not just the first one)
         
         let subscriptionId = null;
         let customerId = null;
@@ -231,30 +232,39 @@ async function getConversionsFromSupabase() {
             
             subscriptionId = payload?.data?.object?.id;
             customerId = payload?.data?.object?.customer;
+            console.log(`[stripe-metrics] 🔍 Method 1 (subscription.created): Found subscription ${subscriptionId} for ${member.email}`);
           } catch (e) {
             console.warn(`[stripe-metrics] Could not parse subscription.created payload for ${member.email}: ${e.message}`);
           }
         }
         
-        // Method 2: Check invoice.paid event (has subscription field)
+        // Method 2: Check ALL invoice.paid events (has subscription field)
         if (!subscriptionId) {
-          const invoicePaidEvent = memberEvents.find(e => 
+          const invoicePaidEvents = memberEvents.filter(e => 
             e.event_type === 'invoice.paid' &&
-            timeline?.annualInvoiceId === e.stripe_invoice_id
+            (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
           );
           
-          if (invoicePaidEvent && invoicePaidEvent.payload) {
-            try {
-              const payload = typeof invoicePaidEvent.payload === 'string' 
-                ? JSON.parse(invoicePaidEvent.payload) 
-                : invoicePaidEvent.payload;
-              
-              subscriptionId = payload?.data?.object?.subscription;
-              if (!customerId) {
-                customerId = payload?.data?.object?.customer;
+          for (const invoicePaidEvent of invoicePaidEvents) {
+            if (invoicePaidEvent.payload) {
+              try {
+                const payload = typeof invoicePaidEvent.payload === 'string' 
+                  ? JSON.parse(invoicePaidEvent.payload) 
+                  : invoicePaidEvent.payload;
+                
+                const subId = payload?.data?.object?.subscription;
+                if (subId) {
+                  subscriptionId = typeof subId === 'string' ? subId : subId.id;
+                  console.log(`[stripe-metrics] 🔍 Method 2 (invoice.paid): Found subscription ${subscriptionId} for ${member.email} from invoice ${invoicePaidEvent.stripe_invoice_id}`);
+                  break;
+                }
+                if (!customerId) {
+                  customerId = payload?.data?.object?.customer;
+                  customerId = typeof customerId === 'string' ? customerId : customerId?.id;
+                }
+              } catch (e) {
+                console.warn(`[stripe-metrics] Could not parse invoice.paid payload for ${member.email}: ${e.message}`);
               }
-            } catch (e) {
-              console.warn(`[stripe-metrics] Could not parse invoice.paid payload for ${member.email}: ${e.message}`);
             }
           }
         }
@@ -262,6 +272,7 @@ async function getConversionsFromSupabase() {
         // Method 3: Check plan_summary for subscription ID
         if (!subscriptionId && plan.subscription_id) {
           subscriptionId = plan.subscription_id;
+          console.log(`[stripe-metrics] 🔍 Method 3 (plan_summary): Found subscription ${subscriptionId} for ${member.email}`);
         }
         
         // Method 4: Check plan_summary for customer ID and match to Stripe subscriptions
@@ -277,7 +288,7 @@ async function getConversionsFromSupabase() {
           convertedCustomerIds.add(typeof customerId === 'string' ? customerId : customerId.id);
           console.log(`[stripe-metrics] ✅ SUPABASE CONVERSION (customer only): Member ${member.email}, customer ${customerId} (will match by customer ID)`);
         } else {
-          console.warn(`[stripe-metrics] ⚠️  Conversion detected for ${member.email} but could not extract subscription or customer ID`);
+          console.warn(`[stripe-metrics] ⚠️  Conversion detected for ${member.email} but could not extract subscription or customer ID. Events: ${memberEvents.map(e => e.event_type).join(', ')}`);
         }
       }
     }
