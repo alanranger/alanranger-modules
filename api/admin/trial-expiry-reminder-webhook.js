@@ -146,6 +146,7 @@ async function getMembersWithExpiringTrials(daysAhead) {
     // Use Supabase cache as primary source (it has expiry_date in plan_summary)
     // This is more reliable than Memberstack API which may have different structure
     console.log(`[trial-expiry-reminder] Fetching members from Supabase cache (looking for trials expiring in ${daysAhead} days)...`);
+    console.log(`[trial-expiry-reminder] Date range: ${targetDateStart.toISOString()} to ${targetDate.toISOString()}`);
     
     const { data: cachedMembers, error: cacheError } = await supabase
       .from('ms_members_cache')
@@ -156,6 +157,9 @@ async function getMembersWithExpiringTrials(daysAhead) {
       console.error("[trial-expiry-reminder] Error fetching from Supabase:", cacheError);
     } else {
       console.log(`[trial-expiry-reminder] Found ${cachedMembers?.length || 0} members in Supabase cache`);
+      
+      let trialsChecked = 0;
+      let trialsWithExpiry = 0;
       
       // Filter for trials expiring in target timeframe
       for (const member of cachedMembers || []) {
@@ -171,39 +175,49 @@ async function getMembersWithExpiringTrials(daysAhead) {
                        (planSummary.plan_id && planSummary.plan_id.includes("trial")) ||
                        (planSummary.payment_mode === "ONETIME" && planSummary.expiry_date);
         
-        if (isTrial && (status === "ACTIVE" || status === "TRIALING") && email && planSummary.expiry_date) {
-          try {
-            const expiryDate = new Date(planSummary.expiry_date);
-            
-            if (!isNaN(expiryDate.getTime())) {
-              // Check if expiry date falls within our target day range
-              if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
+        if (isTrial && (status === "ACTIVE" || status === "TRIALING") && email) {
+          trialsChecked++;
+          
+          if (planSummary.expiry_date) {
+            trialsWithExpiry++;
+            try {
+              const expiryDate = new Date(planSummary.expiry_date);
+              
+              if (!isNaN(expiryDate.getTime())) {
                 const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 
-                expiringMembers.push({
-                  member_id: memberId,
-                  email: email,
-                  name: name,
-                  trial_expiry_date: planSummary.expiry_date,
-                  days_until_expiry: daysUntilExpiry,
-                  plan_id: planSummary.plan_id || null,
-                  plan_name: planSummary.plan_name || "Academy Trial" || null
-                });
-                
-                console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
-              } else {
-                // Debug: Log trials that don't match (for troubleshooting)
-                const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-                if (daysUntilExpiry > 0 && daysUntilExpiry <= daysAhead + 3) {
-                  console.log(`[trial-expiry-reminder] ℹ️ Member ${email} trial expires in ${daysUntilExpiry} days (not in target range of ${daysAhead} days)`);
+                // Check if expiry date falls within our target day range
+                if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
+                  expiringMembers.push({
+                    member_id: memberId,
+                    email: email,
+                    name: name,
+                    trial_expiry_date: planSummary.expiry_date,
+                    days_until_expiry: daysUntilExpiry,
+                    plan_id: planSummary.plan_id || null,
+                    plan_name: planSummary.plan_name || "Academy Trial" || null
+                  });
+                  
+                  console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
+                } else {
+                  // Debug: Log trials that don't match (for troubleshooting)
+                  if (daysUntilExpiry > 0 && daysUntilExpiry <= daysAhead + 5) {
+                    console.log(`[trial-expiry-reminder] ℹ️ Member ${email} trial expires in ${daysUntilExpiry} days (expires ${expiryDate.toISOString().split('T')[0]}, target range: ${targetDateStart.toISOString().split('T')[0]} to ${targetDate.toISOString().split('T')[0]})`);
+                  }
                 }
+              } else {
+                console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has invalid expiry date: ${planSummary.expiry_date}`);
               }
+            } catch (dateError) {
+              console.log(`[trial-expiry-reminder] ⚠️ Member ${email} error parsing expiry date: ${planSummary.expiry_date} - ${dateError.message}`);
             }
-          } catch (dateError) {
-            console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has invalid expiry date: ${planSummary.expiry_date}`);
+          } else {
+            console.log(`[trial-expiry-reminder] ⚠️ Member ${email} has trial but no expiry_date in plan_summary`);
           }
         }
       }
+      
+      console.log(`[trial-expiry-reminder] Checked ${trialsChecked} trial members, ${trialsWithExpiry} had expiry dates`);
     }
 
     // Fallback: Also check Memberstack API if Supabase didn't find enough
