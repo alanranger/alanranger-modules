@@ -530,13 +530,8 @@ module.exports = async (req, res) => {
         annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
       });
       
-      // Update 30d conversion rate with Stripe metrics if available (more accurate)
-      if (stripeMetrics?.conversions_trial_to_annual_last_30d !== undefined) {
-        const conversionsCount30d = stripeMetrics.conversions_trial_to_annual_last_30d;
-        trialConversionRate30d = allTrialsStartedCount > 0 
-          ? Math.round((conversionsCount30d / allTrialsStartedCount) * 100 * 10) / 10
-          : null;
-      }
+      // NOTE: Conversion rate calculation uses ONLY Supabase data (no Stripe dependency)
+      // Stripe metrics are used for revenue calculations only
     } catch (error) {
       console.error('[overview] Stripe metrics error:', error.message);
       console.error('[overview] Stripe metrics error stack:', error.stack);
@@ -801,11 +796,11 @@ module.exports = async (req, res) => {
       
       // BI Metrics: Revenue & Retention
       bi: {
-        // Conversion metrics (use Stripe metrics if available, otherwise fall back to academy_plan_events)
+        // Conversion metrics (from Supabase - no Stripe dependency)
         trialStartsAllTime: trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length,
-        trialToAnnualConversions30d: stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length,
+        trialToAnnualConversionsAllTime: allConversions.length,
+        trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
         trialsEnded30d: trialsEnded30d.length, // Trials that ended in last 30d
