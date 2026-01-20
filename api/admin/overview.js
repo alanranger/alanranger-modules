@@ -422,16 +422,38 @@ module.exports = async (req, res) => {
     
     const conversions30d = allConversions.filter(t => {
       if (!t.annualPaidAt) return false;
-      return t.annualPaidAt >= start30d;
+      try {
+        const annualPaidDate = t.annualPaidAt instanceof Date ? t.annualPaidAt : new Date(t.annualPaidAt);
+        if (isNaN(annualPaidDate.getTime())) return false;
+        return annualPaidDate >= start30d;
+      } catch (e) {
+        return false;
+      }
     });
     
     // Trial starts from events
     const trialsStartedAllTime = Object.values(memberTimelines).filter(t => t.trialStartAt);
-    const trialsStarted30d = trialsStartedAllTime.filter(t => 
-      t.trialStartAt && t.trialStartAt >= start30d
-    );
+    const trialsStarted30d = trialsStartedAllTime.filter(t => {
+      if (!t.trialStartAt) return false;
+      try {
+        const trialStartDate = t.trialStartAt instanceof Date ? t.trialStartAt : new Date(t.trialStartAt);
+        if (isNaN(trialStartDate.getTime())) return false;
+        return trialStartDate >= start30d;
+      } catch (e) {
+        return false;
+      }
+    });
     
     // Conversion rates - use trials ENDED, not trials STARTED (more accurate)
+    // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
+    // Trials that ended in last 30d (define this BEFORE using it in conversion rate calculation)
+    const trialsEnded30d = Object.values(memberPlans).filter(m => 
+      m.isTrial && 
+      m.trialEndAt && 
+      m.trialEndAt >= start30d && 
+      m.trialEndAt <= now
+    );
+    
     // Get all-time trials ended count
     const allTrialsEndedCount = Object.values(memberPlans).filter(m => 
       m.isTrial && m.trialEndAt && m.trialEndAt <= now
@@ -448,15 +470,6 @@ module.exports = async (req, res) => {
     // Revenue from conversions
     const revenueFromConversionsAllTime = allConversions.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
     const revenueFromConversions30d = conversions30d.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
-
-    // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
-    // Trials that ended in last 30d
-    const trialsEnded30d = Object.values(memberPlans).filter(m => 
-      m.isTrial && 
-      m.trialEndAt && 
-      m.trialEndAt >= start30d && 
-      m.trialEndAt <= now
-    );
 
     // Trials that ended without converting
     const trialsEndedWithoutConversion30d = trialsEnded30d.filter(m => {
