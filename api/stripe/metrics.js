@@ -194,25 +194,18 @@ async function getConversionsFromSupabase() {
                              (plan.current_period_start ? new Date(plan.current_period_start) : null) ||
                              (memberCreatedAt);
       
-      // Check if member had a trial
+      // SIMPLE LOGIC: Did they have a trial? Check:
+      // 1. Trial event exists (timeline.trialStartAt)
+      // 2. Member was created before annual subscription (evidence of trial period)
       const hadTrialFromEvents = timeline?.trialStartAt !== null;
-      
-      // CRITICAL FIX: Use annual PAID date (not subscription created date) for timing check
-      // If member was created >7 days before annual was paid, they likely had a trial
       const annualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : annualStartDate;
-      const likelyHadTrialFromTiming = memberCreatedAt && annualPaidDate && 
-                                       (annualPaidDate.getTime() - memberCreatedAt.getTime()) > (7 * 24 * 60 * 60 * 1000);
+      const hadTrialFromTiming = memberCreatedAt && annualPaidDate && 
+                                 memberCreatedAt.getTime() < annualPaidDate.getTime();
       
-      const hadTrial = hadTrialFromEvents || likelyHadTrialFromTiming;
+      const hadTrial = hadTrialFromEvents || hadTrialFromTiming;
       
-      const trialStartDate = timeline?.trialStartAt || memberCreatedAt;
-      
-      // Check if annual was paid after trial started (no time limit)
-      // CRITICAL: Use annualPaidDate (from timeline or annualStartDate) for comparison
-      const isConverted = hadTrial && 
-                         trialStartDate && 
-                         annualPaidDate && 
-                         annualPaidDate.getTime() > trialStartDate.getTime();
+      // SIMPLE: If they had a trial AND now have annual, it's a conversion (no time restrictions)
+      const isConverted = hadTrial;
       
       // Log conversion detection for ALL members
       console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, fromTiming=${likelyHadTrialFromTiming}), trialStart=${trialStartDate?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted}`);
