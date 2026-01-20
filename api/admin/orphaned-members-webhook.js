@@ -1,10 +1,11 @@
-// API endpoint to identify orphaned members and send to Zapier
-// This endpoint identifies members without plans (but doesn't delete them)
-// Designed to be called by Zapier every 2 hours to email orphaned members
-// Returns list of orphaned members that can be sent to Zapier webhook
+// API endpoint to identify orphaned members and send emails directly
+// This endpoint identifies members without plans and emails them automatically
+// Designed to be called by Zapier every 2 hours (2-step Zap: Schedule → Webhook)
+// Handles both finding orphaned members AND sending emails (no Gmail step needed)
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
+const nodemailer = require("nodemailer");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
@@ -19,6 +20,73 @@ if (!MEMBERSTACK_SECRET_KEY) {
 }
 
 const memberstack = memberstackAdmin.init(MEMBERSTACK_SECRET_KEY);
+
+// Email configuration from environment variables
+const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
+const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
+const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
+const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
+
+// Create email transporter
+let emailTransporter = null;
+if (EMAIL_FROM && EMAIL_PASSWORD) {
+  emailTransporter = nodemailer.createTransport({
+    host: EMAIL_SMTP_HOST,
+    port: EMAIL_SMTP_PORT,
+    secure: EMAIL_SMTP_PORT === 465, // true for 465, false for other ports
+    auth: {
+      user: EMAIL_FROM,
+      pass: EMAIL_PASSWORD
+    }
+  });
+}
+
+async function sendEmailToOrphanedMember(member) {
+  if (!emailTransporter) {
+    console.warn("[orphaned-webhook] Email not configured - skipping email send");
+    return { sent: false, error: "Email not configured" };
+  }
+
+  const emailSubject = "Complete Your Academy Signup - Action Required";
+  const emailBody = `
+Hi ${member.name || "there"},
+
+We noticed you started creating an account with Alan Ranger Photography Academy but didn't complete the checkout process.
+
+Your Memberstack account was created, but no subscription plan was attached. To access the Academy content, you'll need to complete the signup process.
+
+**What you need to do:**
+1. Visit the Academy signup page
+2. Complete the checkout process to select a trial or annual plan
+3. Once complete, you'll have full access to all Academy content
+
+**Important:** If you don't complete your signup within 8 hours of account creation, your account will be automatically removed.
+
+If you have any questions or need help, please contact us.
+
+Best regards,
+Alan Ranger Photography Academy
+
+---
+This is an automated message. Your account was created ${member.hours_since_creation || "recently"} hours ago.
+  `.trim();
+
+  try {
+    const info = await emailTransporter.sendMail({
+      from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+      to: member.email,
+      subject: emailSubject,
+      text: emailBody,
+      html: emailBody.replace(/\n/g, "<br>")
+    });
+
+    console.log(`[orphaned-webhook] Email sent to ${member.email}: ${info.messageId}`);
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[orphaned-webhook] Error sending email to ${member.email}:`, error.message);
+    return { sent: false, error: error.message };
+  }
+}
 
 async function getOrphanedMembers() {
   const orphanedMembers = [];
@@ -137,23 +205,41 @@ module.exports = async (req, res) => {
 
     const orphanedMembers = await getOrphanedMembers();
 
-    // Extract emails for Gmail BCC field (comma-separated)
-    const emails = orphanedMembers.map(m => m.email).filter(Boolean);
-    const emailsBcc = emails.join(", ");
+    // Send emails to all orphaned members
+    const emailResults = [];
+    let emailsSent = 0;
+    let emailsFailed = 0;
 
-    // Return data in multiple formats for Zapier/Gmail compatibility
-    // Format 1: Array of email strings (for looping)
-    // Format 2: Comma-separated string (for Gmail BCC field)
-    // Format 3: Full member details (for reference)
+    if (orphanedMembers.length > 0) {
+      console.log(`[orphaned-webhook] Sending emails to ${orphanedMembers.length} orphaned members...`);
+      
+      for (const member of orphanedMembers) {
+        const result = await sendEmailToOrphanedMember(member);
+        emailResults.push({
+          email: member.email,
+          name: member.name,
+          sent: result.sent,
+          error: result.error || null
+        });
+        
+        if (result.sent) {
+          emailsSent++;
+        } else {
+          emailsFailed++;
+        }
+      }
+    } else {
+      console.log("[orphaned-webhook] No orphaned members to email");
+    }
+
+    // Return summary of what was done
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
-      count: orphanedMembers.length,
-      // Simple array of emails - Gmail can use this directly
-      emails: emails,
-      // Comma-separated emails for Gmail BCC field
-      emails_bcc: emailsBcc,
-      // Full member details for reference
+      orphaned_members_found: orphanedMembers.length,
+      emails_sent: emailsSent,
+      emails_failed: emailsFailed,
+      email_results: emailResults,
       orphaned_members: orphanedMembers
     });
 
