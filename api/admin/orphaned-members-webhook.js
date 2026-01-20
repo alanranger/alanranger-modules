@@ -179,6 +179,8 @@ async function getOrphanedMembers() {
       // This is the key check for orphaned members
 
       if (!hasActivePlan && email) {
+        // TEMPORARILY DISABLED: 2-hour filter for testing
+        // TODO: Re-enable after testing (change >= 0 back to >= 2)
         // Only include members created more than 2 hours ago
         // This prevents emailing immediately after signup
         // Cleanup runs every 8 hours, so this gives them time to complete signup
@@ -189,9 +191,10 @@ async function getOrphanedMembers() {
         // Debug logging
         console.log(`[orphaned-webhook] Member ${email}: hasActivePlan=${hasActivePlan}, hoursSinceCreation=${Math.round(hoursSinceCreation * 10) / 10}, createdAt=${member.createdAt}`);
         
+        // TEMPORARY: Allow all orphaned members for testing (change back to >= 2 after testing)
         // Only email if account was created 2+ hours ago
         // This ensures we don't email immediately and gives them time to complete signup
-        if (hoursSinceCreation >= 2) {
+        if (hoursSinceCreation >= 0) {
           orphanedMembers.push({
             member_id: memberId,
             email: email,
