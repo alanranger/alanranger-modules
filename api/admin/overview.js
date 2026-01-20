@@ -463,15 +463,21 @@ module.exports = async (req, res) => {
     ).length;
     
     // All-time conversion rate: all conversions / all trials ended
+    // Use Stripe metrics conversion count if available (more accurate)
+    const conversionsCountAllTime = stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length;
     const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
-      ? Math.round((allConversions.length / allTrialsEndedCount) * 100 * 10) / 10
+      ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
     // 30d conversion rate: conversions that happened in last 30d / trials that ended in last 30d
     // Note: This shows recent conversion activity, not a strict cohort
+    // Use Stripe metrics conversion count if available (more accurate)
+    const conversionsCount30d = stripeMetrics?.conversions_trial_to_annual_last_30d ?? conversions30d.length;
+    // CRITICAL: If no trials ended in 30d but we have conversions, show the conversion count, not null
+    // This handles the case where conversions happened but trials ended outside the 30d window
     const trialConversionRate30d = trialsEnded30d.length > 0 
-      ? Math.round((conversions30d.length / trialsEnded30d.length) * 100 * 10) / 10
-      : null;
+      ? Math.round((conversionsCount30d / trialsEnded30d.length) * 100 * 10) / 10
+      : (conversionsCount30d > 0 ? conversionsCount30d : null); // Show count if conversions exist but no trials ended
     
     // Revenue from conversions
     const revenueFromConversionsAllTime = allConversions.reduce((sum, t) => sum + (t.annualAmount || 0), 0);
