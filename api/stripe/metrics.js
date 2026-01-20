@@ -294,6 +294,34 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // Group by customer to find conversions
     const customerTrials = {};
     const customerAnnuals = {};
+    
+    // IMPORTANT: Also check if annual subscriptions themselves had a trial_end
+    // In Stripe, when trial converts to annual, it's often the SAME subscription
+    // that transitions from 'trialing' to 'active' (trial_end passes, subscription continues)
+    // We need to catch these "same subscription" conversions
+    allSubsForAnnualCheck.forEach(sub => {
+      if (isAcademyAnnualSubscription(sub) && sub.trial_end) {
+        const trialEnd = new Date(sub.trial_end * 1000);
+        // If this annual subscription had a trial that ended, it's a conversion
+        if (trialEnd <= nowDate) {
+          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+          if (customerId) {
+            // Add to customerTrials as a synthetic trial entry
+            if (!customerTrials[customerId]) {
+              customerTrials[customerId] = [];
+            }
+            // Create a synthetic trial entry for this subscription
+            customerTrials[customerId].push({
+              id: sub.id + '_trial',
+              trial_end: sub.trial_end,
+              customer: sub.customer,
+              status: 'converted_same_sub'
+            });
+            console.log(`[stripe-metrics] Found annual subscription ${sub.id} that had a trial_end (same subscription conversion)`);
+          }
+        }
+      }
+    });
 
     trialCohort.forEach(sub => {
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
@@ -360,11 +388,13 @@ async function calculateStripeMetrics(forceRefresh = false) {
             const daysDiff = (annualStart - trialEnd) / (1000 * 60 * 60 * 24);
 
             // Conversion if annual started after trial ended (no time limit - can be months later)
-            if (daysDiff >= 0) {
+            // OR if this is the same subscription (trial.id === annual.id) - same subscription conversion
+            const isSameSubscription = trial.id === annual.id || trial.id === annual.id + '_trial';
+            if (daysDiff >= 0 || isSameSubscription) {
               convertedAnnualSubIds.add(annual.id);
               conversionsAllTime++; // Always count as conversion
               
-              console.log(`[stripe-metrics] ✅ CONVERSION FOUND: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}`);
+              console.log(`[stripe-metrics] ✅ CONVERSION FOUND: Customer ${customerId}, Annual sub ${annual.id}, trial ended ${trialEnd.toISOString()}, annual created ${annualStart.toISOString()}, days diff: ${daysDiff.toFixed(1)}, same_sub: ${isSameSubscription}`);
               
               // Count conversion in 30d if annual subscription was CREATED in last 30d
               // (shows recent conversion activity, not a strict cohort)
