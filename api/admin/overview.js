@@ -463,8 +463,8 @@ module.exports = async (req, res) => {
     ).length;
     
     // All-time conversion rate: all conversions / all trials ended
-    // Use Stripe metrics conversion count if available (more accurate)
-    const conversionsCountAllTime = stripeMetrics?.conversions_trial_to_annual_all_time ?? allConversions.length;
+    // Use Supabase data (allConversions) - no Stripe dependency needed
+    const conversionsCountAllTime = allConversions.length;
     const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
       ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
