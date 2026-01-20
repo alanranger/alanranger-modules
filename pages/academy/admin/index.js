@@ -599,7 +599,7 @@ export default function AdminDashboard() {
         <div className="ar-admin-kpi-grid">
           <div 
             className="ar-admin-kpi-tile" 
-            title="Members who started a trial and later activated an annual plan, divided by trials started in the same period (30d cohort)."
+            title="Conversion rate: Of all people who ever had a trial, what % converted to annual in the last 30 days? Formula: (Conversions in last 30d) / (All people who ever had a trial) × 100. This shows recent conversion activity regardless of when the trial ended."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -609,10 +609,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-value">
               {kpis?.bi?.trialConversionRate30d !== null && kpis?.bi?.trialConversionRate30d !== undefined
                 ? `${kpis.bi.trialConversionRate30d}%`
-                : '—'}
+                : (kpis?.bi?.trialToAnnualConversions30d > 0 
+                  ? `${kpis.bi.trialToAnnualConversions30d}`
+                  : '—')}
             </div>
             <div className="ar-admin-kpi-period">
-              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.trialsEnded30d ?? 0} ended (30d)
+              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.trialStartsAllTime ?? 0} trials (30d/all-time)
             </div>
           </div>
           <div 
