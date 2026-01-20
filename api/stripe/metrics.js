@@ -576,22 +576,25 @@ async function calculateStripeMetrics(forceRefresh = false) {
       }
     });
 
-    // Count conversions (convertedAnnualSubIds already built above for same-subscription conversions)
+    // Count conversions from Supabase (convertedAnnualSubIds already built)
+    // CRITICAL: Only count conversions from Supabase, not from Stripe trial cohort matching
+    // because Stripe doesn't preserve trial_end after conversion
     let conversions30d = 0;
-    let conversionsAllTime = convertedAnnualSubIds.size; // Start with same-subscription conversions
+    let conversionsAllTime = convertedAnnualSubIds.size; // Count from Supabase conversions
     let trialsEnded30d = 0;
     let trialsEndedAllTime = 0;
     
-    // Count same-subscription conversions in 30d
-    allSubsForAnnualCheck.forEach(sub => {
-      if (isAcademyAnnualSubscription(sub) && sub.trial_end && convertedAnnualSubIds.has(sub.id)) {
+    // Count Supabase conversions in 30d (based on when annual subscription was created)
+    for (const subId of convertedAnnualSubIds) {
+      const sub = allSubsForAnnualCheck.find(s => s.id === subId);
+      if (sub && sub.created) {
         const annualStart = new Date(sub.created * 1000);
         const annualCreatedInLast30d = annualStart >= thirtyDaysAgo && annualStart <= nowDate;
         if (annualCreatedInLast30d) {
           conversions30d++;
         }
       }
-    });
+    }
 
     console.log(`[stripe-metrics] Checking ${Object.keys(customerTrials).length} customers with trials for conversions`);
     console.log(`[stripe-metrics] Found ${Object.keys(customerAnnuals).length} customers with annual subscriptions`);
