@@ -203,6 +203,16 @@ module.exports = async (req, res) => {
   try {
     console.log(`[orphaned-webhook] Request received at ${new Date().toISOString()}`);
 
+    // Check if Memberstack key is configured
+    if (!MEMBERSTACK_SECRET_KEY) {
+      console.error("[orphaned-webhook] MEMBERSTACK_SECRET_KEY not configured");
+      return res.status(500).json({
+        success: false,
+        error: "MEMBERSTACK_SECRET_KEY not configured",
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const orphanedMembers = await getOrphanedMembers();
 
     // Send emails to all orphaned members
@@ -214,17 +224,28 @@ module.exports = async (req, res) => {
       console.log(`[orphaned-webhook] Sending emails to ${orphanedMembers.length} orphaned members...`);
       
       for (const member of orphanedMembers) {
-        const result = await sendEmailToOrphanedMember(member);
-        emailResults.push({
-          email: member.email,
-          name: member.name,
-          sent: result.sent,
-          error: result.error || null
-        });
-        
-        if (result.sent) {
-          emailsSent++;
-        } else {
+        try {
+          const result = await sendEmailToOrphanedMember(member);
+          emailResults.push({
+            email: member.email,
+            name: member.name,
+            sent: result.sent,
+            error: result.error || null
+          });
+          
+          if (result.sent) {
+            emailsSent++;
+          } else {
+            emailsFailed++;
+          }
+        } catch (emailError) {
+          console.error(`[orphaned-webhook] Error sending email to ${member.email}:`, emailError.message);
+          emailResults.push({
+            email: member.email,
+            name: member.name,
+            sent: false,
+            error: emailError.message
+          });
           emailsFailed++;
         }
       }
@@ -232,23 +253,30 @@ module.exports = async (req, res) => {
       console.log("[orphaned-webhook] No orphaned members to email");
     }
 
-    // Return summary of what was done
+    // Always return success (even if no members found or emails failed)
+    // This allows Zapier to complete successfully
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
       orphaned_members_found: orphanedMembers.length,
       emails_sent: emailsSent,
       emails_failed: emailsFailed,
+      email_configured: !!emailTransporter,
       email_results: emailResults,
       orphaned_members: orphanedMembers
     });
 
   } catch (error) {
     console.error(`[orphaned-webhook] Failed:`, error);
-    return res.status(500).json({
+    // Return 200 with error details so Zapier doesn't fail
+    // This allows the Zap to complete even if there's an issue
+    return res.status(200).json({
       success: false,
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      orphaned_members_found: 0,
+      emails_sent: 0,
+      emails_failed: 0
     });
   }
 };
