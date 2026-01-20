@@ -729,10 +729,19 @@ module.exports = async (req, res) => {
       // Path: api/admin/overview.js -> api/stripe/metrics.js
       const path = require('path');
       const stripeMetricsPath = path.join(process.cwd(), 'api', 'stripe', 'metrics');
-      const stripeMetricsModule = require(stripeMetricsPath);
-      const calculateStripeMetrics = stripeMetricsModule.calculateStripeMetrics;
+      
+      let stripeMetricsModule;
+      try {
+        stripeMetricsModule = require(stripeMetricsPath);
+      } catch (requireError) {
+        console.warn('[overview] Could not require stripe/metrics module:', requireError.message);
+        throw new Error(`Failed to load Stripe metrics module: ${requireError.message}`);
+      }
+      
+      const calculateStripeMetrics = stripeMetricsModule?.calculateStripeMetrics;
       
       if (!calculateStripeMetrics || typeof calculateStripeMetrics !== 'function') {
+        console.warn('[overview] calculateStripeMetrics function not found in module');
         throw new Error('calculateStripeMetrics function not found in stripe/metrics module');
       }
       
@@ -744,8 +753,12 @@ module.exports = async (req, res) => {
         annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
       });
     } catch (error) {
+      console.error('[overview] Stripe metrics error:', error.message);
+      console.error('[overview] Stripe metrics error stack:', error.stack);
+      // Don't fail the entire endpoint if Stripe fails - continue with null metrics
       stripeError = {
-        message: error.message,
+        message: error.message || 'Unknown Stripe error',
+        code: error.code,
         stack: error.stack,
         code: error.code,
         debugInfo: error.debugInfo || null
