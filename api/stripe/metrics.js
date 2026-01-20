@@ -621,6 +621,25 @@ async function calculateStripeMetrics(forceRefresh = false) {
           // Only count first invoice for revenue breakdown
           if (isFirstInvoice) {
             const isConversion = convertedAnnualSubIds.has(subscriptionId);
+            
+            // DEBUG: Log subscription ID matching
+            if (!isConversion) {
+              console.log(`[stripe-metrics] 🔍 DEBUG: Invoice ${invoice.id} subscription ${subscriptionId} NOT in convertedAnnualSubIds`);
+              console.log(`[stripe-metrics] 🔍 DEBUG: Converted subscription IDs are: ${Array.from(convertedAnnualSubIds).join(', ')}`);
+              console.log(`[stripe-metrics] 🔍 DEBUG: Checking if ${subscriptionId} matches any converted ID...`);
+              let foundMatch = false;
+              for (const convertedId of convertedAnnualSubIds) {
+                if (convertedId === subscriptionId || String(convertedId) === String(subscriptionId)) {
+                  foundMatch = true;
+                  console.log(`[stripe-metrics] 🔍 DEBUG: Found match! ${convertedId} === ${subscriptionId}`);
+                  break;
+                }
+              }
+              if (!foundMatch) {
+                console.log(`[stripe-metrics] 🔍 DEBUG: No match found for ${subscriptionId}`);
+              }
+            }
+            
             if (isConversion) {
               revenueFromConversionsNetAllTime += invoiceRevenue;
               if (isInLast30d) {
