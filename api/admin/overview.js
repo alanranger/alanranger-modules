@@ -366,13 +366,18 @@ module.exports = async (req, res) => {
       t.trialStartAt && t.trialStartAt >= start30d
     );
     
-    // Conversion rates
-    const trialToAnnualConversionRateAllTime = trialsStartedAllTime.length > 0 
-      ? Math.round((allConversions.length / trialsStartedAllTime.length) * 100 * 10) / 10
+    // Conversion rates - use trials ENDED, not trials STARTED (more accurate)
+    // Get all-time trials ended count
+    const allTrialsEndedCount = Object.values(memberPlans).filter(m => 
+      m.isTrial && m.trialEndAt && m.trialEndAt <= now
+    ).length;
+    
+    const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
+      ? Math.round((allConversions.length / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    const trialConversionRate30d = trialsStarted30d.length > 0 
-      ? Math.round((conversions30d.length / trialsStarted30d.length) * 100 * 10) / 10
+    const trialConversionRate30d = trialsEnded30d.length > 0 
+      ? Math.round((conversions30d.length / trialsEnded30d.length) * 100 * 10) / 10
       : null;
     
     // Revenue from conversions
@@ -398,6 +403,24 @@ module.exports = async (req, res) => {
     const trialDropoffRate30d = trialsEnded30d.length > 0
       ? Math.round((trialDropOff30d / trialsEnded30d.length) * 100 * 10) / 10
       : null;
+
+    // ===== LOST REVENUE OPPORTUNITY =====
+    // Calculate lost revenue from trials that expired without converting (all-time)
+    // This is the revenue opportunity if all expired trials had converted
+    const allTrialsEnded = Object.values(memberPlans).filter(m => 
+      m.isTrial && 
+      m.trialEndAt && 
+      m.trialEndAt <= now
+    );
+
+    const trialsEndedWithoutConversionAllTime = allTrialsEnded.filter(m => {
+      return !m.annualStartAt || m.annualStartAt > m.trialEndAt;
+    });
+
+    // Get annual price from Stripe metrics or use default
+    const annualPrice = stripeMetrics?.academy_annual_list_price_gbp || 79;
+    const lostRevenueOpportunityAllTime = Math.round(trialsEndedWithoutConversionAllTime.length * annualPrice * 100) / 100;
+    const lostRevenueOpportunity30d = Math.round(trialsEndedWithoutConversion30d.length * annualPrice * 100) / 100;
 
     // Median days to convert (from conversions30d timeline)
     const daysToConvert = conversions30d
@@ -665,6 +688,8 @@ module.exports = async (req, res) => {
         trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
+        trialsEnded30d: trialsEnded30d.length,
+        trialsEndedAllTime: allTrialsEndedCount,
         revenueFromConversionsAllTime: Math.round(revenueFromConversionsAllTime * 100) / 100,
         revenueFromConversions30d: Math.round(revenueFromConversions30d * 100) / 100,
         
@@ -694,7 +719,13 @@ module.exports = async (req, res) => {
         netMemberGrowth30d: netMemberGrowth30d,
         newAnnualStarts30d: newAnnualStarts30d,
         netPaidGrowth30d: netPaidGrowth30d,
-        activePaidNow: stripeMetrics?.annual_active_count ?? activePaidNow
+        activePaidNow: stripeMetrics?.annual_active_count ?? activePaidNow,
+        
+        // Lost revenue opportunity
+        lostRevenueOpportunityAllTime: lostRevenueOpportunityAllTime,
+        lostRevenueOpportunity30d: lostRevenueOpportunity30d,
+        trialsEndedWithoutConversionAllTime: trialsEndedWithoutConversionAllTime.length,
+        trialsEndedWithoutConversion30d: trialsEndedWithoutConversion30d.length
       },
       
       // Stripe Metrics (source of truth - subscriptions + invoices)
