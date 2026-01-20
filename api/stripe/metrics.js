@@ -207,11 +207,13 @@ async function getConversionsFromSupabase() {
         (e.ms_price_id?.includes('trial') || e.ms_price_id?.includes('30-day'))
       );
       
-      // Check 3: Member was created before annual subscription/paid date
-      // (If member created before annual, they likely had a trial period)
+      // Check 3: Member was created SIGNIFICANTLY before annual subscription/paid date
+      // (If member created >1 day before annual paid, they likely had a trial period)
+      // CRITICAL: Same-day signups (member created = annual paid same day) are NOT conversions
       const annualPaidDate = timeline?.annualPaidAt ? new Date(timeline.annualPaidAt) : annualStartDate;
-      const hadTrialFromTiming = memberCreatedAt && annualPaidDate && 
-                                 memberCreatedAt.getTime() < annualPaidDate.getTime();
+      const daysBetween = memberCreatedAt && annualPaidDate ? 
+                         (annualPaidDate.getTime() - memberCreatedAt.getTime()) / (1000 * 60 * 60 * 24) : 0;
+      const hadTrialFromTiming = daysBetween > 1; // Must be more than 1 day gap
       
       // If ANY check is true, they had a trial
       const hadTrial = hadTrialFromEvents || hasTrialEvent || hadTrialFromTiming;
