@@ -407,6 +407,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
     
     console.log(`[stripe-metrics] Total conversions found: ${conversionsAllTime} (30d: ${conversions30d})`);
     console.log(`[stripe-metrics] Converted subscription IDs: ${Array.from(convertedAnnualSubIds).join(', ')}`);
+    console.log(`[stripe-metrics] ⚠️  CRITICAL: These subscription IDs must match invoice.subscription.id for revenue classification to work correctly`);
 
     metrics.conversions_trial_to_annual_last_30d = conversions30d;
     metrics.conversions_trial_to_annual_all_time = conversionsAllTime;
