@@ -209,7 +209,15 @@ async function getConversionsFromSupabase() {
                          annualPaidDate.getTime() > trialStartDate.getTime();
       
       if (isConverted) {
-        // Try to get Stripe customer ID and subscription ID from events
+        // Try multiple methods to get Stripe subscription ID:
+        // 1. From customer.subscription.created event
+        // 2. From invoice.paid event (which has subscription field)
+        // 3. From plan_summary in member record
+        
+        let subscriptionId = null;
+        let customerId = null;
+        
+        // Method 1: Check subscription.created event
         const subscriptionCreatedEvent = memberEvents.find(e => 
           e.event_type === 'customer.subscription.created' &&
           (e.ms_price_id?.includes('annual') || e.ms_price_id === 'prc_annual-membership-jj7y0h89')
@@ -221,19 +229,55 @@ async function getConversionsFromSupabase() {
               ? JSON.parse(subscriptionCreatedEvent.payload) 
               : subscriptionCreatedEvent.payload;
             
-            const subscriptionId = payload?.data?.object?.id;
-            const customerId = payload?.data?.object?.customer;
-            
-            if (subscriptionId) {
-              convertedSubscriptionIds.add(subscriptionId);
-              console.log(`[stripe-metrics] ✅ SUPABASE CONVERSION: Member ${member.email}, subscription ${subscriptionId}`);
-            }
-            if (customerId) {
-              convertedCustomerIds.add(typeof customerId === 'string' ? customerId : customerId.id);
-            }
+            subscriptionId = payload?.data?.object?.id;
+            customerId = payload?.data?.object?.customer;
           } catch (e) {
-            console.warn(`[stripe-metrics] Could not parse subscription event payload for ${member.email}: ${e.message}`);
+            console.warn(`[stripe-metrics] Could not parse subscription.created payload for ${member.email}: ${e.message}`);
           }
+        }
+        
+        // Method 2: Check invoice.paid event (has subscription field)
+        if (!subscriptionId) {
+          const invoicePaidEvent = memberEvents.find(e => 
+            e.event_type === 'invoice.paid' &&
+            timeline?.annualInvoiceId === e.stripe_invoice_id
+          );
+          
+          if (invoicePaidEvent && invoicePaidEvent.payload) {
+            try {
+              const payload = typeof invoicePaidEvent.payload === 'string' 
+                ? JSON.parse(invoicePaidEvent.payload) 
+                : invoicePaidEvent.payload;
+              
+              subscriptionId = payload?.data?.object?.subscription;
+              if (!customerId) {
+                customerId = payload?.data?.object?.customer;
+              }
+            } catch (e) {
+              console.warn(`[stripe-metrics] Could not parse invoice.paid payload for ${member.email}: ${e.message}`);
+            }
+          }
+        }
+        
+        // Method 3: Check plan_summary for subscription ID
+        if (!subscriptionId && plan.subscription_id) {
+          subscriptionId = plan.subscription_id;
+        }
+        
+        // Method 4: Check plan_summary for customer ID and match to Stripe subscriptions
+        if (!customerId && plan.customer_id) {
+          customerId = plan.customer_id;
+        }
+        
+        if (subscriptionId) {
+          convertedSubscriptionIds.add(subscriptionId);
+          console.log(`[stripe-metrics] ✅ SUPABASE CONVERSION: Member ${member.email}, subscription ${subscriptionId}`);
+        } else if (customerId) {
+          // If we have customer ID but not subscription ID, add customer ID for matching
+          convertedCustomerIds.add(typeof customerId === 'string' ? customerId : customerId.id);
+          console.log(`[stripe-metrics] ✅ SUPABASE CONVERSION (customer only): Member ${member.email}, customer ${customerId} (will match by customer ID)`);
+        } else {
+          console.warn(`[stripe-metrics] ⚠️  Conversion detected for ${member.email} but could not extract subscription or customer ID`);
         }
       }
     }
