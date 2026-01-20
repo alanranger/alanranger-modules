@@ -34,11 +34,11 @@ body {
 .ar-admin-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 22px;
 }
 
 .ar-admin-header {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .ar-admin-title {
@@ -73,7 +73,7 @@ body {
 .ar-admin-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 32px;
 }
 
@@ -82,7 +82,7 @@ body {
   background: var(--ar-card);
   border: 2px solid var(--ar-border);
   border-radius: var(--ar-radius);
-  padding: 16px 16px 14px;
+  padding: 14px 14px 12px;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   text-decoration: none;

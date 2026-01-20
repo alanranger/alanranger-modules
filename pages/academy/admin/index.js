@@ -456,9 +456,9 @@ export default function AdminDashboard() {
       <div style={{ 
         display: 'flex', 
         gap: '8px', 
-        marginBottom: '24px',
+        marginBottom: '20px',
         borderBottom: '1px solid var(--ar-border)',
-        paddingBottom: '12px'
+        paddingBottom: '10px'
       }}>
         <Link href="/academy/admin" style={{
           padding: '8px 16px',
@@ -592,7 +592,7 @@ export default function AdminDashboard() {
 
 
       {/* Revenue & Retention */}
-      <div style={{ marginTop: '16px' }}>
+      <div style={{ marginTop: '12px' }}>
         {/* Row 1: Conversion Metrics */}
         <div style={{ marginBottom: '4px' }}>
           <div style={{ 
@@ -601,13 +601,13 @@ export default function AdminDashboard() {
             color: 'var(--ar-text-muted)', 
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            marginBottom: '8px',
+            marginBottom: '6px',
             opacity: 0.9
           }}>
             Conversion Metrics
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Conversion rate: Of all people who ever had a trial, what % converted to annual in the last 30 days? Formula: (Conversions in last 30d) / (All people who ever had a trial) × 100. This shows recent conversion activity regardless of when the trial ended."
@@ -700,13 +700,13 @@ export default function AdminDashboard() {
             color: 'var(--ar-text-muted)', 
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            marginBottom: '8px',
+            marginBottom: '6px',
             opacity: 0.9
           }}>
             Revenue — All-time
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
@@ -809,13 +809,13 @@ export default function AdminDashboard() {
             color: 'var(--ar-text-muted)', 
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            marginBottom: '8px',
+            marginBottom: '6px',
             opacity: 0.9
           }}>
             Revenue — 30 Days & Growth
           </div>
         </div>
-        <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <div className="ar-admin-kpi-grid" style={{ marginBottom: '20px' }}>
           <div 
             className="ar-admin-kpi-tile" 
             title="Net paid revenue from annual subscriptions in the last 30 days. Includes both direct annual signups and trial conversions. Net = after Stripe fees."
@@ -916,7 +916,7 @@ export default function AdminDashboard() {
             color: 'var(--ar-text-muted)', 
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            marginBottom: '8px',
+            marginBottom: '6px',
             opacity: 0.9
           }}>
             Risk & Opportunity
