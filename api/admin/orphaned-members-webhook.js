@@ -193,11 +193,24 @@ module.exports = async (req, res) => {
   }
 
   // Optional: Add a secret token for security
+  // Only enforce if secret is set AND a secret is provided
+  // If no secret is set, allow access (for easier Zapier setup)
   const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET;
   const providedSecret = req.query.secret || req.headers["x-webhook-secret"];
 
-  if (webhookSecret && providedSecret !== webhookSecret) {
+  // Only check secret if BOTH are present (secret is configured AND provided)
+  // This allows the endpoint to work without a secret if not configured
+  if (webhookSecret && providedSecret && providedSecret !== webhookSecret) {
+    console.log("[orphaned-webhook] Invalid webhook secret provided");
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  // If secret is configured but not provided, warn but allow (for Zapier compatibility)
+  // You can enforce this by uncommenting the return below
+  if (webhookSecret && !providedSecret) {
+    console.warn("[orphaned-webhook] Webhook secret configured but not provided in request");
+    // Uncomment below to enforce secret requirement:
+    // return res.status(401).json({ error: "Unauthorized - secret required" });
   }
 
   try {
