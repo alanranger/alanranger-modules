@@ -454,6 +454,24 @@ module.exports = async (req, res) => {
       m.trialEndAt <= now
     );
     
+    // For 30d conversion rate: if we have conversions but no trials ended in 30d,
+    // check if any of those conversions had their trial end within a reasonable window (60 days)
+    // This handles cases where trial ended >30d ago but conversion happened recently
+    let trialsEndedFor30dConversion = trialsEnded30d.length;
+    if (conversions30d.length > 0 && trialsEnded30d.length === 0) {
+      // Check if any conversions in last 30d had their trial end within 60 days
+      const start60d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const trialsEndedForRecentConversions = conversions30d.filter(c => {
+        // Find the member plan for this conversion
+        const memberPlan = Object.values(memberPlans).find(m => m.member_id === c.ms_member_id);
+        if (!memberPlan || !memberPlan.trialEndAt) return false;
+        const trialEnd = memberPlan.trialEndAt instanceof Date ? memberPlan.trialEndAt : new Date(memberPlan.trialEndAt);
+        return trialEnd >= start60d && trialEnd <= now;
+      }).length;
+      // Use the count of conversions that had trials ending within 60d as denominator
+      trialsEndedFor30dConversion = Math.max(trialsEndedForRecentConversions, conversions30d.length);
+    }
+    
     // Get all-time trials ended count
     const allTrialsEndedCount = Object.values(memberPlans).filter(m => 
       m.isTrial && m.trialEndAt && m.trialEndAt <= now
@@ -463,8 +481,8 @@ module.exports = async (req, res) => {
       ? Math.round((allConversions.length / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    const trialConversionRate30d = trialsEnded30d.length > 0 
-      ? Math.round((conversions30d.length / trialsEnded30d.length) * 100 * 10) / 10
+    const trialConversionRate30d = trialsEndedFor30dConversion > 0 
+      ? Math.round((conversions30d.length / trialsEndedFor30dConversion) * 100 * 10) / 10
       : null;
     
     // Revenue from conversions
@@ -807,7 +825,7 @@ module.exports = async (req, res) => {
         trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
-        trialsEnded30d: trialsEnded30d.length,
+        trialsEnded30d: trialsEndedFor30dConversion, // Use adjusted count for 30d conversion rate
         trialsEndedAllTime: allTrialsEndedCount,
         revenueFromConversionsAllTime: Math.round(revenueFromConversionsAllTime * 100) / 100,
         revenueFromConversions30d: Math.round(revenueFromConversions30d * 100) / 100,
