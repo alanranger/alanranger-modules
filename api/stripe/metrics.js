@@ -176,6 +176,8 @@ async function getConversionsFromSupabase() {
       return plan.plan_type === 'annual' && (plan.status || '').toUpperCase() === 'ACTIVE';
     });
     
+    console.log(`[stripe-metrics] Checking ${annualMembers.length} annual members for conversions...`);
+    
     for (const member of annualMembers) {
       const timeline = memberTimelines[member.member_id];
       const plan = member.plan_summary || {};
@@ -207,6 +209,9 @@ async function getConversionsFromSupabase() {
                          trialStartDate && 
                          annualPaidDate && 
                          annualPaidDate.getTime() > trialStartDate.getTime();
+      
+      // Log conversion detection for ALL members
+      console.log(`[stripe-metrics] 🔍 Member ${member.email}: hadTrial=${hadTrial} (fromEvents=${hadTrialFromEvents}, fromTiming=${likelyHadTrialFromTiming}), trialStart=${trialStartDate?.toISOString() || 'NONE'}, annualPaid=${annualPaidDate?.toISOString() || 'NONE'}, isConverted=${isConverted}`);
       
       if (isConverted) {
         // Try multiple methods to get Stripe subscription ID:
