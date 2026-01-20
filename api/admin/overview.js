@@ -767,58 +767,6 @@ module.exports = async (req, res) => {
     // Active paid now (already calculated as 'annual')
     const activePaidNow = annual;
 
-    // ===== STRIPE METRICS (Source of Truth - Subscriptions) =====
-    let stripeMetrics = null;
-    let stripeError = null;
-    
-    try {
-      // Call Stripe metrics calculation function directly (server-side)
-      // In Next.js, require paths are relative to project root, not file location
-      // Path: api/admin/overview.js -> api/stripe/metrics.js
-      const path = require('path');
-      const stripeMetricsPath = path.join(process.cwd(), 'api', 'stripe', 'metrics');
-      
-      let stripeMetricsModule;
-      try {
-        stripeMetricsModule = require(stripeMetricsPath);
-      } catch (requireError) {
-        console.warn('[overview] Could not require stripe/metrics module:', requireError.message);
-        throw new Error(`Failed to load Stripe metrics module: ${requireError.message}`);
-      }
-      
-      const calculateStripeMetrics = stripeMetricsModule?.calculateStripeMetrics;
-      
-      if (!calculateStripeMetrics || typeof calculateStripeMetrics !== 'function') {
-        console.warn('[overview] calculateStripeMetrics function not found in module');
-        throw new Error('calculateStripeMetrics function not found in stripe/metrics module');
-      }
-      
-      stripeMetrics = await calculateStripeMetrics(false); // Use cache if available
-      console.log('[overview] Stripe metrics fetched successfully:', {
-        annual_active: stripeMetrics?.annual_active_count,
-        revenue_all_time: stripeMetrics?.revenue_net_all_time_gbp,
-        invoices_found: stripeMetrics?.debug_invoices_found,
-        annual_invoices_matched: stripeMetrics?.debug_annual_invoices_matched
-      });
-    } catch (error) {
-      console.error('[overview] Stripe metrics error:', error.message);
-      console.error('[overview] Stripe metrics error stack:', error.stack);
-      // Don't fail the entire endpoint if Stripe fails - continue with null metrics
-      stripeError = {
-        message: error.message || 'Unknown Stripe error',
-        code: error.code,
-        stack: error.stack,
-        code: error.code,
-        debugInfo: error.debugInfo || null
-      };
-      console.error('[overview] Error fetching Stripe metrics:', error.message);
-      console.error('[overview] Error stack:', error.stack);
-      if (error.debugInfo) {
-        console.error('[overview] Debug info:', JSON.stringify(error.debugInfo, null, 2));
-      }
-      // Continue without Stripe data (don't break dashboard)
-    }
-
     return res.status(200).json({
       // Member counts
       totalMembers: totalMembers || 0,
