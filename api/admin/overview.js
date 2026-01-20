@@ -469,12 +469,37 @@ module.exports = async (req, res) => {
       ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
 
-    // NOTE: stripeMetrics is initialized later, so we'll calculate this after it's available
-    // For now, use the fallback values
-    const conversionsCount30dForRate = conversions30d.length;
-    const allTrialsStartedCount = trialsStartedAllTime.length;
-    let trialConversionRate30d = allTrialsStartedCount > 0 
-      ? Math.round((conversionsCount30dForRate / allTrialsStartedCount) * 100 * 10) / 10
+    // 30d conversion rate: conversions that happened in last 30d / trials that were active during last 30d
+    // A trial is "active during last 30d" if:
+    // - It started before or during the period (trialStartAt <= now)
+    // - It ended after the start of the period (trialEndAt >= start30d) OR hasn't ended yet (trialEndAt is null or > now)
+    // This shows: "Of trials active in the last 30 days, what % converted?"
+    const conversionsCount30d = conversions30d.length;
+    
+    // Count trials that were active at any point during the last 30 days
+    const activeTrials30d = Object.values(memberPlans).filter(m => {
+      if (!m.isTrial || !m.trialStartAt) return false;
+      
+      const trialStart = m.trialStartAt instanceof Date ? m.trialStartAt : new Date(m.trialStartAt);
+      if (isNaN(trialStart.getTime())) return false;
+      
+      // Trial must have started before or during the period
+      if (trialStart > now) return false;
+      
+      // Trial must not have ended before the start of the 30d period
+      if (m.trialEndAt) {
+        const trialEnd = m.trialEndAt instanceof Date ? m.trialEndAt : new Date(m.trialEndAt);
+        if (!isNaN(trialEnd.getTime()) && trialEnd < start30d) {
+          return false; // Trial ended before the 30d window
+        }
+      }
+      
+      return true; // Trial was active during the 30d period
+    });
+    
+    const activeTrials30dCount = activeTrials30d.length;
+    const trialConversionRate30d = activeTrials30dCount > 0 
+      ? Math.round((conversionsCount30d / activeTrials30dCount) * 100 * 10) / 10
       : null;
     
     // Revenue from conversions
