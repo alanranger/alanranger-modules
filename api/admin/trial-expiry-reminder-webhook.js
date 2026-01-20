@@ -149,12 +149,23 @@ Your trial access ended on **${expiryDate}**, and you've now lost access to all 
 
 **Don't worry - you can restore your access immediately!**
 
-Upgrade to an annual plan (£79/year) and you'll instantly regain:
-✅ Full access to all Academy modules and content
-✅ Exclusive photography tutorials and guides
-✅ Community support and resources
-✅ Regular updates and new content
-✅ All the tools and knowledge to improve your photography
+Upgrade to an annual plan (£79/year) and you'll instantly regain full access to:
+
+**Academy Content:**
+✅ 5 groups of key (10 Min) modules to learn photography
+✅ 15 Key Camera Setting Modules
+✅ 10 Essential Gear and Accessory Guides
+✅ 10 Composition Guide Modules
+✅ 10 Photography Genre Topic Guides
+✅ 15 Practical Assignments
+✅ 30 Practice Packs to support the key modules
+✅ 35 1-Page Field Checklists
+✅ 15 Exam modules with certification to test your knowledge and development
+
+**Plus Academy Features:**
+✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
+✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
+✅ Modern login + better access control for a smoother experience across devices
 
 **Restore your access now:**
 ${checkoutUrl}
@@ -189,11 +200,18 @@ Your 30-day trial with Alan Ranger Photography Academy will end **tomorrow (${ex
 ${checkoutUrl}
 
 **What you'll get:**
-✅ Full access to all Academy modules and content
-✅ Exclusive photography tutorials and guides
-✅ Community support and resources
-✅ Regular updates and new content
-✅ All the tools and knowledge to improve your photography
+✅ 5 groups of key (10 Min) modules to learn photography
+✅ 15 Key Camera Setting Modules
+✅ 10 Essential Gear and Accessory Guides
+✅ 10 Composition Guide Modules
+✅ 10 Photography Genre Topic Guides
+✅ 15 Practical Assignments
+✅ 30 Practice Packs to support the key modules
+✅ 35 1-Page Field Checklists
+✅ 15 Exam modules with certification to test your knowledge and development
+✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
+✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
+✅ Modern login + better access control for a smoother experience across devices
 
 **Don't wait - upgrade now before you lose access tomorrow!**
 
@@ -223,11 +241,18 @@ Your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDat
 - You'll need to sign up for an annual plan (£79) to regain access
 
 **Upgrade now for just £79/year and get:**
-✅ Full access to all Academy modules and content
-✅ Exclusive photography tutorials and guides
-✅ Community support and resources
-✅ Regular updates and new content
-✅ All the tools and knowledge to improve your photography
+✅ 5 groups of key (10 Min) modules to learn photography
+✅ 15 Key Camera Setting Modules
+✅ 10 Essential Gear and Accessory Guides
+✅ 10 Composition Guide Modules
+✅ 10 Photography Genre Topic Guides
+✅ 15 Practical Assignments
+✅ 30 Practice Packs to support the key modules
+✅ 35 1-Page Field Checklists
+✅ 15 Exam modules with certification to test your knowledge and development
+✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
+✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
+✅ Modern login + better access control for a smoother experience across devices
 
 **Upgrade your account now:**
 ${checkoutUrl}
@@ -253,11 +278,18 @@ Just a friendly heads-up that your 30-day trial with Alan Ranger Photography Aca
 We hope you've been enjoying the Academy content so far! To continue your photography journey with full access to all modules, tutorials, and resources, you'll need to upgrade to an annual plan.
 
 **Upgrade now for just £79/year and get:**
-✅ Full access to all Academy modules and content
-✅ Exclusive photography tutorials and guides
-✅ Community support and resources
-✅ Regular updates and new content
-✅ All the tools and knowledge to improve your photography
+✅ 5 groups of key (10 Min) modules to learn photography
+✅ 15 Key Camera Setting Modules
+✅ 10 Essential Gear and Accessory Guides
+✅ 10 Composition Guide Modules
+✅ 10 Photography Genre Topic Guides
+✅ 15 Practical Assignments
+✅ 30 Practice Packs to support the key modules
+✅ 35 1-Page Field Checklists
+✅ 15 Exam modules with certification to test your knowledge and development
+✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
+✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
+✅ Modern login + better access control for a smoother experience across devices
 
 **Upgrade your account:**
 ${checkoutUrl}
