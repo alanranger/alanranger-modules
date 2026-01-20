@@ -299,13 +299,18 @@ async function calculateStripeMetrics(forceRefresh = false) {
     // We need to check canceled subs too because they might have had paid invoices
     const allSubsForAnnualCheck = [...allActiveSubs, ...canceledSubs];
     
+    console.log(`[stripe-metrics] Total subscriptions to check: ${allSubsForAnnualCheck.length} (${allActiveSubs.length} active, ${canceledSubs.length} canceled)`);
+    
     // Build convertedAnnualSubIds FIRST - check if annual subscriptions themselves had a trial_end
     // In Stripe, when trial converts to annual, it's often the SAME subscription
     // that transitions from 'trialing' to 'active' (trial_end passes, subscription continues)
     const convertedAnnualSubIds = new Set();
+    let academyAnnualCount = 0;
+    let subscriptionsWithTrialEnd = 0;
     
     allSubsForAnnualCheck.forEach(sub => {
       if (isAcademyAnnualSubscription(sub)) {
+        academyAnnualCount++;
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
         if (customerId) {
           if (!customerAnnuals[customerId]) {
@@ -313,8 +318,12 @@ async function calculateStripeMetrics(forceRefresh = false) {
           }
           customerAnnuals[customerId].push(sub);
           
+          // Log ALL annual subscriptions for debugging
+          console.log(`[stripe-metrics] 🔍 Annual sub ${sub.id} (status: ${sub.status}, customer: ${customerId}): trial_end=${sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : 'NONE'}, created=${sub.created ? new Date(sub.created * 1000).toISOString() : 'NONE'}`);
+          
           // If this annual subscription had a trial_end, it's DEFINITELY a conversion (same subscription)
           if (sub.trial_end) {
+            subscriptionsWithTrialEnd++;
             const trialEnd = new Date(sub.trial_end * 1000);
             if (trialEnd <= nowDate) {
               convertedAnnualSubIds.add(sub.id);
@@ -322,18 +331,14 @@ async function calculateStripeMetrics(forceRefresh = false) {
             } else {
               console.log(`[stripe-metrics] ⚠️  Annual sub ${sub.id} has trial_end ${trialEnd.toISOString()} but it's in the future (not ended yet)`);
             }
-          } else {
-            // Debug: log if subscription doesn't have trial_end but we expected it might
-            if (sub.status === 'active' || sub.status === 'canceled') {
-              // Only log occasionally to avoid spam
-              if (Math.random() < 0.1) {
-                console.log(`[stripe-metrics] 🔍 DEBUG: Annual sub ${sub.id} (status: ${sub.status}) has no trial_end field`);
-              }
-            }
           }
         }
       }
     });
+    
+    console.log(`[stripe-metrics] Found ${academyAnnualCount} Academy annual subscriptions total`);
+    console.log(`[stripe-metrics] Found ${subscriptionsWithTrialEnd} subscriptions with trial_end`);
+    console.log(`[stripe-metrics] Found ${convertedAnnualSubIds.size} same-subscription conversions so far`);
 
     trialCohort.forEach(sub => {
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
