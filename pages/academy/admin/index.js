@@ -689,7 +689,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '8px 0'
+          margin: '4px 0'
         }}></div>
         
         {/* Row 2: Revenue - All-time */}
@@ -798,7 +798,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '8px 0'
+          margin: '4px 0'
         }}></div>
         
         {/* Row 3: Revenue - 30 Days & Growth */}
@@ -905,7 +905,7 @@ export default function AdminDashboard() {
           height: '1px', 
           background: 'var(--ar-border)', 
           opacity: 0.3,
-          margin: '8px 0'
+          margin: '4px 0'
         }}></div>
         
         {/* Row 4: Risk & Opportunity */}
