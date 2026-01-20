@@ -131,25 +131,87 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry) {
       })
     : 'soon';
 
-  const timeRemaining = daysUntilExpiry === 1 
-    ? '24 hours' 
-    : `${daysUntilExpiry} days`;
-
-  const urgencyText = daysUntilExpiry === 1
-    ? '**URGENT:** Only 24 hours left!'
-    : `Your trial expires in ${timeRemaining}`;
-
-  const emailSubject = daysUntilExpiry === 1
-    ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
-    : `Your Academy Trial Expires in ${timeRemaining} - Upgrade to Continue Access`;
-
   // Generate personalized checkout URL for this member
   const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name);
 
-  const emailBody = `
+  // Determine email type based on days until/after expiry
+  let emailSubject, emailBody;
+  
+  if (daysUntilExpiry < 0) {
+    // EXPIRED: 1 day after expiry
+    emailSubject = "⚠️ Your Academy Trial Has Expired - Restore Access Now";
+    emailBody = `
 Hi ${member.name || "there"},
 
-${urgencyText}
+**Your 30-day trial with Alan Ranger Photography Academy has expired.**
+
+Your trial access ended on **${expiryDate}**, and you've now lost access to all Academy content, modules, and resources.
+
+**Don't worry - you can restore your access immediately!**
+
+Upgrade to an annual plan (£79/year) and you'll instantly regain:
+✅ Full access to all Academy modules and content
+✅ Exclusive photography tutorials and guides
+✅ Community support and resources
+✅ Regular updates and new content
+✅ All the tools and knowledge to improve your photography
+
+**Restore your access now:**
+${checkoutUrl}
+
+This is your last chance to continue your photography journey with us at the annual membership rate.
+
+If you have any questions or need help, please contact us.
+
+Best regards,
+Alan Ranger Photography Academy
+
+---
+This is an automated notification. Your trial expired on ${expiryDate}.
+    `.trim();
+  } else if (daysUntilExpiry === 1) {
+    // FINAL REMINDER: 1 day before expiry
+    emailSubject = "⚠️ URGENT: Your Academy Trial Expires Tomorrow - Upgrade Now";
+    emailBody = `
+Hi ${member.name || "there"},
+
+**URGENT: Only 24 hours left!**
+
+Your 30-day trial with Alan Ranger Photography Academy will end **tomorrow (${expiryDate})**.
+
+**This is your final reminder** - if you don't upgrade today, you will lose access to:
+- All Academy modules and content
+- Exclusive photography tutorials and guides
+- Community support and resources
+- Everything you've been learning
+
+**Upgrade now for just £79/year and keep your access:**
+${checkoutUrl}
+
+**What you'll get:**
+✅ Full access to all Academy modules and content
+✅ Exclusive photography tutorials and guides
+✅ Community support and resources
+✅ Regular updates and new content
+✅ All the tools and knowledge to improve your photography
+
+**Don't wait - upgrade now before you lose access tomorrow!**
+
+If you have any questions or need help with the upgrade process, please contact us immediately.
+
+Best regards,
+Alan Ranger Photography Academy
+
+---
+This is an automated final reminder. Your trial expires tomorrow (${expiryDate}).
+    `.trim();
+  } else if (daysUntilExpiry === 7) {
+    // HARDER REMINDER: 7 days before expiry
+    emailSubject = "⏰ Your Academy Trial Expires in 7 Days - Upgrade to Continue Access";
+    emailBody = `
+Hi ${member.name || "there"},
+
+**Your trial expires in 7 days**
 
 Your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDate}**.
 
@@ -178,8 +240,39 @@ Best regards,
 Alan Ranger Photography Academy
 
 ---
-This is an automated reminder. Your trial expires on ${expiryDate} (${timeRemaining} remaining).
-  `.trim();
+This is an automated reminder. Your trial expires on ${expiryDate} (7 days remaining).
+    `.trim();
+  } else {
+    // SOFT REMINDER: 15 days before expiry (or other early reminders)
+    emailSubject = "📸 Friendly Reminder: Your Academy Trial Expires Soon";
+    emailBody = `
+Hi ${member.name || "there"},
+
+Just a friendly heads-up that your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDate}** (${daysUntilExpiry} days from now).
+
+We hope you've been enjoying the Academy content so far! To continue your photography journey with full access to all modules, tutorials, and resources, you'll need to upgrade to an annual plan.
+
+**Upgrade now for just £79/year and get:**
+✅ Full access to all Academy modules and content
+✅ Exclusive photography tutorials and guides
+✅ Community support and resources
+✅ Regular updates and new content
+✅ All the tools and knowledge to improve your photography
+
+**Upgrade your account:**
+${checkoutUrl}
+
+No pressure - just wanted to make sure you're aware so you don't miss out on continuing your learning journey with us!
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+Alan Ranger Photography Academy
+
+---
+This is an automated friendly reminder. Your trial expires on ${expiryDate} (${daysUntilExpiry} days remaining).
+    `.trim();
+  }
 
   try {
     const info = await emailTransporter.sendMail({
@@ -212,10 +305,16 @@ async function getMembersWithExpiringTrials(daysAhead) {
   const targetDateStart = new Date(targetDate);
   targetDateStart.setHours(0, 0, 0, 0);
 
+  // Determine if we're looking for expired trials (negative daysAhead)
+  const isExpiredSearch = daysAhead < 0;
+  const daysDescription = isExpiredSearch 
+    ? `${Math.abs(daysAhead)} day(s) ago` 
+    : `${daysAhead} day(s) ahead`;
+
   try {
     // Use Supabase cache as primary source (it has expiry_date in plan_summary)
     // This is more reliable than Memberstack API which may have different structure
-    console.log(`[trial-expiry-reminder] Fetching members from Supabase cache (looking for trials expiring in ${daysAhead} days)...`);
+    console.log(`[trial-expiry-reminder] Fetching members from Supabase cache (looking for trials ${isExpiredSearch ? 'expired' : 'expiring'} ${daysDescription})...`);
     console.log(`[trial-expiry-reminder] Date range: ${targetDateStart.toISOString()} to ${targetDate.toISOString()}`);
     
     const { data: cachedMembers, error: cacheError } = await supabase
@@ -238,14 +337,19 @@ async function getMembersWithExpiringTrials(daysAhead) {
         const name = member.name || "N/A";
         const planSummary = member.plan_summary || {};
         
-        // Check if member has an active trial plan
+        // Check if member has a trial plan (active or expired)
         const status = (planSummary.status || "").toUpperCase();
         const planType = planSummary.plan_type || "";
         const isTrial = planType === "trial" || 
                        (planSummary.plan_id && planSummary.plan_id.includes("trial")) ||
                        (planSummary.payment_mode === "ONETIME" && planSummary.expiry_date);
         
-        if (isTrial && (status === "ACTIVE" || status === "TRIALING") && email) {
+        // For expired search, include EXPIRED/INACTIVE status; for future search, only ACTIVE/TRIALING
+        const validStatus = isExpiredSearch
+          ? (status === "EXPIRED" || status === "INACTIVE" || status === "CANCELLED" || status === "ACTIVE" || status === "TRIALING")
+          : (status === "ACTIVE" || status === "TRIALING");
+        
+        if (isTrial && validStatus && email) {
           trialsChecked++;
           
           if (planSummary.expiry_date) {
@@ -257,7 +361,11 @@ async function getMembersWithExpiringTrials(daysAhead) {
                 const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 
                 // Check if expiry date falls within our target day range
-                if (expiryDate >= targetDateStart && expiryDate <= targetDate) {
+                // For expired search, also verify the trial has actually expired (expiryDate < now)
+                const isInDateRange = expiryDate >= targetDateStart && expiryDate <= targetDate;
+                const isActuallyExpired = isExpiredSearch ? (expiryDate < now) : true;
+                
+                if (isInDateRange && isActuallyExpired) {
                   expiringMembers.push({
                     member_id: memberId,
                     email: email,
@@ -268,7 +376,8 @@ async function getMembersWithExpiringTrials(daysAhead) {
                     plan_name: planSummary.plan_name || "Academy Trial" || null
                   });
                   
-                  console.log(`[trial-expiry-reminder] ✅ Found expiring trial: ${email} (expires ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
+                  const action = isExpiredSearch ? 'expired' : 'expiring';
+                  console.log(`[trial-expiry-reminder] ✅ Found ${action} trial: ${email} (${action} ${expiryDate.toISOString().split('T')[0]}, ${daysUntilExpiry} days)`);
                 } else {
                   // Debug: Log trials that don't match (for troubleshooting)
                   if (daysUntilExpiry > 0 && daysUntilExpiry <= daysAhead + 5) {
@@ -428,12 +537,13 @@ module.exports = async (req, res) => {
 
   try {
     // Get daysAhead from query parameter (default: 7)
+    // Negative values are allowed for expired notifications (e.g., -1 for 1 day after expiry)
     const daysAhead = parseInt(req.query.daysAhead || "7", 10);
     
-    if (isNaN(daysAhead) || daysAhead < 0) {
+    if (isNaN(daysAhead)) {
       return res.status(400).json({ 
         success: false,
-        error: "Invalid daysAhead parameter. Must be a positive number.",
+        error: "Invalid daysAhead parameter. Must be a number (positive for future expiry, negative for past expiry).",
         timestamp: new Date().toISOString()
       });
     }
