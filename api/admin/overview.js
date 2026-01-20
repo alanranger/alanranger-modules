@@ -803,6 +803,7 @@ module.exports = async (req, res) => {
         trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
+        activeTrials30d: activeTrials30dCount, // Trials that were active during last 30d
         trialsEnded30d: trialsEnded30d.length, // Trials that ended in last 30d
         trialsEndedAllTime: allTrialsEndedCount,
         // Revenue from conversions - use Stripe metrics (source of truth from invoices)

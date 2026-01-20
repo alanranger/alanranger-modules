@@ -614,7 +614,7 @@ export default function AdminDashboard() {
                   : '—')}
             </div>
             <div className="ar-admin-kpi-period">
-              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.trialStartsAllTime ?? 0} trials (30d/all-time)
+              {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.activeTrials30d ?? 0} trials (30d active)
             </div>
           </div>
           <div 
