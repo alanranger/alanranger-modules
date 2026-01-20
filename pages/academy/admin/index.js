@@ -989,6 +989,28 @@ export default function AdminDashboard() {
               Gross ({kpis?.trials || 0} active trials)
             </div>
           </div>
+          <div 
+            className="ar-admin-kpi-tile" 
+            title="Realistic potential revenue from trials expiring in next 30 days at 3% conversion rate. Formula: (Trials expiring in next 30d) × 3% × £79 per conversion."
+            style={{ cursor: 'help' }}
+          >
+            <div className="ar-admin-kpi-label">
+              Trial Opportunity (if 3% convert)
+              <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
+            </div>
+            <div className="ar-admin-kpi-value">
+              {(() => {
+                const trialsExpiring = kpis?.trialsExpiring30d || 0;
+                const conversionRate = 0.03;
+                const pricePerConversion = 79;
+                const realisticOpportunity = trialsExpiring * conversionRate * pricePerConversion;
+                return `£${Math.round(realisticOpportunity)}`;
+              })()}
+            </div>
+            <div className="ar-admin-kpi-period">
+              3% target ({kpis?.trialsExpiring30d || 0} expiring)
+            </div>
+          </div>
         </div>
       </div>
 
