@@ -698,14 +698,14 @@ Keeps all styling + elements. Access guard still runs on live site.
     font-weight: 600;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     border: 1px solid transparent;
-    pointer-events: none !important; /* Pills don't capture clicks - parent does */
+    pointer-events: auto !important; /* Enable for hover tooltips */
     user-select: none; /* Prevent text selection */
-    cursor: default !important; /* No pointer cursor on pills */
+    cursor: pointer; /* Show pointer cursor for clickable pills */
   }
-  /* Disable ALL hover effects on pills since they're not interactive in the grid */
+  /* Allow hover effects for tooltips */
   html.ar-academy #ar-exams-mini-grid .ar-exam-module-pill:hover {
-    transform: none !important;
-    box-shadow: none !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   }
   /* Details button styling */
   html.ar-academy #ar-exams-details-btn {
@@ -1957,6 +1957,19 @@ Keeps all styling + elements. Access guard still runs on live site.
           });
           miniGridEl.innerHTML = gridHtml;
           miniGridEl.style.display = 'flex';
+          
+          // Add click handlers to exam pills to navigate to exam page
+          var examPills = miniGridEl.querySelectorAll('.ar-exam-module-pill');
+          examPills.forEach(function(pill) {
+            pill.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var moduleId = this.getAttribute('data-module-id');
+              if (moduleId) {
+                window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+              }
+            });
+          });
           
           // Show Details button
           var detailsBtn = document.getElementById('ar-exams-details-btn');
