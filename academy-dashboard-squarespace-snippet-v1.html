@@ -2983,7 +2983,8 @@ Keeps all styling + elements. Access guard still runs on live site.
       // BUT preserve practice packs (they're saved in the same object but shouldn't be filtered out)
       // Normalize keys to handle legacy non-normalized URLs
       const filteredOpenedForSave = {};
-      const PRACTICE_PACK_URLS = [
+      // Practice pack URLs - defined here to check against when filtering
+      const PRACTICE_PACK_URLS_FOR_FILTER = [
         '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
         '/blog-on-photography/filters-mastery-nd-gnd-photography',
         '/blog-on-photography/histogram-and-exposure-review',
@@ -3019,7 +3020,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         const normalizedKey = normalizePath(key);
         // Check if normalized key is in definitive module list OR practice pack list
         const isModule = DEFINITIVE_MODULE_URLS.includes(normalizedKey);
-        const isPracticePack = PRACTICE_PACK_URLS.includes(normalizedKey);
+        const isPracticePack = PRACTICE_PACK_URLS_FOR_FILTER.includes(normalizedKey);
         
         if (isModule || isPracticePack) {
           // Use normalized key (this migrates legacy keys to normalized format)
@@ -3319,8 +3320,10 @@ Keeps all styling + elements. Access guard still runs on live site.
       if (genreEl) genreEl.textContent = counts.genre;
       
       // Render practice packs grid (use same opened modules tracking)
-      // Practice packs URLs organized by category
-      const PRACTICE_PACK_URLS = [
+      // Wrap in try-catch to prevent breaking dashboard
+      try {
+        // Practice packs URLs organized by category
+        const PRACTICE_PACK_URLS = [
         // Technical Foundations (10) - 1-10
         '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
         '/blog-on-photography/filters-mastery-nd-gnd-photography',
@@ -3484,6 +3487,10 @@ Keeps all styling + elements. Access guard still runs on live site.
             }
           });
         });
+      }
+      } catch (err) {
+        console.error('[Practice Packs] Error rendering practice packs grid:', err);
+        // Don't break dashboard if practice packs fail
       }
     }
     
