@@ -3469,9 +3469,12 @@ Keeps all styling + elements. Access guard still runs on live site.
             lastAt: nowIso
           };
           
-          // Update the cube visual state
+          // Update the cube visual state immediately (force reflow to ensure it's visible)
           cubeEl.classList.remove('status-not-opened');
           cubeEl.classList.add('status-opened');
+          // Force a reflow to ensure the visual change is rendered
+          cubeEl.offsetHeight; // Trigger reflow
+          console.log('[Practice Packs] Visual state updated for:', normalizedUrl, 'Classes:', cubeEl.className);
           
           // Save to Memberstack asynchronously, then navigate
           (async function() {
@@ -3515,6 +3518,9 @@ Keeps all styling + elements. Access guard still runs on live site.
               await ms.updateMemberJSON({ json: memberJson });
               
               console.log('[Practice Packs] Saved practice pack to Memberstack and history:', normalizedUrl);
+              
+              // Small delay to ensure visual update is visible before navigation
+              await new Promise(function(resolve) { setTimeout(resolve, 100); });
               
               // Navigate after save completes
               window.location.href = fullUrl;
