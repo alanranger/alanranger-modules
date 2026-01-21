@@ -1406,6 +1406,12 @@ Keeps all styling + elements. Access guard still runs on live site.
       // Tile click should still work for portal mode
       if (tile) {
         tile.onclick = function(e) {
+          // Don't handle clicks on quiz section or quiz button
+          var quizSection = document.getElementById("arp-photography-quiz-section");
+          var quizButton = document.getElementById("arp-photography-quiz-button");
+          if (quizSection && quizSection.contains(e.target)) return;
+          if (quizButton && (e.target === quizButton || quizButton.contains(e.target))) return;
+          
           // Only handle if the button is in portal mode
           if (manageBtn && manageBtn.getAttribute("data-ms-action") === "customer-portal") {
             openPortalInNewTab(e);
