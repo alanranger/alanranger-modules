@@ -3283,10 +3283,17 @@ Keeps all styling + elements. Access guard still runs on live site.
       if (genreEl) genreEl.textContent = counts.genre;
       
       // Render practice packs grid (use same opened modules tracking)
-      renderPracticePacksGrid(ms, opened, normalizePath);
+      // Wrap in try-catch to prevent breaking the dashboard if there's an error
+      try {
+        renderPracticePacksGrid(ms, opened, normalizePath).catch(function(err) {
+          console.error('[Practice Packs] Error rendering grid:', err);
+        });
+      } catch (err) {
+        console.error('[Practice Packs] Error calling renderPracticePacksGrid:', err);
+      }
     }
     
-    async function renderPracticePacksGrid(ms, openedModules, normalizePath) {
+    function renderPracticePacksGrid(ms, openedModules, normalizePath) {
       // normalizeMemberJson is available in closure from outer scope
       function normalizeMemberJson(jsonRes) {
         const raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
