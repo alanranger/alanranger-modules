@@ -3493,10 +3493,28 @@ Keeps all styling + elements. Access guard still runs on live site.
                 lastAt: nowIso
               };
               
+              // Also add to history array for recent activity tracking
+              if (!memberJson.history) memberJson.history = [];
+              // Remove existing entry if present (to move to top)
+              memberJson.history = memberJson.history.filter(function(item) {
+                return item && item.url !== fullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+              });
+              // Add to beginning of history array (most recent first)
+              memberJson.history.unshift({
+                url: fullUrl,
+                title: packTitle,
+                timestamp: nowIso,
+                date: nowIso
+              });
+              // Limit history to last 20 items
+              if (memberJson.history.length > 20) {
+                memberJson.history = memberJson.history.slice(0, 20);
+              }
+              
               // Save back to Memberstack
               await ms.updateMemberJSON({ json: memberJson });
               
-              console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
+              console.log('[Practice Packs] Saved practice pack to Memberstack and history:', normalizedUrl);
               
               // Navigate after save completes
               window.location.href = fullUrl;
