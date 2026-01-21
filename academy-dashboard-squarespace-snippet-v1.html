@@ -3294,14 +3294,9 @@ Keeps all styling + elements. Access guard still runs on live site.
         return raw || {};
       }
       
-      // Debug: Log what openedModules contains
-      console.log('[Practice Packs] renderPracticePacksGrid called with openedModules:', {
-        totalKeys: Object.keys(openedModules).length,
-        sampleKeys: Object.keys(openedModules).slice(0, 10),
-        practicePackUrls: Object.keys(openedModules).filter(function(key) {
-          return key && key.includes('blog-on-photography');
-        }).slice(0, 5)
-      });
+      const miniGridEl = document.getElementById('ar-practice-packs-mini-grid');
+      if (!miniGridEl) return;
+      
       // Practice packs URLs organized by category
       const PRACTICE_PACK_URLS = [
         // Technical Foundations (10) - 1-10
@@ -3455,23 +3450,16 @@ Keeps all styling + elements. Access guard still runs on live site.
       miniGridEl.innerHTML = gridHtml;
       miniGridEl.style.display = 'block';
       
-      // Add click handlers to track practice pack opens
+      // Add click handlers to track practice pack opens (exactly like modules)
       var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
-      console.log('[Practice Packs] Attaching click handlers to', practicePackCubes.length, 'cubes');
-      
-      if (practicePackCubes.length === 0) {
-        console.warn('[Practice Packs] WARNING: No practice pack cubes found! Grid may not have rendered correctly.');
-      }
-      
-      practicePackCubes.forEach(function(cube, index) {
-        // Match modules behavior - don't prevent default, let link work normally
+      practicePackCubes.forEach(function(cube) {
         cube.addEventListener('click', function(e) {
           var cubeEl = this; // Capture cube element
           var packUrl = cubeEl.getAttribute('data-pack-url');
           var category = cubeEl.getAttribute('data-pack-category');
           var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
           
-          if (!packUrl) return; // Let link work normally if no packUrl
+          if (!packUrl) return;
           
           // Normalize the URL
           var normalizedUrl = normalizePath(packUrl);
@@ -3493,7 +3481,7 @@ Keeps all styling + elements. Access guard still runs on live site.
             cubeEl.classList.remove('status-not-opened');
             cubeEl.classList.add('status-opened');
             
-            // Save to Memberstack asynchronously (don't block navigation)
+            // Save to Memberstack asynchronously
             (async function() {
               try {
                 // Get current member JSON
@@ -3535,7 +3523,7 @@ Keeps all styling + elements. Access guard still runs on live site.
                 // Save back to Memberstack
                 await ms.updateMemberJSON({ json: memberJson });
                 
-                console.log('[Practice Packs] Saved practice pack to Memberstack and history:', normalizedUrl);
+                console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
               } catch (err) {
                 console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
                 // Revert visual state on error
@@ -3545,7 +3533,6 @@ Keeps all styling + elements. Access guard still runs on live site.
               }
             })();
           }
-          // Let the link navigate normally (don't prevent default or stop propagation)
         });
       });
     }
