@@ -3457,8 +3457,10 @@ Keeps all styling + elements. Access guard still runs on live site.
       
       // Add click handlers to track practice pack opens
       var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
+      console.log('[Practice Packs] Attaching click handlers to', practicePackCubes.length, 'cubes');
       practicePackCubes.forEach(function(cube) {
         cube.addEventListener('click', function(e) {
+          console.log('[Practice Packs] Cube clicked!', this);
           e.preventDefault(); // Prevent default navigation
           e.stopPropagation(); // Stop event bubbling
           
@@ -3468,17 +3470,22 @@ Keeps all styling + elements. Access guard still runs on live site.
           var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
           var fullUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + packUrl);
           
+          console.log('[Practice Packs] Click details:', { packUrl, category, packTitle, fullUrl });
+          
           if (!packUrl) {
             // If no packUrl, just navigate normally
+            console.log('[Practice Packs] No packUrl, navigating normally');
             window.location.href = fullUrl;
             return;
           }
           
           // Normalize the URL
           var normalizedUrl = normalizePath(packUrl);
+          console.log('[Practice Packs] Normalized URL:', normalizedUrl);
           
           // Check if already opened (check in openedModules which comes from module tracking)
           var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
+          console.log('[Practice Packs] Already opened?', alreadyOpened, 'Checking keys:', packUrl, normalizedUrl);
           
           // Mark as opened immediately (optimistic update) - even if already opened, update timestamp
           var nowIso = new Date().toISOString();
@@ -3490,11 +3497,12 @@ Keeps all styling + elements. Access guard still runs on live site.
           };
           
           // Update the cube visual state immediately (force reflow to ensure it's visible)
+          var hadNotOpened = cubeEl.classList.contains('status-not-opened');
           cubeEl.classList.remove('status-not-opened');
           cubeEl.classList.add('status-opened');
           // Force a reflow to ensure the visual change is rendered
-          cubeEl.offsetHeight; // Trigger reflow
-          console.log('[Practice Packs] Visual state updated for:', normalizedUrl, 'Classes:', cubeEl.className);
+          var height = cubeEl.offsetHeight; // Trigger reflow
+          console.log('[Practice Packs] Visual state updated for:', normalizedUrl, 'Classes:', cubeEl.className, 'Had not-opened:', hadNotOpened, 'Height:', height);
           
           // Save to Memberstack asynchronously, then navigate
           (async function() {
