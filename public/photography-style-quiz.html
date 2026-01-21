@@ -169,17 +169,6 @@
 
             <!-- Call to action section -->
             <p id="resultCTA"></p>
-
-            <!-- CTA Button for Emailing Results -->
-            <div class="email-form-container">
-                <button class="email-btn" id="emailButton" onclick="showEmailForm()">Email me my result</button>
-            </div>
-
-            <!-- Iframe for Squarespace Form -->
-            <iframe id="emailFormIframe" style="display:none; width: 100%; height: 500px;" src=""></iframe>
-
-            <!-- Success message -->
-            <p class="success-message" id="successMessage">Your results have been sent to your email!</p>
         </div>
     </div>
 
@@ -439,32 +428,88 @@
             // Insert the Call to Action dynamically
             document.getElementById('resultCTA').innerHTML = styles[primaryStyle].cta;
 
-            // Prepare results for email form submission
-            return {
+            // Prepare results for saving to Supabase
+            const quizResult = {
                 title: styles[primaryStyle].title,
                 description: styles[primaryStyle].description,
                 tips: styles[primaryStyle].tips.replace(/<[^>]*>?/gm, ''), // Remove HTML tags for plain text
-                percentage: `You are ${percentage}% ${styles[primaryStyle].title}.`,
+                percentage: percentage,
+                percentageText: `You are ${percentage}% ${styles[primaryStyle].title}.`,
                 otherStyles: sortedStyles.slice(1).map((style) => {
                     const stylePercentage = Math.round((results[style] / totalQuestions) * 100);
                     return `${styles[style].title}: ${stylePercentage}%`;
                 }).join(', ')
             };
+
+            // Save quiz result to Supabase
+            saveQuizResult(quizResult);
+
+            return quizResult;
         }
 
-        function showEmailForm() {
-            const results = submitQuiz();
-            const plainTextResults = `Photography Style: ${results.title}\nDescription: ${results.description}\nPercentage: ${results.percentage}\nOther Interests: ${results.otherStyles}\n\nTips:\n${results.tips}`;
+        async function saveQuizResult(quizResult) {
+            try {
+                // Get memberId from URL parameter or Memberstack
+                const urlParams = new URLSearchParams(window.location.search);
+                let memberId = urlParams.get('memberId');
 
-            // Pass the quiz results to the iframe URL for Squarespace form
-            const encodedResults = encodeURIComponent(plainTextResults);
-            const formUrl = `https://www.alanranger.com/which-photography-style-suits-you?results=${encodedResults}`;
+                // If no memberId in URL, try to get from Memberstack
+                if (!memberId && window.$memberstackDom) {
+                    try {
+                        const member = await window.$memberstackDom.getMember();
+                        if (member && member.id) {
+                            memberId = member.id;
+                        }
+                    } catch (err) {
+                        console.warn('Could not get member from Memberstack:', err);
+                    }
+                }
 
-            // Display the iframe with the form loaded
-            document.getElementById('emailButton').style.display = 'none';
-            document.getElementById('emailFormIframe').src = formUrl;
-            document.getElementById('emailFormIframe').style.display = 'block';
+                if (!memberId) {
+                    console.warn('No memberId found. Quiz result will not be saved.');
+                    // Show a message that they need to be logged in
+                    const saveStatus = document.createElement('p');
+                    saveStatus.id = 'saveStatus';
+                    saveStatus.style.color = '#666';
+                    saveStatus.style.fontSize = '14px';
+                    saveStatus.style.marginTop = '10px';
+                    saveStatus.textContent = 'Note: To save your result, please access this quiz from your Academy dashboard.';
+                    document.getElementById('quizResult').appendChild(saveStatus);
+                    return;
+                }
+
+                // Save to Supabase via API
+                const response = await fetch('https://alanranger-modules.vercel.app/api/academy/save-quiz-result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        memberId: memberId,
+                        quizResult: quizResult
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    console.log('Quiz result saved successfully');
+                    // Show success message
+                    const saveStatus = document.createElement('p');
+                    saveStatus.id = 'saveStatus';
+                    saveStatus.style.color = 'green';
+                    saveStatus.style.fontSize = '14px';
+                    saveStatus.style.marginTop = '10px';
+                    saveStatus.textContent = '✓ Your result has been saved!';
+                    document.getElementById('quizResult').appendChild(saveStatus);
+                } else {
+                    console.error('Failed to save quiz result:', result.error);
+                }
+            } catch (error) {
+                console.error('Error saving quiz result:', error);
+            }
         }
+
 
         // Display the quiz when the page loads
         window.onload = function () {
