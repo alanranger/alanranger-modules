@@ -3084,6 +3084,7 @@ Keeps all styling + elements. Access guard still runs on live site.
             var label = String(i).padStart(2, '0');
             var fullUrl = 'https://www.alanranger.com' + moduleUrl;
             var moduleTitle = getModuleTitle(moduleUrl, normalizedModuleUrl);
+            var isPdf = moduleUrl.endsWith('.pdf');
             
             // Use escapeHtml if available, otherwise use simple escaping
             var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
@@ -3091,7 +3092,10 @@ Keeps all styling + elements. Access guard still runs on live site.
             var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
             var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(moduleTitle) : moduleTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
-            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+            // Add target="_blank" for PDFs and rel="noopener" for security
+            var targetAttr = isPdf ? ' target="_blank" rel="noopener noreferrer"' : '';
+            
+            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '" data-is-pdf="' + (isPdf ? 'true' : 'false') + '" title="' + safeTitle + '"' + targetAttr + '>' + label + '</a>';
           }
           
           gridHtml += '</div>'; // Close category cubes
@@ -3100,6 +3104,79 @@ Keeps all styling + elements. Access guard still runs on live site.
         
         miniGridEl.innerHTML = gridHtml;
         miniGridEl.style.display = 'block';
+        
+        // Add click handlers to track module opens (especially for PDFs)
+        var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
+        moduleCubes.forEach(function(cube) {
+          cube.addEventListener('click', function(e) {
+            var moduleUrl = this.getAttribute('data-module-url');
+            var isPdf = this.getAttribute('data-is-pdf') === 'true';
+            var category = this.getAttribute('data-module-category');
+            var moduleTitle = this.getAttribute('title') || 'Module';
+            
+            if (!moduleUrl) return;
+            
+            // Normalize the URL
+            var normalizedUrl = normalizePath(moduleUrl);
+            
+            // Check if already opened
+            var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
+            
+            if (!alreadyOpened) {
+              // Mark as opened immediately (optimistic update)
+              var nowIso = new Date().toISOString();
+              opened[normalizedUrl] = {
+                cat: category,
+                t: moduleTitle,
+                at: nowIso,
+                lastAt: nowIso
+              };
+              
+              // Update the cube visual state
+              this.classList.remove('status-not-opened');
+              this.classList.add('status-opened');
+              
+              // Save to Memberstack asynchronously
+              (async function() {
+                try {
+                  // Get current member JSON
+                  var jsonRes = await ms.getMemberJSON();
+                  var memberJson = normalizeMemberJson(jsonRes);
+                  
+                  // Ensure arAcademy structure exists
+                  if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                  if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                  if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                  
+                  // Add the new module
+                  memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                    cat: category,
+                    t: moduleTitle,
+                    at: nowIso,
+                    lastAt: nowIso
+                  };
+                  
+                  // Save back to Memberstack
+                  await ms.updateMemberJSON({ json: memberJson });
+                  
+                  // Update progress count
+                  var totalOpened = Object.keys(memberJson.arAcademy.modules.opened || {}).length;
+                  if (progressTitleEl) {
+                    progressTitleEl.textContent = totalOpened + '/60 opened';
+                  }
+                  
+                  console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
+                } catch (err) {
+                  console.error('[Module Progress] Failed to save module to Memberstack:', err);
+                  // Revert visual state on error
+                  this.classList.remove('status-opened');
+                  this.classList.add('status-not-opened');
+                  delete opened[normalizedUrl];
+                }
+              })();
+            }
+          });
+        });
       }
       
       // Keep totalsEl for backward compatibility but hide it
