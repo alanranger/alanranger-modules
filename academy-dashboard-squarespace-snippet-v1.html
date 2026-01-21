@@ -868,6 +868,36 @@ Keeps all styling + elements. Access guard still runs on live site.
         (<code>/config</code> or <code>?nochrome</code>)
       </div>
   
+      <div class="ar-academy-dashboard__topbar">
+        <button id="arp-logout-btn" type="button" data-ms-action="logout">Log out</button>
+      </div>
+  
+      <div class="ar-academy-dashboard__brand">
+        <div class="ar-academy-dashboard__brand-left">
+          <img
+            class="ar-academy-dashboard__logo ar-logo--invert"
+            src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
+            alt="Alan Ranger Academy"
+            loading="eager"
+          />
+          <div>
+            <h1 class="ar-academy-dashboard__title">Academy Dashboard</h1>
+            <p class="ar-academy-dashboard__subtitle">Your hub for modules, exams, practice packs and account status.</p>
+          </div>
+        </div>
+  
+        <div class="ar-academy-dashboard__brand-right">
+          <a class="ar-academy-dashboard__home-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage">
+            <img
+              class="ar-academy-dashboard__logo--brand ar-logo--invert"
+              src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+              alt="Alan Ranger"
+              loading="eager"
+            />
+          </a>
+        </div>
+      </div>
+  
       <div class="ar-academy-tiles">
         <div class="ar-tile ar-span-6" id="arp-modules-tile">
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
@@ -917,7 +947,11 @@ Keeps all styling + elements. Access guard still runs on live site.
           </div>
           <div class="ar-tile-group__grid">
             <div id="arp-practice-packs-tile" class="ar-tile ar-span-4">
-              <div class="ar-tile__title"><span class="ar-tile__icon">📦</span>Practice Packs</div>
+              <div class="ar-tile__title">
+                <span class="ar-tile__icon">📦</span>
+                <span>Practice Packs</span>
+                <span id="ar-practice-packs-progress-title" class="ar-tile__progress"></span>
+              </div>
               <div class="ar-tile__desc">30 Assignment Practice Packs</div>
               <!-- Practice packs grid will be rendered here -->
               <div id="ar-practice-packs-mini-grid" style="margin-top:12px; display:none;"></div>
@@ -3331,6 +3365,26 @@ Keeps all styling + elements. Access guard still runs on live site.
       
       const practicePacksMiniGridEl = document.getElementById('ar-practice-packs-mini-grid');
       if (practicePacksMiniGridEl) {
+        // Count opened practice packs
+        var practicePacksOpened = 0;
+        PRACTICE_PACK_URLS.forEach(function(packUrl) {
+          if (!packUrl) return;
+          var normalizedPackUrl = normalizePath(packUrl);
+          if (opened[packUrl] || opened[normalizedPackUrl]) {
+            practicePacksOpened++;
+          }
+        });
+        
+        // Update practice packs progress title
+        var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
+        if (practicePacksProgressTitleEl) {
+          if (practicePacksOpened > 0) {
+            practicePacksProgressTitleEl.textContent = practicePacksOpened + '/30 opened';
+          } else {
+            practicePacksProgressTitleEl.textContent = '';
+          }
+        }
+        
         var practicePacksGridHtml = '';
         
         // Define practice pack groups with their ranges and labels
@@ -3446,6 +3500,24 @@ Keeps all styling + elements. Access guard still runs on live site.
                   }
                   
                   await ms.updateMemberJSON({ json: memberJson });
+                  
+                  // Update practice packs progress count
+                  var practicePacksOpenedCount = 0;
+                  PRACTICE_PACK_URLS.forEach(function(packUrl) {
+                    if (!packUrl) return;
+                    var normalizedPackUrl = normalizePath(packUrl);
+                    if (memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened) {
+                      if (memberJson.arAcademy.modules.opened[packUrl] || memberJson.arAcademy.modules.opened[normalizedPackUrl]) {
+                        practicePacksOpenedCount++;
+                      }
+                    }
+                  });
+                  
+                  var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
+                  if (practicePacksProgressTitleEl) {
+                    practicePacksProgressTitleEl.textContent = practicePacksOpenedCount + '/30 opened';
+                  }
+                  
                   console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
                 } catch (err) {
                   console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
