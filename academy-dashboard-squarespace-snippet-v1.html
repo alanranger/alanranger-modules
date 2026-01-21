@@ -890,11 +890,15 @@ Keeps all styling + elements. Access guard still runs on live site.
           <!-- Photography Style Quiz Section -->
           <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
             <div id="arp-photography-quiz-result" style="display: none;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 12px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 12px;">
                 <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95);">Your Photography Style Is:</div>
                 <button id="arp-photography-retake-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Retake Quiz</button>
               </div>
-              <div id="arp-photography-style-name" style="font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
+              <div id="arp-photography-style-name" style="font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%); margin-bottom: 8px;"></div>
+              <div id="arp-photography-other-interests" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.1);">
+                <div style="font-size: 11px; font-weight: 700; color: rgba(148, 163, 184, 0.8); margin-bottom: 6px;">Your other Interests and Influences are:</div>
+                <div id="arp-photography-other-interests-list" style="font-size: 12px; color: rgba(148, 163, 184, 0.65); line-height: 1.6;"></div>
+              </div>
             </div>
             <div id="arp-photography-quiz-button-container" style="display: none;">
               <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; background-color: hsl(16, 88%, 54%); color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 750; cursor: pointer; margin-top: 8px; width: 100%;">Take Photography Personality Quiz</button>
@@ -2116,9 +2120,34 @@ Keeps all styling + elements. Access guard still runs on live site.
         
         if (memberData && memberData.photography_style) {
           // Show result, hide button
-          styleNameEl.textContent = memberData.photography_style;
+          var percentage = memberData.photography_style_percentage || '';
+          var styleText = percentage ? 'You are ' + percentage + '% ' + memberData.photography_style + '.' : memberData.photography_style;
+          styleNameEl.textContent = styleText;
           quizResultEl.style.display = 'block';
           quizButtonContainer.style.display = 'none';
+          
+          // Display other interests if available
+          var otherInterestsEl = document.getElementById('arp-photography-other-interests');
+          var otherInterestsListEl = document.getElementById('arp-photography-other-interests-list');
+          if (memberData.photography_style_other_interests && otherInterestsEl && otherInterestsListEl) {
+            // Parse the comma-separated string (e.g., "Street Photographer: 33%, Landscape Photographer: 17%")
+            var otherInterests = memberData.photography_style_other_interests.split(',').map(function(item) {
+              return item.trim();
+            }).filter(function(item) {
+              return item && item.includes(':') && parseInt(item.split(':')[1]) > 0;
+            });
+            
+            if (otherInterests.length > 0) {
+              otherInterestsListEl.innerHTML = otherInterests.map(function(item) {
+                return '<div style="margin-bottom: 4px;">' + escapeHtml(item) + '</div>';
+              }).join('');
+              otherInterestsEl.style.display = 'block';
+            } else {
+              otherInterestsEl.style.display = 'none';
+            }
+          } else if (otherInterestsEl) {
+            otherInterestsEl.style.display = 'none';
+          }
           
           // Wire up retake quiz button
           var retakeButton = document.getElementById('arp-photography-retake-quiz-button');
