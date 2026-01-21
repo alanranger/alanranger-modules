@@ -1,0 +1,333 @@
+<!--
+Academy Header Elements — Squarespace Code Block
+For injection into Squarespace Header (Code Injection → Header)
+Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
+-->
+
+<style id="ar-academy-header-style">
+  /* Academy Header Elements - positioned in Squarespace header */
+  #ar-academy-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 100%;
+    padding: 12px 24px;
+    background: #000;
+    color: #fff;
+    position: relative;
+    z-index: 1000;
+  }
+  
+  /* Left: Welcome message */
+  #ar-academy-header-welcome {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 200px;
+  }
+  
+  #ar-academy-header-welcome-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+  
+  #ar-academy-header-welcome-name {
+    color: #E57200;
+    font-weight: 700;
+  }
+  
+  #ar-academy-header-last-login {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.2;
+  }
+  
+  /* Center: Academy Dashboard title */
+  #ar-academy-header-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    gap: 12px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  #ar-academy-header-logo-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+  
+  #ar-academy-header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+  }
+  
+  #ar-academy-header-subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    line-height: 1.2;
+  }
+  
+  /* Right: Logo and Logout */
+  #ar-academy-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+  
+  #ar-academy-header-brand-logo {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+  }
+  
+  #ar-academy-header-logout-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+  
+  #ar-academy-header-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    #ar-academy-header-container {
+      flex-wrap: wrap;
+      padding: 8px 16px;
+    }
+    
+    #ar-academy-header-center {
+      position: static;
+      transform: none;
+      order: 2;
+      width: 100%;
+      margin: 8px 0;
+    }
+    
+    #ar-academy-header-welcome {
+      order: 1;
+      min-width: auto;
+    }
+    
+    #ar-academy-header-right {
+      order: 3;
+      margin-left: 0;
+    }
+  }
+</style>
+
+<div id="ar-academy-header-container">
+  <!-- Left: Welcome message -->
+  <div id="ar-academy-header-welcome">
+    <div id="ar-academy-header-welcome-text">
+      Welcome back, <span id="ar-academy-header-welcome-name">...</span>!
+    </div>
+    <div id="ar-academy-header-last-login">Loading...</div>
+  </div>
+  
+  <!-- Center: Academy Dashboard title -->
+  <div id="ar-academy-header-center">
+    <img
+      id="ar-academy-header-logo-icon"
+      src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
+      alt="Academy"
+      loading="eager"
+    />
+    <div>
+      <h1 id="ar-academy-header-title">Academy Dashboard</h1>
+      <p id="ar-academy-header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
+    </div>
+  </div>
+  
+  <!-- Right: Logo and Logout -->
+  <div id="ar-academy-header-right">
+    <a
+      id="ar-academy-header-brand-link"
+      href="https://www.alanranger.com/"
+      aria-label="Back to AlanRanger.com homepage"
+    >
+      <img
+        id="ar-academy-header-brand-logo"
+        src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+        alt="Alan Ranger Photography"
+        loading="eager"
+      />
+    </a>
+    <button
+      id="ar-academy-header-logout-btn"
+      type="button"
+      data-ms-action="logout"
+    >
+      Log out
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Only run on Academy pages
+  var path = (window.location && window.location.pathname) ? window.location.pathname : "";
+  var isAcademy = (path === "/academy" || path.indexOf("/academy/") === 0);
+  if (!isAcademy) return;
+  
+  // Wait for Memberstack to load
+  function waitForMemberstack() {
+    return new Promise(function(resolve) {
+      var start = Date.now();
+      function check() {
+        if (window.$memberstackDom) {
+          resolve(window.$memberstackDom);
+        } else if (Date.now() - start < 8000) {
+          setTimeout(check, 100);
+        } else {
+          resolve(null);
+        }
+      }
+      check();
+    });
+  }
+  
+  // Get member name from customFields
+  function getMemberName(member) {
+    if (!member || !member.data) return null;
+    var customFields = member.data.customFields || {};
+    var firstName = customFields["first-name"] || customFields.firstName || customFields.first_name || "";
+    var lastName = customFields["last-name"] || customFields.lastName || customFields.last_name || "";
+    if (firstName && lastName) return firstName + " " + lastName;
+    if (firstName) return firstName;
+    if (lastName) return lastName;
+    // Fallback to email if no name
+    var email = member.data.email || "";
+    if (email) return email.split("@")[0];
+    return "Member";
+  }
+  
+  // Format last login date
+  function formatLastLogin(dateStr) {
+    if (!dateStr) return "First visit";
+    try {
+      var date = new Date(dateStr);
+      var options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return "Last logged in: " + date.toLocaleDateString('en-GB', options);
+    } catch (e) {
+      return "Last logged in: " + dateStr;
+    }
+  }
+  
+  // Load member data and update header
+  async function loadHeaderData() {
+    var ms = await waitForMemberstack();
+    if (!ms) {
+      // Hide welcome if Memberstack not available
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+      return;
+    }
+    
+    try {
+      var member = await ms.getCurrentMember();
+      if (!member || !member.data) {
+        // Not logged in - hide welcome
+        var welcomeEl = document.getElementById('ar-academy-header-welcome');
+        if (welcomeEl) welcomeEl.style.display = 'none';
+        return;
+      }
+      
+      // Update welcome name
+      var nameEl = document.getElementById('ar-academy-header-welcome-name');
+      var name = getMemberName(member);
+      if (nameEl && name) {
+        nameEl.textContent = name;
+      }
+      
+      // Get last login from member JSON
+      try {
+        var jsonRes = await ms.getMemberJSON();
+        var lastLogin = null;
+        
+        // Try to find last login in various places
+        if (jsonRes && jsonRes.data && jsonRes.data.lastLogin) {
+          lastLogin = jsonRes.data.lastLogin;
+        } else if (jsonRes && jsonRes.lastLogin) {
+          lastLogin = jsonRes.lastLogin;
+        }
+        
+        // Update last login display
+        var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+        if (lastLoginEl) {
+          if (lastLogin) {
+            lastLoginEl.textContent = formatLastLogin(lastLogin);
+          } else {
+            lastLoginEl.textContent = "First visit";
+          }
+        }
+      } catch (e) {
+        console.error('[Academy Header] Error getting last login:', e);
+      }
+      
+      // Wire up logout button
+      var logoutBtn = document.getElementById('ar-academy-header-logout-btn');
+      if (logoutBtn && !logoutBtn.hasAttribute('data-wired')) {
+        logoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (ms && typeof ms.logout === 'function') {
+            ms.logout().then(function() {
+              window.location.href = '/academy/login';
+            }).catch(function(err) {
+              console.error('[Academy Header] Logout error:', err);
+              window.location.href = '/academy/login';
+            });
+          } else {
+            window.location.href = '/academy/login';
+          }
+        });
+        logoutBtn.setAttribute('data-wired', 'true');
+      }
+    } catch (err) {
+      console.error('[Academy Header] Error loading member data:', err);
+      // Hide welcome on error
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+    }
+  }
+  
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadHeaderData);
+  } else {
+    loadHeaderData();
+  }
+  
+  // Also try after a delay (Memberstack sometimes loads late)
+  setTimeout(loadHeaderData, 1000);
+  setTimeout(loadHeaderData, 2000);
+})();
+</script>
+
+<!--
+END: Academy Header Elements
+-->
