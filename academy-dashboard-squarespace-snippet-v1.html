@@ -3293,6 +3293,15 @@ Keeps all styling + elements. Access guard still runs on live site.
         if (raw && raw.json && typeof raw.json === "object") return raw.json;
         return raw || {};
       }
+      
+      // Debug: Log what openedModules contains
+      console.log('[Practice Packs] renderPracticePacksGrid called with openedModules:', {
+        totalKeys: Object.keys(openedModules).length,
+        sampleKeys: Object.keys(openedModules).slice(0, 10),
+        practicePackUrls: Object.keys(openedModules).filter(function(key) {
+          return key && key.includes('blog-on-photography');
+        }).slice(0, 5)
+      });
       // Practice packs URLs organized by category
       const PRACTICE_PACK_URLS = [
         // Technical Foundations (10) - 1-10
@@ -3413,6 +3422,17 @@ Keeps all styling + elements. Access guard still runs on live site.
           // Check if practice pack is opened (try both original and normalized paths)
           var normalizedPackUrl = normalizePath(packUrl);
           var isOpened = !!(openedModules[packUrl] || openedModules[normalizedPackUrl]);
+          
+          // Debug logging
+          if (i === 0 && group.start === 0) {
+            console.log('[Practice Packs] Rendering grid. Sample check:', {
+              packUrl: packUrl,
+              normalizedPackUrl: normalizedPackUrl,
+              isOpened: isOpened,
+              openedModulesKeys: Object.keys(openedModules).slice(0, 5),
+              openedModulesSample: openedModules[normalizedPackUrl] || openedModules[packUrl]
+            });
+          }
           
           var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
           var label = String(i + 1).padStart(2, '0'); // Number from 01-30
