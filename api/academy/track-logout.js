@@ -34,7 +34,24 @@ module.exports = async (req, res) => {
     }
 
     // Parse and validate payload
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    // Handle both regular JSON and sendBeacon Blob format
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        // If it's a Blob from sendBeacon, it might be a Buffer
+        if (Buffer.isBuffer(body)) {
+          try {
+            body = JSON.parse(body.toString());
+          } catch (e2) {
+            return res.status(400).json({ error: "Invalid request body format" });
+          }
+        } else {
+          return res.status(400).json({ error: "Invalid JSON in request body" });
+        }
+      }
+    }
     const { member_id, email } = body || {};
 
     if (!member_id) {

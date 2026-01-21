@@ -501,41 +501,67 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
           e.preventDefault();
           
           // Track logout event before logging out
-          // Get fresh member data to ensure we have email
-          if (memberId && ms) {
-            ms.getCurrentMember().then(function(currentMember) {
-              var email = (currentMember && currentMember.data && currentMember.data.email) || memberEmail || null;
+          // Use sendBeacon for reliable tracking even during page unload
+          if (memberId) {
+            var email = memberEmail || null;
+            
+            // Try to get fresh member data, but don't wait too long
+            if (ms && typeof ms.getCurrentMember === 'function') {
+              var memberPromise = ms.getCurrentMember().catch(function() { return null; });
+              var timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 100); });
               
-              fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+              Promise.race([memberPromise, timeoutPromise]).then(function(currentMember) {
+                if (currentMember && currentMember.data && currentMember.data.email) {
+                  email = currentMember.data.email;
+                }
+                
+                // Use sendBeacon for reliable delivery during navigation
+                var data = JSON.stringify({
                   member_id: memberId,
                   email: email
-                })
-              }).catch(function(err) {
-                console.warn('[Academy Header] Error tracking logout:', err);
-                // Don't block logout if tracking fails
+                });
+                
+                if (navigator.sendBeacon) {
+                  var blob = new Blob([data], { type: 'application/json' });
+                  navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+                  console.log('[Academy Header] Logout event sent via sendBeacon');
+                } else {
+                  // Fallback to fetch with keepalive
+                  fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: data,
+                    keepalive: true
+                  }).catch(function(err) {
+                    console.warn('[Academy Header] Error tracking logout:', err);
+                  });
+                }
               });
-            }).catch(function(err) {
-              // If we can't get member, still try to track with what we have
-              if (memberId) {
+            } else {
+              // No Memberstack, use what we have
+              var data = JSON.stringify({
+                member_id: memberId,
+                email: email
+              });
+              
+              if (navigator.sendBeacon) {
+                var blob = new Blob([data], { type: 'application/json' });
+                navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+              } else {
                 fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify({
-                    member_id: memberId,
-                    email: memberEmail || null
-                  })
+                  body: data,
+                  keepalive: true
                 }).catch(function(err) {
-                  console.warn('[Academy Header] Error tracking logout (fallback):', err);
+                  console.warn('[Academy Header] Error tracking logout:', err);
                 });
               }
-            });
+            }
             
             // Clear session storage
             sessionStorage.removeItem('ar-login-tracked-' + memberId);
