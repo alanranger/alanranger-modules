@@ -1937,10 +1937,23 @@ Keeps all styling + elements. Access guard still runs on live site.
           var gridHtml = '';
           modules.forEach(function(module) {
             var statusClass = 'status-' + module.status;
-            // NO title attribute - tooltips interfere with clicks
-            // All info is available in the drawer
             
-            gridHtml += '<div class="ar-exam-module-pill ' + statusClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || '') + '" data-module-attempts="' + (module.attempts || 0) + '">' + module.label + '</div>';
+            // Build tooltip text based on status and module info
+            var tooltipText = module.name || 'Module ' + module.label;
+            if (module.status === 'passed' && module.bestScore) {
+              tooltipText += ' - Passed (' + module.bestScore + '%)';
+            } else if (module.status === 'failed' && module.bestScore) {
+              tooltipText += ' - Failed (Best: ' + module.bestScore + '%)';
+              if (module.attempts > 0) {
+                tooltipText += ' - ' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '');
+              }
+            } else if (module.status === 'not_taken') {
+              tooltipText += ' - Not started';
+            }
+            
+            var safeTooltip = (typeof escapeHtml === 'function') ? escapeHtml(tooltipText) : tooltipText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            gridHtml += '<div class="ar-exam-module-pill ' + statusClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || '') + '" data-module-attempts="' + (module.attempts || 0) + '" title="' + safeTooltip + '">' + module.label + '</div>';
           });
           miniGridEl.innerHTML = gridHtml;
           miniGridEl.style.display = 'flex';
