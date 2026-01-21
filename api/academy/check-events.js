@@ -18,7 +18,8 @@ module.exports = async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const memberId = 'mem_cmjyljfkm0hxg0sntegon6ghi'; // algenon@hotmail.com
+  // Allow memberId as query parameter, or default to algenon@hotmail.com for testing
+  const memberId = req.query.memberId || 'mem_cmjyljfkm0hxg0sntegon6ghi'; // algenon@hotmail.com
   
   // Get all login and logout events
   const { data: events, error } = await supabase
