@@ -3464,106 +3464,88 @@ Keeps all styling + elements. Access guard still runs on live site.
       }
       
       practicePackCubes.forEach(function(cube, index) {
-        // Use capture phase to ensure we catch the event early
+        // Match modules behavior - don't prevent default, let link work normally
         cube.addEventListener('click', function(e) {
-          console.log('[Practice Packs] Cube clicked!', index, this, e);
-          e.preventDefault(); // Prevent default navigation
-          e.stopPropagation(); // Stop event bubbling
-          
           var cubeEl = this; // Capture cube element
           var packUrl = cubeEl.getAttribute('data-pack-url');
           var category = cubeEl.getAttribute('data-pack-category');
           var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
-          var fullUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + packUrl);
           
-          console.log('[Practice Packs] Click details:', { packUrl, category, packTitle, fullUrl });
-          
-          if (!packUrl) {
-            // If no packUrl, just navigate normally
-            console.log('[Practice Packs] No packUrl, navigating normally');
-            window.location.href = fullUrl;
-            return;
-          }
+          if (!packUrl) return; // Let link work normally if no packUrl
           
           // Normalize the URL
           var normalizedUrl = normalizePath(packUrl);
-          console.log('[Practice Packs] Normalized URL:', normalizedUrl);
           
-          // Check if already opened (check in openedModules which comes from module tracking)
+          // Check if already opened
           var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
-          console.log('[Practice Packs] Already opened?', alreadyOpened, 'Checking keys:', packUrl, normalizedUrl);
           
-          // Mark as opened immediately (optimistic update) - even if already opened, update timestamp
-          var nowIso = new Date().toISOString();
-          openedModules[normalizedUrl] = {
-            cat: category,
-            t: packTitle,
-            at: alreadyOpened ? (openedModules[normalizedUrl]?.at || nowIso) : nowIso,
-            lastAt: nowIso
-          };
-          
-          // Update the cube visual state immediately (force reflow to ensure it's visible)
-          var hadNotOpened = cubeEl.classList.contains('status-not-opened');
-          cubeEl.classList.remove('status-not-opened');
-          cubeEl.classList.add('status-opened');
-          // Force a reflow to ensure the visual change is rendered
-          var height = cubeEl.offsetHeight; // Trigger reflow
-          console.log('[Practice Packs] Visual state updated for:', normalizedUrl, 'Classes:', cubeEl.className, 'Had not-opened:', hadNotOpened, 'Height:', height);
-          
-          // Save to Memberstack asynchronously, then navigate
-          (async function() {
-            try {
-              // Get current member JSON
-              var jsonRes = await ms.getMemberJSON();
-              var memberJson = normalizeMemberJson(jsonRes);
-              
-              // Ensure arAcademy structure exists
-              if (!memberJson.arAcademy) memberJson.arAcademy = {};
-              if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
-              if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
-              
-              // Add/update the practice pack (using same structure as modules)
-              memberJson.arAcademy.modules.opened[normalizedUrl] = {
-                cat: category,
-                t: packTitle,
-                at: alreadyOpened ? (memberJson.arAcademy.modules.opened[normalizedUrl]?.at || nowIso) : nowIso,
-                lastAt: nowIso
-              };
-              
-              // Also add to history array for recent activity tracking
-              if (!memberJson.history) memberJson.history = [];
-              // Remove existing entry if present (to move to top)
-              memberJson.history = memberJson.history.filter(function(item) {
-                return item && item.url !== fullUrl && item.url !== packUrl && item.url !== normalizedUrl;
-              });
-              // Add to beginning of history array (most recent first)
-              memberJson.history.unshift({
-                url: fullUrl,
-                title: packTitle,
-                timestamp: nowIso,
-                date: nowIso
-              });
-              // Limit history to last 20 items
-              if (memberJson.history.length > 20) {
-                memberJson.history = memberJson.history.slice(0, 20);
+          if (!alreadyOpened) {
+            // Mark as opened immediately (optimistic update)
+            var nowIso = new Date().toISOString();
+            openedModules[normalizedUrl] = {
+              cat: category,
+              t: packTitle,
+              at: nowIso,
+              lastAt: nowIso
+            };
+            
+            // Update the cube visual state
+            cubeEl.classList.remove('status-not-opened');
+            cubeEl.classList.add('status-opened');
+            
+            // Save to Memberstack asynchronously (don't block navigation)
+            (async function() {
+              try {
+                // Get current member JSON
+                var jsonRes = await ms.getMemberJSON();
+                var memberJson = normalizeMemberJson(jsonRes);
+                
+                // Ensure arAcademy structure exists
+                if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                
+                // Add the new practice pack (using same structure as modules)
+                memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                  cat: category,
+                  t: packTitle,
+                  at: nowIso,
+                  lastAt: nowIso
+                };
+                
+                // Also add to history array for recent activity tracking
+                if (!memberJson.history) memberJson.history = [];
+                var fullUrl = 'https://www.alanranger.com' + packUrl;
+                // Remove existing entry if present (to move to top)
+                memberJson.history = memberJson.history.filter(function(item) {
+                  return item && item.url !== fullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+                });
+                // Add to beginning of history array (most recent first)
+                memberJson.history.unshift({
+                  url: fullUrl,
+                  title: packTitle,
+                  timestamp: nowIso,
+                  date: nowIso
+                });
+                // Limit history to last 20 items
+                if (memberJson.history.length > 20) {
+                  memberJson.history = memberJson.history.slice(0, 20);
+                }
+                
+                // Save back to Memberstack
+                await ms.updateMemberJSON({ json: memberJson });
+                
+                console.log('[Practice Packs] Saved practice pack to Memberstack and history:', normalizedUrl);
+              } catch (err) {
+                console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
+                // Revert visual state on error
+                cubeEl.classList.remove('status-opened');
+                cubeEl.classList.add('status-not-opened');
+                delete openedModules[normalizedUrl];
               }
-              
-              // Save back to Memberstack
-              await ms.updateMemberJSON({ json: memberJson });
-              
-              console.log('[Practice Packs] Saved practice pack to Memberstack and history:', normalizedUrl);
-              
-              // Small delay to ensure visual update is visible before navigation
-              await new Promise(function(resolve) { setTimeout(resolve, 100); });
-              
-              // Navigate after save completes
-              window.location.href = fullUrl;
-            } catch (err) {
-              console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
-              // Even if save fails, still navigate (user experience)
-              window.location.href = fullUrl;
-            }
-          })();
+            })();
+          }
+          // Let the link navigate normally (don't prevent default or stop propagation)
         });
       });
     }
