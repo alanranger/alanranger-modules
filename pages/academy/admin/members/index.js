@@ -470,6 +470,9 @@ export default function MembersDirectory() {
                           {member.exams_attempted > 0 ? `${member.exams_passed} / ${member.exams_attempted}` : '0 / 0'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.bookmarks_count}</td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
+                          {member.photography_style || '—'}
+                        </td>
                       </tr>
                     ))
                   )}
