@@ -3283,14 +3283,14 @@ Keeps all styling + elements. Access guard still runs on live site.
       if (genreEl) genreEl.textContent = counts.genre;
       
       // Render practice packs grid (use same opened modules tracking)
-      // Wrap in try-catch to prevent breaking the dashboard if there's an error
-      try {
-        renderPracticePacksGrid(ms, opened, normalizePath).catch(function(err) {
-          console.error('[Practice Packs] Error rendering grid:', err);
-        });
-      } catch (err) {
-        console.error('[Practice Packs] Error calling renderPracticePacksGrid:', err);
-      }
+      // TEMPORARILY DISABLED - will re-enable after fixing
+      // try {
+      //   renderPracticePacksGrid(ms, opened, normalizePath).catch(function(err) {
+      //     console.error('[Practice Packs] Error rendering grid:', err);
+      //   });
+      // } catch (err) {
+      //   console.error('[Practice Packs] Error calling renderPracticePacksGrid:', err);
+      // }
     }
     
     function renderPracticePacksGrid(ms, openedModules, normalizePath) {
