@@ -48,7 +48,6 @@ module.exports = async function handler(req, res) {
     }
 
     // Fetch last login from academy_events
-    // Use .maybeSingle() instead of .single() to handle no results gracefully
     const { data: lastLoginEvents, error: loginError } = await supabase
       .from("academy_events")
       .select("created_at")
@@ -57,12 +56,28 @@ module.exports = async function handler(req, res) {
       .order("created_at", { ascending: false })
       .limit(1);
 
-    // Add last_login to response (don't fail if login event not found)
+    // Add last_login to response
+    // Priority: 1) academy_events login event, 2) updated_at from cache (proxy for last sync/login), 3) null
     const response = { ...data };
     if (loginError) {
       console.error("[member-data] Error fetching last login:", loginError);
-    } else if (lastLoginEvents && lastLoginEvents.length > 0 && lastLoginEvents[0].created_at) {
+    }
+    
+    if (lastLoginEvents && lastLoginEvents.length > 0 && lastLoginEvents[0].created_at) {
+      // Use actual login event if available
       response.last_login = lastLoginEvents[0].created_at;
+    } else if (data.updated_at) {
+      // Fallback to updated_at as proxy for last login (gets updated on member sync/login)
+      response.last_login = data.updated_at;
+    }
+    
+    // Also check raw JSONB for lastLogin if present
+    if (!response.last_login && data.raw && typeof data.raw === 'object') {
+      if (data.raw.lastLogin) {
+        response.last_login = data.raw.lastLogin;
+      } else if (data.raw.data && data.raw.data.lastLogin) {
+        response.last_login = data.raw.data.lastLogin;
+      }
     }
 
     return res.status(200).json(response);
