@@ -890,7 +890,10 @@ Keeps all styling + elements. Access guard still runs on live site.
           <!-- Photography Style Quiz Section -->
           <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
             <div id="arp-photography-quiz-result" style="display: none;">
-              <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95); margin-bottom: 6px;">Your Photography Style Is:</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 12px;">
+                <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95);">Your Photography Style Is:</div>
+                <button id="arp-photography-retake-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Retake Quiz</button>
+              </div>
               <div id="arp-photography-style-name" style="font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
             </div>
             <div id="arp-photography-quiz-button-container" style="display: none;">
@@ -1406,11 +1409,13 @@ Keeps all styling + elements. Access guard still runs on live site.
       // Tile click should still work for portal mode
       if (tile) {
         tile.onclick = function(e) {
-          // Don't handle clicks on quiz section or quiz button
+          // Don't handle clicks on quiz section, quiz button, or retake button
           var quizSection = document.getElementById("arp-photography-quiz-section");
           var quizButton = document.getElementById("arp-photography-quiz-button");
+          var retakeButton = document.getElementById("arp-photography-retake-quiz-button");
           if (quizSection && quizSection.contains(e.target)) return;
           if (quizButton && (e.target === quizButton || quizButton.contains(e.target))) return;
+          if (retakeButton && (e.target === retakeButton || retakeButton.contains(e.target))) return;
           
           // Only handle if the button is in portal mode
           if (manageBtn && manageBtn.getAttribute("data-ms-action") === "customer-portal") {
@@ -2114,6 +2119,19 @@ Keeps all styling + elements. Access guard still runs on live site.
           styleNameEl.textContent = memberData.photography_style;
           quizResultEl.style.display = 'block';
           quizButtonContainer.style.display = 'none';
+          
+          // Wire up retake quiz button
+          var retakeButton = document.getElementById('arp-photography-retake-quiz-button');
+          if (retakeButton && !retakeButton.hasAttribute('data-retake-wired')) {
+            retakeButton.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+              window.open(quizUrl, '_blank', 'noopener,noreferrer');
+            }, true);
+            retakeButton.setAttribute('data-retake-wired', 'true');
+          }
         } else {
           // Show button, hide result
           var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
