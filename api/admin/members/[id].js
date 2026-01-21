@@ -68,29 +68,52 @@ module.exports = async (req, res) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // Get exam stats
-    const { data: exams } = await supabase
-      .from('exam_member_links')
-      .select('*')
-      .eq('member_id', memberId)
-      .order('created_at', { ascending: false });
-
-    const examStats = {
-      attempts: exams?.length || 0,
-      passed: exams?.filter(e => e.passed).length || 0,
-      failed: exams?.filter(e => !e.passed).length || 0,
-      pass_rate: exams?.length > 0 
-        ? Math.round((exams.filter(e => e.passed).length / exams.length) * 100) 
+    // Get exam stats - use same approach as members list API
+    // Check module_results_ms by memberstack_id first, then by email for legacy data
+    const { data: examStatsById } = await supabase
+      .from('module_results_ms')
+      .select('memberstack_id, email, passed')
+      .eq('memberstack_id', memberId);
+    
+    // Also get exams by email for legacy data
+    const { data: examStatsByEmail } = member.email ? await supabase
+      .from('module_results_ms')
+      .select('memberstack_id, email, passed')
+      .eq('email', member.email) : { data: [] };
+    
+    // Combine both results
+    const examStats = [...(examStatsById || []), ...(examStatsByEmail || [])];
+    
+    const examStatsResult = {
+      attempts: examStats.length,
+      passed: examStats.filter(e => e.passed).length,
+      failed: examStats.filter(e => !e.passed).length,
+      pass_rate: examStats.length > 0 
+        ? Math.round((examStats.filter(e => e.passed).length / examStats.length) * 100) 
         : 0
     };
 
-    // Get bookmarks
-    const { data: bookmarks } = await supabase
+    // Get bookmarks - check both academy_events and Memberstack JSON data
+    const { data: bookmarksFromEvents } = await supabase
       .from('academy_events')
       .select('path, title, created_at')
       .eq('member_id', memberId)
       .eq('event_type', 'bookmark_add')
       .order('created_at', { ascending: false });
+    
+    // Also check Memberstack JSON data for bookmarks (same as members list API)
+    const raw = member.raw || {};
+    const json = raw?.json || raw?.data?.json || raw;
+    const bookmarksFromJson = json?.bookmarks || [];
+    
+    // Use Memberstack JSON data if available, otherwise fall back to events
+    const bookmarks = Array.isArray(bookmarksFromJson) && bookmarksFromJson.length > 0 
+      ? bookmarksFromJson.map((path, idx) => ({
+          path: typeof path === 'string' ? path : path?.path || path,
+          title: path?.title || null,
+          created_at: path?.created_at || null
+        }))
+      : (bookmarksFromEvents || []);
 
     // Get recent activity (paginated)
     const activityPage = parseInt(req.query.activity_page) || 1;
@@ -128,9 +151,9 @@ module.exports = async (req, res) => {
         modules_opened_unique: uniqueModules.size,
         modules_opened_total: moduleOpens?.length || 0,
         most_opened_modules: mostOpenedModules,
-        exams: examStats,
-        bookmarks_count: bookmarks?.length || 0,
-        bookmarks: bookmarks || []
+        exams: examStatsResult,
+        bookmarks_count: bookmarks.length,
+        bookmarks: bookmarks
       },
       
       // Recent activity
