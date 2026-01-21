@@ -48,19 +48,21 @@ module.exports = async function handler(req, res) {
     }
 
     // Fetch last login from academy_events
-    const { data: lastLoginEvent, error: loginError } = await supabase
+    // Use .maybeSingle() instead of .single() to handle no results gracefully
+    const { data: lastLoginEvents, error: loginError } = await supabase
       .from("academy_events")
       .select("created_at")
       .eq("member_id", memberId)
       .eq("event_type", "login")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
     // Add last_login to response (don't fail if login event not found)
     const response = { ...data };
-    if (lastLoginEvent && lastLoginEvent.created_at) {
-      response.last_login = lastLoginEvent.created_at;
+    if (loginError) {
+      console.error("[member-data] Error fetching last login:", loginError);
+    } else if (lastLoginEvents && lastLoginEvents.length > 0 && lastLoginEvents[0].created_at) {
+      response.last_login = lastLoginEvents[0].created_at;
     }
 
     return res.status(200).json(response);

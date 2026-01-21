@@ -323,6 +323,14 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
             var memberData = await response.json();
             var lastLogin = memberData.last_login || null;
             
+            // Debug logging
+            console.log('[Academy Header] Member data response:', {
+              memberId: memberId,
+              hasLastLogin: !!lastLogin,
+              lastLogin: lastLogin,
+              memberDataKeys: Object.keys(memberData)
+            });
+            
             // Update last login display
             var lastLoginEl = document.getElementById('ar-academy-header-last-login');
             if (lastLoginEl) {
@@ -333,13 +341,15 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
               }
             }
           } else {
-            console.error('[Academy Header] Failed to fetch member data:', response.status);
+            var errorText = await response.text();
+            console.error('[Academy Header] Failed to fetch member data:', response.status, errorText);
             var lastLoginEl = document.getElementById('ar-academy-header-last-login');
             if (lastLoginEl) {
               lastLoginEl.textContent = "First visit";
             }
           }
         } else {
+          console.warn('[Academy Header] No memberId found');
           var lastLoginEl = document.getElementById('ar-academy-header-last-login');
           if (lastLoginEl) {
             lastLoginEl.textContent = "First visit";
