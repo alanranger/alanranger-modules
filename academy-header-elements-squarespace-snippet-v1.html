@@ -501,19 +501,40 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
           e.preventDefault();
           
           // Track logout event before logging out
-          if (memberId) {
-            fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                member_id: memberId,
-                email: memberEmail
-              })
+          // Get fresh member data to ensure we have email
+          if (memberId && ms) {
+            ms.getCurrentMember().then(function(currentMember) {
+              var email = (currentMember && currentMember.data && currentMember.data.email) || memberEmail || null;
+              
+              fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  member_id: memberId,
+                  email: email
+                })
+              }).catch(function(err) {
+                console.warn('[Academy Header] Error tracking logout:', err);
+                // Don't block logout if tracking fails
+              });
             }).catch(function(err) {
-              console.warn('[Academy Header] Error tracking logout:', err);
-              // Don't block logout if tracking fails
+              // If we can't get member, still try to track with what we have
+              if (memberId) {
+                fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    member_id: memberId,
+                    email: memberEmail || null
+                  })
+                }).catch(function(err) {
+                  console.warn('[Academy Header] Error tracking logout (fallback):', err);
+                });
+              }
             });
             
             // Clear session storage
