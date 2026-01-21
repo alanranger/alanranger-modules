@@ -999,7 +999,7 @@ Keeps all styling + elements. Access guard still runs on live site.
             <ul id="bookmarks-mini" style="list-style:none;padding:0;margin:0 0 10px 0;"></ul>
 
             <div style="color:#FFD700;font-weight:900;margin:6px 0;">
-              Recent activity <span style="color:rgba(226,232,240,0.85);font-weight:800;">(last 10)</span>
+              Recent activity
             </div>
             <ul id="history-mini" style="list-style:none;padding:0;margin:0;"></ul>
 
@@ -3375,8 +3375,8 @@ Keeps all styling + elements. Access guard still runs on live site.
       }
 
       if (historyMini) {
-        // Use the same sorted history as the main list, then take first 3 (most recent)
-        const topH = sortedHistory.slice(0, 3);
+        // Use the same sorted history as the main list, then take first 8 (most recent)
+        const topH = sortedHistory.slice(0, 8);
         historyMini.innerHTML = topH.length
           ? topH.map(i => itemLi(i, true)).join('')
           : emptyLi("No recent activity yet.");
