@@ -3458,9 +3458,15 @@ Keeps all styling + elements. Access guard still runs on live site.
       // Add click handlers to track practice pack opens
       var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
       console.log('[Practice Packs] Attaching click handlers to', practicePackCubes.length, 'cubes');
-      practicePackCubes.forEach(function(cube) {
+      
+      if (practicePackCubes.length === 0) {
+        console.warn('[Practice Packs] WARNING: No practice pack cubes found! Grid may not have rendered correctly.');
+      }
+      
+      practicePackCubes.forEach(function(cube, index) {
+        // Use capture phase to ensure we catch the event early
         cube.addEventListener('click', function(e) {
-          console.log('[Practice Packs] Cube clicked!', this);
+          console.log('[Practice Packs] Cube clicked!', index, this, e);
           e.preventDefault(); // Prevent default navigation
           e.stopPropagation(); // Stop event bubbling
           
