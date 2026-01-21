@@ -595,6 +595,10 @@ Keeps all styling + elements. Access guard still runs on live site.
   html.ar-academy #arp-modules-tile .ar-tile__tip{
     display: none;
   }
+  /* Hide tip for practice packs tile to prevent obscuring last row of practice pack cubes */
+  html.ar-academy #arp-practice-packs-tile .ar-tile__tip{
+    display: none;
+  }
   html.ar-academy .ar-tile__tip::before{
     content: "";
     width: 10px;
