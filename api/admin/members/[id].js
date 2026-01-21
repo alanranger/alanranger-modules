@@ -117,6 +117,12 @@ module.exports = async (req, res) => {
       signed_up: member.created_at,
       last_seen: lastActivity?.created_at || null,
       
+      // Photography Style Quiz results
+      photography_style: member.photography_style || null,
+      photography_style_percentage: member.photography_style_percentage || null,
+      photography_style_other_interests: member.photography_style_other_interests || null,
+      photography_style_quiz_completed_at: member.photography_style_quiz_completed_at || null,
+      
       // Engagement stats
       engagement: {
         modules_opened_unique: uniqueModules.size,

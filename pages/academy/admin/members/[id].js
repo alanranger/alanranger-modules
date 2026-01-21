@@ -177,6 +177,31 @@ export default function MemberDetail() {
             <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginBottom: '4px' }}>Last Seen</div>
             <div style={{ fontSize: '13px', color: 'var(--ar-text)' }}>{formatDate(member.last_seen)}</div>
           </div>
+          {member.photography_style && (
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginBottom: '4px' }}>Photography Style</div>
+              <div style={{ fontSize: '14px', color: 'var(--ar-text)', marginBottom: '4px' }}>
+                <strong style={{ color: 'var(--ar-orange)' }}>
+                  {member.photography_style_percentage ? `${member.photography_style_percentage}% ` : ''}
+                  {member.photography_style}
+                </strong>
+              </div>
+              {member.photography_style_other_interests && (
+                <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginTop: '4px' }}>
+                  {member.photography_style_other_interests.split(',').map((interest, idx) => {
+                    const trimmed = interest.trim();
+                    // Filter out 0% interests
+                    if (trimmed.includes(': 0%')) return null;
+                    return (
+                      <div key={idx} style={{ marginBottom: '2px' }}>
+                        {trimmed}
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
