@@ -1,0 +1,221 @@
+<!-- ===========================
+AR | Academy Dashboard Header (v1.0)
+- Black header bar with centered title and right-aligned controls
+- Welcome message with last login tracking
+- Page: /academy/dashboard (header code block)
+=========================== -->
+
+<style>
+  /* Header bar (black area) */
+  html.ar-academy .ar-academy-dashboard__header {
+    background: #000;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 100;
+  }
+  html.ar-academy .ar-academy-dashboard__header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-title-icon {
+    font-size: 24px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-academy-dashboard__header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  html.ar-academy .ar-academy-dashboard__logo--brand {
+    width: 150px;
+    height: 44px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: rgba(15, 20, 25, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    padding: 8px 10px;
+  }
+  html.ar-academy .ar-academy-dashboard__home-link {
+    display: inline-flex;
+    text-decoration: none;
+  }
+  html.ar-academy .ar-logo--invert {
+    filter: invert(1) brightness(1.1) contrast(1.05);
+  }
+  /* Logout button */
+  #arp-logout-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid rgba(239, 68, 68, 0.95);
+    background: rgba(26, 31, 46, 0.80);
+    color: #fff;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  #arp-logout-btn:hover {
+    border-color: rgba(239, 68, 68, 1);
+    background: #20263a;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.18);
+    transform: translateY(-1px);
+  }
+  #arp-logout-btn:active { transform: translateY(0); }
+  #arp-logout-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+  }
+  /* Welcome message styling */
+  #ms-welcome-container {
+    display: none;
+    margin: 20px 0;
+    font-family: sans-serif;
+    color: #ffffff;
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+  }
+  #ms-member-name {
+    color: #E57200;
+  }
+  #ms-last-login-row {
+    display: none;
+    font-size: 15px;
+    color: #FFD700;
+    font-weight: 500;
+  }
+</style>
+
+<!-- Header bar (black area) -->
+<div class="ar-academy-dashboard__header">
+  <div class="ar-academy-dashboard__header-center">
+    <h1 class="ar-academy-dashboard__header-title">
+      <span class="ar-academy-dashboard__header-title-icon">🏠</span>
+      <span>Academy Dashboard</span>
+    </h1>
+    <p class="ar-academy-dashboard__header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
+  </div>
+  <div class="ar-academy-dashboard__header-right">
+    <a class="ar-academy-dashboard__home-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage">
+      <img
+        class="ar-academy-dashboard__logo--brand ar-logo--invert"
+        src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+        alt="Alan Ranger"
+        loading="eager"
+      />
+    </a>
+    <button id="arp-logout-btn" type="button" data-ms-action="logout">Log out</button>
+  </div>
+</div>
+
+<!-- Welcome message -->
+<div id="ms-welcome-container">
+  <div style="font-size: 28px; font-weight: bold; margin-bottom: 6px;">
+    Welcome back, <span id="ms-member-name">Photographer</span>!
+  </div>
+  <div id="ms-last-login-row">
+    Last logged in: <span id="ms-login-time">...</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  const container = document.getElementById('ms-welcome-container');
+  const nameEl = document.getElementById('ms-member-name');
+  const rowEl = document.getElementById('ms-last-login-row');
+  const timeEl = document.getElementById('ms-login-time');
+
+  function fmt(ts){
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return null;
+      const date = d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+      const time = d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+      return `${date} at ${time}`;
+    } catch(e) { return null; }
+  }
+
+  async function run(){
+    // Wait for Memberstack to be ready
+    const ms = window.$memberstackDom;
+    if(!ms) {
+      // If not ready, try again in 500ms
+      setTimeout(run, 500);
+      return;
+    }
+
+    const res = await ms.getCurrentMember();
+    const member = res && res.data;
+    if(!member) return;
+
+    // 1. Set Name
+    const email = member.auth ? member.auth.email : '';
+    const firstName = member.customFields['first-name'] || (email ? email.split('@')[0] : 'Photographer');
+    nameEl.textContent = firstName;
+
+    // 2. Handle Timestamps
+    const prevSeen = member.customFields['prev-seen-at'];
+    const lastSeen = member.customFields['last-seen-at'];
+    const nowIso = new Date().toISOString();
+
+    // Display the previous visit if it exists
+    const displayTime = fmt(prevSeen);
+    if(displayTime){
+      timeEl.textContent = displayTime;
+      rowEl.style.display = 'block';
+    }
+
+    // 3. Update fields for the NEXT visit
+    // We move current 'last-seen' to 'prev-seen', and set a new 'last-seen'
+    const updates = {
+      'prev-seen-at': lastSeen || nowIso,
+      'last-seen-at': nowIso
+    };
+
+    try {
+      await ms.updateMember({ customFields: updates });
+    } catch(e) { console.log("Update skipped"); }
+
+    // 4. Show the Greeting
+    container.style.display = 'block';
+    setTimeout(()=>{ container.style.opacity = '1'; }, 50);
+  }
+
+  // Run on load
+  if (document.readyState === 'complete') { run(); } 
+  else { window.addEventListener('load', run); }
+})();
+</script>
+
+<!-- ===========================
+END: AR | Academy Dashboard Header
+=========================== -->
