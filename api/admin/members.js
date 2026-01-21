@@ -259,9 +259,13 @@ module.exports = async (req, res) => {
         let aVal = a[sortField];
         let bVal = b[sortField];
         
-        // Handle null/undefined values
-        if (aVal == null) aVal = '';
-        if (bVal == null) bVal = '';
+        // Handle null/undefined values - put them at the end
+        const aIsNull = aVal == null || aVal === '';
+        const bIsNull = bVal == null || bVal === '';
+        
+        if (aIsNull && bIsNull) return 0;
+        if (aIsNull) return 1; // null values go to end
+        if (bIsNull) return -1; // null values go to end
         
         // Handle dates
         if (sortField === 'signed_up' || sortField === 'last_seen' || sortField === 'plan_expiry_date') {
@@ -269,11 +273,7 @@ module.exports = async (req, res) => {
           bVal = bVal ? new Date(bVal).getTime() : 0;
         }
         
-        // Handle strings
-        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-        
-        // Handle numbers
+        // Handle numbers (including modules_opened_unique, exams_attempted, exams_passed, bookmarks_count)
         if (typeof aVal === 'number' && typeof bVal === 'number') {
           if (sortOrder === 'asc') {
             return aVal - bVal;
@@ -282,7 +282,27 @@ module.exports = async (req, res) => {
           }
         }
         
-        // Handle strings and other types
+        // Handle strings (name, email, plan_name, status, photography_style)
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+          if (sortOrder === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+          } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+          }
+        }
+        
+        // Handle boolean values
+        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+          if (sortOrder === 'asc') {
+            return aVal === bVal ? 0 : aVal ? 1 : -1;
+          } else {
+            return aVal === bVal ? 0 : aVal ? -1 : 1;
+          }
+        }
+        
+        // Fallback for mixed types
         if (sortOrder === 'asc') {
           return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
         } else {

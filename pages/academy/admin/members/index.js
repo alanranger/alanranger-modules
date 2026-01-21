@@ -27,7 +27,12 @@ export default function MembersDirectory() {
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
     if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
-    if (sort) setSortConfig({ field: sort, direction: order || 'desc' });
+    if (sort) {
+      setSortConfig({ field: sort, direction: order || 'desc' });
+    } else {
+      // Default sort if not specified
+      setSortConfig({ field: 'updated_at', direction: 'desc' });
+    }
     
     fetchMembers();
   }, [router.query]);
@@ -86,18 +91,21 @@ export default function MembersDirectory() {
     const newSortConfig = { field, direction };
     setSortConfig(newSortConfig);
     
+    // Reset to page 1 when sorting changes
+    setPagination(prev => ({ ...prev, page: 1 }));
+    
     // Update URL to persist sort
     router.push({
       pathname: '/academy/admin/members',
       query: {
         ...router.query,
         sort: field,
-        order: direction
+        order: direction,
+        page: 1 // Reset to page 1
       }
-    }, undefined, { shallow: true });
+    }, undefined, { shallow: false }); // Use shallow: false to ensure proper navigation
     
-    // Trigger a new fetch with the updated sort - sorting is now done server-side
-    fetchMembers();
+    // fetchMembers will be called by useEffect when router.query changes
   }
 
   function getSortIcon(field) {
