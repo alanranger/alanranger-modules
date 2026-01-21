@@ -62,13 +62,14 @@ module.exports = async (req, res) => {
       event_type: 'login',
       member_id: member_id,
       email: email || null,
-      path: req.headers.referer || null,
+      path: null, // Set to null for login events to avoid unique constraint violations
       title: 'Academy Login',
       category: 'authentication',
       session_id: null,
       meta: {
         user_agent: req.headers['user-agent'] || null,
-        origin: origin || referer
+        origin: origin || referer,
+        referer: req.headers.referer || null // Store referer in meta instead
       }
     }]).select();
 
