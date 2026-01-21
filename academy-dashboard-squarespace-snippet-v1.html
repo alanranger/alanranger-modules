@@ -735,14 +735,31 @@ Keeps all styling + elements. Access guard still runs on live site.
     border-color: var(--ar-border);
   }
   
-  /* Module mini grid - similar to exam grid */
+  /* Module mini grid - organized by category rows */
   html.ar-academy #ar-modules-mini-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    display: block;
     margin-top: 12px;
     position: relative;
     z-index: 1;
+  }
+  html.ar-academy .ar-module-category-row {
+    margin-bottom: 8px;
+  }
+  html.ar-academy .ar-module-category-row:last-child {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-module-category-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  html.ar-academy .ar-module-category-cubes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   html.ar-academy .ar-module-cube {
     width: 24px;
@@ -817,15 +834,14 @@ Keeps all styling + elements. Access guard still runs on live site.
       <div class="ar-academy-tiles">
         <div class="ar-tile ar-span-6" id="arp-modules-tile">
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
-          <div class="ar-tile__title"><span class="ar-tile__icon">📚</span>Modules</div>
-          <div class="ar-tile__desc">60 step-by-step modules</div>
-          <div class="ar-mod-progress" style="margin-top:10px;">
-            <div style="font-weight:900; color: var(--ar-brand, #E57200); font-size: 20px; line-height:1;">
-              <span data-ar-mod-opened-total>0</span> / 60 opened
-            </div>
-            <!-- Module grid will be rendered here -->
-            <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
+          <div class="ar-tile__title">
+            <span class="ar-tile__icon">📚</span>
+            <span>Modules</span>
+            <span id="ar-modules-progress-title" class="ar-tile__progress"></span>
           </div>
+          <div class="ar-tile__desc">60 step-by-step modules</div>
+          <!-- Module grid will be rendered here -->
+          <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
           <div class="ar-tile__tip">Continue your lessons and tick off each module.</div>
         </div>
   
@@ -2989,24 +3005,33 @@ Keeps all styling + elements. Access guard still runs on live site.
       const gearEl = document.querySelector('[data-ar-mod-opened-gear]');
       const compositionEl = document.querySelector('[data-ar-mod-opened-composition]');
       const genreEl = document.querySelector('[data-ar-mod-opened-genre]');
+      const progressTitleEl = document.getElementById('ar-modules-progress-title');
+
+      // Update progress title (top right of Modules title)
+      if (progressTitleEl) {
+        if (totalOpened > 0) {
+          progressTitleEl.textContent = totalOpened + '/60 opened';
+        } else {
+          progressTitleEl.textContent = '';
+        }
+      }
 
       if (totalEl) {
         totalEl.textContent = totalOpened;
       }
 
-      // Render module grid instead of text
+      // Render module grid with category rows
       const miniGridEl = document.getElementById('ar-modules-mini-grid');
       if (miniGridEl) {
         var gridHtml = '';
-        var moduleNumber = 1;
         
-        // Define module groups with their ranges
+        // Define module groups with their ranges and full labels
         var moduleGroups = [
-          { name: 'camera', start: 1, end: 15, label: 'Camera' },
-          { name: 'gear', start: 16, end: 25, label: 'Gear' },
-          { name: 'composition', start: 26, end: 35, label: 'Composition' },
-          { name: 'genre', start: 36, end: 45, label: 'Genre' },
-          { name: 'assignment', start: 46, end: 60, label: 'Assignments' }
+          { name: 'camera', start: 1, end: 15, label: '15 Key Camera Setting Modules' },
+          { name: 'gear', start: 16, end: 25, label: '10 Essential Gear and Accessory Guides' },
+          { name: 'composition', start: 26, end: 35, label: '10 Composition Guide Modules' },
+          { name: 'genre', start: 36, end: 45, label: '10 Photography Genre Topic Guides' },
+          { name: 'assignment', start: 46, end: 60, label: '15 Practical Photography Assignments' }
         ];
         
         // Helper function to get module title from URL or opened data
@@ -3034,7 +3059,14 @@ Keeps all styling + elements. Access guard still runs on live site.
           return title;
         }
         
+        // Render each category as a separate row
         moduleGroups.forEach(function(group) {
+          // Category label row
+          gridHtml += '<div class="ar-module-category-row" style="width:100%; margin-bottom:6px;">';
+          gridHtml += '<div class="ar-module-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+          gridHtml += '<div class="ar-module-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+          
+          // Cubes for this category
           for (var i = group.start; i <= group.end; i++) {
             var moduleUrl = DEFINITIVE_MODULE_URLS[i - 1];
             if (!moduleUrl) continue; // Skip if URL not defined
@@ -3056,10 +3088,13 @@ Keeps all styling + elements. Access guard still runs on live site.
             
             gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
           }
+          
+          gridHtml += '</div>'; // Close category cubes
+          gridHtml += '</div>'; // Close category row
         });
         
         miniGridEl.innerHTML = gridHtml;
-        miniGridEl.style.display = 'flex';
+        miniGridEl.style.display = 'block';
       }
       
       // Keep totalsEl for backward compatibility but hide it
