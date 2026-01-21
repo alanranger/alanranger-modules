@@ -203,7 +203,7 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       loading="eager"
     />
     <div>
-      <h1 id="ar-academy-header-title">Academy Dashboard</h1>
+      <h1 id="ar-academy-header-title">Your Personal Academy Dashboard</h1>
       <p id="ar-academy-header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
     </div>
   </div>
@@ -312,35 +312,6 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       var name = getMemberName(member);
       if (nameEl && name) {
         nameEl.textContent = name;
-      }
-      
-      // Track login event (only once per page load)
-      var memberId = member.id || (member.data && member.data.id);
-      var email = member.data.email || '';
-      if (memberId && !window.__arHeaderLoginTracked) {
-        window.__arHeaderLoginTracked = true;
-        try {
-          // Track login event to academy_events (fire and forget)
-          fetch('https://alanranger-modules.vercel.app/api/academy/event', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-ar-analytics-key': 'YOUR_ANALYTICS_KEY' // This should be set in env
-            },
-            body: JSON.stringify({
-              event_type: 'login',
-              member_id: memberId,
-              email: email,
-              path: window.location.pathname,
-              title: document.title
-            }),
-            keepalive: true
-          }).catch(function() {
-            // Fail silently
-          });
-        } catch (e) {
-          // Fail silently
-        }
       }
       
       // Get last login from API (fetches from Supabase academy_events)
