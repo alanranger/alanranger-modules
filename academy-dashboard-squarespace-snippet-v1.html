@@ -796,6 +796,64 @@ Keeps all styling + elements. Access guard still runs on live site.
     color: var(--ar-text-muted);
     border-color: var(--ar-border);
   }
+  
+  /* Practice packs mini grid - organized by category rows */
+  html.ar-academy #ar-practice-packs-mini-grid {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 2;
+  }
+  html.ar-academy .ar-practice-pack-category-row {
+    margin-bottom: 8px;
+  }
+  html.ar-academy .ar-practice-pack-category-row:last-child {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-practice-pack-category-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  html.ar-academy .ar-practice-pack-category-cubes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  html.ar-academy .ar-practice-pack-cube {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    color: inherit;
+  }
+  html.ar-academy .ar-practice-pack-cube:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  html.ar-academy .ar-practice-pack-cube.status-opened {
+    background: var(--ar-orange, #E57200);
+    color: #fff;
+    border-color: rgba(229, 114, 0, 0.3);
+  }
+  html.ar-academy .ar-practice-pack-cube.status-not-opened {
+    background: var(--ar-border);
+    color: var(--ar-text-muted);
+    border-color: var(--ar-border);
+  }
   </style>
   
   <div class="ar-academy-dashboard">
@@ -884,11 +942,13 @@ Keeps all styling + elements. Access guard still runs on live site.
             Paid Members Only <span class="pill-muted">— Resources</span>
           </div>
           <div class="ar-tile-group__grid">
-            <a id="arp-practice-packs-tile" class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-practice-packs">
+            <div id="arp-practice-packs-tile" class="ar-tile ar-span-4">
               <div class="ar-tile__title"><span class="ar-tile__icon">📦</span>Practice Packs</div>
-              <div class="ar-tile__desc">30 Assignment Practice Packs (PDF)</div>
+              <div class="ar-tile__desc">30 Assignment Practice Packs</div>
+              <!-- Practice packs grid will be rendered here -->
+              <div id="ar-practice-packs-mini-grid" style="margin-top:12px; display:none;"></div>
               <div class="ar-tile__tip">Grab a pack and follow the step-by-step field exercises.</div>
-            </a>
+            </div>
   
             <a id="arp-ebook-tile" class="ar-tile ar-span-4" href="/academy/ebook">
               <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
@@ -3217,6 +3277,226 @@ Keeps all styling + elements. Access guard still runs on live site.
       if (gearEl) gearEl.textContent = counts.gear;
       if (compositionEl) compositionEl.textContent = counts.composition;
       if (genreEl) genreEl.textContent = counts.genre;
+      
+      // Render practice packs grid (use same opened modules tracking)
+      renderPracticePacksGrid(ms, opened, normalizePath);
+    }
+    
+    async function renderPracticePacksGrid(ms, openedModules, normalizePath) {
+      // normalizeMemberJson is available in closure from outer scope
+      function normalizeMemberJson(jsonRes) {
+        const raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+        if (raw && raw.json && typeof raw.json === "object") return raw.json;
+        return raw || {};
+      }
+      // Practice packs URLs organized by category
+      const PRACTICE_PACK_URLS = [
+        // Technical Foundations (10) - 1-10
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography',
+        '/blog-on-photography/histogram-and-exposure-review',
+        '/blog-on-photography/white-balance-and-colour-photography',
+        '/blog-on-photography/focus-modes-and-tracking',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment',
+        // Composition & Creative (10) - 11-20
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment',
+        '/blog-on-photography/storytelling-narrative-photography-assignment',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/minimalism-photography-assignment',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment',
+        // Genre-Specific (10) - 21-30
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson',
+        '/blog-on-photography/landscapes-photography-practise-assignment',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment',
+        '/blog-on-photography/seasons-nature-photography-assignment',
+        '/blog-on-photography/architecture-photography-practice-assignment',
+        '/blog-on-photography/still-life-photography-practice-assignment',
+        '/blog-on-photography/street-photography-practice-assignment',
+        '/blog-on-photography/portrait-photography-practice-assignment',
+        '/blog-on-photography/black-and-white-photography-practise-assignment'
+      ];
+      
+      const PRACTICE_PACK_CATEGORY_MAP = {
+        // Technical Foundations (10)
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment': 'technical',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography': 'technical',
+        '/blog-on-photography/histogram-and-exposure-review': 'technical',
+        '/blog-on-photography/white-balance-and-colour-photography': 'technical',
+        '/blog-on-photography/focus-modes-and-tracking': 'technical',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment': 'technical',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment': 'technical',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment': 'technical',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment': 'technical',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment': 'technical',
+        // Composition & Creative (10)
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment': 'composition',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment': 'composition',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment': 'composition',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment': 'composition',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment': 'composition',
+        '/blog-on-photography/storytelling-narrative-photography-assignment': 'composition',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment': 'composition',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson': 'composition',
+        '/blog-on-photography/minimalism-photography-assignment': 'composition',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment': 'composition',
+        // Genre-Specific (10)
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson': 'genre',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson': 'genre',
+        '/blog-on-photography/landscapes-photography-practise-assignment': 'genre',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment': 'genre',
+        '/blog-on-photography/seasons-nature-photography-assignment': 'genre',
+        '/blog-on-photography/architecture-photography-practice-assignment': 'genre',
+        '/blog-on-photography/still-life-photography-practice-assignment': 'genre',
+        '/blog-on-photography/street-photography-practice-assignment': 'genre',
+        '/blog-on-photography/portrait-photography-practice-assignment': 'genre',
+        '/blog-on-photography/black-and-white-photography-practise-assignment': 'genre'
+      };
+      
+      const miniGridEl = document.getElementById('ar-practice-packs-mini-grid');
+      if (!miniGridEl) return;
+      
+      var gridHtml = '';
+      
+      // Define practice pack groups with their ranges and labels
+      var practicePackGroups = [
+        { name: 'technical', start: 0, end: 9, label: 'Technical Foundations' },
+        { name: 'composition', start: 10, end: 19, label: 'Composition & Creative' },
+        { name: 'genre', start: 20, end: 29, label: 'Genre-Specific' }
+      ];
+      
+      // Helper function to get practice pack title from URL
+      function getPracticePackTitle(packUrl, normalizedUrl) {
+        // First try to get title from opened modules data (practice packs use same tracking)
+        var openedPack = openedModules[packUrl] || openedModules[normalizedUrl];
+        if (openedPack && openedPack.t) {
+          return openedPack.t;
+        }
+        
+        // Fallback: derive title from URL
+        var urlParts = packUrl.split('/').filter(function(p) { return p; });
+        var lastPart = urlParts[urlParts.length - 1] || '';
+        
+        // Convert slug to title
+        var title = lastPart
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+        
+        return title;
+      }
+      
+      // Render each category as a separate row
+      practicePackGroups.forEach(function(group) {
+        // Category label row
+        gridHtml += '<div class="ar-practice-pack-category-row" style="width:100%; margin-bottom:6px;">';
+        gridHtml += '<div class="ar-practice-pack-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+        gridHtml += '<div class="ar-practice-pack-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+        
+        // Cubes for this category
+        for (var i = group.start; i <= group.end; i++) {
+          var packUrl = PRACTICE_PACK_URLS[i];
+          if (!packUrl) continue; // Skip if URL not defined
+          
+          // Check if practice pack is opened (try both original and normalized paths)
+          var normalizedPackUrl = normalizePath(packUrl);
+          var isOpened = !!(openedModules[packUrl] || openedModules[normalizedPackUrl]);
+          
+          var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+          var label = String(i + 1).padStart(2, '0'); // Number from 01-30
+          var fullUrl = 'https://www.alanranger.com' + packUrl;
+          var packTitle = getPracticePackTitle(packUrl, normalizedPackUrl);
+          
+          // Use escapeHtml if available, otherwise use simple escaping
+          var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+          var safePackUrl = (typeof escapeHtml === 'function') ? escapeHtml(packUrl) : packUrl.replace(/"/g, '&quot;');
+          var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+          var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(packTitle) : packTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          
+          gridHtml += '<a href="' + safeUrl + '" class="ar-practice-pack-cube ' + statusClass + '" data-pack-url="' + safePackUrl + '" data-pack-number="' + (i + 1) + '" data-pack-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+        }
+        
+        gridHtml += '</div>'; // Close category cubes
+        gridHtml += '</div>'; // Close category row
+      });
+      
+      miniGridEl.innerHTML = gridHtml;
+      miniGridEl.style.display = 'block';
+      
+      // Add click handlers to track practice pack opens
+      var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
+      practicePackCubes.forEach(function(cube) {
+        cube.addEventListener('click', function(e) {
+          var cubeEl = this; // Capture cube element
+          var packUrl = cubeEl.getAttribute('data-pack-url');
+          var category = cubeEl.getAttribute('data-pack-category');
+          var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
+          
+          if (!packUrl) return;
+          
+          // Normalize the URL
+          var normalizedUrl = normalizePath(packUrl);
+          
+          // Check if already opened (check in openedModules which comes from module tracking)
+          var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
+          
+          if (!alreadyOpened) {
+            // Mark as opened immediately (optimistic update)
+            var nowIso = new Date().toISOString();
+            openedModules[normalizedUrl] = {
+              cat: category,
+              t: packTitle,
+              at: nowIso,
+              lastAt: nowIso
+            };
+            
+            // Update the cube visual state
+            cubeEl.classList.remove('status-not-opened');
+            cubeEl.classList.add('status-opened');
+            
+            // Save to Memberstack asynchronously
+            (async function() {
+              try {
+                // Get current member JSON
+                var jsonRes = await ms.getMemberJSON();
+                var memberJson = normalizeMemberJson(jsonRes);
+                
+                // Ensure arAcademy structure exists
+                if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                
+                // Add the new practice pack (using same structure as modules)
+                memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                  cat: category,
+                  t: packTitle,
+                  at: nowIso,
+                  lastAt: nowIso
+                };
+                
+                // Save back to Memberstack
+                await ms.updateMemberJSON({ json: memberJson });
+                
+                console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
+              } catch (err) {
+                console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
+                // Revert visual state on error
+                cubeEl.classList.remove('status-opened');
+                cubeEl.classList.add('status-not-opened');
+                delete openedModules[normalizedUrl];
+              }
+            })();
+          }
+        });
+      });
     }
 
     async function run(){
