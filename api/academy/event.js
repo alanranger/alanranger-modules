@@ -13,6 +13,7 @@ const ALLOWED_EVENT_TYPES = [
   'exam_start',
   'exam_submit',
   'login',
+  'logout',
   'page_view'
 ];
 
