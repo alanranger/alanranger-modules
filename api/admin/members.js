@@ -219,7 +219,8 @@ module.exports = async (req, res) => {
         // Combine exam stats by member_id and by email (for legacy data)
         exams_attempted: (examStatsMap[memberId]?.attempts || 0) + (examStatsByEmailMap[member.email]?.attempts || 0),
         exams_passed: (examStatsMap[memberId]?.passed || 0) + (examStatsByEmailMap[member.email]?.passed || 0),
-        bookmarks_count: bookmarksCount
+        bookmarks_count: bookmarksCount,
+        photography_style: member.photography_style || null
       };
     }) || [];
 

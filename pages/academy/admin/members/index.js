@@ -408,12 +408,18 @@ export default function MembersDirectory() {
                     >
                       Bookmarks {getSortIcon('bookmarks_count')}
                     </th>
+                    <th 
+                      onClick={() => handleSort('photography_style')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Type {getSortIcon('photography_style')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="10" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
