@@ -46,42 +46,18 @@ export default function MembersDirectory() {
       if (statusFilter) params.append('status', statusFilter);
       if (searchQuery) params.append('search', searchQuery);
       if (lastSeenFilter) params.append('last_seen', lastSeenFilter);
+      // Add sort parameters for server-side sorting
+      if (sortConfig.field) {
+        params.append('sort', sortConfig.field);
+        params.append('order', sortConfig.direction);
+      }
 
       const res = await fetch(`/api/admin/members?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const data = await res.json();
-      let membersList = data.members || [];
-      
-      // Apply client-side sorting if sort config is set
-      if (sortConfig.field) {
-        membersList = [...membersList].sort((a, b) => {
-          let aVal = a[sortConfig.field];
-          let bVal = b[sortConfig.field];
-          
-          // Handle null/undefined values
-          if (aVal == null) aVal = '';
-          if (bVal == null) bVal = '';
-          
-          // Handle dates
-          if (sortConfig.field === 'signed_up' || sortConfig.field === 'last_seen' || sortConfig.field === 'plan_expiry_date') {
-            aVal = aVal ? new Date(aVal).getTime() : 0;
-            bVal = bVal ? new Date(bVal).getTime() : 0;
-          }
-          
-          // Handle strings
-          if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-          if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-          
-          if (sortConfig.direction === 'asc') {
-            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          } else {
-            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-          }
-        });
-      }
-      
-      setMembers(membersList);
+      // Members are already sorted on the server, no need for client-side sorting
+      setMembers(data.members || []);
       setPagination(data.pagination || pagination);
     } catch (error) {
       console.error('Failed to fetch members:', error);
@@ -120,33 +96,8 @@ export default function MembersDirectory() {
       }
     }, undefined, { shallow: true });
     
-    // Sort members locally immediately
-    const sorted = [...members].sort((a, b) => {
-      let aVal = a[field];
-      let bVal = b[field];
-      
-      // Handle null/undefined values
-      if (aVal == null) aVal = '';
-      if (bVal == null) bVal = '';
-      
-      // Handle dates
-      if (field === 'signed_up' || field === 'last_seen' || field === 'plan_expiry_date') {
-        aVal = aVal ? new Date(aVal).getTime() : 0;
-        bVal = bVal ? new Date(bVal).getTime() : 0;
-      }
-      
-      // Handle strings
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-      
-      if (direction === 'asc') {
-        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-      } else {
-        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-      }
-    });
-    
-    setMembers(sorted);
+    // Trigger a new fetch with the updated sort - sorting is now done server-side
+    fetchMembers();
   }
 
   function getSortIcon(field) {

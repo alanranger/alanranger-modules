@@ -24,6 +24,8 @@ module.exports = async (req, res) => {
     const statusFilter = req.query.status; // 'active', 'trialing', 'canceled'
     const search = req.query.search; // name or email search
     const lastSeenFilter = req.query.last_seen; // '24h', '7d', '30d', 'never'
+    const sortField = req.query.sort || 'updated_at'; // field to sort by
+    const sortOrder = req.query.order || 'desc'; // 'asc' or 'desc'
 
     // Build query - by default, only show members with trial or annual plans
     // This excludes test accounts and members without valid plans
@@ -57,13 +59,16 @@ module.exports = async (req, res) => {
       query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
     }
 
-    // Get total count first
+    // For server-side sorting, we need to fetch ALL members first, then sort and paginate
+    // This is because some sort fields are computed (like modules_opened_unique, exams_attempted)
+    // So we'll fetch all, enrich, sort, then paginate
+    
+    // Get total count first (before pagination)
     const { count } = await query;
 
-    // Apply pagination
-    query = query.order('updated_at', { ascending: false }).range(offset, offset + limit - 1);
-
-    const { data: members, error } = await query;
+    // Fetch ALL members (no pagination yet) - we'll sort and paginate after enrichment
+    // Use a reasonable limit to prevent memory issues (e.g., 1000 members max)
+    const { data: members, error } = await query.order('updated_at', { ascending: false }).limit(1000);
 
     if (error) {
       throw error;
@@ -248,13 +253,55 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Apply server-side sorting
+    if (sortField) {
+      filteredMembers.sort((a, b) => {
+        let aVal = a[sortField];
+        let bVal = b[sortField];
+        
+        // Handle null/undefined values
+        if (aVal == null) aVal = '';
+        if (bVal == null) bVal = '';
+        
+        // Handle dates
+        if (sortField === 'signed_up' || sortField === 'last_seen' || sortField === 'plan_expiry_date') {
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        }
+        
+        // Handle strings
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+        
+        // Handle numbers
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          if (sortOrder === 'asc') {
+            return aVal - bVal;
+          } else {
+            return bVal - aVal;
+          }
+        }
+        
+        // Handle strings and other types
+        if (sortOrder === 'asc') {
+          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+      });
+    }
+
+    // Apply pagination AFTER sorting
+    const totalFiltered = filteredMembers.length;
+    const paginatedMembers = filteredMembers.slice(offset, offset + limit);
+
     return res.status(200).json({
-      members: filteredMembers,
+      members: paginatedMembers,
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: totalFiltered,
+        totalPages: Math.ceil(totalFiltered / limit)
       }
     });
 
