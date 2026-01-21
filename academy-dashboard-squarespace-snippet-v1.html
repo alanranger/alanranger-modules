@@ -3422,11 +3422,12 @@ Keeps all styling + elements. Access guard still runs on live site.
                   
                   // Also add to history array
                   if (!memberJson.history) memberJson.history = [];
+                  var practicePackFullUrl = 'https://www.alanranger.com' + packUrl;
                   memberJson.history = memberJson.history.filter(function(item) {
-                    return item && item.url !== fullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+                    return item && item.url !== practicePackFullUrl && item.url !== packUrl && item.url !== normalizedUrl;
                   });
                   memberJson.history.unshift({
-                    url: fullUrl,
+                    url: practicePackFullUrl,
                     title: packTitle,
                     timestamp: nowIso,
                     date: nowIso
