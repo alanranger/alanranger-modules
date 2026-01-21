@@ -47,25 +47,40 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ error: "Member not found" });
     }
 
-    // Fetch last login from academy_events
-    const { data: lastLoginEvents, error: loginError } = await supabase
+    // Fetch login events from academy_events
+    // Get the 2 most recent to find the PREVIOUS login (not the current one)
+    const { data: loginEvents, error: loginError } = await supabase
       .from("academy_events")
       .select("created_at")
       .eq("member_id", memberId)
       .eq("event_type", "login")
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(2);
 
     // Add last_login to response
-    // Priority: 1) academy_events login event, 2) updated_at from cache (proxy for last sync/login), 3) null
+    // Priority: 1) Previous login event (2nd most recent), 2) Most recent if only one exists, 3) updated_at from cache, 4) null
     const response = { ...data };
     if (loginError) {
       console.error("[member-data] Error fetching last login:", loginError);
     }
     
-    if (lastLoginEvents && lastLoginEvents.length > 0 && lastLoginEvents[0].created_at) {
-      // Use actual login event if available
-      response.last_login = lastLoginEvents[0].created_at;
+    if (loginEvents && loginEvents.length > 0) {
+      // If we have 2+ login events, use the 2nd one (previous login)
+      // If we only have 1, use it (it's the only login we have)
+      // But if the most recent one is very recent (within last 2 minutes), it's likely the current login
+      // So use the 2nd one if available, otherwise the 1st one
+      const now = new Date();
+      const mostRecent = new Date(loginEvents[0].created_at);
+      const timeSinceMostRecent = now.getTime() - mostRecent.getTime();
+      const twoMinutesAgo = 2 * 60 * 1000;
+      
+      if (loginEvents.length >= 2 && timeSinceMostRecent < twoMinutesAgo) {
+        // Most recent is very recent (likely current login), use the 2nd one (previous login)
+        response.last_login = loginEvents[1].created_at;
+      } else {
+        // Only one login event, or most recent is old enough to be considered "last login"
+        response.last_login = loginEvents[0].created_at;
+      }
     } else if (data.updated_at) {
       // Fallback to updated_at as proxy for last login (gets updated on member sync/login)
       response.last_login = data.updated_at;
