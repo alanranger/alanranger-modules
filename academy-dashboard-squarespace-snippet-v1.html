@@ -3501,21 +3501,24 @@ Keeps all styling + elements. Access guard still runs on live site.
                   
                   await ms.updateMemberJSON({ json: memberJson });
                   
-                  // Update practice packs progress count
+                  // Update practice packs progress count (recalculate from updated memberJson)
                   var practicePacksOpenedCount = 0;
+                  var openedModules = memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened ? memberJson.arAcademy.modules.opened : {};
                   PRACTICE_PACK_URLS.forEach(function(packUrl) {
                     if (!packUrl) return;
                     var normalizedPackUrl = normalizePath(packUrl);
-                    if (memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened) {
-                      if (memberJson.arAcademy.modules.opened[packUrl] || memberJson.arAcademy.modules.opened[normalizedPackUrl]) {
-                        practicePacksOpenedCount++;
-                      }
+                    if (openedModules[packUrl] || openedModules[normalizedPackUrl]) {
+                      practicePacksOpenedCount++;
                     }
                   });
                   
                   var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
                   if (practicePacksProgressTitleEl) {
-                    practicePacksProgressTitleEl.textContent = practicePacksOpenedCount + '/30 opened';
+                    if (practicePacksOpenedCount > 0) {
+                      practicePacksProgressTitleEl.textContent = practicePacksOpenedCount + '/30 opened';
+                    } else {
+                      practicePacksProgressTitleEl.textContent = '';
+                    }
                   }
                   
                   console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
