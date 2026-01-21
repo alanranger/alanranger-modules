@@ -49,6 +49,58 @@ Keeps all styling + elements. Access guard still runs on live site.
     background: transparent !important;
   }
   
+  /* Header bar (black area) */
+  html.ar-academy .ar-academy-dashboard__header {
+    background: #000;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 100;
+  }
+  html.ar-academy .ar-academy-dashboard__header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-title-icon {
+    font-size: 24px;
+  }
+  html.ar-academy .ar-academy-dashboard__header-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-academy-dashboard__header-center > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html.ar-academy .ar-academy-dashboard__header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  
   /* Full-bleed dark backdrop */
   html.ar-academy .ar-academy-dashboard {
     background:
@@ -860,42 +912,34 @@ Keeps all styling + elements. Access guard still runs on live site.
   }
   </style>
   
+  <!-- Header bar (black area) -->
+  <div class="ar-academy-dashboard__header">
+    <div class="ar-academy-dashboard__header-center">
+      <h1 class="ar-academy-dashboard__header-title">
+        <span class="ar-academy-dashboard__header-title-icon">🏠</span>
+        <span>Academy Dashboard</span>
+      </h1>
+      <p class="ar-academy-dashboard__header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
+    </div>
+    <div class="ar-academy-dashboard__header-right">
+      <a class="ar-academy-dashboard__home-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage">
+        <img
+          class="ar-academy-dashboard__logo--brand ar-logo--invert"
+          src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+          alt="Alan Ranger"
+          loading="eager"
+        />
+      </a>
+      <button id="arp-logout-btn" type="button" data-ms-action="logout">Log out</button>
+    </div>
+  </div>
+
   <div class="ar-academy-dashboard">
     <div class="ar-academy-dashboard__inner">
   
       <div class="ar-academy-editor-banner" id="ar-academy-editor-banner">
         Editor preview mode detected — access redirects are disabled so you can edit this page safely.
         (<code>/config</code> or <code>?nochrome</code>)
-      </div>
-  
-      <div class="ar-academy-dashboard__topbar">
-        <button id="arp-logout-btn" type="button" data-ms-action="logout">Log out</button>
-      </div>
-  
-      <div class="ar-academy-dashboard__brand">
-        <div class="ar-academy-dashboard__brand-left">
-          <img
-            class="ar-academy-dashboard__logo ar-logo--invert"
-            src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
-            alt="Alan Ranger Academy"
-            loading="eager"
-          />
-          <div>
-            <h1 class="ar-academy-dashboard__title">Academy Dashboard</h1>
-            <p class="ar-academy-dashboard__subtitle">Your hub for modules, exams, practice packs and account status.</p>
-          </div>
-        </div>
-  
-        <div class="ar-academy-dashboard__brand-right">
-          <a class="ar-academy-dashboard__home-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage">
-            <img
-              class="ar-academy-dashboard__logo--brand ar-logo--invert"
-              src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
-              alt="Alan Ranger"
-              loading="eager"
-            />
-          </a>
-        </div>
       </div>
   
       <div class="ar-academy-tiles">
