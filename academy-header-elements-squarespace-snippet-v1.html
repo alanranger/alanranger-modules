@@ -12,38 +12,41 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     justify-content: space-between;
     width: 100%;
     max-width: 100%;
-    padding: 12px 24px;
+    padding: 16px 32px;
     background: #000;
     color: #fff;
     position: relative;
     z-index: 1000;
+    min-height: 80px;
   }
   
   /* Left: Welcome message */
   #ar-academy-header-welcome {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     flex: 0 0 auto;
-    min-width: 200px;
+    min-width: 280px;
   }
   
   #ar-academy-header-welcome-text {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 700;
     color: #fff;
-    line-height: 1.2;
+    line-height: 1.3;
   }
   
   #ar-academy-header-welcome-name {
     color: #E57200;
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 22px;
   }
   
   #ar-academy-header-last-login {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    line-height: 1.2;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.3;
+    font-weight: 500;
   }
   
   /* Center: Academy Dashboard title */
@@ -52,80 +55,78 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     align-items: center;
     justify-content: center;
     flex: 1 1 auto;
-    gap: 12px;
+    gap: 16px;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
   }
   
   #ar-academy-header-logo-icon {
-    width: 32px;
-    height: 32px;
+    width: 56px;
+    height: 56px;
     object-fit: contain;
+    filter: brightness(0) invert(1);
   }
   
   #ar-academy-header-title {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     color: #fff;
     margin: 0;
     line-height: 1.2;
+    letter-spacing: -0.5px;
   }
   
   #ar-academy-header-subtitle {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
-    margin: 0;
-    line-height: 1.2;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 4px 0 0 0;
+    line-height: 1.3;
+    font-weight: 500;
   }
   
   /* Right: Logo and Logout */
   #ar-academy-header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
     flex: 0 0 auto;
     margin-left: auto;
   }
   
   #ar-academy-header-brand-logo {
-    width: 120px;
+    width: 180px;
     height: auto;
     object-fit: contain;
+    filter: brightness(0) invert(1);
   }
   
   #ar-academy-header-logout-btn {
-    padding: 8px 16px;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
     color: #fff;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: inline-block;
   }
   
   #ar-academy-header-logout-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
   }
   
   /* Responsive adjustments */
   @media (max-width: 768px) {
     #ar-academy-header-container {
       flex-wrap: wrap;
-      padding: 8px 16px;
-    }
-    
-    #ar-academy-header-center {
-      position: static;
-      transform: none;
-      order: 2;
-      width: 100%;
-      margin: 8px 0;
+      padding: 12px 20px;
+      min-height: auto;
     }
     
     #ar-academy-header-welcome {
@@ -133,9 +134,53 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       min-width: auto;
     }
     
+    #ar-academy-header-welcome-text {
+      font-size: 18px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 20px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 14px;
+    }
+    
+    #ar-academy-header-center {
+      position: static;
+      transform: none;
+      order: 2;
+      width: 100%;
+      margin: 12px 0;
+      gap: 12px;
+    }
+    
+    #ar-academy-header-logo-icon {
+      width: 40px;
+      height: 40px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 24px;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 14px;
+    }
+    
     #ar-academy-header-right {
       order: 3;
       margin-left: 0;
+      gap: 12px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 140px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 10px 20px;
+      font-size: 14px;
     }
   }
 </style>
@@ -231,8 +276,13 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     if (!dateStr) return "First visit";
     try {
       var date = new Date(dateStr);
-      var options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-      return "Last logged in: " + date.toLocaleDateString('en-GB', options);
+      var day = date.getDate();
+      var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var month = monthNames[date.getMonth()];
+      var year = date.getFullYear();
+      var hours = String(date.getHours()).padStart(2, '0');
+      var minutes = String(date.getMinutes()).padStart(2, '0');
+      return "Last logged in " + day + " " + month + " " + year + " at " + hours + ":" + minutes;
     } catch (e) {
       return "Last logged in: " + dateStr;
     }
