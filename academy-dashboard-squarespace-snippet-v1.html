@@ -462,6 +462,18 @@ Keeps all styling + elements. Access guard still runs on live site.
     cursor: not-allowed;
   }
   html.ar-academy #arp-ms-tile{ cursor: pointer; }
+  /* Prevent quiz section from triggering tile click */
+  html.ar-academy #arp-photography-quiz-section {
+    cursor: default;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
+  }
+  html.ar-academy #arp-photography-quiz-button {
+    pointer-events: auto;
+    position: relative;
+    z-index: 11;
+  }
   /* Membership Status dot indicator */
   html.ar-academy #arp-ms-tile .ar-dot{
     background: rgba(148,163,184,0.6);
@@ -876,13 +888,13 @@ Keeps all styling + elements. Access guard still runs on live site.
           <button id="arp-ms-manage" type="button">Manage subscription</button>
           <button id="arp-upgrade-membership" type="button" style="display:none;">Upgrade Membership</button>
           <!-- Photography Style Quiz Section -->
-          <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+          <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
             <div id="arp-photography-quiz-result" style="display: none;">
               <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95); margin-bottom: 6px;">Your Photography Style Is:</div>
               <div id="arp-photography-style-name" style="font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
             </div>
             <div id="arp-photography-quiz-button-container" style="display: none;">
-              <a id="arp-photography-quiz-button" href="#" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 16px; background-color: hsl(16, 88%, 54%); color: white; text-decoration: none; border-radius: 50px; font-size: 13px; font-weight: 750; margin-top: 8px;">Take Photography Personality Quiz</a>
+              <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; background-color: hsl(16, 88%, 54%); color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 750; cursor: pointer; margin-top: 8px; width: 100%;">Take Photography Personality Quiz</button>
             </div>
           </div>
           <div class="ar-tile__tip">Check your access level and manage your plan.</div>
@@ -2098,16 +2110,32 @@ Keeps all styling + elements. Access guard still runs on live site.
           quizButtonContainer.style.display = 'none';
         } else {
           // Show button, hide result
-          quizButton.href = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+          var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+          quizButton.setAttribute('data-quiz-url', quizUrl);
           quizResultEl.style.display = 'none';
           quizButtonContainer.style.display = 'block';
         }
       } catch (error) {
         console.error('Error loading photography style:', error);
         // On error, show button as fallback
-        quizButton.href = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+        var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+        quizButton.setAttribute('data-quiz-url', quizUrl);
         quizResultEl.style.display = 'none';
         quizButtonContainer.style.display = 'block';
+      }
+      
+      // Wire up quiz button click handler (only once)
+      if (quizButton && !quizButton.hasAttribute('data-quiz-wired')) {
+        quizButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          var url = quizButton.getAttribute('data-quiz-url');
+          if (url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+        }, true); // Use capture phase to intercept early
+        quizButton.setAttribute('data-quiz-wired', 'true');
       }
     }
 
