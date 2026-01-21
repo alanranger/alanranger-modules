@@ -7,6 +7,16 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 module.exports = async function handler(req, res) {
+  // CORS headers for Squarespace
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.alanranger.com');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Memberstack-Id');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
