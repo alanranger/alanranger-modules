@@ -314,14 +314,34 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
         nameEl.textContent = name;
       }
       
-      // Get last login from API (fetches from Supabase academy_events)
+      // Get last login - try multiple sources
+      var lastLogin = null;
+      var memberId = member.id || (member.data && member.data.id);
+      
+      // First, try Memberstack JSON directly (as it worked in previous code block)
       try {
-        var memberId = member.id || (member.data && member.data.id);
-        if (memberId) {
+        var jsonRes = await ms.getMemberJSON();
+        if (jsonRes) {
+          // Check various possible locations in Memberstack JSON
+          if (jsonRes.lastLogin) {
+            lastLogin = jsonRes.lastLogin;
+          } else if (jsonRes.data && jsonRes.data.lastLogin) {
+            lastLogin = jsonRes.data.lastLogin;
+          } else if (jsonRes.data && jsonRes.data.data && jsonRes.data.data.lastLogin) {
+            lastLogin = jsonRes.data.data.lastLogin;
+          }
+        }
+      } catch (e) {
+        console.debug('[Academy Header] Could not get lastLogin from Memberstack JSON:', e);
+      }
+      
+      // If not found in Memberstack, try API (Supabase)
+      if (!lastLogin && memberId) {
+        try {
           var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
           if (response.ok) {
             var memberData = await response.json();
-            var lastLogin = memberData.last_login || null;
+            lastLogin = memberData.last_login || null;
             
             // Debug logging
             console.log('[Academy Header] Member data response:', {
@@ -330,35 +350,21 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
               lastLogin: lastLogin,
               memberDataKeys: Object.keys(memberData)
             });
-            
-            // Update last login display
-            var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-            if (lastLoginEl) {
-              if (lastLogin) {
-                lastLoginEl.textContent = formatLastLogin(lastLogin);
-              } else {
-                lastLoginEl.textContent = "First visit";
-              }
-            }
           } else {
             var errorText = await response.text();
             console.error('[Academy Header] Failed to fetch member data:', response.status, errorText);
-            var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-            if (lastLoginEl) {
-              lastLoginEl.textContent = "First visit";
-            }
           }
-        } else {
-          console.warn('[Academy Header] No memberId found');
-          var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-          if (lastLoginEl) {
-            lastLoginEl.textContent = "First visit";
-          }
+        } catch (e) {
+          console.error('[Academy Header] Error fetching from API:', e);
         }
-      } catch (e) {
-        console.error('[Academy Header] Error getting last login:', e);
-        var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-        if (lastLoginEl) {
+      }
+      
+      // Update last login display
+      var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+      if (lastLoginEl) {
+        if (lastLogin) {
+          lastLoginEl.textContent = formatLastLogin(lastLogin);
+        } else {
           lastLoginEl.textContent = "First visit";
         }
       }
