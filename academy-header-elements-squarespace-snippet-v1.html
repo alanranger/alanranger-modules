@@ -320,7 +320,24 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       var memberEmail = (member.data && member.data.email) || null;
       
       // Track login event (only once per session to avoid duplicates)
-      if (memberId && !sessionStorage.getItem('ar-login-tracked-' + memberId)) {
+      // Use timestamp-based check to allow tracking after logout/login
+      var lastTracked = sessionStorage.getItem('ar-login-tracked-' + memberId);
+      var shouldTrack = false;
+      
+      if (!lastTracked) {
+        // Never tracked in this session
+        shouldTrack = true;
+      } else {
+        // Check if last tracked was more than 5 minutes ago (allows re-tracking after logout/login)
+        var lastTrackedTime = parseInt(lastTracked, 10);
+        var now = Date.now();
+        if (isNaN(lastTrackedTime) || (now - lastTrackedTime) > 5 * 60 * 1000) {
+          shouldTrack = true;
+        }
+      }
+      
+      if (memberId && shouldTrack) {
+        console.log('[Academy Header] Tracking login event for member:', memberId);
         try {
           fetch('https://alanranger-modules.vercel.app/api/academy/track-login', {
             method: 'POST',
@@ -333,9 +350,9 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
             })
           }).then(function(response) {
             if (response.ok) {
-              // Mark as tracked in this session
-              sessionStorage.setItem('ar-login-tracked-' + memberId, 'true');
-              console.log('[Academy Header] Login event tracked');
+              // Mark as tracked with current timestamp
+              sessionStorage.setItem('ar-login-tracked-' + memberId, String(Date.now()));
+              console.log('[Academy Header] Login event tracked successfully');
               
               // Update last login display with current time immediately
               var lastLoginEl = document.getElementById('ar-academy-header-last-login');
