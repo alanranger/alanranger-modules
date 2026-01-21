@@ -49,7 +49,8 @@ This guide provides quick reference for AI agents and developers working on the 
 ### Squarespace Snippets
 - `academy-dashboard-squarespace-snippet-v1.html` - Dashboard (includes inactivity logout)
 - `academy-login-squarespace-snippet-v1.html` - Login page
-- `academy-global-guard-squarespace-injection-v1.html` - Access guard
+- `academy-bookmark-buttons-squarespace-snippet-v1.html` - Bookmark buttons for blog/article pages
+- `academy-global-guard-squarespace-injection-v1.html` - Access guard (if exists)
 
 ### Database Tables
 - `ms_members_cache` - Member cache from Memberstack

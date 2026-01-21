@@ -28,6 +28,13 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
   - **Inactivity logout** - Automatically logs out users after 30 minutes of inactivity
   - Tracks user activity (clicks, mouse, keyboard, scroll, touch, focus) to reset timer
 
+- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages
+  - Adds "Bookmark this page", "Back to Modules", and "Back to Dashboard" buttons
+  - Appears on blog posts with the "Sign up to free online photography course" snippet
+  - Auto-positions after first H1 or at top of main content
+  - Saves bookmarks to Memberstack (max 20 per account)
+  - See [docs/bookmark-buttons-integration.md](./docs/bookmark-buttons-integration.md) for details
+
 ### API Endpoints
 Located in `api/exams/`:
 - **`whoami.js`** - Get Memberstack member identity

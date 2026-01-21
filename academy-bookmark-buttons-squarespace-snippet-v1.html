@@ -1,0 +1,192 @@
+<!-- ===========================
+AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
+- Pins widget under the first H1 (or top of main)
+- Forces visibility (prevents Sqsp fade/opacity hiding)
+- Keeps Memberstack save logic
+=========================== -->
+
+<style id="ar-bookmark-style">
+  /* Force the widget to remain visible even if Sqsp applies fade-in rules */
+  #ar-bookmark-widget,
+  #ar-bookmark-widget *{
+    opacity:1 !important;
+    visibility:visible !important;
+    display:initial;
+  }
+  #ar-bookmark-widget{
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    flex-wrap:wrap !important;
+    position:relative !important;
+    z-index:9999 !important;
+    margin:12px 0 !important;
+    pointer-events:auto !important;
+  }
+
+  /* Make buttons consistent and "bulletproof" */
+  #ar-bookmark-widget .ar-btn{
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    padding:10px 20px !important;
+    border:none !important;
+    border-radius:8px !important;
+    cursor:pointer !important;
+    font-weight:800 !important;
+    font-size:16px !important;
+    line-height:1 !important;
+    text-decoration:none !important;
+    background:#E57200 !important;
+    color:#fff !important;
+    user-select:none !important;
+    -webkit-font-smoothing:antialiased;
+  }
+  #ar-bookmark-widget .ar-btn:visited{ color:#fff !important; }
+  #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
+  #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
+
+  #ar-bookmark-widget .ar-help{
+    width:100%;
+    margin-top:6px;
+    color:#111827;
+    font-size:13px;
+    font-weight:700;
+  }
+</style>
+
+<div id="ar-bookmark-widget">
+  <button id="bookmark-btn" class="ar-btn" type="button">
+    ⭐ <span>Bookmark this page</span>
+  </button>
+
+  <a class="ar-btn" id="back-to-modules-btn"
+     href="https://www.alanranger.com/academy/online-photography-course">
+    ← <span>Back to Modules</span>
+  </a>
+
+  <a class="ar-btn" id="back-to-dashboard-btn"
+     href="https://www.alanranger.com/academy/dashboard">
+    ← <span>Back to Dashboard</span>
+  </a>
+
+  <div id="bookmark-help" class="ar-help">
+    Saves to your Academy Dashboard. Maximum 20 bookmarks per account.
+  </div>
+</div>
+
+<script>
+(function(){
+  // Prevent multiple runs if snippet is injected more than once
+  if (window.__arBookmarkWidgetInit) return;
+  window.__arBookmarkWidgetInit = true;
+
+  function normAbsUrl(){
+    return window.location.origin + window.location.pathname;
+  }
+
+  function findInsertPoint(){
+    var h1 =
+      document.querySelector('main h1') ||
+      document.querySelector('article h1') ||
+      document.querySelector('h1');
+    if (h1 && h1.parentElement) return { mode: "after-h1", el: h1 };
+
+    var main =
+      document.querySelector('main') ||
+      document.querySelector('#page') ||
+      document.querySelector('body');
+    return main ? { mode: "prepend", el: main } : null;
+  }
+
+  function moveWidgetOnce(){
+    var w = document.getElementById('ar-bookmark-widget');
+    if (!w) return false;
+    if (w.dataset.moved === "1") return true;
+
+    var target = findInsertPoint();
+    if (!target) return false;
+
+    if (target.mode === "after-h1") target.el.insertAdjacentElement('afterend', w);
+    else target.el.insertAdjacentElement('afterbegin', w);
+
+    w.dataset.moved = "1";
+    return true;
+  }
+
+  async function waitForMemberstack(){
+    var start = Date.now();
+    while (!window.$memberstackDom){
+      if (Date.now() - start > 8000) return null;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return window.$memberstackDom;
+  }
+
+  async function wireBookmark(){
+    var btn = document.getElementById('bookmark-btn');
+    if (!btn || btn.dataset.wired === "1") return;
+
+    btn.addEventListener('click', async () => {
+      btn.querySelector('span').textContent = "Saving...";
+
+      const ms = await waitForMemberstack();
+      if (!ms) { btn.querySelector('span').textContent = "Try again"; return; }
+
+      // Memberstack JSON is sometimes nested; handle both shapes safely
+      const mj = await ms.getMemberJSON();
+      const root = (mj && typeof mj === "object" && mj.data) ? mj.data : mj;
+      const memberJson = (root && root.data && typeof root.data === "object") ? root.data : (root || {});
+
+      let bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks : [];
+
+      const page = { title: document.title, url: normAbsUrl() };
+
+      if (!bookmarks.find(b => (b && b.url) === page.url)) {
+        bookmarks.push(page);
+        if (bookmarks.length > 20) bookmarks = bookmarks.slice(bookmarks.length - 20);
+
+        memberJson.bookmarks = bookmarks;
+
+        // Write back preserving wrapper if present
+        if (root && root.data && typeof root.data === "object") root.data = memberJson;
+
+        await ms.updateMemberJSON({ json: (mj && mj.data) ? mj : memberJson });
+
+        btn.style.background = "#28a745";
+        btn.querySelector('span').textContent = "Bookmarked!";
+      } else {
+        btn.querySelector('span').textContent = "Already Bookmarked";
+      }
+    });
+
+    btn.dataset.wired = "1";
+  }
+
+  // Use MutationObserver so it doesn't "flash then vanish" when Sqsp reflows content
+  function init(){
+    moveWidgetOnce();
+    wireBookmark();
+
+    var obs = new MutationObserver(function(){
+      moveWidgetOnce();
+      wireBookmark();
+    });
+
+    obs.observe(document.documentElement, { childList:true, subtree:true });
+
+    // Stop observing after 15s (prevents any performance issues)
+    setTimeout(function(){ obs.disconnect(); }, 15000);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<!-- ===========================
+END: AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD
+=========================== -->
