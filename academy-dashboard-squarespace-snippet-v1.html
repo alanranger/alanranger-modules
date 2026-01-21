@@ -3320,7 +3320,8 @@ Keeps all styling + elements. Access guard still runs on live site.
       if (genreEl) genreEl.textContent = counts.genre;
       
       // Render practice packs grid (use same opened modules tracking)
-      // Wrap in try-catch to prevent breaking dashboard
+      // TEMPORARILY DISABLED - investigating issue
+      /*
       try {
         // Practice packs URLs organized by category
         const PRACTICE_PACK_URLS = [
@@ -3490,8 +3491,10 @@ Keeps all styling + elements. Access guard still runs on live site.
       }
       } catch (err) {
         console.error('[Practice Packs] Error rendering practice packs grid:', err);
+        console.error('[Practice Packs] Error details:', err.message, err.stack);
         // Don't break dashboard if practice packs fail
       }
+      */
     }
     
     // TEMPORARILY COMMENTED OUT - causing dashboard to break
