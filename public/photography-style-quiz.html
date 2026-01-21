@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photography Style Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: hsl(16, 88%, 54%);
+        }
+
+        .quiz-container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid black;
+            background-color: #f9f9f9;
+        }
+
+        .question {
+            margin-bottom: 20px;
+        }
+
+        .question label {
+            font-weight: normal;
+            color: hsl(16, 88%, 54%);
+        }
+
+        .question-options {
+            margin-left: 20px;
+        }
+
+        .question-options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .question-options label {
+            color: black;
+            font-weight: normal;
+        }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            background-color: green;
+            color: white;
+            cursor: pointer;
+        }
+
+        .quiz-result {
+            display: none;
+            padding: 20px;
+            border: 2px solid black;
+            background-color: #f9f9f9;
+        }
+
+        .quiz-result h2 {
+            margin-top: 0;
+            text-align: center;
+            color: black;
+            font-weight: bold;
+        }
+
+        .quiz-result p {
+            font-size: 16px;
+        }
+
+        a {
+            color: blue;
+            text-decoration: underline;
+        }
+
+        .tips-header {
+            color: hsl(16, 88%, 54%);
+            font-weight: bold;
+        }
+
+        .percentage-match {
+            font-weight: bold;
+            font-size: 18px;
+            color: blue;
+        }
+
+        .style-name {
+            color: hsl(16, 88%, 54%);
+            font-weight: bold;
+        }
+
+        .result-list {
+            list-style-type: decimal;
+        }
+
+        .email-form-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .email-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            background-color: blue;
+            color: white;
+            cursor: pointer;
+        }
+
+        .version-number {
+            font-size: 12px;
+            color: grey;
+            text-align: center;
+        }
+
+        .success-message {
+            color: green;
+            font-size: 16px;
+            display: none;
+            text-align: center;
+        }
+
+        .footer-version {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Which photography style is right for you?</h1>
+    <p class="instruction-text" id="instructionText" style="text-align: center;">Select one answer from each question. Use your instinct as there are no right or wrong answers.</p>
+    <div class="quiz-container">
+        <div id="quiz">
+            <!-- Questions will be generated here -->
+        </div>
+
+        <button class="submit-btn" id="submitButton" onclick="submitQuiz()">Submit</button>
+
+        <!-- Results Section (Hidden by default) -->
+        <div id="quizResult" class="quiz-result">
+            <h2>Your Results</h2>
+            <h2>Your Photography Style Is: <span class="style-name" id="resultTitle"></span></h2>
+            <p id="resultDescription"></p>
+            <p class="percentage-match" id="resultPercentage"></p>
+
+            <h3 class="other-traits">Your other Interests and Influences are:</h3>
+            <ul id="otherStyles"></ul>
+
+            <!-- 3 Tips section -->
+            <h3 class="tips-header">3 Tips to Improving Your <span id="resultTitleTips"></span> Photography</h3>
+            <p id="resultTips"></p>
+
+            <!-- Read More section -->
+            <p id="readMore"></p>
+
+            <!-- Call to action section -->
+            <p id="resultCTA"></p>
+
+            <!-- CTA Button for Emailing Results -->
+            <div class="email-form-container">
+                <button class="email-btn" id="emailButton" onclick="showEmailForm()">Email me my result</button>
+            </div>
+
+            <!-- Iframe for Squarespace Form -->
+            <iframe id="emailFormIframe" style="display:none; width: 100%; height: 500px;" src=""></iframe>
+
+            <!-- Success message -->
+            <p class="success-message" id="successMessage">Your results have been sent to your email!</p>
+        </div>
+    </div>
+
+    <!-- Version number in footer -->
+    <h4 class="footer-version">Which photography style is right for you Version 1.8</h4>
+
+    <script>
+        const questions = [
+            {
+                text: "Which of these scenes are you most drawn to photograph?",
+                options: [
+                    { text: "A candid moment between friends or family.", style: "portrait" },
+                    { text: "A stunning sunset over rolling hills.", style: "landscape" },
+                    { text: "A close-up of a flower or insect.", style: "macro" },
+                    { text: "A bustling city street filled with character.", style: "street" },
+                    { text: "A wild bird in flight or a deer in the woods.", style: "wildlife" },
+                    { text: "A carefully arranged still life of everyday objects.", style: "stillLife" }
+                ]
+            },
+            {
+                text: "What's your approach to framing a shot?",
+                options: [
+                    { text: "I enjoy capturing people in natural, unposed moments.", style: "portrait" },
+                    { text: "I love wide, expansive shots with dramatic scenery.", style: "landscape" },
+                    { text: "I prefer getting close and focusing on intricate details.", style: "macro" },
+                    { text: "I like capturing dynamic, everyday scenes with interesting lighting or angles.", style: "street" },
+                    { text: "I focus on my subject's natural behavior and environment.", style: "wildlife" },
+                    { text: "I thoughtfully arrange objects to create balance and harmony.", style: "stillLife" }
+                ]
+            },
+            {
+                text: "Which photography equipment are you most likely to use?",
+                options: [
+                    { text: "A portrait lens to get sharp, clear shots of people.", style: "portrait" },
+                    { text: "A wide-angle lens to capture sweeping landscapes.", style: "landscape" },
+                    { text: "A macro lens to focus on small, detailed subjects.", style: "macro" },
+                    { text: "A fast, versatile lens for quick shots in any urban environment.", style: "street" },
+                    { text: "A telephoto lens to photograph wildlife from afar.", style: "wildlife" },
+                    { text: "A standard lens with controlled lighting for still life setups.", style: "stillLife" }
+                ]
+            },
+            {
+                text: "What do you think is the most important element of a good photo?",
+                options: [
+                    { text: "The emotion or story behind the image.", style: "portrait" },
+                    { text: "The natural beauty and scale of the scene.", style: "landscape" },
+                    { text: "The sharpness and clarity of the small details.", style: "macro" },
+                    { text: "The lighting and composition that create a unique perspective.", style: "street" },
+                    { text: "Capturing the subject without disturbing their behavior.", style: "wildlife" },
+                    { text: "The balance of objects, lighting, and textures.", style: "stillLife" }
+                ]
+            },
+            {
+                text: "Where do you feel most inspired when taking photos?",
+                options: [
+                    { text: "At social gatherings, events, or with family and friends.", style: "portrait" },
+                    { text: "Outdoors in nature, whether in the countryside or by the coast.", style: "landscape" },
+                    { text: "In gardens, forests, or anywhere with natural patterns and textures.", style: "macro" },
+                    { text: "In busy cities, exploring architecture and street life.", style: "street" },
+                    { text: "In wildlife reserves or natural habitats.", style: "wildlife" },
+                    { text: "In studios or indoor settings where I can control the lighting and arrangement.", style: "stillLife" }
+                ]
+            },
+            {
+                text: "If you had to choose, which would you prefer to photograph?",
+                options: [
+                    { text: "A person's portrait that tells a story.", style: "portrait" },
+                    { text: "A breathtaking view of a mountain range.", style: "landscape" },
+                    { text: "A delicate flower in full bloom.", style: "macro" },
+                    { text: "A unique street scene with interesting shadows and reflections.", style: "street" },
+                    { text: "A majestic wild animal in its natural habitat.", style: "wildlife" },
+                    { text: "A meticulously arranged still life setup.", style: "stillLife" }
+                ]
+            }
+        ];
+
+        const styles = {
+            portrait: {
+                title: "Portrait Photographer",
+                description: "You love capturing people's emotions and expressions! You have a keen eye for detail when it comes to people's moods, and you enjoy telling a story through the faces you photograph.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Master your focus:</strong> Always ensure the eyes are the sharpest part of your portrait for a more captivating image.</li>
+                    <li><strong>Experiment with lighting:</strong> Natural light is great, but don't be afraid to try off-camera flash to add drama to your shots.</li>
+                    <li><strong>Create a connection:</strong> Try to build a rapport with your subject so they feel relaxed and natural.</li>
+                </ol>`,
+                cta: 'Want to improve your portrait photography even more? <a href="#">Join our Portrait Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/blogs/what-is-portrait-photography">Portrait Photography</a>'
+            },
+            landscape: {
+                title: "Landscape Photographer",
+                description: "You're inspired by nature and stunning landscapes! You love exploring the outdoors and capturing its vast beauty. Whether it's a breathtaking mountain range, a calm seascape, or a dramatic sunset, you enjoy working with natural light and wide, expansive scenes.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Use a tripod:</strong> This will help you achieve sharper images and allow you to experiment with long exposures.</li>
+                    <li><strong>Shoot during the golden hour:</strong> The soft light just after sunrise or before sunset brings out the best in landscapes.</li>
+                    <li><strong>Focus on composition:</strong> Use the rule of thirds and leading lines to draw the viewer's eye through your image.</li>
+                </ol>`,
+                cta: 'Ready to take your landscapes to the next level? <a href="#">Join our Landscape Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/blogs/mastering-landscape-photography-tips-and-techniques">Landscape Photography</a>'
+            },
+            macro: {
+                title: "Macro Photographer",
+                description: "You enjoy capturing the beauty of small details! You're drawn to the intricate details in nature, such as flowers, insects, or textures. Macro photography allows you to bring out the hidden beauty in the world around you, revealing patterns and forms that often go unnoticed.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Get close and fill the frame:</strong> Focus on the details, and don't be afraid to crop your shots for more impact.</li>
+                    <li><strong>Use a shallow depth of field:</strong> This creates a soft, blurred background and draws attention to your subject.</li>
+                    <li><strong>Pay attention to light:</strong> Use natural light or diffused flash to avoid harsh shadows and highlights.</li>
+                </ol>`,
+                cta: 'Want to explore the world of macro photography further? <a href="#">Join our Macro Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/blogs/art-of-macro-photography">Macro Photography</a>'
+            },
+            street: {
+                title: "Street Photographer",
+                description: "You have a creative eye for urban scenes and everyday moments! You enjoy capturing life as it happens, often in busy cities or urban environments. Street photography allows you to find beauty in the chaos of everyday life, and you're always ready to snap a unique moment.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Shoot in RAW:</strong> This gives you more flexibility when editing your photos, especially in tricky lighting conditions.</li>
+                    <li><strong>Be patient:</strong> Sometimes the best shot comes when you wait for the right moment or light to fall just perfectly.</li>
+                    <li><strong>Blend in:</strong> Try to capture moments as naturally as possible by keeping your presence unobtrusive.</li>
+                </ol>`,
+                cta: 'Want to develop your street photography skills? <a href="#">Join our Urban Street Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/blogs/street-photography-tips">Street Photography</a>'
+            },
+            wildlife: {
+                title: "Wildlife Photographer",
+                description: "You're fascinated by wildlife and love capturing animals in their natural habitats. Whether it's birds in flight or deer in the woods, you find beauty in observing creatures in the wild.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Use a telephoto lens:</strong> This allows you to get close to animals without disturbing them.</li>
+                    <li><strong>Be patient:</strong> Wildlife photography requires time and persistence to capture the perfect moment.</li>
+                    <li><strong>Know your subject:</strong> Study the behavior of the animals you're photographing to anticipate their actions.</li>
+                </ol>`,
+                cta: 'Interested in wildlife photography? <a href="#">Join our Wildlife Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/photography-blog">Wildlife Photography</a>'
+            },
+            stillLife: {
+                title: "Still Life Photographer",
+                description: "You find beauty in everyday objects and enjoy arranging them in creative compositions. Still life photography allows you to experiment with lighting, textures, and shapes to create a harmonious image.",
+                tips: `
+                <ol class="result-list">
+                    <li><strong>Pay attention to lighting:</strong> Use soft lighting or diffused light sources to enhance textures and shapes in your still life setups.</li>
+                    <li><strong>Experiment with composition:</strong> Try different arrangements of objects to create balance and visual interest in your photos.</li>
+                    <li><strong>Focus on details:</strong> Ensure that every element in your composition adds to the overall theme or story you're telling.</li>
+                </ol>`,
+                cta: 'Want to explore still life photography? <a href="#">Join our Still Life Photography Workshop</a>.',
+                readMore: 'Read more on this photography style: <a href="https://www.alanranger.com/blogs/what-is-still-life-photography">Still Life Photography</a>'
+            }
+        };
+
+        function shuffleArray(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function displayQuiz() {
+            const quizContainer = document.getElementById("quiz");
+
+            const shuffledQuestions = shuffleArray(questions);
+
+            shuffledQuestions.forEach((question, index) => {
+                const questionDiv = document.createElement("div");
+                questionDiv.classList.add("question");
+
+                const questionLabel = document.createElement("label");
+                questionLabel.textContent = `${index + 1}. ${question.text}`;
+                questionDiv.appendChild(questionLabel);
+
+                const optionsDiv = document.createElement("div");
+                optionsDiv.classList.add("question-options");
+
+                const shuffledOptions = shuffleArray(question.options);
+
+                shuffledOptions.forEach((option, i) => {
+                    const optionInput = document.createElement("input");
+                    optionInput.type = "radio";
+                    optionInput.name = `q${index + 1}`;
+                    optionInput.value = option.style;
+
+                    const optionLabel = document.createElement("label");
+                    optionLabel.textContent = `${String.fromCharCode(65 + i)}) ${option.text}`;
+
+                    optionsDiv.appendChild(optionInput);
+                    optionsDiv.appendChild(optionLabel);
+                    optionsDiv.appendChild(document.createElement("br"));
+                });
+
+                questionDiv.appendChild(optionsDiv);
+                quizContainer.appendChild(questionDiv);
+            });
+        }
+
+        function submitQuiz() {
+            const answers = {};
+            const totalQuestions = questions.length;
+            let unanswered = false;
+
+            for (let i = 1; i <= totalQuestions; i++) {
+                const answer = document.querySelector(`input[name="q${i}"]:checked`);
+                if (!answer) {
+                    unanswered = true;
+                    break;
+                }
+                answers[`q${i}`] = answer.value;
+            }
+
+            if (unanswered) {
+                alert('Please answer all questions before submitting the quiz.');
+                return;
+            }
+
+            // Calculate the quiz results
+            const results = {
+                portrait: 0,
+                landscape: 0,
+                macro: 0,
+                street: 0,
+                wildlife: 0,
+                stillLife: 0
+            };
+
+            for (const key in answers) {
+                results[answers[key]]++;
+            }
+
+            const sortedStyles = Object.keys(results).sort((a, b) => results[b] - results[a]);
+            const primaryStyle = sortedStyles[0];
+            const percentage = Math.round((results[primaryStyle] / totalQuestions) * 100);
+
+            // Hide submit button and instruction text
+            document.getElementById('submitButton').style.display = 'none';
+            document.getElementById('instructionText').style.display = 'none';
+
+            // Show the result
+            document.getElementById('quiz').style.display = 'none';
+            document.getElementById('quizResult').style.display = 'block';
+            document.getElementById('resultTitle').textContent = styles[primaryStyle].title;
+            document.getElementById('resultDescription').textContent = styles[primaryStyle].description;
+            document.getElementById('resultTips').innerHTML = styles[primaryStyle].tips;
+            document.getElementById('readMore').innerHTML = styles[primaryStyle].readMore;
+            document.getElementById('resultPercentage').textContent = `You are ${percentage}% ${styles[primaryStyle].title}.`;
+
+            const otherStylesList = document.getElementById('otherStyles');
+            otherStylesList.innerHTML = '';
+            sortedStyles.forEach((style) => {
+                if (style !== primaryStyle) {
+                    const stylePercentage = Math.round((results[style] / totalQuestions) * 100);
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${styles[style].title}: ${stylePercentage}%`;
+                    otherStylesList.appendChild(listItem);
+                }
+            });
+
+            // Insert dynamic style in the 3 Tips heading
+            document.getElementById('resultTitleTips').textContent = styles[primaryStyle].title.split(' ')[0];
+
+            // Insert the Call to Action dynamically
+            document.getElementById('resultCTA').innerHTML = styles[primaryStyle].cta;
+
+            // Prepare results for email form submission
+            return {
+                title: styles[primaryStyle].title,
+                description: styles[primaryStyle].description,
+                tips: styles[primaryStyle].tips.replace(/<[^>]*>?/gm, ''), // Remove HTML tags for plain text
+                percentage: `You are ${percentage}% ${styles[primaryStyle].title}.`,
+                otherStyles: sortedStyles.slice(1).map((style) => {
+                    const stylePercentage = Math.round((results[style] / totalQuestions) * 100);
+                    return `${styles[style].title}: ${stylePercentage}%`;
+                }).join(', ')
+            };
+        }
+
+        function showEmailForm() {
+            const results = submitQuiz();
+            const plainTextResults = `Photography Style: ${results.title}\nDescription: ${results.description}\nPercentage: ${results.percentage}\nOther Interests: ${results.otherStyles}\n\nTips:\n${results.tips}`;
+
+            // Pass the quiz results to the iframe URL for Squarespace form
+            const encodedResults = encodeURIComponent(plainTextResults);
+            const formUrl = `https://www.alanranger.com/which-photography-style-suits-you?results=${encodedResults}`;
+
+            // Display the iframe with the form loaded
+            document.getElementById('emailButton').style.display = 'none';
+            document.getElementById('emailFormIframe').src = formUrl;
+            document.getElementById('emailFormIframe').style.display = 'block';
+        }
+
+        // Display the quiz when the page loads
+        window.onload = function () {
+            displayQuiz();
+        };
+    </script>
+</body>
+
+</html>
