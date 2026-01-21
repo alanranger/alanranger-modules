@@ -734,6 +734,46 @@ Keeps all styling + elements. Access guard still runs on live site.
     color: var(--ar-text-muted);
     border-color: var(--ar-border);
   }
+  
+  /* Module mini grid - similar to exam grid */
+  html.ar-academy #ar-modules-mini-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  html.ar-academy .ar-module-cube {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    color: inherit;
+  }
+  html.ar-academy .ar-module-cube:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  html.ar-academy .ar-module-cube.status-opened {
+    background: var(--ar-orange, #E57200);
+    color: #fff;
+    border-color: rgba(229, 114, 0, 0.3);
+  }
+  html.ar-academy .ar-module-cube.status-not-opened {
+    background: var(--ar-border);
+    color: var(--ar-text-muted);
+    border-color: var(--ar-border);
+  }
   </style>
   
   <div class="ar-academy-dashboard">
@@ -775,25 +815,19 @@ Keeps all styling + elements. Access guard still runs on live site.
       </div>
   
       <div class="ar-academy-tiles">
-        <a class="ar-tile ar-span-6" href="https://www.alanranger.com/academy/online-photography-course">
+        <div class="ar-tile ar-span-6" id="arp-modules-tile">
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
           <div class="ar-tile__title"><span class="ar-tile__icon">📚</span>Modules</div>
           <div class="ar-tile__desc">60 step-by-step modules</div>
           <div class="ar-mod-progress" style="margin-top:10px;">
             <div style="font-weight:900; color: var(--ar-brand, #E57200); font-size: 20px; line-height:1;">
-              <span data-ar-mod-opened-total>0</span> / 45 opened
+              <span data-ar-mod-opened-total>0</span> / 60 opened
             </div>
-            <div style="margin-top:6px; color: rgba(255,255,255,.75); font-size:14px;">
-              <span data-ar-mod-opened-totals>Camera 0/15 • Gear 0/10 • Composition 0/10 • Genre 0/10</span>
-            </div>
-            <!-- Optional: if you prefer individual spans -->
-            <span hidden data-ar-mod-opened-camera style="display:none !important;">0</span>
-            <span hidden data-ar-mod-opened-gear style="display:none !important;">0</span>
-            <span hidden data-ar-mod-opened-composition style="display:none !important;">0</span>
-            <span hidden data-ar-mod-opened-genre style="display:none !important;">0</span>
+            <!-- Module grid will be rendered here -->
+            <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
           </div>
           <div class="ar-tile__tip">Continue your lessons and tick off each module.</div>
-        </a>
+        </div>
   
         <div class="ar-tile ar-span-6" id="ar-exams-tile">
           <a href="https://www.alanranger.com/academy/photography-exams-certification" style="display:block; text-decoration:none; color:inherit;">
@@ -2489,7 +2523,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         if (!ms) return;
       }
       
-      // Definitive list of all 45 module URLs (from CSV)
+      // Definitive list of all 60 module URLs
       // Only URLs in this list will be counted as modules
       const DEFINITIVE_MODULE_URLS = [
         // Camera (15 modules) - 1-15
@@ -2540,7 +2574,24 @@ Keeps all styling + elements. Access guard still runs on live site.
         '/blog-on-photography/architecture-photography-guide',
         '/blog-on-photography/what-is-portrait-photography',
         '/blog-on-photography/black-and-white-photography-for-beginners',
-        '/blog-on-photography/street-photography-tips'
+        '/blog-on-photography/street-photography-tips',
+        // Assignments (15 modules) - 46-60
+        // Note: These URLs need to be updated with actual assignment URLs
+        '/academy/photography-assignment-01',
+        '/academy/photography-assignment-02',
+        '/academy/photography-assignment-03',
+        '/academy/photography-assignment-04',
+        '/academy/photography-assignment-05',
+        '/academy/photography-assignment-06',
+        '/academy/photography-assignment-07',
+        '/academy/photography-assignment-08',
+        '/academy/photography-assignment-09',
+        '/academy/photography-assignment-10',
+        '/academy/photography-assignment-11',
+        '/academy/photography-assignment-12',
+        '/academy/photography-assignment-13',
+        '/academy/photography-assignment-14',
+        '/academy/photography-assignment-15'
       ];
       
       // Complete mapping of all 45 modules to their categories
@@ -2593,7 +2644,23 @@ Keeps all styling + elements. Access guard still runs on live site.
         '/blog-on-photography/architecture-photography-guide': 'genre',
         '/blog-on-photography/what-is-portrait-photography': 'genre',
         '/blog-on-photography/black-and-white-photography-for-beginners': 'genre',
-        '/blog-on-photography/street-photography-tips': 'genre'
+        '/blog-on-photography/street-photography-tips': 'genre',
+        // Assignments (15)
+        '/academy/photography-assignment-01': 'assignment',
+        '/academy/photography-assignment-02': 'assignment',
+        '/academy/photography-assignment-03': 'assignment',
+        '/academy/photography-assignment-04': 'assignment',
+        '/academy/photography-assignment-05': 'assignment',
+        '/academy/photography-assignment-06': 'assignment',
+        '/academy/photography-assignment-07': 'assignment',
+        '/academy/photography-assignment-08': 'assignment',
+        '/academy/photography-assignment-09': 'assignment',
+        '/academy/photography-assignment-10': 'assignment',
+        '/academy/photography-assignment-11': 'assignment',
+        '/academy/photography-assignment-12': 'assignment',
+        '/academy/photography-assignment-13': 'assignment',
+        '/academy/photography-assignment-14': 'assignment',
+        '/academy/photography-assignment-15': 'assignment'
       };
       
       const jsonRes = await ms.getMemberJSON();
@@ -2860,7 +2927,8 @@ Keeps all styling + elements. Access guard still runs on live site.
         camera: 15,
         gear: 10,
         composition: 10,
-        genre: 10
+        genre: 10,
+        assignment: 15
       };
 
       // Count by category (only from definitive modules)
@@ -2868,7 +2936,8 @@ Keeps all styling + elements. Access guard still runs on live site.
         camera: 0,
         gear: 0,
         composition: 0,
-        genre: 0
+        genre: 0,
+        assignment: 0
       };
 
       finalOpenedKeys.forEach(function(path){
@@ -2878,11 +2947,18 @@ Keeps all styling + elements. Access guard still runs on live site.
           if (cat in counts) {
             counts[cat]++;
           }
+        } else {
+          // Fallback: check category from MODULE_CATEGORY_MAP
+          const normalizedPath = normalizePath(path);
+          const mappedCat = MODULE_CATEGORY_MAP[normalizedPath];
+          if (mappedCat && mappedCat.toLowerCase() in counts) {
+            counts[mappedCat.toLowerCase()]++;
+          }
         }
       });
       
       updateDebugPanel('📊 Total opened after fallback: ' + totalOpened, opened);
-      updateDebugPanel('Final counts: Camera=' + counts.camera + ', Gear=' + counts.gear + ', Composition=' + counts.composition + ', Genre=' + counts.genre, null);
+      updateDebugPanel('Final counts: Camera=' + counts.camera + ', Gear=' + counts.gear + ', Composition=' + counts.composition + ', Genre=' + counts.genre + ', Assignments=' + counts.assignment, null);
       
       console.log('[Module Progress] Total opened after fallback:', totalOpened, opened);
       
@@ -2901,7 +2977,8 @@ Keeps all styling + elements. Access guard still runs on live site.
           <div style="color:#e2e8f0;">Gear: ${counts.gear}/10</div>
           <div style="color:#e2e8f0;">Composition: ${counts.composition}/10</div>
           <div style="color:#e2e8f0;">Genre: ${counts.genre}/10</div>
-          <div style="color:#E57200; font-weight:900; margin-top:6px;">Total: ${totalOpened}/45</div>
+          <div style="color:#e2e8f0;">Assignments: ${counts.assignment}/15</div>
+          <div style="color:#E57200; font-weight:900; margin-top:6px;">Total: ${totalOpened}/60</div>
         `;
         debugContent.appendChild(countsEntry);
       }
@@ -2918,14 +2995,50 @@ Keeps all styling + elements. Access guard still runs on live site.
         totalEl.textContent = totalOpened;
       }
 
-      if (totalsEl) {
-        const parts = [
-          'Camera ' + counts.camera + '/' + totals.camera,
-          'Gear ' + counts.gear + '/' + totals.gear,
-          'Composition ' + counts.composition + '/' + totals.composition,
-          'Genre ' + counts.genre + '/' + totals.genre
+      // Render module grid instead of text
+      const miniGridEl = document.getElementById('ar-modules-mini-grid');
+      if (miniGridEl) {
+        var gridHtml = '';
+        var moduleNumber = 1;
+        
+        // Define module groups with their ranges
+        var moduleGroups = [
+          { name: 'camera', start: 1, end: 15, label: 'Camera' },
+          { name: 'gear', start: 16, end: 25, label: 'Gear' },
+          { name: 'composition', start: 26, end: 35, label: 'Composition' },
+          { name: 'genre', start: 36, end: 45, label: 'Genre' },
+          { name: 'assignment', start: 46, end: 60, label: 'Assignments' }
         ];
-        totalsEl.textContent = parts.join(' • ');
+        
+        moduleGroups.forEach(function(group) {
+          for (var i = group.start; i <= group.end; i++) {
+            var moduleUrl = DEFINITIVE_MODULE_URLS[i - 1];
+            if (!moduleUrl) continue; // Skip if URL not defined
+            
+            // Check if module is opened (try both original and normalized paths)
+            var normalizedModuleUrl = normalizePath(moduleUrl);
+            var isOpened = !!(opened[moduleUrl] || opened[normalizedModuleUrl]);
+            
+            var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+            var label = String(i).padStart(2, '0');
+            var fullUrl = 'https://www.alanranger.com' + moduleUrl;
+            
+            // Use escapeHtml if available, otherwise use simple escaping
+            var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+            var safeModuleUrl = (typeof escapeHtml === 'function') ? escapeHtml(moduleUrl) : moduleUrl.replace(/"/g, '&quot;');
+            var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+            
+            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '">' + label + '</a>';
+          }
+        });
+        
+        miniGridEl.innerHTML = gridHtml;
+        miniGridEl.style.display = 'flex';
+      }
+      
+      // Keep totalsEl for backward compatibility but hide it
+      if (totalsEl) {
+        totalsEl.style.display = 'none';
       }
 
       // Update individual category spans (hidden, but available if needed)
