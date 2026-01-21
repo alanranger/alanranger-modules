@@ -591,6 +591,10 @@ Keeps all styling + elements. Access guard still runs on live site.
   html.ar-academy #arp-bookmarks-tile .ar-tile__tip{
     display: none;
   }
+  /* Hide tip for modules tile to prevent obscuring last row of module cubes */
+  html.ar-academy #arp-modules-tile .ar-tile__tip{
+    display: none;
+  }
   html.ar-academy .ar-tile__tip::before{
     content: "";
     width: 10px;
@@ -739,8 +743,9 @@ Keeps all styling + elements. Access guard still runs on live site.
   html.ar-academy #ar-modules-mini-grid {
     display: block;
     margin-top: 12px;
+    margin-bottom: 12px;
     position: relative;
-    z-index: 1;
+    z-index: 2;
   }
   html.ar-academy .ar-module-category-row {
     margin-bottom: 8px;
