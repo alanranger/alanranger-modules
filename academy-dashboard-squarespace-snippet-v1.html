@@ -3109,10 +3109,11 @@ Keeps all styling + elements. Access guard still runs on live site.
         var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
         moduleCubes.forEach(function(cube) {
           cube.addEventListener('click', function(e) {
-            var moduleUrl = this.getAttribute('data-module-url');
-            var isPdf = this.getAttribute('data-is-pdf') === 'true';
-            var category = this.getAttribute('data-module-category');
-            var moduleTitle = this.getAttribute('title') || 'Module';
+            var cubeEl = this; // Capture cube element
+            var moduleUrl = cubeEl.getAttribute('data-module-url');
+            var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
+            var category = cubeEl.getAttribute('data-module-category');
+            var moduleTitle = cubeEl.getAttribute('title') || 'Module';
             
             if (!moduleUrl) return;
             
@@ -3133,8 +3134,8 @@ Keeps all styling + elements. Access guard still runs on live site.
               };
               
               // Update the cube visual state
-              this.classList.remove('status-not-opened');
-              this.classList.add('status-opened');
+              cubeEl.classList.remove('status-not-opened');
+              cubeEl.classList.add('status-opened');
               
               // Save to Memberstack asynchronously
               (async function() {
@@ -3170,12 +3171,11 @@ Keeps all styling + elements. Access guard still runs on live site.
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
                   // Revert visual state on error
-                  var cubeEl = cube;
                   cubeEl.classList.remove('status-opened');
                   cubeEl.classList.add('status-not-opened');
                   delete opened[normalizedUrl];
                 }
-              }.bind(this))();
+              })();
             }
           });
         });
