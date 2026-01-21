@@ -3009,6 +3009,31 @@ Keeps all styling + elements. Access guard still runs on live site.
           { name: 'assignment', start: 46, end: 60, label: 'Assignments' }
         ];
         
+        // Helper function to get module title from URL or opened data
+        function getModuleTitle(moduleUrl, normalizedUrl) {
+          // First try to get title from opened modules data
+          var openedModule = opened[moduleUrl] || opened[normalizedUrl];
+          if (openedModule && openedModule.t) {
+            return openedModule.t;
+          }
+          
+          // Fallback: derive title from URL
+          var urlParts = moduleUrl.split('/').filter(function(p) { return p; });
+          var lastPart = urlParts[urlParts.length - 1] || '';
+          
+          // Handle PDF files
+          if (lastPart.endsWith('.pdf')) {
+            return lastPart.replace(/-/g, ' ').replace(/\.pdf$/i, '').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          }
+          
+          // Handle blog URLs - convert slug to title
+          var title = lastPart
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          
+          return title;
+        }
+        
         moduleGroups.forEach(function(group) {
           for (var i = group.start; i <= group.end; i++) {
             var moduleUrl = DEFINITIVE_MODULE_URLS[i - 1];
@@ -3021,13 +3046,15 @@ Keeps all styling + elements. Access guard still runs on live site.
             var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
             var label = String(i).padStart(2, '0');
             var fullUrl = 'https://www.alanranger.com' + moduleUrl;
+            var moduleTitle = getModuleTitle(moduleUrl, normalizedModuleUrl);
             
             // Use escapeHtml if available, otherwise use simple escaping
             var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
             var safeModuleUrl = (typeof escapeHtml === 'function') ? escapeHtml(moduleUrl) : moduleUrl.replace(/"/g, '&quot;');
             var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+            var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(moduleTitle) : moduleTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
-            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '">' + label + '</a>';
+            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
           }
         });
         
