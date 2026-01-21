@@ -3161,6 +3161,7 @@ Keeps all styling + elements. Access guard still runs on live site.
                   
                   // Update progress count
                   var totalOpened = Object.keys(memberJson.arAcademy.modules.opened || {}).length;
+                  var progressTitleEl = document.getElementById('ar-modules-progress-title');
                   if (progressTitleEl) {
                     progressTitleEl.textContent = totalOpened + '/60 opened';
                   }
@@ -3169,11 +3170,12 @@ Keeps all styling + elements. Access guard still runs on live site.
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
                   // Revert visual state on error
-                  this.classList.remove('status-opened');
-                  this.classList.add('status-not-opened');
+                  var cubeEl = cube;
+                  cubeEl.classList.remove('status-opened');
+                  cubeEl.classList.add('status-not-opened');
                   delete opened[normalizedUrl];
                 }
-              })();
+              }.bind(this))();
             }
           });
         });
