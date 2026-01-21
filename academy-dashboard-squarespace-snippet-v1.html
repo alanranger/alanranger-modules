@@ -2980,12 +2980,48 @@ Keeps all styling + elements. Access guard still runs on live site.
       });
       
       // Filter opened modules to only include those in the definitive list before saving
+      // BUT preserve practice packs (they're saved in the same object but shouldn't be filtered out)
       // Normalize keys to handle legacy non-normalized URLs
       const filteredOpenedForSave = {};
+      const PRACTICE_PACK_URLS = [
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography',
+        '/blog-on-photography/histogram-and-exposure-review',
+        '/blog-on-photography/white-balance-and-colour-photography',
+        '/blog-on-photography/focus-modes-and-tracking',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment',
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment',
+        '/blog-on-photography/storytelling-narrative-photography-assignment',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/minimalism-photography-assignment',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment',
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson',
+        '/blog-on-photography/landscapes-photography-practise-assignment',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment',
+        '/blog-on-photography/seasons-nature-photography-assignment',
+        '/blog-on-photography/architecture-photography-practice-assignment',
+        '/blog-on-photography/still-life-photography-practice-assignment',
+        '/blog-on-photography/street-photography-practice-assignment',
+        '/blog-on-photography/portrait-photography-practice-assignment',
+        '/blog-on-photography/black-and-white-photography-practise-assignment'
+      ];
       Object.keys(opened).forEach(function(key) {
         const normalizedKey = normalizePath(key);
-        // Check if normalized key is in definitive list
-        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey)) {
+        // Check if normalized key is in definitive module list OR practice pack list
+        const isModule = DEFINITIVE_MODULE_URLS.includes(normalizedKey);
+        const isPracticePack = PRACTICE_PACK_URLS.includes(normalizedKey);
+        
+        if (isModule || isPracticePack) {
           // Use normalized key (this migrates legacy keys to normalized format)
           // If normalized key already exists, prefer the one with earlier 'at' timestamp
           if (!filteredOpenedForSave[normalizedKey] || 
