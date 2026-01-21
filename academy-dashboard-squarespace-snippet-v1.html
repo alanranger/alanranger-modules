@@ -875,6 +875,16 @@ Keeps all styling + elements. Access guard still runs on live site.
           <div id="arp-ms-status">Loading membership status…</div>
           <button id="arp-ms-manage" type="button">Manage subscription</button>
           <button id="arp-upgrade-membership" type="button" style="display:none;">Upgrade Membership</button>
+          <!-- Photography Style Quiz Section -->
+          <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+            <div id="arp-photography-quiz-result" style="display: none;">
+              <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95); margin-bottom: 6px;">Your Photography Style Is:</div>
+              <div id="arp-photography-style-name" style="font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
+            </div>
+            <div id="arp-photography-quiz-button-container" style="display: none;">
+              <a id="arp-photography-quiz-button" href="#" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 16px; background-color: hsl(16, 88%, 54%); color: white; text-decoration: none; border-radius: 50px; font-size: 13px; font-weight: 750; margin-top: 8px;">Take Photography Personality Quiz</a>
+            </div>
+          </div>
           <div class="ar-tile__tip">Check your access level and manage your plan.</div>
         </div>
 
@@ -2057,6 +2067,48 @@ Keeps all styling + elements. Access guard still runs on live site.
         '<div class="ms-row"><span class="ms-label">Member ID:</span> <span class="ms-value">' + escapeHtml(memberId || "—") + '</span></div>' +
         '<div class="ms-row"><span class="ms-label">Status:</span> <span class="ms-value ms-value--accent">' + escapeHtml(state.label) + '</span></div>' +
         (state.dateLine ? '<div class="ms-row"><span class="ms-label">' + escapeHtml(dateLabel) + '</span> <span class="ms-value">' + escapeHtml(dateValue || "—") + '</span></div>' : '');
+      
+      // Load and display photography style quiz result
+      if (memberId) {
+        loadPhotographyStyle(memberId);
+      }
+    }
+
+    // Function to load and display photography style quiz result
+    async function loadPhotographyStyle(memberId) {
+      var quizResultEl = document.getElementById("arp-photography-quiz-result");
+      var quizButtonContainer = document.getElementById("arp-photography-quiz-button-container");
+      var quizButton = document.getElementById("arp-photography-quiz-button");
+      var styleNameEl = document.getElementById("arp-photography-style-name");
+      
+      if (!quizResultEl || !quizButtonContainer || !quizButton || !styleNameEl) return;
+      
+      try {
+        // Fetch member data including photography style
+        var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
+        if (!response.ok) {
+          throw new Error('Failed to fetch member data');
+        }
+        var memberData = await response.json();
+        
+        if (memberData && memberData.photography_style) {
+          // Show result, hide button
+          styleNameEl.textContent = memberData.photography_style;
+          quizResultEl.style.display = 'block';
+          quizButtonContainer.style.display = 'none';
+        } else {
+          // Show button, hide result
+          quizButton.href = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+          quizResultEl.style.display = 'none';
+          quizButtonContainer.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading photography style:', error);
+        // On error, show button as fallback
+        quizButton.href = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+        quizResultEl.style.display = 'none';
+        quizButtonContainer.style.display = 'block';
+      }
     }
 
     function getConnectedProviderSet(member){
