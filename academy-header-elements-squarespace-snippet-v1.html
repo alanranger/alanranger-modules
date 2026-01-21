@@ -314,29 +314,72 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
         nameEl.textContent = name;
       }
       
-      // Get last login from member JSON
-      try {
-        var jsonRes = await ms.getMemberJSON();
-        var lastLogin = null;
-        
-        // Try to find last login in various places
-        if (jsonRes && jsonRes.data && jsonRes.data.lastLogin) {
-          lastLogin = jsonRes.data.lastLogin;
-        } else if (jsonRes && jsonRes.lastLogin) {
-          lastLogin = jsonRes.lastLogin;
+      // Track login event (only once per page load)
+      var memberId = member.id || (member.data && member.data.id);
+      var email = member.data.email || '';
+      if (memberId && !window.__arHeaderLoginTracked) {
+        window.__arHeaderLoginTracked = true;
+        try {
+          // Track login event to academy_events (fire and forget)
+          fetch('https://alanranger-modules.vercel.app/api/academy/event', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-ar-analytics-key': 'YOUR_ANALYTICS_KEY' // This should be set in env
+            },
+            body: JSON.stringify({
+              event_type: 'login',
+              member_id: memberId,
+              email: email,
+              path: window.location.pathname,
+              title: document.title
+            }),
+            keepalive: true
+          }).catch(function() {
+            // Fail silently
+          });
+        } catch (e) {
+          // Fail silently
         }
-        
-        // Update last login display
-        var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-        if (lastLoginEl) {
-          if (lastLogin) {
-            lastLoginEl.textContent = formatLastLogin(lastLogin);
+      }
+      
+      // Get last login from API (fetches from Supabase academy_events)
+      try {
+        var memberId = member.id || (member.data && member.data.id);
+        if (memberId) {
+          var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
+          if (response.ok) {
+            var memberData = await response.json();
+            var lastLogin = memberData.last_login || null;
+            
+            // Update last login display
+            var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+            if (lastLoginEl) {
+              if (lastLogin) {
+                lastLoginEl.textContent = formatLastLogin(lastLogin);
+              } else {
+                lastLoginEl.textContent = "First visit";
+              }
+            }
           } else {
+            console.error('[Academy Header] Failed to fetch member data:', response.status);
+            var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+            if (lastLoginEl) {
+              lastLoginEl.textContent = "First visit";
+            }
+          }
+        } else {
+          var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+          if (lastLoginEl) {
             lastLoginEl.textContent = "First visit";
           }
         }
       } catch (e) {
         console.error('[Academy Header] Error getting last login:', e);
+        var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+        if (lastLoginEl) {
+          lastLoginEl.textContent = "First visit";
+        }
       }
       
       // Wire up logout button

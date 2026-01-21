@@ -47,7 +47,23 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ error: "Member not found" });
     }
 
-    return res.status(200).json(data);
+    // Fetch last login from academy_events
+    const { data: lastLoginEvent, error: loginError } = await supabase
+      .from("academy_events")
+      .select("created_at")
+      .eq("member_id", memberId)
+      .eq("event_type", "login")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    // Add last_login to response (don't fail if login event not found)
+    const response = { ...data };
+    if (lastLoginEvent && lastLoginEvent.created_at) {
+      response.last_login = lastLoginEvent.created_at;
+    }
+
+    return res.status(200).json(response);
 
   } catch (error) {
     console.error("[member-data] Fatal error:", error);
