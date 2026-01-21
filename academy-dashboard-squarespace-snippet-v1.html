@@ -3439,12 +3439,20 @@ Keeps all styling + elements. Access guard still runs on live site.
       var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
       practicePackCubes.forEach(function(cube) {
         cube.addEventListener('click', function(e) {
+          e.preventDefault(); // Prevent default navigation
+          e.stopPropagation(); // Stop event bubbling
+          
           var cubeEl = this; // Capture cube element
           var packUrl = cubeEl.getAttribute('data-pack-url');
           var category = cubeEl.getAttribute('data-pack-category');
           var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
+          var fullUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + packUrl);
           
-          if (!packUrl) return;
+          if (!packUrl) {
+            // If no packUrl, just navigate normally
+            window.location.href = fullUrl;
+            return;
+          }
           
           // Normalize the URL
           var normalizedUrl = normalizePath(packUrl);
@@ -3452,53 +3460,52 @@ Keeps all styling + elements. Access guard still runs on live site.
           // Check if already opened (check in openedModules which comes from module tracking)
           var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
           
-          if (!alreadyOpened) {
-            // Mark as opened immediately (optimistic update)
-            var nowIso = new Date().toISOString();
-            openedModules[normalizedUrl] = {
-              cat: category,
-              t: packTitle,
-              at: nowIso,
-              lastAt: nowIso
-            };
-            
-            // Update the cube visual state
-            cubeEl.classList.remove('status-not-opened');
-            cubeEl.classList.add('status-opened');
-            
-            // Save to Memberstack asynchronously
-            (async function() {
-              try {
-                // Get current member JSON
-                var jsonRes = await ms.getMemberJSON();
-                var memberJson = normalizeMemberJson(jsonRes);
-                
-                // Ensure arAcademy structure exists
-                if (!memberJson.arAcademy) memberJson.arAcademy = {};
-                if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
-                if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
-                
-                // Add the new practice pack (using same structure as modules)
-                memberJson.arAcademy.modules.opened[normalizedUrl] = {
-                  cat: category,
-                  t: packTitle,
-                  at: nowIso,
-                  lastAt: nowIso
-                };
-                
-                // Save back to Memberstack
-                await ms.updateMemberJSON({ json: memberJson });
-                
-                console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
-              } catch (err) {
-                console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
-                // Revert visual state on error
-                cubeEl.classList.remove('status-opened');
-                cubeEl.classList.add('status-not-opened');
-                delete openedModules[normalizedUrl];
-              }
-            })();
-          }
+          // Mark as opened immediately (optimistic update) - even if already opened, update timestamp
+          var nowIso = new Date().toISOString();
+          openedModules[normalizedUrl] = {
+            cat: category,
+            t: packTitle,
+            at: alreadyOpened ? (openedModules[normalizedUrl]?.at || nowIso) : nowIso,
+            lastAt: nowIso
+          };
+          
+          // Update the cube visual state
+          cubeEl.classList.remove('status-not-opened');
+          cubeEl.classList.add('status-opened');
+          
+          // Save to Memberstack asynchronously, then navigate
+          (async function() {
+            try {
+              // Get current member JSON
+              var jsonRes = await ms.getMemberJSON();
+              var memberJson = normalizeMemberJson(jsonRes);
+              
+              // Ensure arAcademy structure exists
+              if (!memberJson.arAcademy) memberJson.arAcademy = {};
+              if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+              if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+              
+              // Add/update the practice pack (using same structure as modules)
+              memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                cat: category,
+                t: packTitle,
+                at: alreadyOpened ? (memberJson.arAcademy.modules.opened[normalizedUrl]?.at || nowIso) : nowIso,
+                lastAt: nowIso
+              };
+              
+              // Save back to Memberstack
+              await ms.updateMemberJSON({ json: memberJson });
+              
+              console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
+              
+              // Navigate after save completes
+              window.location.href = fullUrl;
+            } catch (err) {
+              console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
+              // Even if save fails, still navigate (user experience)
+              window.location.href = fullUrl;
+            }
+          })();
         });
       });
     }
