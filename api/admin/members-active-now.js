@@ -74,64 +74,36 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Get all login and logout events for valid members
-    const { data: loginLogoutEvents, error: eventsError } = await supabase
+    // Count members with recent activity (any event type) within last 30 minutes
+    // This accounts for automatic session timeouts - if they're active, they're logged in
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    
+    // Get most recent activity (any event) for each valid member
+    const { data: recentActivities, error: eventsError } = await supabase
       .from('academy_events')
-      .select('member_id, event_type, created_at')
+      .select('member_id, created_at')
       .in('member_id', validMemberIds)
-      .in('event_type', ['login', 'member_login', 'logout'])
+      .gte('created_at', thirtyMinutesAgo.toISOString())
       .order('created_at', { ascending: false });
 
     if (eventsError) {
       throw eventsError;
     }
 
-    // Group events by member_id to find most recent login and logout
-    const memberLoginLogout = {};
-    (loginLogoutEvents || []).forEach(event => {
-      if (!memberLoginLogout[event.member_id]) {
-        memberLoginLogout[event.member_id] = {
-          lastLogin: null,
-          lastLogout: null
-        };
-      }
-      
-      const isLogin = event.event_type === 'login' || event.event_type === 'member_login';
-      const isLogout = event.event_type === 'logout';
-      const eventDate = new Date(event.created_at);
-      
-      // Since events are ordered DESC, the first login we encounter is the most recent
-      if (isLogin && !memberLoginLogout[event.member_id].lastLogin) {
-        memberLoginLogout[event.member_id].lastLogin = eventDate;
-      }
-      // Since events are ordered DESC, the first logout we encounter is the most recent
-      if (isLogout && !memberLoginLogout[event.member_id].lastLogout) {
-        memberLoginLogout[event.member_id].lastLogout = eventDate;
-      }
-    });
-
-    // Count members who are currently logged in
-    // A member is logged in if: 
-    // 1. They logged in recently (within last 2 hours)
-    // 2. No logout exists OR last login is after last logout
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    let activeCount = 0;
-    Object.keys(memberLoginLogout).forEach(memberId => {
-      const { lastLogin, lastLogout } = memberLoginLogout[memberId];
-      // Only count if logged in within last 2 hours and haven't logged out since
-      if (lastLogin && 
-          lastLogin >= twoHoursAgo && 
-          (!lastLogout || lastLogin > lastLogout)) {
-        activeCount++;
-      }
-    });
+    // Count distinct members who have any activity in the last 30 minutes
+    // This means they're actively using the site right now
+    const activeMemberIds = new Set(
+      (recentActivities || []).map(e => e.member_id).filter(Boolean)
+    );
+    
+    const activeCount = activeMemberIds.size;
 
     // Debug logging
     console.log('[active-now-vercel-api] Query results:', {
       validMemberIdsCount: validMemberIds.length,
-      loginLogoutEventsCount: loginLogoutEvents?.length || 0,
+      recentActivitiesCount: recentActivities?.length || 0,
       activeCount: activeCount,
-      twoHoursAgo: twoHoursAgo.toISOString(),
+      thirtyMinutesAgo: thirtyMinutesAgo.toISOString(),
       now: now.toISOString()
     });
 
