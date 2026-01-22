@@ -21,25 +21,25 @@ export default function MembersDirectory() {
 
   useEffect(() => {
     // Read filters from URL query params
-    const { plan, status, search, last_seen, page, sort, order } = router.query;
+    const { plan, status, search, last_seen, page, limit, sort, order } = router.query;
     if (plan) setPlanFilter(plan);
     if (status) setStatusFilter(status);
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
     if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
+    if (limit) setPagination(prev => ({ ...prev, limit: parseInt(limit) }));
     if (sort) {
       setSortConfig({ field: sort, direction: order || 'desc' });
     } else {
       // Default sort if not specified
       setSortConfig({ field: 'updated_at', direction: 'desc' });
     }
-    
-    fetchMembers();
   }, [router.query]);
 
   useEffect(() => {
+    // Fetch members when pagination, filters, or sort changes
     fetchMembers();
-  }, [pagination.page]);
+  }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, sortConfig]);
 
   async function fetchMembers() {
     setLoading(true);
@@ -80,10 +80,32 @@ export default function MembersDirectory() {
         ...(searchQuery && { search: searchQuery }),
         ...(lastSeenFilter && { last_seen: lastSeenFilter }),
         sort: sortConfig.field,
-        order: sortConfig.direction
+        order: sortConfig.direction,
+        page: 1, // Reset to page 1 when filters change
+        limit: pagination.limit
       }
     });
-    fetchMembers();
+  }
+
+  function handlePageChange(newPage) {
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...router.query,
+        page: newPage
+      }
+    });
+  }
+
+  function handleLimitChange(newLimit) {
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...router.query,
+        limit: newLimit,
+        page: 1 // Reset to page 1 when limit changes
+      }
+    });
   }
 
   function handleSort(field) {
@@ -311,8 +333,33 @@ export default function MembersDirectory() {
           <div className="ar-admin-loading">Loading members...</div>
         ) : (
           <div className="ar-admin-card">
-            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <h2 className="ar-admin-card-title">Members ({pagination.total})</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>Show:</label>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'var(--ar-bg)',
+                    border: '1px solid var(--ar-border)',
+                    borderRadius: '6px',
+                    color: 'var(--ar-text)',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="500">500</option>
+                  <option value="1000">1000</option>
+                  <option value="9999">All</option>
+                </select>
+                <span style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>per page</span>
+              </div>
             </div>
             
             <div style={{ overflowX: 'auto' }}>
@@ -453,27 +500,61 @@ export default function MembersDirectory() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => {
-                    setPagination({ ...pagination, page: pagination.page - 1 });
-                    fetchMembers();
-                  }}
+                  onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
                   className="ar-admin-btn-secondary"
+                  style={{ minWidth: '80px' }}
                 >
                   Previous
                 </button>
-                <span style={{ padding: '8px 16px', color: 'var(--ar-text-muted)' }}>
+                
+                {/* Page numbers */}
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        style={{
+                          padding: '6px 12px',
+                          background: pagination.page === pageNum ? 'var(--ar-brand)' : 'var(--ar-card)',
+                          border: '1px solid var(--ar-border)',
+                          borderRadius: '6px',
+                          color: pagination.page === pageNum ? '#fff' : 'var(--ar-text)',
+                          fontSize: '14px',
+                          fontWeight: pagination.page === pageNum ? 700 : 500,
+                          cursor: 'pointer',
+                          minWidth: '40px'
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <span style={{ padding: '8px 16px', color: 'var(--ar-text-muted)', fontSize: '14px' }}>
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
+                
                 <button
-                  onClick={() => {
-                    setPagination({ ...pagination, page: pagination.page + 1 });
-                    fetchMembers();
-                  }}
+                  onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page >= pagination.totalPages}
                   className="ar-admin-btn-secondary"
+                  style={{ minWidth: '80px' }}
                 >
                   Next
                 </button>
