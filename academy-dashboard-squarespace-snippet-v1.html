@@ -2961,23 +2961,56 @@ Keeps all styling + elements. Access guard still runs on live site.
         ghostBanner.innerHTML = '👻 GHOST MODE: Loading dashboard as ' + bannerText + '...';
         document.body.appendChild(ghostBanner);
         
-        // Fetch ghost member data (API will check admin access)
-        fetch(apiUrl, {
-          method: 'GET',
-          credentials: 'include'
-        })
-        .then(function(response) {
-          if (!response.ok) {
-            if (response.status === 403) {
-              throw new Error('Admin access required. Please log in as an admin first.');
-            } else if (response.status === 404) {
-              throw new Error('Member not found');
+        // Get current admin member ID from Memberstack to pass as header
+        // This is needed because cross-origin cookies might not be sent
+        waitForMemberstack(8000).then(function(ms){
+          if (!ms) {
+            console.error("[Ghost Login] Memberstack not available");
+            var bannerEl = document.getElementById('ar-ghost-mode-banner');
+            if (bannerEl) {
+              bannerEl.style.background = '#ef4444';
+              bannerEl.innerHTML = '❌ Ghost Login Failed: Memberstack not available | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
             }
-            throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
+            return;
           }
-          return response.json();
-        })
-        .then(function(ghostData) {
+          
+          // Get current member to pass their ID as header for admin verification
+          ms.getCurrentMember().then(function(adminMember){
+            var adminMemberId = null;
+            if (adminMember && adminMember.id) {
+              adminMemberId = adminMember.id;
+            } else if (adminMember && adminMember.data && adminMember.data.id) {
+              adminMemberId = adminMember.data.id;
+            }
+            
+            console.log("[Ghost Login] Admin member ID:", adminMemberId);
+            
+            // Fetch ghost member data (API will check admin access using header)
+            var fetchOptions = {
+              method: 'GET',
+              credentials: 'include'
+            };
+            
+            // Add admin member ID as header if available
+            if (adminMemberId) {
+              fetchOptions.headers = {
+                'X-Memberstack-Id': adminMemberId
+              };
+            }
+            
+            fetch(apiUrl, fetchOptions)
+            .then(function(response) {
+              if (!response.ok) {
+                if (response.status === 403) {
+                  throw new Error('Admin access required. Please log in as an admin first.');
+                } else if (response.status === 404) {
+                  throw new Error('Member not found');
+                }
+                throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
+              }
+              return response.json();
+            })
+            .then(function(ghostData) {
           console.log("[Ghost Login] Ghost member data:", ghostData);
           
           // Remove loading banner and show success banner
@@ -3050,8 +3083,8 @@ Keeps all styling + elements. Access guard still runs on live site.
               console.warn("[Ghost Login] run() function not found, module progress may not load");
             }
           });
-        })
-        .catch(function(error) {
+            })
+            .catch(function(error) {
           console.error("[Ghost Login] Error:", error);
           var bannerEl = document.getElementById('ar-ghost-mode-banner');
           if (bannerEl) {
@@ -3077,7 +3110,22 @@ Keeps all styling + elements. Access guard still runs on live site.
               }
             }, 3000);
           }
-        });
+            }).catch(function(err) {
+              console.error("[Ghost Login] Error getting admin member:", err);
+              var bannerEl = document.getElementById('ar-ghost-mode-banner');
+              if (bannerEl) {
+                bannerEl.style.background = '#ef4444';
+                bannerEl.innerHTML = '❌ Ghost Login Failed: Could not verify admin access | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+              }
+            });
+          }).catch(function(err) {
+            console.error("[Ghost Login] Error waiting for Memberstack:", err);
+            var bannerEl = document.getElementById('ar-ghost-mode-banner');
+            if (bannerEl) {
+              bannerEl.style.background = '#ef4444';
+              bannerEl.innerHTML = '❌ Ghost Login Failed: Memberstack error | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+            }
+          });
         
         return; // Exit early - ghost mode handles its own flow
       }
