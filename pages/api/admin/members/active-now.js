@@ -1,5 +1,6 @@
 // pages/api/admin/members/active-now.js
-// Returns count of members who logged in within the last 5 minutes
+// Returns count of members who are currently logged in
+// A member is "logged in" if their most recent login is after their most recent logout (or they have no logout)
 
 const { createClient } = require("@supabase/supabase-js");
 
@@ -27,9 +28,7 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Calculate 5 minutes ago
     const now = new Date();
-    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
     // Get all valid members (trial or annual, active/trialing)
     const { data: allMembers, error: membersError } = await supabase
@@ -75,35 +74,62 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get events from the last 5 minutes for valid members
-    // We'll count distinct members who have ANY event in the last 5 minutes
-    const { data: recentEvents, error: eventsError } = await supabase
+    // Get all login and logout events for valid members
+    const { data: loginLogoutEvents, error: eventsError } = await supabase
       .from('academy_events')
-      .select('member_id, created_at')
+      .select('member_id, event_type, created_at')
       .in('member_id', validMemberIds)
-      .gte('created_at', fiveMinutesAgo.toISOString())
+      .in('event_type', ['login', 'member_login', 'logout'])
       .order('created_at', { ascending: false });
 
     if (eventsError) {
       throw eventsError;
     }
 
-    // Count distinct members
-    const activeMemberIds = new Set(
-      (recentEvents || []).map(e => e.member_id).filter(Boolean)
-    );
+    // Group events by member_id to find most recent login and logout
+    const memberLoginLogout = {};
+    (loginLogoutEvents || []).forEach(event => {
+      if (!memberLoginLogout[event.member_id]) {
+        memberLoginLogout[event.member_id] = {
+          lastLogin: null,
+          lastLogout: null
+        };
+      }
+      
+      const isLogin = event.event_type === 'login' || event.event_type === 'member_login';
+      const isLogout = event.event_type === 'logout';
+      const eventDate = new Date(event.created_at);
+      
+      // Since events are ordered DESC, the first login we encounter is the most recent
+      if (isLogin && !memberLoginLogout[event.member_id].lastLogin) {
+        memberLoginLogout[event.member_id].lastLogin = eventDate;
+      }
+      // Since events are ordered DESC, the first logout we encounter is the most recent
+      if (isLogout && !memberLoginLogout[event.member_id].lastLogout) {
+        memberLoginLogout[event.member_id].lastLogout = eventDate;
+      }
+    });
+
+    // Count members who are currently logged in
+    // A member is logged in if: no logout exists OR last login is after last logout
+    let activeCount = 0;
+    Object.keys(memberLoginLogout).forEach(memberId => {
+      const { lastLogin, lastLogout } = memberLoginLogout[memberId];
+      if (lastLogin && (!lastLogout || lastLogin > lastLogout)) {
+        activeCount++;
+      }
+    });
 
     // Debug logging
     console.log('[active-now] Query results:', {
       validMemberIdsCount: validMemberIds.length,
-      recentEventsCount: recentEvents?.length || 0,
-      activeCount: activeMemberIds.size,
-      fiveMinutesAgo: fiveMinutesAgo.toISOString(),
+      loginLogoutEventsCount: loginLogoutEvents?.length || 0,
+      activeCount: activeCount,
       now: now.toISOString()
     });
 
     return res.status(200).json({
-      count: activeMemberIds.size,
+      count: activeCount,
       last_updated: now.toISOString()
     });
 
