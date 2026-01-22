@@ -111,11 +111,17 @@ module.exports = async (req, res) => {
     });
 
     // Count members who are currently logged in
-    // A member is logged in if: no logout exists OR last login is after last logout
+    // A member is logged in if: 
+    // 1. They logged in recently (within last 2 hours)
+    // 2. No logout exists OR last login is after last logout
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
     let activeCount = 0;
     Object.keys(memberLoginLogout).forEach(memberId => {
       const { lastLogin, lastLogout } = memberLoginLogout[memberId];
-      if (lastLogin && (!lastLogout || lastLogin > lastLogout)) {
+      // Only count if logged in within last 2 hours and haven't logged out since
+      if (lastLogin && 
+          lastLogin >= twoHoursAgo && 
+          (!lastLogout || lastLogin > lastLogout)) {
         activeCount++;
       }
     });
@@ -125,6 +131,7 @@ module.exports = async (req, res) => {
       validMemberIdsCount: validMemberIds.length,
       loginLogoutEventsCount: loginLogoutEvents?.length || 0,
       activeCount: activeCount,
+      twoHoursAgo: twoHoursAgo.toISOString(),
       now: now.toISOString()
     });
 
