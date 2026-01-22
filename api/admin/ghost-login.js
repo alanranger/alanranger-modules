@@ -7,6 +7,16 @@ const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 
 module.exports = async (req, res) => {
+  // CORS headers for Squarespace
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.alanranger.com');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Memberstack-Id, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   try {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method Not Allowed" });
