@@ -113,7 +113,7 @@ Keeps all styling + elements. Access guard still runs on live site.
   
   @media (max-width: 1200px) {
     html.ar-academy .ar-academy-dashboard__inner {
-      display: flex;
+    display: flex;
       flex-direction: column;
       max-width: 100%; /* Full width when stacked */
       padding: 0 12px; /* Consistent padding */
@@ -1128,7 +1128,7 @@ Keeps all styling + elements. Access guard still runs on live site.
             <span class="ar-tile__icon">📚</span>
             <span>Modules</span>
             <span id="ar-modules-progress-title" class="ar-tile__progress"></span>
-          </div>
+            </div>
           <div class="ar-tile__desc">60 step-by-step modules</div>
           <!-- Module grid will be rendered here -->
           <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
@@ -2855,7 +2855,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         });
       });
     }
-    
+  
     ready(function(){
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.remove("is-ready");
@@ -3164,6 +3164,52 @@ Keeps all styling + elements. Access guard still runs on live site.
           if (dashboardEl) dashboardEl.classList.add("is-ready");
           renderMemberStatus(m, ms);
           
+          // Inactivity logout (30 minutes of no activity)
+          (function initInactivityLogout(){
+            var INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+            var timeoutId = null;
+            var isLoggedOut = false;
+
+            function doLogout() {
+              if (isLoggedOut) return;
+              isLoggedOut = true;
+              try {
+                if (ms && typeof ms.logout === "function") {
+                  ms.logout();
+                }
+              } catch (e) { /* no-op */ }
+              safeRedirect("/academy/login?reason=timeout");
+            }
+
+            function resetTimer() {
+              if (isLoggedOut) return;
+              if (timeoutId) clearTimeout(timeoutId);
+              timeoutId = setTimeout(doLogout, INACTIVITY_LIMIT_MS);
+            }
+
+            // Activity events to reset timer
+            var activityEvents = [
+              "mousemove",
+              "mousedown",
+              "keydown",
+              "scroll",
+              "touchstart",
+              "touchmove"
+            ];
+
+            activityEvents.forEach(function(evt) {
+              document.addEventListener(evt, resetTimer, { passive: true });
+            });
+
+            document.addEventListener("visibilitychange", function() {
+              if (!document.hidden) resetTimer();
+            });
+            window.addEventListener("focus", resetTimer);
+
+            // Start timer immediately after login
+            resetTimer();
+          })();
+
           // Load exam progress - log member object for debugging
           console.log("[Dashboard] Calling loadExamProgress");
           console.log("[Dashboard] Member object:", m);
