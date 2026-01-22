@@ -1,6 +1,6 @@
 # Quick Reference Guide - Academy Assessment System
 
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-01-22
 
 This guide provides quick reference for AI agents and developers working on the Academy Assessment System.
 
@@ -10,6 +10,10 @@ This guide provides quick reference for AI agents and developers working on the 
 - **Location**: `/academy/admin` (Next.js app)
 - **Features**:
   - Real-time KPIs and analytics
+  - **"Logged In Right Now" tile** - Real-time count of active members (Members Directory page)
+    - Shows count of members with activity in last 30 minutes
+    - Clickable to filter members table
+    - Auto-refreshes every 1 minute
   - Sortable data tables (Most Active Members)
   - Member activity tracking
   - Module engagement metrics
@@ -37,12 +41,13 @@ This guide provides quick reference for AI agents and developers working on the 
 - **Pages**: `pages/academy/admin/`
   - `index.js` - Overview dashboard (includes sortable TopMembersList)
   - `activity.js` - Activity stream
-  - `members.js` - Member analytics
+  - `members/index.js` - Member analytics (includes "Logged In Right Now" tile)
   - `modules.js` - Module analytics
   - `exams.js` - Exam analytics
 - **API Routes**: `api/admin/`
   - `overview.js` - Dashboard KPIs
-  - `members.js` - Member data
+  - `members.js` - Member data (supports `active_now` filter)
+  - `members-active-now.js` - Count of members logged in right now
   - `top-members.js` - Most active members (used by sortable table)
 - **Styles**: `styles/admin-globals.css`
 
@@ -96,7 +101,8 @@ Required in `.env.local`:
 
 ### Member Management
 - View member details at `/academy/admin/members`
-- Filter by plan type, status, last seen
+- **"Logged In Right Now" tile** - Click to filter table to active members
+- Filter by plan type, status, last seen, active_now
 - Search by email or name
 - Sort by various metrics
 

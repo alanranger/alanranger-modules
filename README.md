@@ -75,7 +75,15 @@ API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 - ✅ Auto-save functionality after exam submission
 - ✅ Debug panel hidden by default (Ctrl+Shift+D to show)
 
-### Latest Updates (2026-01-20)
+### Latest Updates (2026-01-22)
+- ✅ **"Logged In Right Now" feature** - Real-time count of active members on Members Directory page
+  - Shows count of members with activity in last 30 minutes
+  - Clickable tile filters members table to show only logged-in members
+  - Auto-refreshes every 1 minute
+  - Visual indicator when filter is active (orange border and dot)
+  - API endpoint: `/api/admin/members-active-now`
+
+### Previous Updates (2026-01-20)
 - ✅ **Conversion detection fixed** - Overview API now uses identical logic to Stripe metrics, correctly finding all 2 conversions
 - ✅ **Conversion rate calculation** - Fixed to use active trials in 30d window instead of all-time trials
 - ✅ **Removed Stripe dependency** - Conversion rate now uses only Supabase data (faster, more reliable)
