@@ -401,18 +401,27 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       // Otherwise, get the normal member (admin)
       var member = await ms.getCurrentMember();
       
-      // If we're in ghost mode but getCurrentMember hasn't been overridden yet, wait a bit
-      // The dashboard script will override it, so we'll get the ghost member on retry
+      // If we're in ghost mode, check if we got the admin member instead of ghost member
+      // The dashboard script will override getCurrentMember, but header might run first
       if ((ghostMemberId || ghostEmail) && member) {
         var memberEmail = (member.data && member.data.email) || (member.data && member.data.auth && member.data.auth.email) || '';
         var isAdminEmail = memberEmail && (memberEmail.toLowerCase() === 'info@alanranger.com' || memberEmail.toLowerCase() === 'marketing@alanranger.com');
         
         // If we got admin member but we're in ghost mode, wait for dashboard to override
-        if (isAdminEmail) {
-          console.log('[Academy Header] Ghost mode detected, waiting for dashboard to override getCurrentMember...');
+        // Retry up to 5 times (2.5 seconds total)
+        var retryCount = parseInt(sessionStorage.getItem('ar-header-ghost-retry') || '0', 10);
+        if (isAdminEmail && retryCount < 5) {
+          console.log('[Academy Header] Ghost mode detected, waiting for dashboard to override getCurrentMember... (retry ' + (retryCount + 1) + '/5)');
+          sessionStorage.setItem('ar-header-ghost-retry', String(retryCount + 1));
           setTimeout(loadHeaderData, 500);
           return;
+        } else if (retryCount >= 5) {
+          // Clear retry count after max retries
+          sessionStorage.removeItem('ar-header-ghost-retry');
         }
+      } else {
+        // Not in ghost mode or got ghost member - clear retry count
+        sessionStorage.removeItem('ar-header-ghost-retry');
       }
       if (!member || !member.data) {
         // Not logged in - hide welcome
