@@ -130,7 +130,15 @@ Required in `.env.local`:
 - **EVENT_TRACKING_INTEGRATION.md** - Event tracking guide
 - **NEXT_STEPS.md** - Future enhancements
 
-## 🚀 Recent Changes (2026-01-20)
+## 🚀 Recent Changes (2026-01-22)
+
+1. **"Logged In Right Now" feature** - Real-time count of active members on Members Directory
+   - Shows count of members with activity in last 30 minutes
+   - Clickable tile filters members table
+   - Auto-refreshes every 1 minute
+   - API endpoint: `/api/admin/members-active-now`
+
+## Previous Changes (2026-01-20)
 
 1. **Conversion detection fixed** - Now correctly finds all conversions (2 instead of 1)
 2. **Conversion rate calculation** - Uses active trials in 30d window (not all-time)
