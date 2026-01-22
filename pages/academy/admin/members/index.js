@@ -92,7 +92,7 @@ export default function MembersDirectory() {
   async function fetchActiveNow() {
     setActiveNowLoading(true);
     try {
-      const url = '/api/admin/members/active-now';
+      const url = '/api/admin/members-active-now';
       console.log('[fetchActiveNow] Calling:', url);
       const res = await fetch(url, {
         method: 'GET',
