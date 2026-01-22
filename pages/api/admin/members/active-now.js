@@ -4,9 +4,22 @@
 const { createClient } = require("@supabase/supabase-js");
 
 export default async function handler(req, res) {
+  // Log incoming request for debugging
+  console.log('[active-now-api] Request received:', {
+    method: req.method,
+    url: req.url,
+    endpoint: 'pages/api/admin/members/active-now'
+  });
+
   try {
     if (req.method !== "GET") {
-      return res.status(405).json({ error: "Method Not Allowed" });
+      console.error('[active-now-api] Method not allowed:', req.method);
+      return res.status(405).json({ 
+        error: "Method Not Allowed",
+        received: req.method,
+        expected: "GET",
+        endpoint: 'pages/api/admin/members/active-now'
+      });
     }
 
     const supabase = createClient(

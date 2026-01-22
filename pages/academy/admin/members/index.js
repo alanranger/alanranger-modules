@@ -92,18 +92,32 @@ export default function MembersDirectory() {
   async function fetchActiveNow() {
     setActiveNowLoading(true);
     try {
-      const res = await fetch('/api/admin/members/active-now');
+      const url = '/api/admin/members/active-now';
+      console.log('[fetchActiveNow] Calling:', url);
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store' // Prevent caching
+      });
+      
+      console.log('[fetchActiveNow] Response status:', res.status, res.statusText);
+      console.log('[fetchActiveNow] Response URL:', res.url);
+      
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('API error:', res.status, errorText);
+        console.error('[fetchActiveNow] API error:', res.status, errorText);
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
       const data = await res.json();
-      console.log('Active now response:', data);
+      console.log('[fetchActiveNow] Active now response:', data);
       setActiveNowCount(data.count || 0);
       setLastUpdated(data.last_updated ? new Date(data.last_updated) : new Date());
     } catch (error) {
-      console.error('Failed to fetch active now count:', error);
+      console.error('[fetchActiveNow] Failed to fetch active now count:', error);
+      // Set count to 0 on error to show something
+      setActiveNowCount(0);
     } finally {
       setActiveNowLoading(false);
     }
