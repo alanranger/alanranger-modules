@@ -46,14 +46,14 @@ export default function MembersDirectory() {
     fetchMembers();
   }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, sortConfig]);
 
-  // Fetch active now count and set up polling every 5 minutes
+  // Fetch active now count and set up polling every 1 minute
   useEffect(() => {
     fetchActiveNow();
     
-    // Set up polling every 5 minutes (300000 ms)
+    // Set up polling every 1 minute (60000 ms) for more frequent updates
     const pollInterval = setInterval(() => {
       fetchActiveNow();
-    }, 5 * 60 * 1000);
+    }, 1 * 60 * 1000);
 
     // Cleanup interval on unmount
     return () => clearInterval(pollInterval);
@@ -270,7 +270,27 @@ export default function MembersDirectory() {
 
         {/* Active Now Tile */}
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
-          <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+          <div className="ar-admin-kpi-tile" style={{ cursor: 'default', position: 'relative' }}>
+            <button
+              onClick={fetchActiveNow}
+              disabled={activeNowLoading}
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                background: 'transparent',
+                border: '1px solid var(--ar-border)',
+                borderRadius: '4px',
+                color: 'var(--ar-text-muted)',
+                padding: '4px 8px',
+                fontSize: '11px',
+                cursor: activeNowLoading ? 'not-allowed' : 'pointer',
+                opacity: activeNowLoading ? 0.5 : 1
+              }}
+              title="Refresh count"
+            >
+              {activeNowLoading ? '...' : '↻'}
+            </button>
             <div className="ar-admin-kpi-label">Logged In Right Now</div>
             <div className="ar-admin-kpi-value">
               {activeNowLoading ? '...' : activeNowCount}
@@ -278,7 +298,7 @@ export default function MembersDirectory() {
             <div className="ar-admin-kpi-period">
               {lastUpdated 
                 ? `Updated ${lastUpdated.toLocaleTimeString()}`
-                : 'Refreshing every 5 minutes'
+                : 'Refreshing every 1 minute'
               }
             </div>
           </div>
