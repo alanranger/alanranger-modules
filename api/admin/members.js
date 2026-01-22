@@ -111,12 +111,25 @@ module.exports = async (req, res) => {
       }
     }
     
+    // If no member IDs after filtering, return empty result
+    if (memberIds.length === 0) {
+      return res.status(200).json({
+        members: [],
+        pagination: {
+          page: 1,
+          limit: limit,
+          total: 0,
+          totalPages: 0
+        }
+      });
+    }
+    
     // Get last activity per member - use a more efficient query
     // Get the most recent event per member by using a subquery approach
     const { data: lastActivities } = await supabase
       .from('academy_events')
       .select('member_id, created_at')
-      .in('member_id', memberIds.length > 0 ? memberIds : [])
+      .in('member_id', memberIds)
       .order('created_at', { ascending: false });
     
     // Get last login events per member (for last_login field)
