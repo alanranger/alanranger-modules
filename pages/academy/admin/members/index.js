@@ -93,8 +93,13 @@ export default function MembersDirectory() {
     setActiveNowLoading(true);
     try {
       const res = await fetch('/api/admin/members/active-now');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('API error:', res.status, errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
       const data = await res.json();
+      console.log('Active now response:', data);
       setActiveNowCount(data.count || 0);
       setLastUpdated(data.last_updated ? new Date(data.last_updated) : new Date());
     } catch (error) {

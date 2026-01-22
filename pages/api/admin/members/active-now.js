@@ -29,16 +29,29 @@ export default async function handler(req, res) {
     }
 
     // Filter to only valid members (trial or annual, active/trialing)
+    // Note: plan_summary from Supabase is already a parsed object, not a string
     const validMemberIds = (allMembers || [])
       .filter(member => {
-        const plan = member.plan_summary || {};
+        // Handle both string (if not parsed) and object (if parsed) cases
+        let plan = member.plan_summary;
+        if (typeof plan === 'string') {
+          try {
+            plan = JSON.parse(plan);
+          } catch (e) {
+            plan = {};
+          }
+        }
+        plan = plan || {};
+        
         const planType = plan.plan_type || '';
         const status = (plan.status || '').toUpperCase();
         
-        return (
+        const isValid = (
           (planType === 'trial' || planType === 'annual') &&
           (status === 'ACTIVE' || status === 'TRIALING')
         );
+        
+        return isValid;
       })
       .map(m => m.member_id);
 
@@ -66,6 +79,15 @@ export default async function handler(req, res) {
     const activeMemberIds = new Set(
       (recentEvents || []).map(e => e.member_id).filter(Boolean)
     );
+
+    // Debug logging
+    console.log('[active-now] Query results:', {
+      validMemberIdsCount: validMemberIds.length,
+      recentEventsCount: recentEvents?.length || 0,
+      activeCount: activeMemberIds.size,
+      fiveMinutesAgo: fiveMinutesAgo.toISOString(),
+      now: now.toISOString()
+    });
 
     return res.status(200).json({
       count: activeMemberIds.size,
