@@ -59,7 +59,7 @@ Keeps all styling + elements. Access guard still runs on live site.
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    padding: 10px 0 56px;
+    padding: 20px 0 56px; /* Normal padding - Academy header is sticky */
     min-height: 100vh;
   
     /* No-flash: hidden until Memberstack guard confirms access */
@@ -73,9 +73,94 @@ Keeps all styling + elements. Access guard still runs on live site.
   }
   
   html.ar-academy .ar-academy-dashboard__inner {
-    max-width: 1200px;
+    max-width: 1400px; /* Increased from 1200px for larger dashboard */
     margin: 0 auto;
-    padding: 0 18px;
+    padding: 0 12px; /* Reduced from 18px for less side padding */
+    position: relative;
+  }
+  
+  html.ar-academy .ar-academy-dashboard__main {
+    width: 100%;
+  }
+  
+  html.ar-academy .ar-academy-dashboard__sidebar {
+    position: fixed;
+    right: 20px;
+    top: 82px; /* Default: Below the sticky Academy header (will be adjusted by JS) */
+    width: 320px;
+    z-index: 997; /* Below Academy header (998) but above dashboard content */
+    max-height: calc(100vh - 102px);
+    overflow-y: auto;
+  }
+  
+  @media (max-width: 1800px) {
+    html.ar-academy .ar-academy-dashboard__inner {
+      max-width: calc(100% - 380px); /* Account for sidebar (320px) + margins (60px) */
+      padding: 0 12px;
+    }
+  }
+  
+  @media (max-width: 1600px) {
+    html.ar-academy .ar-academy-dashboard__sidebar {
+      right: 10px;
+      width: 300px;
+    }
+    
+    html.ar-academy .ar-academy-dashboard__inner {
+      max-width: calc(100% - 360px); /* Account for sidebar (300px) + margins (60px) */
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    html.ar-academy .ar-academy-dashboard__inner {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%; /* Full width when stacked */
+      padding: 0 12px; /* Consistent padding */
+    }
+    
+    html.ar-academy .ar-academy-dashboard__main {
+      width: 100%;
+      order: 1; /* Main content first */
+    }
+    
+    html.ar-academy .ar-academy-dashboard__sidebar {
+      position: relative;
+      right: auto;
+      top: auto;
+      width: 100%;
+      max-width: 100%;
+      max-height: none;
+      margin-top: 32px;
+      margin-bottom: 24px;
+      order: 2; /* Sidebar stacks below */
+    }
+  }
+  
+  @media (max-width: 768px) {
+    html.ar-academy .ar-academy-dashboard {
+      padding: 12px 0 40px;
+    }
+    
+    html.ar-academy .ar-academy-dashboard__inner {
+      padding: 0 12px;
+    }
+    
+    html.ar-academy .ar-academy-dashboard__sidebar {
+      margin-top: 24px;
+      margin-bottom: 20px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    html.ar-academy .ar-academy-dashboard__inner {
+      padding: 0 8px;
+    }
+    
+    html.ar-academy .ar-academy-dashboard__sidebar {
+      margin-top: 20px;
+      margin-bottom: 16px;
+    }
   }
   
   @media (max-width: 760px){
@@ -513,6 +598,10 @@ Keeps all styling + elements. Access guard still runs on live site.
   html.ar-academy #arp-practice-packs-tile .ar-tile__tip{
     display: none;
   }
+  /* Hide tip for checklists tile to prevent obscuring last row of checklist cubes */
+  html.ar-academy #arp-checklists-tile .ar-tile__tip{
+    display: none;
+  }
   html.ar-academy .ar-tile__tip::before{
     content: "";
     width: 10px;
@@ -604,6 +693,19 @@ Keeps all styling + elements. Access guard still runs on live site.
     margin-top: 12px;
     position: relative;
     z-index: 1;
+    align-items: flex-start;
+  }
+  html.ar-academy .ar-exam-coming-soon-label {
+    flex-basis: 100%;
+    width: 100%;
+    margin: 12px 0 8px 0;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
   }
   html.ar-academy .ar-exam-module-pill {
     width: 24px;
@@ -655,6 +757,45 @@ Keeps all styling + elements. Access guard still runs on live site.
     background: var(--ar-border);
     color: var(--ar-text-muted);
     border-color: var(--ar-border);
+  }
+  html.ar-academy .ar-exam-module-pill.status-coming-soon {
+    width: 24px !important;
+    height: 24px !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: rgba(55, 65, 81, 0.3) !important;
+    color: rgba(226, 232, 240, 0.7) !important;
+    border-color: rgba(55, 65, 81, 0.3) !important;
+    border-radius: 4px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    cursor: not-allowed !important;
+    opacity: 0.7 !important;
+    position: relative;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  html.ar-academy .ar-exam-module-pill.status-coming-soon:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  html.ar-academy .ar-exam-module-pill.status-coming-soon::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
   }
   
   /* Module mini grid - organized by category rows */
@@ -772,10 +913,208 @@ Keeps all styling + elements. Access guard still runs on live site.
     color: var(--ar-text-muted);
     border-color: var(--ar-border);
   }
+  
+  /* Checklists mini grid - organized by category rows */
+  html.ar-academy #ar-checklists-mini-grid {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 2;
+  }
+  html.ar-academy .ar-checklist-category-row {
+    margin-bottom: 8px;
+  }
+  html.ar-academy .ar-checklist-category-row:last-child {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-checklist-category-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  html.ar-academy .ar-checklist-category-cubes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  html.ar-academy .ar-checklist-cube {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    color: inherit;
+  }
+  html.ar-academy .ar-checklist-cube:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  html.ar-academy .ar-checklist-cube.status-opened {
+    background: var(--ar-orange, #E57200) !important;
+    color: #fff !important;
+    border-color: rgba(229, 114, 0, 0.3) !important;
+  }
+  html.ar-academy .ar-checklist-cube.status-not-opened {
+    background: var(--ar-border);
+    color: var(--ar-text-muted);
+    border-color: var(--ar-border);
+  }
+  
+  /* Members Guide Accordion */
+  html.ar-academy .ar-members-guide {
+    background: var(--ar-panel);
+    border: 1px solid var(--ar-border);
+    border-radius: var(--ar-radius);
+    padding: 20px;
+  }
+  html.ar-academy .ar-members-guide__header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ar-border);
+  }
+  html.ar-academy .ar-members-guide__title {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--ar-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  html.ar-academy .ar-members-guide__icon {
+    font-size: 24px;
+  }
+  html.ar-academy .ar-members-guide__subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ar-text-muted);
+    font-weight: 600;
+  }
+  html.ar-academy .ar-members-guide__accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  html.ar-academy .ar-members-guide__item {
+    border: 1px solid var(--ar-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(15, 20, 25, 0.4);
+  }
+  html.ar-academy .ar-members-guide__button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    color: var(--ar-text);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+  html.ar-academy .ar-members-guide__button:hover {
+    background: rgba(229, 114, 0, 0.1);
+  }
+  html.ar-academy .ar-members-guide__button:focus {
+    outline: 2px solid var(--ar-brand);
+    outline-offset: -2px;
+  }
+  html.ar-academy .ar-members-guide__button-text {
+    flex: 1;
+  }
+  html.ar-academy .ar-members-guide__button-icon {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-members-guide__button[aria-expanded="true"] .ar-members-guide__button-icon {
+    transform: rotate(180deg);
+  }
+  html.ar-academy .ar-members-guide__content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 16px;
+  }
+  html.ar-academy .ar-members-guide__button[aria-expanded="true"] + .ar-members-guide__content {
+    max-height: 1000px;
+    padding: 0 16px 16px 16px;
+  }
+  html.ar-academy .ar-members-guide__content p {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ar-text);
+  }
+  html.ar-academy .ar-members-guide__content p:last-child {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-members-guide__content ul {
+    margin: 0 0 12px 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ar-text);
+  }
+  html.ar-academy .ar-members-guide__content li {
+    margin-bottom: 6px;
+  }
+  html.ar-academy .ar-members-guide__content li:last-child {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-members-guide__content strong {
+    color: var(--ar-brand);
+    font-weight: 800;
+  }
+  
+  /* Responsive adjustments for Members Guide */
+  @media (max-width: 1200px) {
+    html.ar-academy .ar-members-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    html.ar-academy .ar-members-guide__header {
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    
+    html.ar-academy .ar-members-guide__title {
+      font-size: 18px;
+    }
+    
+    html.ar-academy .ar-members-guide__subtitle {
+      font-size: 12px;
+    }
+    
+    html.ar-academy .ar-members-guide__button {
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+  }
   </style>
   
   <div class="ar-academy-dashboard">
     <div class="ar-academy-dashboard__inner">
+      <div class="ar-academy-dashboard__main">
   
       <div class="ar-academy-editor-banner" id="ar-academy-editor-banner">
         Editor preview mode detected — access redirects are disabled so you can edit this page safely.
@@ -842,16 +1181,22 @@ Keeps all styling + elements. Access guard still runs on live site.
               <div class="ar-tile__tip">Grab a pack and follow the step-by-step field exercises.</div>
             </div>
   
+            <div id="arp-checklists-tile" class="ar-tile ar-span-4">
+              <div class="ar-tile__title">
+                <span class="ar-tile__icon">✅</span>
+                <span>1-Page Field Checklists</span>
+                <span id="ar-checklists-progress-title" class="ar-tile__progress"></span>
+              </div>
+              <div class="ar-tile__desc">35 One-page Field Checklists</div>
+              <!-- Checklists grid will be rendered here -->
+              <div id="ar-checklists-mini-grid" style="margin-top:12px; display:none;"></div>
+              <div class="ar-tile__tip">Print one page per lesson and take it on location.</div>
+            </div>
+  
             <a id="arp-ebook-tile" class="ar-tile ar-span-4" href="/academy/ebook">
               <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
               <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
               <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
-            </a>
-  
-            <a id="arp-checklists-tile" class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-checklists">
-              <div class="ar-tile__title"><span class="ar-tile__icon">✅</span>1-Page Field Checklists</div>
-              <div class="ar-tile__desc">35 One-page Field Checklists</div>
-              <div class="ar-tile__tip">Print one page per lesson and take it on location.</div>
             </a>
           </div>
         </div>
@@ -962,6 +1307,158 @@ Keeps all styling + elements. Access guard still runs on live site.
           </div>
 
           <div class="ar-tile__tip">View your saved bookmarks and recent activity.</div>
+        </div>
+      </div>
+      </div>
+      
+      <!-- Members Guide Accordion Sidebar -->
+      <div class="ar-academy-dashboard__sidebar">
+        <div class="ar-members-guide">
+          <div class="ar-members-guide__header">
+            <h2 class="ar-members-guide__title">
+              <span class="ar-members-guide__icon">📚</span>
+              Members Guide
+            </h2>
+            <p class="ar-members-guide__subtitle">Navigation help and step-by-step instructions</p>
+          </div>
+          
+          <div class="ar-members-guide__accordion">
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Getting Started</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p><strong>Welcome to your Academy Dashboard!</strong></p>
+                <p>Start by exploring the <strong>Modules</strong> section. Each module is a step-by-step lesson covering different photography topics.</p>
+                <ul>
+                  <li>Click any numbered cube to open a module</li>
+                  <li>Orange cubes = modules you've opened</li>
+                  <li>Grey cubes = modules not yet started</li>
+                  <li>Track your progress: "X/60 opened" shows how many modules you've completed</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Modules Explained</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>The <strong>Modules</strong> section contains 60 lessons organized into 5 categories:</p>
+                <ul>
+                  <li><strong>15 Key Camera Setting Modules</strong> - Learn essential camera controls</li>
+                  <li><strong>10 Essential Gear and Accessory Guides</strong> - Equipment recommendations</li>
+                  <li><strong>10 Composition Guide Modules</strong> - Improve your photo composition</li>
+                  <li><strong>10 Photography Genre Topic Guides</strong> - Explore different photography styles</li>
+                  <li><strong>15 Practical Photography Assignments</strong> - Hands-on practice exercises</li>
+                </ul>
+                <p>Each module opens as a web page. PDF assignments open in a new tab so you don't lose your place.</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Exams & Certificates</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>Test your knowledge with <strong>Exams & Certificates</strong>:</p>
+                <ul>
+                  <li>Green cubes = exams you've passed</li>
+                  <li>Red cubes = exams you've failed (you can retake them)</li>
+                  <li>Grey cubes = exams not yet attempted</li>
+                  <li>Click "View Details" to see your exam history and download certificates</li>
+                  <li>Your progress shows as "X/15 passed"</li>
+                </ul>
+                <p><strong>Tip:</strong> Review the relevant modules before taking an exam to improve your chances of passing!</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Practice Packs</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p><strong>Practice Packs</strong> are 30 field exercises to reinforce what you've learned:</p>
+                <ul>
+                  <li>Organized into 3 categories: Technical Foundations, Composition & Creative, and Genre-Specific</li>
+                  <li>Each practice pack is a web page with step-by-step instructions</li>
+                  <li>Orange cubes = practice packs you've opened</li>
+                  <li>Track your progress: "X/30 opened"</li>
+                </ul>
+                <p>These are practical exercises you can do on location to improve your photography skills.</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">1-Page Field Checklists</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p><strong>1-Page Field Checklists</strong> are quick reference guides:</p>
+                <ul>
+                  <li>35 printable checklists covering composition, genres, and camera settings</li>
+                  <li>Each checklist opens as a PDF in a new tab</li>
+                  <li>Print them and take them on location for quick reference</li>
+                  <li>Track your progress: "X/35 opened"</li>
+                </ul>
+                <p><strong>Tip:</strong> Bookmark your favorite checklists for easy access!</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Bookmarks & Recent Activity</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>Use <strong>Bookmarks</strong> to save your favorite modules and pages:</p>
+                <ul>
+                  <li>Click the bookmark button (⭐) on any module or article page</li>
+                  <li>Save up to 20 bookmarks</li>
+                  <li>Access them quickly from your dashboard</li>
+                </ul>
+                <p><strong>Recent Activity</strong> shows the last 10 pages you've visited, making it easy to pick up where you left off.</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Photography Style Quiz</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>Discover your photography style with the <strong>Photography Personality Quiz</strong>:</p>
+                <ul>
+                  <li>Located in the Membership Status tile</li>
+                  <li>Click "Take Photography Personality Quiz" to get started</li>
+                  <li>Your results will be saved and displayed on your dashboard</li>
+                  <li>You can retake the quiz anytime if your interests change</li>
+                </ul>
+                <p>The quiz helps identify your primary photography style and other interests.</p>
+              </div>
+            </div>
+            
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Need Help?</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>If you need assistance, check out:</p>
+                <ul>
+                  <li><strong>Course Feedback</strong> - Submit questions and share your progress</li>
+                  <li><strong>Your Questions & Answers</strong> - Browse common questions and answers</li>
+                  <li><strong>Robo-Ranger Chat</strong> - Get instant answers from Alan's AI assistant</li>
+                </ul>
+                <p>You can also manage your subscription and account settings from the <strong>Membership Status</strong> tile.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1887,6 +2384,8 @@ Keeps all styling + elements. Access guard still runs on live site.
         // Render mini grid
         if (miniGridEl) {
           var gridHtml = '';
+          
+          // Render existing 15 exams
           modules.forEach(function(module) {
             var statusClass = 'status-' + module.status;
             
@@ -1907,11 +2406,33 @@ Keeps all styling + elements. Access guard still runs on live site.
             
             gridHtml += '<div class="ar-exam-module-pill ' + statusClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || '') + '" data-module-attempts="' + (module.attempts || 0) + '" title="' + safeTooltip + '">' + module.label + '</div>';
           });
+          
+          // Add "Coming soon" subtitle - force new line with flex-basis, no left margin/padding
+          gridHtml += '<div class="ar-exam-coming-soon-label" style="flex-basis: 100%; width: 100%; margin: 12px 0 8px 0; padding: 0; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Coming soon</div>';
+          
+          // Add 20 placeholder cubes (exams 16-35) - render EXACTLY like existing tiles above
+          // First row: 16-25 (10 cubes)
+          for (var i = 16; i <= 25; i++) {
+            var label = String(i).padStart(2, '0');
+            // Use EXACT same structure as existing tiles - just different status class
+            gridHtml += '<div class="ar-exam-module-pill status-coming-soon" title="Coming soon" data-placeholder="true">' + label + '</div>';
+          }
+          
+          // Force line break for second row - invisible spacer
+          gridHtml += '<div style="flex-basis: 100%; width: 0; height: 0; margin: 0; padding: 0; border: 0;"></div>';
+          
+          // Second row: 26-35 (10 cubes) - render EXACTLY like existing tiles
+          for (var i = 26; i <= 35; i++) {
+            var label = String(i).padStart(2, '0');
+            // Use EXACT same structure as existing tiles - just different status class
+            gridHtml += '<div class="ar-exam-module-pill status-coming-soon" title="Coming soon" data-placeholder="true">' + label + '</div>';
+          }
+          
           miniGridEl.innerHTML = gridHtml;
           miniGridEl.style.display = 'flex';
           
-          // Add click handlers to exam pills to navigate to exam page
-          var examPills = miniGridEl.querySelectorAll('.ar-exam-module-pill');
+          // Add click handlers to exam pills to navigate to exam page (skip placeholders)
+          var examPills = miniGridEl.querySelectorAll('.ar-exam-module-pill:not(.status-coming-soon)');
           examPills.forEach(function(pill) {
             pill.addEventListener('click', function(e) {
               e.preventDefault();
@@ -2265,9 +2786,117 @@ Keeps all styling + elements. Access guard still runs on live site.
       try { globalThis.location.href = url; } catch(e) {}
     }
   
+    // Position Members Guide below Academy header (only on desktop)
+    function positionMembersGuide() {
+      var headerContainer = document.getElementById('ar-academy-header-container');
+      var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
+      
+      if (!headerContainer || !sidebar) {
+        return;
+      }
+      
+      // Check if we're on mobile/tablet (sidebar should be relative, not fixed)
+      var isMobile = window.innerWidth <= 1200;
+      var computedStyle = window.getComputedStyle(sidebar);
+      var isFixed = computedStyle.position === 'fixed';
+      
+      // Only position if sidebar is fixed (desktop view)
+      if (isMobile || !isFixed) {
+        // On mobile, sidebar is relative - don't position it
+        return;
+      }
+      
+      // Get the actual bottom position of the Academy header relative to viewport
+      var headerRect = headerContainer.getBoundingClientRect();
+      var headerBottom = headerRect.bottom;
+      
+      // The header is sticky, so its bottom position relative to viewport tells us where to start
+      // If headerBottom is 0 or negative, header might not be visible yet, use default
+      var topPosition = headerBottom > 0 ? headerBottom : (headerRect.height || 80);
+      
+      // Add a small gap below the header
+      topPosition = topPosition + 2;
+      
+      // Ensure minimum position (in case calculation fails)
+      if (topPosition < 80) {
+        topPosition = 82; // Default to just below typical header height
+      }
+      
+      sidebar.style.top = topPosition + 'px';
+      sidebar.style.maxHeight = 'calc(100vh - ' + (topPosition + 20) + 'px)';
+    }
+    
+    // Initialize Members Guide Accordion
+    function initMembersGuideAccordion() {
+      var accordionButtons = document.querySelectorAll('.ar-members-guide__button');
+      accordionButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          var isExpanded = this.getAttribute('aria-expanded') === 'true';
+          var content = this.nextElementSibling;
+          
+          // Close all other items (optional - remove if you want multiple open)
+          // accordionButtons.forEach(function(btn) {
+          //   if (btn !== button) {
+          //     btn.setAttribute('aria-expanded', 'false');
+          //     btn.nextElementSibling.style.maxHeight = '0';
+          //     btn.nextElementSibling.style.padding = '0 16px';
+          //   }
+          // });
+          
+          // Toggle current item
+          this.setAttribute('aria-expanded', !isExpanded);
+          if (!isExpanded) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            content.style.padding = '0 16px 16px 16px';
+          } else {
+            content.style.maxHeight = '0';
+            content.style.padding = '0 16px';
+          }
+        });
+      });
+    }
+    
     ready(function(){
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.remove("is-ready");
+      
+      // Position Members Guide below header
+      // Wait for header to be fully rendered
+      function initMembersGuidePosition() {
+        var headerContainer = document.getElementById('ar-academy-header-container');
+        if (headerContainer) {
+          positionMembersGuide();
+        } else {
+          // Retry if header not ready yet
+          setTimeout(initMembersGuidePosition, 50);
+        }
+      }
+      
+      initMembersGuidePosition();
+      
+      // Re-position on window resize and scroll (header might be sticky)
+      // Use debounced resize handler
+      var resizeTimeout;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(positionMembersGuide, 100);
+      });
+      
+      // Only reposition on scroll if on desktop (sidebar is fixed)
+      window.addEventListener('scroll', function() {
+        var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
+        if (sidebar && window.getComputedStyle(sidebar).position === 'fixed') {
+          positionMembersGuide();
+        }
+      });
+      
+      // Also re-position after delays to ensure header is fully rendered
+      setTimeout(positionMembersGuide, 200);
+      setTimeout(positionMembersGuide, 500);
+      setTimeout(positionMembersGuide, 1000);
+      
+      // Initialize accordion
+      initMembersGuideAccordion();
   
       var isEditor = inSquarespaceEditor();
       var banner = document.getElementById("ar-academy-editor-banner");
@@ -2304,11 +2933,162 @@ Keeps all styling + elements. Access guard still runs on live site.
         }
       } catch(e) { /* ignore */ }
 
-      // Live site: Guard access (no flash)
+      // Ghost login/preview mode: Check for ?ghost=memberId OR ?ghostEmail=email parameter
+      var ghostMemberId = null;
+      var ghostEmail = null;
+      try {
+        var urlParams = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+        ghostMemberId = urlParams.get("ghost");
+        ghostEmail = urlParams.get("ghostEmail");
+      } catch(e) { /* ignore */ }
+
+      // If ghost mode is requested, handle it BEFORE normal authentication
+      // This allows admins to ghost login even if they're not logged into Memberstack on Squarespace
+      if (ghostMemberId || ghostEmail) {
+        // Build API URL with appropriate parameter
+        var apiUrl = 'https://alanranger-modules.vercel.app/api/admin/ghost-login?';
+        if (ghostMemberId) {
+          apiUrl += 'memberId=' + encodeURIComponent(ghostMemberId);
+        } else {
+          apiUrl += 'email=' + encodeURIComponent(ghostEmail);
+        }
+        
+        // Show ghost mode banner
+        var ghostBanner = document.createElement('div');
+        ghostBanner.id = 'ar-ghost-mode-banner';
+        ghostBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#E57200;color:#fff;padding:12px;text-align:center;font-weight:700;font-size:14px;z-index:10000;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        var bannerText = ghostMemberId ? ('member ' + escapeHtml(ghostMemberId)) : ('email ' + escapeHtml(ghostEmail));
+        ghostBanner.innerHTML = '👻 GHOST MODE: Loading dashboard as ' + bannerText + '...';
+        document.body.appendChild(ghostBanner);
+        
+        // Fetch ghost member data (API will check admin access)
+        fetch(apiUrl, {
+          method: 'GET',
+          credentials: 'include'
+        })
+        .then(function(response) {
+          if (!response.ok) {
+            if (response.status === 403) {
+              throw new Error('Admin access required. Please log in as an admin first.');
+            } else if (response.status === 404) {
+              throw new Error('Member not found');
+            }
+            throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(ghostData) {
+          console.log("[Ghost Login] Ghost member data:", ghostData);
+          
+          // Remove loading banner and show success banner
+          var bannerEl = document.getElementById('ar-ghost-mode-banner');
+          if (bannerEl) {
+            var actualMemberId = ghostData.member?.id || ghostMemberId;
+            var actualEmail = ghostData.member?.auth?.email || ghostData.member?.email || ghostEmail;
+            var bannerText = ghostEmail ? (escapeHtml(actualEmail) + ' (ID: ' + escapeHtml(actualMemberId) + ')') : escapeHtml(actualMemberId);
+            bannerEl.innerHTML = '👻 GHOST MODE: Viewing dashboard as ' + bannerText + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit Ghost Mode</a>';
+          }
+          
+          // Replace member data with ghost member data
+          var ghostMember = ghostData.member || {};
+          var ghostMemberJson = ghostData.memberJson || {};
+          
+          // Use the actual member ID from the response (in case we searched by email)
+          var actualGhostMemberId = ghostMember.id || ghostMemberId;
+          
+          // Create a mock member object that matches the expected structure
+          var mockMember = {
+            id: actualGhostMemberId,
+            data: {
+              id: actualGhostMemberId,
+              email: ghostMember.auth?.email || ghostMember.email || ghostEmail || '',
+              customFields: ghostMember.customFields || {},
+              planConnections: ghostMember.planConnections || [],
+              auth: ghostMember.auth || {}
+            }
+          };
+          
+          // Wait for Memberstack to be available, then override getMemberJSON
+          waitForMemberstack(8000).then(function(ms){
+            if (!ms) {
+              console.error("[Ghost Login] Memberstack not available");
+              return;
+            }
+            
+            // Override getMemberJSON to return ghost member's JSON
+            if (typeof ms.getMemberJSON === 'function') {
+              var originalGetMemberJSON = ms.getMemberJSON;
+              ms.getMemberJSON = function() {
+                return Promise.resolve(ghostMemberJson);
+              };
+            }
+            
+            // Override getCurrentMember to return ghost member
+            if (typeof ms.getCurrentMember === 'function') {
+              var originalGetCurrentMember = ms.getCurrentMember;
+              ms.getCurrentMember = function() {
+                return Promise.resolve(mockMember);
+              };
+            }
+            
+            // Show dashboard with ghost member data
+            if (dashboardEl) dashboardEl.classList.add("is-ready");
+            renderMemberStatus(mockMember, ms);
+            loadExamProgress(mockMember);
+            loadQAQuestionCounts(mockMember, ms);
+            renderProviderState(mockMember);
+            wirePortal(ms);
+            
+            // Load module progress with ghost member JSON
+            if (typeof run === 'function') {
+              setTimeout(function() {
+                run().catch(function(err) {
+                  console.error("[Ghost Login] Error in run():", err);
+                });
+              }, 500);
+            } else {
+              console.warn("[Ghost Login] run() function not found, module progress may not load");
+            }
+          });
+        })
+        .catch(function(error) {
+          console.error("[Ghost Login] Error:", error);
+          var bannerEl = document.getElementById('ar-ghost-mode-banner');
+          if (bannerEl) {
+            bannerEl.style.background = '#ef4444';
+            bannerEl.innerHTML = '❌ Ghost Login Failed: ' + escapeHtml(error.message) + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+          }
+          
+          // If it's an admin access error, redirect to login after 3 seconds
+          if (error.message.includes('Admin access required')) {
+            setTimeout(function() {
+              safeRedirect(LOGIN_URL + '?error=admin-login-required');
+            }, 3000);
+          } else {
+            // For other errors, remove ghost parameters and reload after 3 seconds
+            setTimeout(function() {
+              try {
+                var newParams = new URLSearchParams(urlParams);
+                newParams.delete("ghost");
+                newParams.delete("ghostEmail");
+                globalThis.location.href = globalThis.location.pathname + (newParams.toString() ? ("?" + newParams.toString()) : "");
+              } catch(e) {
+                globalThis.location.href = globalThis.location.pathname;
+              }
+            }, 3000);
+          }
+        });
+        
+        return; // Exit early - ghost mode handles its own flow
+      }
+
+      // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       waitForMemberstack(8000).then(function(ms){
         if (!ms) { safeRedirect(LOGIN_URL); return; }
         return getMemberExtended(ms).then(function(m){
           if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+          
+          // Normal dashboard flow (ghost mode already handled above)
           
           // Debug logging: log full member payload
           console.log("[MS] member payload", m);
@@ -2904,13 +3684,52 @@ Keeps all styling + elements. Access guard still runs on live site.
         '/blog-on-photography/portrait-photography-practice-assignment',
         '/blog-on-photography/black-and-white-photography-practise-assignment'
       ];
+      // Checklist URLs - defined here to check against when filtering
+      const CHECKLIST_URLS_FOR_FILTER = [
+        '/blog-on-photography/photography-storytelling-composition',
+        '/blog-on-photography/composition-photography-style',
+        '/blog-on-photography/photography-composition-observation',
+        '/blog-on-photography/photography-composition-negative-spacee',
+        '/blog-on-photography/photography-composition-leading-lines',
+        '/blog-on-photography/photography-composition-framing',
+        '/blog-on-photography/photography-contrast-composition',
+        '/blog-on-photography/photography-compositional-balance',
+        '/blog-on-photography/photography-composition-rules',
+        '/blog-on-photography/15-principles-to-improve-composition',
+        '/blog-on-photography/street-photography-guide',
+        '/blog-on-photography/still-life-photography-guide',
+        '/blog-on-photography/product-photography-guide',
+        '/blog-on-photography/portrait-photography-guide',
+        '/blog-on-photography/minimalist-photography-guide',
+        '/blog-on-photography/macro-photography-guide',
+        '/blog-on-photography/long-exposure-photography-guide',
+        '/blog-on-photography/landscape-photography-guide',
+        '/blog-on-photography/black-and-white-photography-guide',
+        '/blog-on-photography/architecture-photography-guide-checklist',
+        '/blog-on-photography/camera-white-balance-settings',
+        '/blog-on-photography/camera-shutter-speed-settings',
+        '/blog-on-photography/camera-metering-settings',
+        '/blog-on-photography/camera-manual-exposure-settings',
+        '/blog-on-photography/jpg-vs-raw-settings',
+        '/blog-on-photography/iso-camera-settings',
+        '/blog-on-photography/full-frame-or-crop-sensor',
+        '/blog-on-photography/camera-focus-plane',
+        '/blog-on-photography/lens-focal-length',
+        '/blog-on-photography/camera-exposure-checklist',
+        '/blog-on-photography/exposure-bracketing-checklist',
+        '/blog-on-photography/camera-dynamic-range',
+        '/blog-on-photography/camera-drive-modes-checklist',
+        '/blog-on-photography/depth-of-field-checklist',
+        '/blog-on-photography/aperture-field-checklist'
+      ];
       Object.keys(opened).forEach(function(key) {
         const normalizedKey = normalizePath(key);
-        // Check if normalized key is in definitive module list OR practice pack list
+        // Check if normalized key is in definitive module list OR practice pack list OR checklist list
         const isModule = DEFINITIVE_MODULE_URLS.includes(normalizedKey);
         const isPracticePack = PRACTICE_PACK_URLS_FOR_FILTER.includes(normalizedKey);
+        const isChecklist = CHECKLIST_URLS_FOR_FILTER.includes(normalizedKey);
         
-        if (isModule || isPracticePack) {
+        if (isModule || isPracticePack || isChecklist) {
           // Use normalized key (this migrates legacy keys to normalized format)
           // If normalized key already exists, prefer the one with earlier 'at' timestamp
           if (!filteredOpenedForSave[normalizedKey] || 
@@ -3421,6 +4240,218 @@ Keeps all styling + elements. Access guard still runs on live site.
         console.error('[Practice Packs] Error rendering practice packs grid:', err);
         console.error('[Practice Packs] Error details:', err.message, err.stack);
         // Don't break dashboard if practice packs fail
+      }
+      
+      // Render checklists grid (similar to practice packs)
+      try {
+        // Checklists URLs organized by category (from Excel file)
+        const CHECKLIST_URLS = [
+          // Composition Guides (10) - 1-10
+          '/blog-on-photography/photography-storytelling-composition',
+          '/blog-on-photography/composition-photography-style',
+          '/blog-on-photography/photography-composition-observation',
+          '/blog-on-photography/photography-composition-negative-spacee',
+          '/blog-on-photography/photography-composition-leading-lines',
+          '/blog-on-photography/photography-composition-framing',
+          '/blog-on-photography/photography-contrast-composition',
+          '/blog-on-photography/photography-compositional-balance',
+          '/blog-on-photography/photography-composition-rules',
+          '/blog-on-photography/15-principles-to-improve-composition',
+          // Genre Guides (10) - 11-20
+          '/blog-on-photography/street-photography-guide',
+          '/blog-on-photography/still-life-photography-guide',
+          '/blog-on-photography/product-photography-guide',
+          '/blog-on-photography/portrait-photography-guide',
+          '/blog-on-photography/minimalist-photography-guide',
+          '/blog-on-photography/macro-photography-guide',
+          '/blog-on-photography/long-exposure-photography-guide',
+          '/blog-on-photography/landscape-photography-guide',
+          '/blog-on-photography/black-and-white-photography-guide',
+          '/blog-on-photography/architecture-photography-guide-checklist',
+          // Camera Settings Guides (15) - 21-35
+          '/blog-on-photography/camera-white-balance-settings',
+          '/blog-on-photography/camera-shutter-speed-settings',
+          '/blog-on-photography/camera-metering-settings',
+          '/blog-on-photography/camera-manual-exposure-settings',
+          '/blog-on-photography/jpg-vs-raw-settings',
+          '/blog-on-photography/iso-camera-settings',
+          '/blog-on-photography/full-frame-or-crop-sensor',
+          '/blog-on-photography/camera-focus-plane',
+          '/blog-on-photography/lens-focal-length',
+          '/blog-on-photography/camera-exposure-checklist',
+          '/blog-on-photography/exposure-bracketing-checklist',
+          '/blog-on-photography/camera-dynamic-range',
+          '/blog-on-photography/camera-drive-modes-checklist',
+          '/blog-on-photography/depth-of-field-checklist',
+          '/blog-on-photography/aperture-field-checklist'
+        ];
+        
+        const checklistsMiniGridEl = document.getElementById('ar-checklists-mini-grid');
+        if (checklistsMiniGridEl) {
+          // Count opened checklists
+          var checklistsOpened = 0;
+          CHECKLIST_URLS.forEach(function(checklistUrl) {
+            if (!checklistUrl) return;
+            var normalizedChecklistUrl = normalizePath(checklistUrl);
+            if (opened[checklistUrl] || opened[normalizedChecklistUrl]) {
+              checklistsOpened++;
+            }
+          });
+          
+          // Update checklists progress title
+          var checklistsProgressTitleEl = document.getElementById('ar-checklists-progress-title');
+          if (checklistsProgressTitleEl) {
+            if (checklistsOpened > 0) {
+              checklistsProgressTitleEl.textContent = checklistsOpened + '/35 opened';
+            } else {
+              checklistsProgressTitleEl.textContent = '';
+            }
+          }
+          
+          var checklistsGridHtml = '';
+          
+          // Define checklist groups with their ranges and labels
+          var checklistGroups = [
+            { name: 'composition', start: 0, end: 9, label: 'Composition Guides' },
+            { name: 'genre', start: 10, end: 19, label: 'Genre Guides' },
+            { name: 'camera', start: 20, end: 34, label: 'Camera Settings Guides' }
+          ];
+          
+          // Helper function to get checklist title from URL
+          function getChecklistTitle(checklistUrl, normalizedUrl) {
+            var openedChecklist = opened[checklistUrl] || opened[normalizedUrl];
+            if (openedChecklist && openedChecklist.t) {
+              return openedChecklist.t;
+            }
+            // Fallback: derive title from URL
+            var urlParts = checklistUrl.split('/').filter(function(p) { return p; });
+            var lastPart = urlParts[urlParts.length - 1] || '';
+            var title = lastPart.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+            return title;
+          }
+          
+          // Render each category as a separate row
+          checklistGroups.forEach(function(group) {
+            checklistsGridHtml += '<div class="ar-checklist-category-row" style="width:100%; margin-bottom:6px;">';
+            checklistsGridHtml += '<div class="ar-checklist-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+            checklistsGridHtml += '<div class="ar-checklist-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+            
+            // Cubes for this category
+            for (var i = group.start; i <= group.end; i++) {
+              var checklistUrl = CHECKLIST_URLS[i];
+              if (!checklistUrl) continue;
+              
+              var normalizedChecklistUrl = normalizePath(checklistUrl);
+              var isOpened = !!(opened[checklistUrl] || opened[normalizedChecklistUrl]);
+              var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+              var label = String(i + 1).padStart(2, '0');
+              var fullUrl = 'https://www.alanranger.com' + checklistUrl;
+              var checklistTitle = getChecklistTitle(checklistUrl, normalizedChecklistUrl);
+              
+              var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+              var safeChecklistUrl = (typeof escapeHtml === 'function') ? escapeHtml(checklistUrl) : checklistUrl.replace(/"/g, '&quot;');
+              var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+              var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(checklistTitle) : checklistTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+              
+              checklistsGridHtml += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="ar-checklist-cube ' + statusClass + '" data-checklist-url="' + safeChecklistUrl + '" data-checklist-number="' + (i + 1) + '" data-checklist-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+            }
+            
+            checklistsGridHtml += '</div>';
+            checklistsGridHtml += '</div>';
+          });
+          
+          checklistsMiniGridEl.innerHTML = checklistsGridHtml;
+          checklistsMiniGridEl.style.display = 'block';
+          
+          // Add click handlers to track checklist opens (open PDFs in new tab)
+          var checklistCubes = checklistsMiniGridEl.querySelectorAll('.ar-checklist-cube');
+          checklistCubes.forEach(function(cube) {
+            cube.addEventListener('click', function(e) {
+              var cubeEl = this;
+              var checklistUrl = cubeEl.getAttribute('data-checklist-url');
+              var category = cubeEl.getAttribute('data-checklist-category');
+              var checklistTitle = cubeEl.getAttribute('title') || 'Checklist';
+              
+              if (!checklistUrl) return;
+              
+              var normalizedUrl = normalizePath(checklistUrl);
+              var alreadyOpened = !!(opened[checklistUrl] || opened[normalizedUrl]);
+              
+              if (!alreadyOpened) {
+                var nowIso = new Date().toISOString();
+                opened[normalizedUrl] = {
+                  cat: category,
+                  t: checklistTitle,
+                  at: nowIso,
+                  lastAt: nowIso
+                };
+                
+                cubeEl.classList.remove('status-not-opened');
+                cubeEl.classList.add('status-opened');
+                
+                // Update progress count immediately
+                checklistsOpened++;
+                if (checklistsProgressTitleEl) {
+                  checklistsProgressTitleEl.textContent = checklistsOpened + '/35 opened';
+                }
+                
+                // Save to Memberstack asynchronously
+                (async function() {
+                  try {
+                    var jsonRes = await ms.getMemberJSON();
+                    var memberJson = normalizeMemberJson(jsonRes);
+                    
+                    if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                    if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                    if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                    
+                    memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                      cat: category,
+                      t: checklistTitle,
+                      at: nowIso,
+                      lastAt: nowIso
+                    };
+                    
+                    // Also add to history array
+                    if (!memberJson.history) memberJson.history = [];
+                    var checklistFullUrl = 'https://www.alanranger.com' + checklistUrl;
+                    memberJson.history = memberJson.history.filter(function(item) {
+                      return item && item.url !== checklistFullUrl && item.url !== checklistUrl && item.url !== normalizedUrl;
+                    });
+                    memberJson.history.unshift({
+                      url: checklistFullUrl,
+                      title: checklistTitle,
+                      timestamp: nowIso,
+                      date: nowIso
+                    });
+                    if (memberJson.history.length > 20) {
+                      memberJson.history = memberJson.history.slice(0, 20);
+                    }
+                    
+                    await ms.updateMemberJSON({ json: memberJson });
+                    
+                    console.log('[Checklists] Saved checklist to Memberstack:', normalizedUrl);
+                  } catch (err) {
+                    console.error('[Checklists] Failed to save checklist to Memberstack:', err);
+                    cubeEl.classList.remove('status-opened');
+                    cubeEl.classList.add('status-not-opened');
+                    delete opened[normalizedUrl];
+                    // Revert progress count
+                    checklistsOpened--;
+                    if (checklistsProgressTitleEl) {
+                      checklistsProgressTitleEl.textContent = checklistsOpened > 0 ? checklistsOpened + '/35 opened' : '';
+                    }
+                  }
+                })();
+              }
+              // Note: target="_blank" on the <a> tag will open in new tab automatically
+            });
+          });
+        }
+      } catch (err) {
+        console.error('[Checklists] Error rendering checklists grid:', err);
+        console.error('[Checklists] Error details:', err.message, err.stack);
+        // Don't break dashboard if checklists fail
       }
     }
     
