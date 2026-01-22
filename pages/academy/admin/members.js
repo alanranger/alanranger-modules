@@ -10,10 +10,26 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberDetails, setMemberDetails] = useState(null);
+  const [activeNowCount, setActiveNowCount] = useState(0);
+  const [activeNowLoading, setActiveNowLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     fetchMembers();
   }, [router.query]);
+
+  // Fetch active now count and set up polling every 5 minutes
+  useEffect(() => {
+    fetchActiveNow();
+    
+    // Set up polling every 5 minutes (300000 ms)
+    const pollInterval = setInterval(() => {
+      fetchActiveNow();
+    }, 5 * 60 * 1000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
+  }, []);
 
   async function fetchMembers() {
     setLoading(true);
@@ -25,6 +41,21 @@ export default function MembersPage() {
       console.error('Failed to fetch members:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchActiveNow() {
+    setActiveNowLoading(true);
+    try {
+      const res = await fetch('/api/admin/members/active-now');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setActiveNowCount(data.count || 0);
+      setLastUpdated(data.last_updated ? new Date(data.last_updated) : new Date());
+    } catch (error) {
+      console.error('Failed to fetch active now count:', error);
+    } finally {
+      setActiveNowLoading(false);
     }
   }
 
@@ -56,6 +87,22 @@ export default function MembersPage() {
         </Link>
         <h1 className="ar-admin-title">Member Analytics</h1>
         <p className="ar-admin-subtitle">Member activity and engagement</p>
+      </div>
+
+      {/* Active Now Tile */}
+      <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
+        <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+          <div className="ar-admin-kpi-label">Logged In Right Now</div>
+          <div className="ar-admin-kpi-value">
+            {activeNowLoading ? '...' : activeNowCount}
+          </div>
+          <div className="ar-admin-kpi-period">
+            {lastUpdated 
+              ? `Updated ${lastUpdated.toLocaleTimeString()}`
+              : 'Refreshing every 5 minutes'
+            }
+          </div>
+        </div>
       </div>
 
       <div className="ar-admin-filters">
