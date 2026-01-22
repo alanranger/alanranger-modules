@@ -16,7 +16,8 @@ Admin analytics dashboard for the Academy, providing insights into user activity
 - `/api/admin/kpis` - Dashboard KPI metrics
 - `/api/admin/activity` - Activity stream
 - `/api/admin/modules` - Module analytics
-- `/api/admin/members` - Member analytics
+- `/api/admin/members` - Member analytics (with filters: plan, status, search, last_seen, active_now)
+- `/api/admin/members-active-now` - Count of members logged in right now (GET)
 - `/api/admin/exams` - Exam analytics
 
 ### Pages
@@ -323,6 +324,51 @@ Matches Academy Dashboard dark theme:
 - Accent: `#E57200` (orange)
 - Text: `#f9fafb`
 
+## Recent Features
+
+### "Logged In Right Now" Feature (2026-01-22)
+
+**Location:** Members Directory page (`/academy/admin/members`)
+
+**Description:**
+A real-time KPI tile that displays the count of members who are currently logged in and active on the Academy platform.
+
+**Features:**
+- **Real-time count** - Shows number of members with activity in the last 30 minutes
+- **Auto-refresh** - Polls every 1 minute to update the count
+- **Clickable filter** - Click the tile to filter the members table to show only logged-in members
+- **Visual indicator** - Tile shows orange border and dot (●) when filter is active
+- **Manual refresh** - Refresh button (↻) in top-right corner of tile
+
+**How it works:**
+- Counts members with **any activity** (login, module_open, dashboard_access, etc.) within the last 30 minutes
+- Accounts for automatic session timeouts - if they're active, they're logged in
+- Filter state persists in URL query params (`?active_now=true`)
+- Clicking the tile again clears the filter
+
+**API Endpoint:**
+- **Route:** `/api/admin/members-active-now` (Vercel serverless function)
+- **Method:** GET
+- **Response:**
+  ```json
+  {
+    "count": 2,
+    "last_updated": "2026-01-22T23:00:14.000Z"
+  }
+  ```
+
+**Filtering Logic:**
+- When `active_now=true` is passed to `/api/admin/members`, the API filters to only members with activity in the last 30 minutes
+- Uses `academy_events` table to find recent activity
+- Only includes valid members (trial or annual plans, ACTIVE or TRIALING status)
+
+**Technical Details:**
+- Frontend: `pages/academy/admin/members/index.js`
+- API: `api/admin/members-active-now.js` (Vercel serverless function)
+- Polling interval: 1 minute (60000ms)
+- Activity window: 30 minutes
+- Filter parameter: `active_now=true` in URL query string
+
 ## Recent Features (2026-01-20)
 
 ### Conversion Detection & Revenue Metrics
@@ -378,6 +424,7 @@ alanranger-academy-assesment/
 │       ├── modules.js        # Module analytics
 │       ├── modules/[path].js # Module details
 │       ├── members.js        # Member analytics
+│       ├── members-active-now.js # Logged in right now count
 │       ├── members/[memberId].js # Member details
 │       ├── exams.js          # Exam results
 │       └── exams/stats.js    # Exam statistics
