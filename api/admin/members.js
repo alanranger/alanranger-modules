@@ -100,8 +100,17 @@ module.exports = async (req, res) => {
       .in('member_id', memberIds)
       .order('created_at', { ascending: false });
     
+    // Get last login events per member (for last_login field)
+    const { data: lastLogins } = await supabase
+      .from('academy_events')
+      .select('member_id, created_at')
+      .in('member_id', memberIds)
+      .eq('event_type', 'login')
+      .order('created_at', { ascending: false });
+    
     // If no events found, use empty array
     const activities = lastActivities || [];
+    const logins = lastLogins || [];
 
     // Get module opens count per member
     const { data: moduleOpens } = await supabase
@@ -218,6 +227,7 @@ module.exports = async (req, res) => {
         is_paid: plan.is_paid || false,
         signed_up: member.created_at,
         last_seen: lastSeenMap[memberId] || null,
+        last_login: lastLoginMap[memberId] || null,
         plan_expiry_date: expiryDate,
         modules_opened_unique: modulesOpenedUnique,
         modules_opened_total: modulesOpenedTotal,
