@@ -106,7 +106,9 @@ module.exports = async (req, res) => {
       memberIds = memberIds.filter(id => activeMemberIds.has(id));
       
       // Filter validMembers to only include active members
-      validMembers = validMembers.filter(m => memberIds.includes(m.member_id));
+      if (validMembers) {
+        validMembers = validMembers.filter(m => memberIds.includes(m.member_id));
+      }
     }
     
     // Get last activity per member - use a more efficient query
@@ -114,7 +116,7 @@ module.exports = async (req, res) => {
     const { data: lastActivities } = await supabase
       .from('academy_events')
       .select('member_id, created_at')
-      .in('member_id', memberIds)
+      .in('member_id', memberIds.length > 0 ? memberIds : [])
       .order('created_at', { ascending: false });
     
     // Get last login events per member (for last_login field)
