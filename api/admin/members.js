@@ -151,6 +151,33 @@ module.exports = async (req, res) => {
         lastSeenMap[memberId] = activity.created_at;
       }
     });
+    
+    // Build last login map (get 2nd most recent login as "last login", or most recent if only one)
+    const lastLoginMap = {};
+    const loginEventsByMember = {};
+    logins?.forEach(login => {
+      const memberId = login.member_id;
+      if (!loginEventsByMember[memberId]) {
+        loginEventsByMember[memberId] = [];
+      }
+      loginEventsByMember[memberId].push(login.created_at);
+    });
+    
+    // For each member, get the 2nd most recent login (previous login) or most recent if only one
+    Object.keys(loginEventsByMember).forEach(memberId => {
+      const loginTimes = loginEventsByMember[memberId].sort((a, b) => new Date(b) - new Date(a));
+      const now = new Date();
+      const mostRecent = new Date(loginTimes[0]);
+      const twoMinutesAgo = 2 * 60 * 1000;
+      
+      // If most recent login is very recent (within 2 min), use 2nd one as "last login"
+      // Otherwise use most recent
+      if (loginTimes.length >= 2 && (now.getTime() - mostRecent.getTime()) < twoMinutesAgo) {
+        lastLoginMap[memberId] = loginTimes[1]; // Previous login
+      } else {
+        lastLoginMap[memberId] = loginTimes[0]; // Most recent login
+      }
+    });
 
     const moduleOpensMap = {};
     const uniqueModulesMap = {};
