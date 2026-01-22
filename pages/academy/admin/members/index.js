@@ -23,14 +23,16 @@ export default function MembersDirectory() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [lastSeenFilter, setLastSeenFilter] = useState('');
+  const [activeNowFilter, setActiveNowFilter] = useState(false);
 
   useEffect(() => {
     // Read filters from URL query params
-    const { plan, status, search, last_seen, page, limit, sort, order } = router.query;
+    const { plan, status, search, last_seen, active_now, page, limit, sort, order } = router.query;
     if (plan) setPlanFilter(plan);
     if (status) setStatusFilter(status);
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
+    if (active_now !== undefined) setActiveNowFilter(active_now === 'true');
     if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
     if (limit) setPagination(prev => ({ ...prev, limit: parseInt(limit) }));
     if (sort) {
@@ -44,7 +46,7 @@ export default function MembersDirectory() {
   useEffect(() => {
     // Fetch members when pagination, filters, or sort changes
     fetchMembers();
-  }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, sortConfig]);
+  }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, activeNowFilter, sortConfig]);
 
   // Fetch active now count and set up polling every 1 minute
   useEffect(() => {
@@ -69,6 +71,7 @@ export default function MembersDirectory() {
       if (statusFilter) params.append('status', statusFilter);
       if (searchQuery) params.append('search', searchQuery);
       if (lastSeenFilter) params.append('last_seen', lastSeenFilter);
+      if (activeNowFilter) params.append('active_now', 'true');
       // Add sort parameters for server-side sorting
       if (sortConfig.field) {
         params.append('sort', sortConfig.field);
@@ -123,6 +126,27 @@ export default function MembersDirectory() {
     }
   }
 
+  function handleActiveNowClick() {
+    const newActiveNowFilter = !activeNowFilter;
+    setActiveNowFilter(newActiveNowFilter);
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1
+    
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...(planFilter && { plan: planFilter }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(searchQuery && { search: searchQuery }),
+        ...(lastSeenFilter && { last_seen: lastSeenFilter }),
+        ...(newActiveNowFilter && { active_now: 'true' }),
+        sort: sortConfig.field,
+        order: sortConfig.direction,
+        page: 1,
+        limit: pagination.limit
+      }
+    });
+  }
+
   function handleFilterChange() {
     router.push({
       pathname: '/academy/admin/members',
@@ -131,6 +155,7 @@ export default function MembersDirectory() {
         ...(statusFilter && { status: statusFilter }),
         ...(searchQuery && { search: searchQuery }),
         ...(lastSeenFilter && { last_seen: lastSeenFilter }),
+        ...(activeNowFilter && { active_now: 'true' }),
         sort: sortConfig.field,
         order: sortConfig.direction,
         page: 1, // Reset to page 1 when filters change
@@ -289,9 +314,22 @@ export default function MembersDirectory() {
 
         {/* Active Now Tile */}
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
-          <div className="ar-admin-kpi-tile" style={{ cursor: 'default', position: 'relative' }}>
+          <div 
+            className="ar-admin-kpi-tile" 
+            onClick={handleActiveNowClick}
+            style={{ 
+              cursor: 'pointer', 
+              position: 'relative',
+              border: activeNowFilter ? '2px solid var(--ar-orange)' : '1px solid var(--ar-border)',
+              background: activeNowFilter ? 'rgba(255, 152, 0, 0.1)' : 'var(--ar-card)'
+            }}
+            title={activeNowFilter ? 'Click to clear filter' : 'Click to filter by logged in members'}
+          >
             <button
-              onClick={fetchActiveNow}
+              onClick={(e) => {
+                e.stopPropagation();
+                fetchActiveNow();
+              }}
               disabled={activeNowLoading}
               style={{
                 position: 'absolute',
@@ -304,18 +342,22 @@ export default function MembersDirectory() {
                 padding: '4px 8px',
                 fontSize: '11px',
                 cursor: activeNowLoading ? 'not-allowed' : 'pointer',
-                opacity: activeNowLoading ? 0.5 : 1
+                opacity: activeNowLoading ? 0.5 : 1,
+                zIndex: 10
               }}
               title="Refresh count"
             >
               {activeNowLoading ? '...' : '↻'}
             </button>
-            <div className="ar-admin-kpi-label">Logged In Right Now</div>
+            <div className="ar-admin-kpi-label">
+              Logged In Right Now
+              {activeNowFilter && <span style={{ marginLeft: '8px', color: 'var(--ar-orange)' }}>●</span>}
+            </div>
             <div className="ar-admin-kpi-value">
               {activeNowLoading ? '...' : activeNowCount}
             </div>
             <div className="ar-admin-kpi-period">
-              {lastUpdated 
+              {lastUpdated
                 ? `Updated ${lastUpdated.toLocaleTimeString()}`
                 : 'Refreshing every 1 minute'
               }

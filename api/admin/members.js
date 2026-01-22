@@ -24,6 +24,7 @@ module.exports = async (req, res) => {
     const statusFilter = req.query.status; // 'active', 'trialing', 'canceled'
     const search = req.query.search; // name or email search
     const lastSeenFilter = req.query.last_seen; // '24h', '7d', '30d', 'never'
+    const activeNowFilter = req.query.active_now === 'true'; // filter to members with recent activity (last 30 min)
     const sortField = req.query.sort || 'updated_at'; // field to sort by
     const sortOrder = req.query.order || 'desc'; // 'asc' or 'desc'
 
@@ -90,7 +91,23 @@ module.exports = async (req, res) => {
     });
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
-    const memberIds = validMembers?.map(m => m.member_id) || [];
+    let memberIds = validMembers?.map(m => m.member_id) || [];
+    
+    // If active_now filter is enabled, filter to only members with activity in last 30 minutes
+    if (activeNowFilter && memberIds.length > 0) {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recentActivities } = await supabase
+        .from('academy_events')
+        .select('member_id')
+        .in('member_id', memberIds)
+        .gte('created_at', thirtyMinutesAgo);
+      
+      const activeMemberIds = new Set((recentActivities || []).map(a => a.member_id));
+      memberIds = memberIds.filter(id => activeMemberIds.has(id));
+      
+      // Filter validMembers to only include active members
+      validMembers = validMembers.filter(m => memberIds.includes(m.member_id));
+    }
     
     // Get last activity per member - use a more efficient query
     // Get the most recent event per member by using a subquery approach
