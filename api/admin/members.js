@@ -92,23 +92,26 @@ module.exports = async (req, res) => {
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
     let memberIds = validMembers?.map(m => m.member_id) || [];
+    let filteredValidMembers = validMembers; // Start with all valid members
     
     // If active_now filter is enabled, filter to only members with activity in last 30 minutes
     if (activeNowFilter && memberIds.length > 0) {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      const { data: recentActivities } = await supabase
+      const { data: recentActivities, error: activitiesError } = await supabase
         .from('academy_events')
         .select('member_id')
         .in('member_id', memberIds)
         .gte('created_at', thirtyMinutesAgo);
       
+      if (activitiesError) {
+        throw activitiesError;
+      }
+      
       const activeMemberIds = new Set((recentActivities || []).map(a => a.member_id));
       memberIds = memberIds.filter(id => activeMemberIds.has(id));
       
       // Filter validMembers to only include active members
-      if (validMembers) {
-        validMembers = validMembers.filter(m => memberIds.includes(m.member_id));
-      }
+      filteredValidMembers = validMembers.filter(m => memberIds.includes(m.member_id));
     }
     
     // If no member IDs after filtering, return empty result
@@ -250,7 +253,7 @@ module.exports = async (req, res) => {
     });
 
     // Enrich members with stats from both Supabase events AND Memberstack JSON
-    const enrichedMembers = validMembers?.map(member => {
+    const enrichedMembers = filteredValidMembers?.map(member => {
       const memberId = member.member_id;
       const plan = member.plan_summary || {};
       
