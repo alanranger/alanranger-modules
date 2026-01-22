@@ -39,8 +39,8 @@ export default function GhostLogin() {
       
       // Handle nested fields
       if (sortConfig.field === 'plan') {
-        aVal = a.plan_summary?.plan_type || '';
-        bVal = b.plan_summary?.plan_type || '';
+        aVal = a.plan_type || a.plan_name || '';
+        bVal = b.plan_type || b.plan_name || '';
       } else if (sortConfig.field === 'last_login') {
         aVal = a.last_login || '';
         bVal = b.last_login || '';
@@ -340,17 +340,17 @@ export default function GhostLogin() {
                           {formatDate(member.last_seen)}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          {member.plan_summary ? (
+                          {member.plan_type || member.plan_name || member.status ? (
                             <span style={{
                               padding: '4px 8px',
                               borderRadius: '4px',
                               fontSize: '12px',
                               fontWeight: 600,
                               textTransform: 'capitalize',
-                              background: member.plan_summary.plan_type === 'annual' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                              color: member.plan_summary.plan_type === 'annual' ? '#22c55e' : '#f59e0b'
+                              background: member.plan_type === 'annual' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                              color: member.plan_type === 'annual' ? '#22c55e' : '#f59e0b'
                             }}>
-                              {member.plan_summary.plan_type || 'Unknown'} • {member.plan_summary.status || 'Unknown'}
+                              {(member.plan_type || member.plan_name || 'Unknown')} • {(member.status || 'Unknown')}
                             </span>
                           ) : (
                             <span style={{ color: 'var(--ar-text-muted)', fontSize: '13px' }}>—</span>
