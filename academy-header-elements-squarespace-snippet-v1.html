@@ -5,7 +5,8 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
 -->
 
 <style id="ar-academy-header-style">
-  /* Academy Header Elements - positioned in Squarespace header */
+  /* Academy Header Elements - positioned below Squarespace header */
+  /* Make it sticky below the Squarespace header */
   #ar-academy-header-container {
     display: flex;
     align-items: center;
@@ -15,9 +16,13 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     padding: 16px 32px;
     background: #000;
     color: #fff;
-    position: relative;
-    z-index: 1000;
+    position: sticky;
+    top: 0; /* Stick to top of viewport (below Squarespace header) */
+    left: 0;
+    right: 0;
+    z-index: 998; /* Below Squarespace header but above content */
     min-height: 80px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
   
   /* Left: Welcome message */
@@ -27,6 +32,13 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     gap: 6px;
     flex: 0 0 auto;
     min-width: 280px;
+  }
+  
+  /* Responsive min-width for welcome section */
+  @media (max-width: 1200px) {
+    #ar-academy-header-welcome {
+      min-width: auto;
+    }
   }
   
   #ar-academy-header-welcome-text {
@@ -121,66 +133,142 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     transform: translateY(-1px);
   }
   
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
+  /* Responsive adjustments - match dashboard breakpoint at 1200px */
+  @media (max-width: 1200px) {
     #ar-academy-header-container {
       flex-wrap: wrap;
-      padding: 12px 20px;
+      padding: 14px 20px;
       min-height: auto;
     }
     
     #ar-academy-header-welcome {
       order: 1;
       min-width: auto;
-    }
-    
-    #ar-academy-header-welcome-text {
-      font-size: 18px;
-    }
-    
-    #ar-academy-header-welcome-name {
-      font-size: 20px;
-    }
-    
-    #ar-academy-header-last-login {
-      font-size: 14px;
+      flex: 1 1 auto;
+      width: 100%;
+      margin-bottom: 8px;
     }
     
     #ar-academy-header-center {
-      position: static;
-      transform: none;
+      position: static !important;
+      transform: none !important;
       order: 2;
       width: 100%;
-      margin: 12px 0;
-      gap: 12px;
-    }
-    
-    #ar-academy-header-logo-icon {
-      width: 40px;
-      height: 40px;
-    }
-    
-    #ar-academy-header-title {
-      font-size: 24px;
-    }
-    
-    #ar-academy-header-subtitle {
-      font-size: 14px;
+      margin: 8px 0;
+      gap: 10px;
+      justify-content: center;
     }
     
     #ar-academy-header-right {
       order: 3;
       margin-left: 0;
       gap: 12px;
+      width: 100%;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    #ar-academy-header-container {
+      padding: 12px 16px;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    #ar-academy-header-welcome {
+      order: 1;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 16px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 18px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 13px;
+    }
+    
+    #ar-academy-header-center {
+      order: 2;
+      width: 100%;
+      margin: 10px 0;
+      gap: 8px;
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    #ar-academy-header-logo-icon {
+      width: 36px;
+      height: 36px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 20px;
+      margin: 4px 0;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 13px;
+      margin: 2px 0 0 0;
+    }
+    
+    #ar-academy-header-right {
+      order: 3;
+      width: 100%;
+      margin-top: 10px;
+      justify-content: space-between;
+      gap: 10px;
     }
     
     #ar-academy-header-brand-logo {
-      width: 140px;
+      width: 120px;
     }
     
     #ar-academy-header-logout-btn {
-      padding: 10px 20px;
-      font-size: 14px;
+      padding: 8px 16px;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    #ar-academy-header-container {
+      padding: 10px 12px;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 15px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 17px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 12px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 18px;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 12px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 100px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 8px 14px;
+      font-size: 12px;
     }
   }
 </style>
@@ -299,7 +387,33 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
     
     try {
+      // Check if we're in ghost mode - if dashboard has overridden getCurrentMember, use that
+      // Otherwise, check URL params for ghost mode
+      var ghostMemberId = null;
+      var ghostEmail = null;
+      try {
+        var urlParams = new URLSearchParams(String(window.location && window.location.search || ""));
+        ghostMemberId = urlParams.get("ghost");
+        ghostEmail = urlParams.get("ghostEmail");
+      } catch(e) { /* ignore */ }
+      
+      // If in ghost mode and getCurrentMember has been overridden by dashboard, it will return ghost member
+      // Otherwise, get the normal member (admin)
       var member = await ms.getCurrentMember();
+      
+      // If we're in ghost mode but getCurrentMember hasn't been overridden yet, wait a bit
+      // The dashboard script will override it, so we'll get the ghost member on retry
+      if ((ghostMemberId || ghostEmail) && member) {
+        var memberEmail = (member.data && member.data.email) || (member.data && member.data.auth && member.data.auth.email) || '';
+        var isAdminEmail = memberEmail && (memberEmail.toLowerCase() === 'info@alanranger.com' || memberEmail.toLowerCase() === 'marketing@alanranger.com');
+        
+        // If we got admin member but we're in ghost mode, wait for dashboard to override
+        if (isAdminEmail) {
+          console.log('[Academy Header] Ghost mode detected, waiting for dashboard to override getCurrentMember...');
+          setTimeout(loadHeaderData, 500);
+          return;
+        }
+      }
       if (!member || !member.data) {
         // Not logged in - hide welcome
         var welcomeEl = document.getElementById('ar-academy-header-welcome');
