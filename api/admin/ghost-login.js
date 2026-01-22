@@ -2,7 +2,7 @@
 // Admin-only endpoint to get member data for ghost login/preview
 // Allows admins to view dashboard as a specific user
 
-const { checkAdminAccess } = require("../_auth");
+const { checkAdminAccess } = require("./_auth");
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 
