@@ -4,9 +4,22 @@
 const { createClient } = require("@supabase/supabase-js");
 
 module.exports = async (req, res) => {
+  // Log incoming request for debugging
+  console.log('[active-now-vercel-api] Request received:', {
+    method: req.method,
+    url: req.url,
+    endpoint: 'api/admin/members/active-now'
+  });
+
   try {
     if (req.method !== "GET") {
-      return res.status(405).json({ error: "Method Not Allowed" });
+      console.error('[active-now-vercel-api] Method not allowed:', req.method);
+      return res.status(405).json({ 
+        error: "Method Not Allowed",
+        received: req.method,
+        expected: "GET",
+        endpoint: 'api/admin/members/active-now'
+      });
     }
 
     const supabase = createClient(
@@ -29,16 +42,29 @@ module.exports = async (req, res) => {
     }
 
     // Filter to only valid members (trial or annual, active/trialing)
+    // Note: plan_summary from Supabase is already a parsed object, not a string
     const validMemberIds = (allMembers || [])
       .filter(member => {
-        const plan = member.plan_summary || {};
+        // Handle both string (if not parsed) and object (if parsed) cases
+        let plan = member.plan_summary;
+        if (typeof plan === 'string') {
+          try {
+            plan = JSON.parse(plan);
+          } catch (e) {
+            plan = {};
+          }
+        }
+        plan = plan || {};
+        
         const planType = plan.plan_type || '';
         const status = (plan.status || '').toUpperCase();
         
-        return (
+        const isValid = (
           (planType === 'trial' || planType === 'annual') &&
           (status === 'ACTIVE' || status === 'TRIALING')
         );
+        
+        return isValid;
       })
       .map(m => m.member_id);
 
@@ -66,6 +92,15 @@ module.exports = async (req, res) => {
     const activeMemberIds = new Set(
       (recentEvents || []).map(e => e.member_id).filter(Boolean)
     );
+
+    // Debug logging
+    console.log('[active-now-vercel-api] Query results:', {
+      validMemberIdsCount: validMemberIds.length,
+      recentEventsCount: recentEvents?.length || 0,
+      activeCount: activeMemberIds.size,
+      fiveMinutesAgo: fiveMinutesAgo.toISOString(),
+      now: now.toISOString()
+    });
 
     return res.status(200).json({
       count: activeMemberIds.size,
