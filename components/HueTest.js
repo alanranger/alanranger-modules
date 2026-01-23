@@ -12,7 +12,7 @@ function shuffleRow(row) {
 
 function buildInitialRows() {
   return HUE_TEST_CONFIG.rows.map((row) =>
-    row.map((chip) => ({ ...chip }))
+    shuffleRow(row.map((chip) => ({ ...chip })))
   );
 }
 
@@ -420,8 +420,10 @@ export default function HueTest({ embed = false }) {
                   className={styles.rowScoreCard}
                 >
                   <strong>Row {index + 1}</strong>
-                  <span>{HUE_TEST_CONFIG.rowLabels?.[index]}</span>
-                  <span>{score} / 100</span>
+                  <span className={styles.rowScoreLabel}>
+                    {HUE_TEST_CONFIG.rowLabels?.[index]}
+                  </span>
+                  <span className={styles.rowScoreValue}>{score} / 100</span>
                 </div>
               ))}
             </div>
