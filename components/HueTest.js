@@ -420,6 +420,7 @@ export default function HueTest({ embed = false }) {
                   className={styles.rowScoreCard}
                 >
                   <strong>Row {index + 1}</strong>
+                  <span>{HUE_TEST_CONFIG.rowLabels?.[index]}</span>
                   <span>{score} / 100</span>
                 </div>
               ))}
