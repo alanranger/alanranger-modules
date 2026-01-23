@@ -120,6 +120,22 @@ function getDropIndexFromDom(rowEl, clientX, clientY, totalItems) {
   return Math.min(Math.max(index, minIndex), maxIndex);
 }
 
+function getRowDomSnapshot(rowEl) {
+  if (!rowEl) return [];
+  const chips = rowEl.querySelectorAll(".hue-chip");
+  return Array.from(chips).map((chipEl) => {
+    const swatch = chipEl.querySelector(".hue-chip__swatch");
+    const chipId = chipEl.getAttribute("data-chip-id");
+    const dataHex = swatch?.dataset?.hex || null;
+    const styleHex = swatch?.style?.backgroundColor || null;
+    return {
+      id: chipId,
+      dataHex,
+      styleHex
+    };
+  });
+}
+
 function buildPreviewRow(rowIds, dragState, rowIndex) {
   if (!dragState || dragState.rowIndex !== rowIndex || !dragState.hasMoved) {
     return rowIds;
@@ -242,6 +258,7 @@ export default function HueTest({ embed = false }) {
   const [copyStatus, setCopyStatus] = useState("idle");
   const rowRefs = useRef([]);
   const lastPointer = useRef({ x: 0, y: 0 });
+  const pendingDomLog = useRef(null);
 
   useEffect(() => {
     if (!dragState) return undefined;
@@ -307,6 +324,11 @@ export default function HueTest({ embed = false }) {
         document.body.style.cursor = "";
         return;
       }
+      pendingDomLog.current = {
+        rowIndex: dragState.rowIndex,
+        chipId: dragState.chipId,
+        before: getRowDomSnapshot(rowEl)
+      };
       setRows((prev) => {
         const lockedRowIds = enforceLockedPositionsById(
           dragState.rowIndex,
@@ -378,6 +400,25 @@ export default function HueTest({ embed = false }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!pendingDomLog.current) return;
+    const pending = pendingDomLog.current;
+    const rowEl = rowRefs.current[pending.rowIndex];
+    const after = getRowDomSnapshot(rowEl);
+    setDebugLogs((prev) => [
+      {
+        type: "dom",
+        time: new Date().toISOString(),
+        rowIndex: pending.rowIndex,
+        chipId: pending.chipId,
+        before: pending.before,
+        after
+      },
+      ...prev
+    ]);
+    pendingDomLog.current = null;
+  }, [rows]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
