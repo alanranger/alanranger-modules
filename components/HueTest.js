@@ -106,6 +106,20 @@ function computeDropIndex(rowEl, clientX, totalItems) {
   return Math.min(Math.max(unclamped, minIndex), maxIndex);
 }
 
+function getDropIndexFromDom(rowEl, clientX, clientY, totalItems) {
+  if (!rowEl || typeof document === "undefined") return null;
+  const target = document.elementFromPoint(clientX, clientY);
+  if (!target) return null;
+  const itemEl = target.closest(".hue-chip, .hue-placeholder");
+  if (!itemEl || !rowEl.contains(itemEl)) return null;
+  const children = Array.from(rowEl.children);
+  const index = children.indexOf(itemEl);
+  if (index < 0) return null;
+  const minIndex = 1;
+  const maxIndex = Math.max(1, totalItems - 2);
+  return Math.min(Math.max(index, minIndex), maxIndex);
+}
+
 function buildPreviewRow(rowIds, dragState, rowIndex) {
   if (!dragState || dragState.rowIndex !== rowIndex || !dragState.hasMoved) {
     return rowIds;
@@ -248,7 +262,9 @@ export default function HueTest({ embed = false }) {
       const rowIndex = dragState.rowIndex;
       const rowEl = rowRefs.current[rowIndex];
       const totalItems = dragState.originalRowIds.length;
-      const newIndex = computeDropIndex(rowEl, event.clientX, totalItems);
+      const newIndex =
+        getDropIndexFromDom(rowEl, event.clientX, event.clientY, totalItems) ??
+        computeDropIndex(rowEl, event.clientX, totalItems);
       if (newIndex === null) return;
       if (newIndex !== dragState.placeholderIndex) {
         const previewRowIds = enforceLockedPositionsById(
@@ -272,6 +288,12 @@ export default function HueTest({ embed = false }) {
       const rowEl = rowRefs.current[dragState.rowIndex];
       const totalItems = dragState.originalRowIds.length;
       const finalIndex =
+        getDropIndexFromDom(
+          rowEl,
+          lastPointer.current.x,
+          lastPointer.current.y,
+          totalItems
+        ) ??
         computeDropIndex(rowEl, lastPointer.current.x, totalItems) ??
         dragState.placeholderIndex;
       if (!dragState.hasMoved || finalIndex === dragState.startIndex) {
