@@ -117,9 +117,16 @@ export default function HueTest({ embed = false }) {
         if (!rowEl) return;
         const sortable = Sortable.create(rowEl, {
           animation: 150,
+          swapThreshold: 0.65,
+          invertSwap: true,
+          touchStartThreshold: 8,
+          fallbackTolerance: 10,
+          forceFallback: true,
+          fallbackOnBody: true,
           draggable: ".hue-chip",
           filter: ".hue-chip--locked",
           ghostClass: styles.dragGhost,
+          chosenClass: styles.dragChosen,
           onEnd: () => {
             const order = sortable.toArray();
             setRows((prev) => {

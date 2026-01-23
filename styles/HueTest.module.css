@@ -60,9 +60,9 @@
 
 .row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-  gap: 10px;
-  padding: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 16px;
+  padding: 20px;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 14px;
@@ -74,6 +74,7 @@
   align-items: center;
   gap: 6px;
   cursor: grab;
+  touch-action: none;
 }
 
 .chip:active {
@@ -249,6 +250,10 @@
 
 .dragGhost {
   opacity: 0.7;
+}
+
+.dragChosen {
+  transform: scale(1.03);
 }
 
 @media (max-width: 720px) {
