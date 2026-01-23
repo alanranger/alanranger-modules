@@ -401,7 +401,11 @@ export default function HueTest({ embed = false }) {
                         onPointerDown={(event) =>
                           handlePointerDown(event, rowIndex, chip.id)
                         }
-                      />
+                      >
+                        <span className={styles.chipIndex}>
+                          {rowIds.indexOf(chip.id) + 1}
+                        </span>
+                      </div>
                       <div className={styles.chipLabel}>
                         {chip.locked ? "Locked" : "Drag"}
                       </div>
