@@ -204,6 +204,7 @@ export default function HueTest({ embed = false }) {
   const [dragState, setDragState] = useState(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [debugLogs, setDebugLogs] = useState([]);
+  const [copyStatus, setCopyStatus] = useState("idle");
   const rowRefs = useRef([]);
 
   useEffect(() => {
@@ -404,6 +405,35 @@ export default function HueTest({ embed = false }) {
     setDebugLogs([]);
   }
 
+  async function handleCopyLogs() {
+    if (!debugLogs.length) {
+      setCopyStatus("empty");
+      setTimeout(() => setCopyStatus("idle"), 1200);
+      return;
+    }
+    const payload = JSON.stringify(debugLogs, null, 2);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = payload;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopyStatus("copied");
+    } catch (error) {
+      console.error("[HueTest] Copy failed", error);
+      setCopyStatus("error");
+    } finally {
+      setTimeout(() => setCopyStatus("idle"), 1500);
+    }
+  }
+
   function handlePointerDown(event, rowIndex, chipId) {
     const chip = getChipMeta(chipId)?.chip;
     if (!chip || chip.locked) return;
@@ -523,13 +553,28 @@ export default function HueTest({ embed = false }) {
         <div className={styles.debugPanel}>
           <div className={styles.debugHeader}>
             <strong>Debug log</strong>
-            <button
-              type="button"
-              className={styles.debugClear}
-              onClick={() => setDebugLogs([])}
-            >
-              Clear
-            </button>
+            <div className={styles.debugActions}>
+              <button
+                type="button"
+                className={styles.debugCopy}
+                onClick={handleCopyLogs}
+              >
+                {copyStatus === "copied"
+                  ? "Copied"
+                  : copyStatus === "empty"
+                    ? "No logs"
+                    : copyStatus === "error"
+                      ? "Copy failed"
+                      : "Copy log"}
+              </button>
+              <button
+                type="button"
+                className={styles.debugClear}
+                onClick={() => setDebugLogs([])}
+              >
+                Clear
+              </button>
+            </div>
           </div>
           {debugLogs.length === 0 ? (
             <div className={styles.debugEmpty}>No events yet.</div>
