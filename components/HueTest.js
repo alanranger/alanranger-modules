@@ -189,17 +189,19 @@ export default function HueTest({ embed = false }) {
       const rowIndex = dragState.rowIndex;
       const rowEl = rowRefs.current[rowIndex];
       if (!rowEl) return;
-      const items = Array.from(
-        rowEl.querySelectorAll(".hue-chip, .hue-placeholder")
-      );
-      if (!items.length) return;
-      const targetIndex = items.findIndex((el) => {
-        const rect = el.getBoundingClientRect();
-        return event.clientX < rect.left + rect.width / 2;
-      });
-      const unclamped = targetIndex === -1 ? items.length : targetIndex;
+      const style = getComputedStyle(rowEl);
+      const chipSize =
+        Number.parseFloat(style.getPropertyValue("--chip-size")) || 64;
+      const gap =
+        Number.parseFloat(style.columnGap || style.gap || "0") || 0;
+      const unit = chipSize + gap;
+      const rowRect = rowEl.getBoundingClientRect();
+      const relativeX = event.clientX - rowRect.left + rowEl.scrollLeft;
+      const rawIndex = Math.floor((relativeX + chipSize / 2) / unit);
+      const totalItems = dragState.originalRowIds.length;
+      const unclamped = Number.isFinite(rawIndex) ? rawIndex : 0;
       const minIndex = 1;
-      const maxIndex = Math.max(1, items.length - 1);
+      const maxIndex = Math.max(1, totalItems - 1);
       const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
       if (newIndex !== dragState.placeholderIndex) {
         setDragState((prev) =>
