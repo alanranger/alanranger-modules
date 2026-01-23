@@ -89,6 +89,23 @@ function moveIdToIndex(rowIds, chipId, targetIndex) {
   return next;
 }
 
+function computeDropIndex(rowEl, clientX, totalItems) {
+  if (!rowEl) return null;
+  const style = getComputedStyle(rowEl);
+  const chipSize =
+    Number.parseFloat(style.getPropertyValue("--chip-size")) || 64;
+  const gap = Number.parseFloat(style.columnGap || style.gap || "0") || 0;
+  const paddingLeft = Number.parseFloat(style.paddingLeft || "0") || 0;
+  const unit = chipSize + gap;
+  const rowRect = rowEl.getBoundingClientRect();
+  const relativeX = clientX - rowRect.left - paddingLeft + rowEl.scrollLeft;
+  const rawIndex = Math.floor((relativeX + chipSize / 2) / unit);
+  const unclamped = Number.isFinite(rawIndex) ? rawIndex : 0;
+  const minIndex = 1;
+  const maxIndex = Math.max(1, totalItems - 2);
+  return Math.min(Math.max(unclamped, minIndex), maxIndex);
+}
+
 function buildPreviewRow(rowIds, dragState, rowIndex) {
   if (!dragState || dragState.rowIndex !== rowIndex || !dragState.hasMoved) {
     return rowIds;
@@ -211,10 +228,12 @@ export default function HueTest({ embed = false }) {
   const [debugLogs, setDebugLogs] = useState([]);
   const [copyStatus, setCopyStatus] = useState("idle");
   const rowRefs = useRef([]);
+  const lastPointer = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!dragState) return undefined;
     const handleMove = (event) => {
+      lastPointer.current = { x: event.clientX, y: event.clientY };
       setDragPos({ x: event.clientX, y: event.clientY });
       if (dragState.startPos) {
         const dx = event.clientX - dragState.startPos.x;
@@ -228,24 +247,9 @@ export default function HueTest({ embed = false }) {
       }
       const rowIndex = dragState.rowIndex;
       const rowEl = rowRefs.current[rowIndex];
-      if (!rowEl) return;
-      const style = getComputedStyle(rowEl);
-      const chipSize =
-        Number.parseFloat(style.getPropertyValue("--chip-size")) || 64;
-      const gap =
-        Number.parseFloat(style.columnGap || style.gap || "0") || 0;
-      const paddingLeft =
-        Number.parseFloat(style.paddingLeft || "0") || 0;
-      const unit = chipSize + gap;
-      const rowRect = rowEl.getBoundingClientRect();
-      const relativeX =
-        event.clientX - rowRect.left - paddingLeft + rowEl.scrollLeft;
-      const rawIndex = Math.floor((relativeX + chipSize / 2) / unit);
       const totalItems = dragState.originalRowIds.length;
-      const unclamped = Number.isFinite(rawIndex) ? rawIndex : 0;
-      const minIndex = 1;
-      const maxIndex = Math.max(1, totalItems - 2);
-      const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
+      const newIndex = computeDropIndex(rowEl, event.clientX, totalItems);
+      if (newIndex === null) return;
       if (newIndex !== dragState.placeholderIndex) {
         const previewRowIds = enforceLockedPositionsById(
           rowIndex,
@@ -265,7 +269,12 @@ export default function HueTest({ embed = false }) {
     };
 
     const handleUp = () => {
-      if (!dragState.hasMoved || dragState.placeholderIndex === dragState.startIndex) {
+      const rowEl = rowRefs.current[dragState.rowIndex];
+      const totalItems = dragState.originalRowIds.length;
+      const finalIndex =
+        computeDropIndex(rowEl, lastPointer.current.x, totalItems) ??
+        dragState.placeholderIndex;
+      if (!dragState.hasMoved || finalIndex === dragState.startIndex) {
         if (dragState?.startSnapshot) {
           setDebugLogs((prev) => [
             {
@@ -290,7 +299,7 @@ export default function HueTest({ embed = false }) {
             moveIdToIndex(
               prev[dragState.rowIndex] || [],
               dragState.chipId,
-              dragState.placeholderIndex
+              finalIndex
             )
           );
         const updated = [...prev];
