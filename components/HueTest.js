@@ -365,6 +365,19 @@ export default function HueTest({ embed = false }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const nodes = document.querySelectorAll(".hue-chip__swatch[data-hex]");
+    nodes.forEach((node) => {
+      const hex = node.getAttribute("data-hex");
+      if (!hex) return;
+      if (node.style.backgroundColor !== hex) {
+        node.style.backgroundColor = hex;
+        node.style.backgroundImage = "none";
+      }
+    });
+  }, [rows, dragState]);
+
   const rowOrders = useMemo(() => rows, [rows]);
 
   const chartValues = useMemo(() => {
