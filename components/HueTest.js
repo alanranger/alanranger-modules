@@ -39,6 +39,22 @@ function createPlaceholder(rowIndex) {
   return { id: `placeholder-${rowIndex}`, placeholder: true, locked: true };
 }
 
+function getLockedIds(rowIndex) {
+  const rowConfig = HUE_TEST_CONFIG.rows[rowIndex] || [];
+  return {
+    firstId: rowConfig[0]?.id,
+    lastId: rowConfig.at(-1)?.id
+  };
+}
+
+function enforceLockedOrder(rowIndex, orderIds, byId) {
+  const { firstId, lastId } = getLockedIds(rowIndex);
+  if (!firstId || !lastId) return orderIds;
+  const filtered = orderIds.filter((id) => id !== firstId && id !== lastId);
+  const normalized = [firstId, ...filtered, lastId];
+  return normalized.filter((id) => byId.has(id));
+}
+
 function HueRadarChart({ values }) {
   const canvasRef = useRef(null);
 
@@ -129,7 +145,10 @@ export default function HueTest({ embed = false }) {
         const rect = el.getBoundingClientRect();
         return event.clientX < rect.left + rect.width / 2;
       });
-      const newIndex = targetIndex === -1 ? candidates.length : targetIndex;
+      const unclamped = targetIndex === -1 ? candidates.length : targetIndex;
+      const minIndex = 1;
+      const maxIndex = Math.max(1, candidates.length - 1);
+      const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
       setRows((prev) => {
         const row = prev[rowIndex];
         const placeholderIndex = row.findIndex((chip) => chip.placeholder);
@@ -153,9 +172,11 @@ export default function HueTest({ embed = false }) {
         const without = row.filter((chip) => !chip.placeholder);
         const nextRow = [...without];
         nextRow.splice(placeholderIndex, 0, dragState.chip);
-        const normalized = normalizeOrder(
+        const byId = new Map(nextRow.map((chip) => [chip.id, chip]));
+        const normalized = enforceLockedOrder(
+          dragState.rowIndex,
           nextRow.map((chip) => chip.id),
-          HUE_TEST_CONFIG.rows[dragState.rowIndex]
+          byId
         );
         const updated = [...prev];
         updated[dragState.rowIndex] = reorderRow(nextRow, normalized);
@@ -254,6 +275,9 @@ export default function HueTest({ embed = false }) {
   function handlePointerDown(event, rowIndex, chip) {
     if (chip.locked || chip.placeholder) return;
     event.preventDefault();
+    if (event.currentTarget?.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
     document.body.style.userSelect = "none";
     const placeholder = createPlaceholder(rowIndex);
     setRows((prev) => {
