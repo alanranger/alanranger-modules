@@ -124,8 +124,7 @@ function buildPreviewRow(rowIds, dragState, rowIndex) {
   if (!dragState || dragState.rowIndex !== rowIndex || !dragState.hasMoved) {
     return rowIds;
   }
-  const source =
-    dragState.previewRowIds || dragState.originalRowIds || rowIds;
+  const source = dragState.originalRowIds || rowIds;
   const without = source.filter((id) => id !== dragState.chipId);
   const next = [...without];
   next.splice(dragState.placeholderIndex, 0, createPlaceholder(rowIndex));
@@ -267,17 +266,12 @@ export default function HueTest({ embed = false }) {
         computeDropIndex(rowEl, event.clientX, totalItems);
       if (newIndex === null) return;
       if (newIndex !== dragState.placeholderIndex) {
-        const previewRowIds = enforceLockedPositionsById(
-          rowIndex,
-          moveIdToIndex(dragState.originalRowIds, dragState.chipId, newIndex)
-        );
         setDragState((prev) =>
           prev
             ? {
                 ...prev,
                 placeholderIndex: newIndex,
-                hasMoved: true,
-                previewRowIds
+                hasMoved: true
               }
             : prev
         );
@@ -314,16 +308,14 @@ export default function HueTest({ embed = false }) {
         return;
       }
       setRows((prev) => {
-        const lockedRowIds =
-          dragState.previewRowIds ||
-          enforceLockedPositionsById(
-            dragState.rowIndex,
-            moveIdToIndex(
-              prev[dragState.rowIndex] || [],
-              dragState.chipId,
-              finalIndex
-            )
-          );
+        const lockedRowIds = enforceLockedPositionsById(
+          dragState.rowIndex,
+          moveIdToIndex(
+            prev[dragState.rowIndex] || [],
+            dragState.chipId,
+            finalIndex
+          )
+        );
         const updated = [...prev];
         updated[dragState.rowIndex] = lockedRowIds;
         if (dragState?.startSnapshot) {
