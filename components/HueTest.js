@@ -106,7 +106,6 @@ export default function HueTest({ embed = false }) {
   const [results, setResults] = useState(null);
   const [memberId, setMemberId] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle");
-  const [hoverId, setHoverId] = useState(null);
   const rowRefs = useRef([]);
   const sortableRefs = useRef([]);
 
@@ -119,24 +118,18 @@ export default function HueTest({ embed = false }) {
         const sortable = Sortable.create(rowEl, {
           animation: 150,
           direction: "horizontal",
-          swapThreshold: 0.75,
+          swap: true,
+          swapThreshold: 0.65,
+          swapClass: "hue-drop-slot",
           touchStartThreshold: 8,
           fallbackTolerance: 10,
-          forceFallback: true,
-          fallbackOnBody: true,
-          dragoverBubble: false,
+          forceFallback: false,
           handle: ".hue-chip__swatch",
           draggable: ".hue-chip",
           filter: ".hue-chip--locked",
           ghostClass: styles.dragGhost,
           chosenClass: styles.dragChosen,
-          onMove: (evt) => {
-            const nextId = evt?.related?.dataset?.id || null;
-            if (nextId !== hoverId) setHoverId(nextId);
-            return true;
-          },
           onEnd: () => {
-            setHoverId(null);
             const order = sortable.toArray();
             setRows((prev) => {
               const normalized = normalizeOrder(
@@ -238,7 +231,6 @@ export default function HueTest({ embed = false }) {
     setRows(buildInitialRows());
     setResults(null);
     setSaveStatus("idle");
-    setHoverId(null);
   }
 
   return (
@@ -275,9 +267,7 @@ export default function HueTest({ embed = false }) {
                     key={chip.id}
                     className={`hue-chip ${
                       chip.locked ? "hue-chip--locked" : ""
-                    } ${styles.chip} ${chip.locked ? styles.chipLocked : ""} ${
-                      hoverId === chip.id ? styles.chipHover : ""
-                    }`}
+                    } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
                     data-id={chip.id}
                   >
                     <div

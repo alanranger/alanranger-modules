@@ -96,11 +96,6 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
-.chipHover .chipSwatch {
-  border-color: rgba(251, 191, 36, 0.9);
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
-}
-
 .chipLabel {
   font-size: 11px;
   color: #e2e8f0;
@@ -256,6 +251,11 @@
 
 .dragChosen {
   transform: scale(1.03);
+}
+
+:global(.hue-drop-slot) .chipSwatch {
+  border-color: rgba(251, 191, 36, 0.9);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
 }
 
 @media (max-width: 720px) {
