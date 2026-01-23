@@ -303,7 +303,9 @@ export default function HueTest({ embed = false }) {
         <div className={styles.testArea}>
           {rows.map((row, rowIndex) => (
             <div key={row[0]?.id || `row-${rowIndex}`} className={styles.rowGroup}>
-              <div className={styles.rowTitle}>Row {rowIndex + 1}</div>
+              <div className={styles.rowTitle}>
+                Row {rowIndex + 1}: {HUE_TEST_CONFIG.rowLabels?.[rowIndex]}
+              </div>
               <div
                 className={styles.row}
                 ref={(el) => {
