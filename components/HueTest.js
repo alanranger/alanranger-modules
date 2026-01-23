@@ -118,19 +118,21 @@ export default function HueTest({ embed = false }) {
         if (!rowEl) return;
         const sortable = Sortable.create(rowEl, {
           animation: 150,
-          swapThreshold: 0.65,
-          invertSwap: true,
+          direction: "horizontal",
+          swapThreshold: 0.75,
           touchStartThreshold: 8,
           fallbackTolerance: 10,
           forceFallback: true,
           fallbackOnBody: true,
+          dragoverBubble: false,
+          handle: ".hue-chip__swatch",
           draggable: ".hue-chip",
           filter: ".hue-chip--locked",
           ghostClass: styles.dragGhost,
           chosenClass: styles.dragChosen,
           onMove: (evt) => {
             const nextId = evt?.related?.dataset?.id || null;
-            setHoverId(nextId);
+            if (nextId !== hoverId) setHoverId(nextId);
             return true;
           },
           onEnd: () => {
@@ -254,7 +256,7 @@ export default function HueTest({ embed = false }) {
         <div className={styles.instructions}>
           <p>Drag the colour chips to arrange by hue.</p>
           <p>First and last chip in each row are fixed.</p>
-          <p>Complete all four rows, then click Score.</p>
+          <p>Complete all five rows, then click Score.</p>
           <p>Results depend on your screen/brightness.</p>
         </div>
 
@@ -279,7 +281,7 @@ export default function HueTest({ embed = false }) {
                     data-id={chip.id}
                   >
                     <div
-                      className={styles.chipSwatch}
+                      className={`${styles.chipSwatch} hue-chip__swatch`}
                       style={{ backgroundColor: chip.hex }}
                     />
                     <div className={styles.chipLabel}>
