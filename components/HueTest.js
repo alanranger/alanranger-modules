@@ -13,7 +13,9 @@ function shuffleRow(row) {
 }
 
 function buildInitialRows() {
-  return HUE_TEST_CONFIG.rows.map((row) => shuffleRow(row));
+  return HUE_TEST_CONFIG.rows.map((row) =>
+    row.map((chip) => ({ ...chip }))
+  );
 }
 
 function normalizeOrder(orderIds, rowConfig) {
