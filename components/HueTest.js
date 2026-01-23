@@ -1,0 +1,337 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import styles from "../styles/HueTest.module.css";
+import { HUE_TEST_CONFIG } from "../lib/hueTestConfig";
+import { scoreHueTest } from "../lib/hueTestScoring";
+
+const RADAR_LABELS = ["0°", "90°", "180°", "270°"];
+
+function shuffleRow(row) {
+  if (row.length <= 2) return row;
+  const middle = row.slice(1, -1);
+  const shuffled = [...middle].sort(() => Math.random() - 0.5);
+  return [row[0], ...shuffled, row.at(-1)];
+}
+
+function buildInitialRows() {
+  return HUE_TEST_CONFIG.rows.map((row) => shuffleRow(row));
+}
+
+function normalizeOrder(orderIds, rowConfig) {
+  const firstId = rowConfig[0].id;
+  const lastId = rowConfig.at(-1).id;
+  const filtered = orderIds.filter((id) => id !== firstId && id !== lastId);
+  return [firstId, ...filtered, lastId];
+}
+
+function reorderRow(rowConfig, orderIds) {
+  const byId = new Map(rowConfig.map((chip) => [chip.id, chip]));
+  return orderIds.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function getInterpretation(totalScore) {
+  const found = HUE_TEST_CONFIG.thresholds.find(
+    (threshold) => totalScore <= threshold.maxScore
+  );
+  return found || HUE_TEST_CONFIG.thresholds.at(-1);
+}
+
+function HueRadarChart({ values }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !Array.isArray(values)) return;
+    const size = 260;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    canvas.width = size;
+    canvas.height = size;
+    const center = size / 2;
+    const radius = center - 26;
+    ctx.clearRect(0, 0, size, size);
+
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+    ctx.lineWidth = 1;
+    for (let ring = 1; ring <= 4; ring += 1) {
+      ctx.beginPath();
+      ctx.arc(center, center, (radius / 4) * ring, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const bandCount = values.length || 12;
+    for (let i = 0; i < bandCount; i += 1) {
+      const angle = (i / bandCount) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.lineTo(
+        center + radius * Math.cos(angle),
+        center + radius * Math.sin(angle)
+      );
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(251, 191, 36, 0.15)";
+    ctx.strokeStyle = "rgba(251, 191, 36, 0.8)";
+    ctx.beginPath();
+    values.forEach((value, idx) => {
+      const angle = (idx / bandCount) * Math.PI * 2 - Math.PI / 2;
+      const pointRadius = (radius * Math.min(100, Math.max(0, value))) / 100;
+      const x = center + pointRadius * Math.cos(angle);
+      const y = center + pointRadius * Math.sin(angle);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(226, 232, 240, 0.8)";
+    ctx.font = "12px sans-serif";
+    const labelOffsets = [
+      { x: 0, y: -radius - 10, label: RADAR_LABELS[0] },
+      { x: radius + 10, y: 4, label: RADAR_LABELS[1] },
+      { x: 0, y: radius + 18, label: RADAR_LABELS[2] },
+      { x: -radius - 28, y: 4, label: RADAR_LABELS[3] }
+    ];
+    labelOffsets.forEach((label) => {
+      ctx.fillText(label.label, center + label.x, center + label.y);
+    });
+  }, [values]);
+
+  return <canvas ref={canvasRef} className={styles.chartCanvas} />;
+}
+
+export default function HueTest({ embed = false }) {
+  const [rows, setRows] = useState(buildInitialRows);
+  const [results, setResults] = useState(null);
+  const [memberId, setMemberId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("idle");
+  const rowRefs = useRef([]);
+  const sortableRefs = useRef([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    import("sortablejs").then(({ default: Sortable }) => {
+      if (!isMounted) return;
+      rowRefs.current.forEach((rowEl, index) => {
+        if (!rowEl) return;
+        const sortable = Sortable.create(rowEl, {
+          animation: 150,
+          draggable: ".hue-chip",
+          filter: ".hue-chip--locked",
+          ghostClass: styles.dragGhost,
+          onEnd: () => {
+            const order = sortable.toArray();
+            setRows((prev) => {
+              const normalized = normalizeOrder(
+                order,
+                HUE_TEST_CONFIG.rows[index]
+              );
+              const updated = [...prev];
+              updated[index] = reorderRow(prev[index], normalized);
+              return updated;
+            });
+          }
+        });
+        sortableRefs.current[index] = sortable;
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      sortableRefs.current.forEach((instance) => {
+        if (instance && typeof instance.destroy === "function") {
+          instance.destroy();
+        }
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMember() {
+      if (typeof globalThis === "undefined") return;
+      const w = globalThis.window;
+      if (!w) return;
+      const start = Date.now();
+      while (!w.$memberstackDom && Date.now() - start < 5000) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      if (
+        !w.$memberstackDom ||
+        typeof w.$memberstackDom.getCurrentMember !== "function"
+      ) {
+        return;
+      }
+      try {
+        const res = await w.$memberstackDom.getCurrentMember();
+        const data = res?.data || res;
+        if (!cancelled && data?.id) setMemberId(data.id);
+      } catch (error) {
+        console.warn("[HueTest] Member lookup failed", error);
+      }
+    }
+    loadMember();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rowOrders = useMemo(
+    () => rows.map((row) => row.map((chip) => chip.id)),
+    [rows]
+  );
+
+  async function handleScore() {
+    const scoring = scoreHueTest(rows, HUE_TEST_CONFIG.bands);
+    const interpretation = getInterpretation(scoring.totalScore);
+    setResults({
+      ...scoring,
+      interpretation
+    });
+
+    if (!memberId) {
+      setSaveStatus("not-logged-in");
+      return;
+    }
+
+    setSaveStatus("saving");
+    try {
+      const payload = {
+        member_id: memberId,
+        source: "academy",
+        total_score: scoring.totalScore,
+        row_scores: scoring.rowScores,
+        band_errors: scoring.bandErrors,
+        row_orders: rowOrders
+      };
+      const res = await fetch("/api/hue-test/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setSaveStatus("saved");
+    } catch (error) {
+      console.error("[HueTest] Save error", error);
+      setSaveStatus("error");
+    }
+  }
+
+  function handleReset() {
+    setRows(buildInitialRows());
+    setResults(null);
+    setSaveStatus("idle");
+  }
+
+  return (
+    <section className={`${styles.page} ${embed ? styles.embed : ""}`}>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <div>
+            <h1 className={styles.headerTitle}>Hue Test</h1>
+            <p className={styles.headerSubtitle}>
+              Arrange each row from left (start) to right (end).
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.instructions}>
+          <p>Drag the colour chips to arrange by hue.</p>
+          <p>First and last chip in each row are fixed.</p>
+          <p>Complete all four rows, then click Score.</p>
+          <p>Results depend on your screen/brightness.</p>
+        </div>
+
+        <div className={styles.testArea}>
+          {rows.map((row, rowIndex) => (
+            <div key={row[0]?.id || `row-${rowIndex}`} className={styles.rowGroup}>
+              <div className={styles.rowTitle}>Row {rowIndex + 1}</div>
+              <div
+                className={styles.row}
+                ref={(el) => {
+                  rowRefs.current[rowIndex] = el;
+                }}
+              >
+                {row.map((chip) => (
+                  <div
+                    key={chip.id}
+                    className={`hue-chip ${
+                      chip.locked ? "hue-chip--locked" : ""
+                    } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
+                    data-id={chip.id}
+                  >
+                    <div
+                      className={styles.chipSwatch}
+                      style={{ backgroundColor: chip.hex }}
+                    />
+                    <div className={styles.chipLabel}>
+                      {chip.locked ? "Locked" : "Drag"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.buttonRow}>
+          <button className={styles.primaryButton} onClick={handleScore}>
+            Score my test
+          </button>
+          <button className={styles.ghostButton} onClick={handleReset}>
+            Reset
+          </button>
+        </div>
+
+        {results && (
+          <div className={styles.results}>
+            <div className={styles.resultsHeader}>
+              <div>
+                <div className={styles.scoreLabel}>Total score</div>
+                <div className={styles.scoreValue}>{results.totalScore}</div>
+              </div>
+              <div className={styles.interpretation}>
+                <strong>{results.interpretation.label}:</strong>{" "}
+                {results.interpretation.detail}
+              </div>
+            </div>
+
+            <div className={styles.rowScores}>
+              {results.rowScores.map((score, index) => (
+                <div
+                  key={HUE_TEST_CONFIG.rows[index]?.[0]?.id || `row-score-${score}`}
+                  className={styles.rowScoreCard}
+                >
+                  <strong>Row {index + 1}</strong>
+                  <span>{score} error points</span>
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.chartSection}>
+              <HueRadarChart values={results.bandErrors} />
+              <div className={styles.chartNotes}>
+                Lower values are better. Each spoke represents a 30° hue band.
+                The filled area shows where your placement errors concentrate.
+              </div>
+            </div>
+
+            <div className={styles.saveStatus}>
+              {saveStatus === "saving" && "Saving to your dashboard..."}
+              {saveStatus === "saved" && "Saved to your dashboard."}
+              {saveStatus === "error" &&
+                "Could not save right now. Try again later."}
+              {saveStatus === "not-logged-in" && (
+                <>
+                  Sign in to save your score —{" "}
+                  <a href="/academy/login">go to login</a>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

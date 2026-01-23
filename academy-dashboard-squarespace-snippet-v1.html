@@ -376,6 +376,17 @@ Keeps all styling + elements. Access guard still runs on live site.
     border-color: rgba(148, 163, 184, 0.2);
     color: var(--ar-text-muted);
   }
+  html.ar-academy #arp-hue-test-tile .ar-hue-score {
+    font-size: 24px;
+    font-weight: 800;
+    color: #fbbf24;
+    margin-top: 8px;
+  }
+  html.ar-academy #arp-hue-test-tile .ar-hue-subtext {
+    font-size: 12px;
+    color: rgba(148, 163, 184, 0.85);
+    margin-top: 4px;
+  }
   
   /* Membership status tile widgets */
   html.ar-academy #arp-ms-status{
@@ -1307,6 +1318,27 @@ Keeps all styling + elements. Access guard still runs on live site.
           </div>
 
           <div class="ar-tile__tip">View your saved bookmarks and recent activity.</div>
+        </div>
+
+        <div id="arp-hue-test-tile" class="ar-tile ar-span-4">
+          <div class="ar-tile__kicker"><span class="ar-dot"></span>Tools</div>
+          <div class="ar-tile__title">
+            <span class="ar-tile__icon">🎨</span>
+            <span>Colour IQ / Hue Test</span>
+          </div>
+          <div class="ar-tile__desc">
+            Arrange colours and see your hue range profile.
+          </div>
+          <div id="ar-hue-test-score" class="ar-hue-score">—</div>
+          <div id="ar-hue-test-date" class="ar-hue-subtext">
+            Take the test to get your score.
+          </div>
+          <a
+            id="ar-hue-test-link"
+            href="/tools/hue-test"
+            style="display:inline-flex; margin-top:12px; color:#fff; background:#e57200; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:700; text-decoration:none; position:relative; z-index:10;"
+          >Take Hue Test</a>
+          <div class="ar-tile__tip">Check your latest hue test score.</div>
         </div>
       </div>
       </div>
@@ -2518,6 +2550,52 @@ Keeps all styling + elements. Access guard still runs on live site.
       });
     }
 
+    function interpretHueScore(score) {
+      if (score <= 450) return "Excellent";
+      if (score <= 900) return "Good";
+      if (score <= 1500) return "Average";
+      return "Needs improvement";
+    }
+
+    function loadHueTestLatest(member) {
+      var scoreEl = document.getElementById("ar-hue-test-score");
+      var dateEl = document.getElementById("ar-hue-test-date");
+      if (!scoreEl || !dateEl) return;
+
+      var memberId = member && (member.id || (member.data && member.data.id));
+      if (!memberId) {
+        scoreEl.textContent = "—";
+        dateEl.textContent = "Sign in to save your score.";
+        return;
+      }
+
+      scoreEl.textContent = "Loading...";
+      dateEl.textContent = "";
+
+      fetch("/api/hue-test/latest?member_id=" + encodeURIComponent(memberId))
+        .then(function(r) {
+          if (!r.ok) throw new Error("Failed to load hue test result");
+          return r.json();
+        })
+        .then(function(payload) {
+          if (!payload || !payload.data) {
+            scoreEl.textContent = "—";
+            dateEl.textContent = "No saved score yet.";
+            return;
+          }
+          var score = payload.data.total_score;
+          scoreEl.textContent = score;
+          var tag = interpretHueScore(score);
+          var savedAt = payload.data.created_at ? formatDate(payload.data.created_at) : "";
+          dateEl.textContent = tag + (savedAt ? " • " + savedAt : "");
+        })
+        .catch(function(err) {
+          console.error("[Dashboard] Hue test fetch error:", err);
+          scoreEl.textContent = "—";
+          dateEl.textContent = "Unable to load score.";
+        });
+    }
+
     function updatePaidResourceTiles(isTrial) {
       var practicePacksTile = document.getElementById("arp-practice-packs-tile");
       var ebookTile = document.getElementById("arp-ebook-tile");
@@ -3218,6 +3296,9 @@ Keeps all styling + elements. Access guard still runs on live site.
           
           // Load Q&A question counts
           loadQAQuestionCounts(m, ms);
+          
+          // Load latest Hue Test result
+          loadHueTestLatest(m);
           
           // Make refresh function available globally
           window.refreshExamProgress = function() {
