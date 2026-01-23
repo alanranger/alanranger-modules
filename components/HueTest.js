@@ -230,6 +230,11 @@ export default function HueTest({ embed = false }) {
     [rows]
   );
 
+  const chartValues = useMemo(() => {
+    if (!results?.bandErrors) return null;
+    return results.bandErrors.map((value) => Math.max(0, 100 - value));
+  }, [results]);
+
   async function handleScore() {
     const scoring = scoreHueTest(rows, HUE_TEST_CONFIG.bands);
     const interpretation = getInterpretation(scoring.totalScore);
@@ -403,10 +408,10 @@ export default function HueTest({ embed = false }) {
             </div>
 
             <div className={styles.chartSection}>
-              <HueRadarChart values={results.bandErrors} />
+              <HueRadarChart values={chartValues} />
               <div className={styles.chartNotes}>
-                Lower values are better. Each spoke represents a 30° hue band.
-                The filled area shows where your placement errors concentrate.
+                Higher values are better. Each spoke represents a 30° hue band.
+                The filled area shows your hue ordering accuracy.
               </div>
             </div>
 
