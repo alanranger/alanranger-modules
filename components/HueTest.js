@@ -19,6 +19,8 @@ const CHIP_META = new Map(
   )
 );
 
+const SHOW_TILE_NUMBERS = false;
+
 function getChipMeta(id) {
   return CHIP_META.get(id);
 }
@@ -411,9 +413,11 @@ export default function HueTest({ embed = false }) {
                           handlePointerDown(event, rowIndex, chip.id)
                         }
                       >
-                        <span className={styles.chipIndex}>
-                          {(getChipMeta(chip.id)?.orderIndex ?? 0) + 1}
-                        </span>
+                        {SHOW_TILE_NUMBERS && (
+                          <span className={styles.chipIndex}>
+                            {(getChipMeta(chip.id)?.orderIndex ?? 0) + 1}
+                          </span>
+                        )}
                       </div>
                       <div className={styles.chipLabel}>
                         {chip.locked ? "Locked" : "Drag"}
