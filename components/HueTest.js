@@ -10,9 +10,18 @@ function shuffleRow(row) {
   return [row[0], ...shuffled, row.at(-1)];
 }
 
-const CHIP_LOOKUP = new Map(
-  HUE_TEST_CONFIG.rows.flatMap((row) => row.map((chip) => [chip.id, chip]))
+const CHIP_META = new Map(
+  HUE_TEST_CONFIG.rows.flatMap((row, rowIndex) =>
+    row.map((chip, orderIndex) => [
+      chip.id,
+      { chip, rowIndex, orderIndex }
+    ])
+  )
 );
+
+function getChipMeta(id) {
+  return CHIP_META.get(id);
+}
 
 function buildInitialRowIds() {
   return HUE_TEST_CONFIG.rows.map((row) =>
@@ -266,7 +275,7 @@ export default function HueTest({ embed = false }) {
 
   async function handleScore() {
     const scoringRows = rows.map((rowIds) =>
-      rowIds.map((id) => CHIP_LOOKUP.get(id)).filter(Boolean)
+      rowIds.map((id) => getChipMeta(id)?.chip).filter(Boolean)
     );
     const scoring = scoreHueTest(scoringRows, HUE_TEST_CONFIG.bands);
     const interpretation = getInterpretation(scoring.totalScore);
@@ -311,7 +320,7 @@ export default function HueTest({ embed = false }) {
   }
 
   function handlePointerDown(event, rowIndex, chipId) {
-    const chip = CHIP_LOOKUP.get(chipId);
+    const chip = getChipMeta(chipId)?.chip;
     if (!chip || chip.locked) return;
     event.preventDefault();
     if (event.currentTarget?.setPointerCapture) {
@@ -385,7 +394,7 @@ export default function HueTest({ embed = false }) {
                     />
                   ) : (
                     (() => {
-                      const chip = CHIP_LOOKUP.get(item);
+                      const chip = getChipMeta(item)?.chip;
                       if (!chip) return null;
                       return (
                     <div
@@ -403,7 +412,7 @@ export default function HueTest({ embed = false }) {
                         }
                       >
                         <span className={styles.chipIndex}>
-                          {rowIds.indexOf(chip.id) + 1}
+                          {(getChipMeta(chip.id)?.orderIndex ?? 0) + 1}
                         </span>
                       </div>
                       <div className={styles.chipLabel}>
@@ -497,7 +506,7 @@ export default function HueTest({ embed = false }) {
             <div
               className={styles.dragPreviewSwatch}
               style={{
-                backgroundColor: CHIP_LOOKUP.get(dragState.chipId)?.hex
+                backgroundColor: getChipMeta(dragState.chipId)?.chip?.hex
               }}
             />
           </div>
