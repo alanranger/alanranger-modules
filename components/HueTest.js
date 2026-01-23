@@ -35,6 +35,10 @@ function getInterpretation(totalScore) {
   return found || HUE_TEST_CONFIG.thresholds.at(-1);
 }
 
+function createPlaceholder(rowIndex) {
+  return { id: `placeholder-${rowIndex}`, placeholder: true, locked: true };
+}
+
 function HueRadarChart({ values }) {
   const canvasRef = useRef(null);
 
@@ -106,56 +110,68 @@ export default function HueTest({ embed = false }) {
   const [results, setResults] = useState(null);
   const [memberId, setMemberId] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle");
+  const [dragState, setDragState] = useState(null);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const rowRefs = useRef([]);
-  const sortableRefs = useRef([]);
 
   useEffect(() => {
-    let isMounted = true;
-    import("sortablejs").then(({ default: Sortable }) => {
-      if (!isMounted) return;
-      rowRefs.current.forEach((rowEl, index) => {
-        if (!rowEl) return;
-        const sortable = Sortable.create(rowEl, {
-          animation: 150,
-          direction: "horizontal",
-          swap: true,
-          swapThreshold: 0.85,
-          swapClass: "hue-drop-slot",
-          touchStartThreshold: 8,
-          fallbackTolerance: 10,
-          forceFallback: false,
-          dragoverBubble: false,
-          handle: ".hue-chip__swatch",
-          draggable: ".hue-chip",
-          filter: ".hue-chip--locked",
-          ghostClass: styles.dragGhost,
-          chosenClass: styles.dragChosen,
-          onEnd: () => {
-            const order = sortable.toArray();
-            setRows((prev) => {
-              const normalized = normalizeOrder(
-                order,
-                HUE_TEST_CONFIG.rows[index]
-              );
-              const updated = [...prev];
-              updated[index] = reorderRow(prev[index], normalized);
-              return updated;
-            });
-          }
-        });
-        sortableRefs.current[index] = sortable;
+    if (!dragState) return undefined;
+    const handleMove = (event) => {
+      setDragPos({ x: event.clientX, y: event.clientY });
+      const rowIndex = dragState.rowIndex;
+      const rowEl = rowRefs.current[rowIndex];
+      if (!rowEl) return;
+      const candidates = Array.from(
+        rowEl.querySelectorAll("[data-chip-id]")
+      ).filter((el) => el.dataset.placeholder !== "true");
+      if (!candidates.length) return;
+      const targetIndex = candidates.findIndex((el) => {
+        const rect = el.getBoundingClientRect();
+        return event.clientX < rect.left + rect.width / 2;
       });
-    });
-
-    return () => {
-      isMounted = false;
-      sortableRefs.current.forEach((instance) => {
-        if (instance && typeof instance.destroy === "function") {
-          instance.destroy();
-        }
+      const newIndex = targetIndex === -1 ? candidates.length : targetIndex;
+      setRows((prev) => {
+        const row = prev[rowIndex];
+        const placeholderIndex = row.findIndex((chip) => chip.placeholder);
+        if (placeholderIndex === -1) return prev;
+        if (placeholderIndex === newIndex) return prev;
+        const placeholder = row[placeholderIndex];
+        const without = row.filter((chip) => !chip.placeholder);
+        const nextRow = [...without];
+        nextRow.splice(newIndex, 0, placeholder);
+        const updated = [...prev];
+        updated[rowIndex] = nextRow;
+        return updated;
       });
     };
-  }, []);
+
+    const handleUp = () => {
+      setRows((prev) => {
+        const row = prev[dragState.rowIndex];
+        const placeholderIndex = row.findIndex((chip) => chip.placeholder);
+        if (placeholderIndex === -1) return prev;
+        const without = row.filter((chip) => !chip.placeholder);
+        const nextRow = [...without];
+        nextRow.splice(placeholderIndex, 0, dragState.chip);
+        const normalized = normalizeOrder(
+          nextRow.map((chip) => chip.id),
+          HUE_TEST_CONFIG.rows[dragState.rowIndex]
+        );
+        const updated = [...prev];
+        updated[dragState.rowIndex] = reorderRow(nextRow, normalized);
+        return updated;
+      });
+      setDragState(null);
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, [dragState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,6 +248,26 @@ export default function HueTest({ embed = false }) {
     setRows(buildInitialRows());
     setResults(null);
     setSaveStatus("idle");
+    setDragState(null);
+  }
+
+  function handlePointerDown(event, rowIndex, chip) {
+    if (chip.locked || chip.placeholder) return;
+    event.preventDefault();
+    document.body.style.userSelect = "none";
+    const placeholder = createPlaceholder(rowIndex);
+    setRows((prev) => {
+      const row = prev[rowIndex];
+      const without = row.filter((item) => item.id !== chip.id);
+      const chipIndex = row.findIndex((item) => item.id === chip.id);
+      const nextRow = [...without];
+      nextRow.splice(chipIndex, 0, placeholder);
+      const updated = [...prev];
+      updated[rowIndex] = nextRow;
+      return updated;
+    });
+    setDragState({ rowIndex, chip, placeholderId: placeholder.id });
+    setDragPos({ x: event.clientX, y: event.clientY });
   }
 
   return (
@@ -263,23 +299,36 @@ export default function HueTest({ embed = false }) {
                   rowRefs.current[rowIndex] = el;
                 }}
               >
-                {row.map((chip) => (
-                  <div
-                    key={chip.id}
-                    className={`hue-chip ${
-                      chip.locked ? "hue-chip--locked" : ""
-                    } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
-                    data-id={chip.id}
-                  >
+                {row.map((chip) =>
+                  chip.placeholder ? (
                     <div
-                      className={`${styles.chipSwatch} hue-chip__swatch`}
-                      style={{ backgroundColor: chip.hex }}
+                      key={chip.id}
+                      className={styles.placeholder}
+                      data-placeholder="true"
+                      data-chip-id={chip.id}
+                      aria-hidden="true"
                     />
-                    <div className={styles.chipLabel}>
-                      {chip.locked ? "Locked" : "Drag"}
+                  ) : (
+                    <div
+                      key={chip.id}
+                      className={`hue-chip ${
+                        chip.locked ? "hue-chip--locked" : ""
+                      } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
+                      data-chip-id={chip.id}
+                    >
+                      <div
+                        className={`${styles.chipSwatch} hue-chip__swatch`}
+                        style={{ backgroundColor: chip.hex }}
+                        onPointerDown={(event) =>
+                          handlePointerDown(event, rowIndex, chip)
+                        }
+                      />
+                      <div className={styles.chipLabel}>
+                        {chip.locked ? "Locked" : "Drag"}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
           ))}
@@ -339,6 +388,20 @@ export default function HueTest({ embed = false }) {
                 </>
               )}
             </div>
+          </div>
+        )}
+        {dragState && (
+          <div
+            className={styles.dragPreview}
+            style={{
+              transform: `translate(${dragPos.x - 32}px, ${dragPos.y - 32}px)`
+            }}
+            aria-hidden="true"
+          >
+            <div
+              className={styles.dragPreviewSwatch}
+              style={{ backgroundColor: dragState.chip.hex }}
+            />
           </div>
         )}
       </div>

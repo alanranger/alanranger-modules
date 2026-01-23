@@ -110,6 +110,14 @@
   margin-top: 6px;
 }
 
+.placeholder {
+  width: var(--chip-size);
+  height: var(--chip-size);
+  border-radius: 10px;
+  border: 2px dashed rgba(251, 191, 36, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.25);
+}
+
 .rowGroup {
   display: flex;
   flex-direction: column;
@@ -263,6 +271,24 @@
 :global(.hue-drop-slot) .chipSwatch {
   border-color: rgba(251, 191, 36, 0.9);
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
+}
+
+.dragPreview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--chip-size);
+  height: var(--chip-size);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.dragPreviewSwatch {
+  width: var(--chip-size);
+  height: var(--chip-size);
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 720px) {
