@@ -77,6 +77,13 @@ function enforceLockedPositionsById(rowIndex, rowIds) {
   return [firstId, ...middle, lastId];
 }
 
+function moveIdToIndex(rowIds, chipId, targetIndex) {
+  const without = rowIds.filter((id) => id !== chipId);
+  const next = [...without];
+  next.splice(targetIndex, 0, chipId);
+  return next;
+}
+
 function HueRadarChart({ values, bands }) {
   const canvasRef = useRef(null);
 
@@ -194,18 +201,32 @@ export default function HueTest({ embed = false }) {
         Number.parseFloat(style.getPropertyValue("--chip-size")) || 64;
       const gap =
         Number.parseFloat(style.columnGap || style.gap || "0") || 0;
+      const paddingLeft =
+        Number.parseFloat(style.paddingLeft || "0") || 0;
       const unit = chipSize + gap;
       const rowRect = rowEl.getBoundingClientRect();
-      const relativeX = event.clientX - rowRect.left + rowEl.scrollLeft;
+      const relativeX =
+        event.clientX - rowRect.left - paddingLeft + rowEl.scrollLeft;
       const rawIndex = Math.floor((relativeX + chipSize / 2) / unit);
       const totalItems = dragState.originalRowIds.length;
       const unclamped = Number.isFinite(rawIndex) ? rawIndex : 0;
       const minIndex = 1;
-      const maxIndex = Math.max(1, totalItems - 1);
+      const maxIndex = Math.max(1, totalItems - 2);
       const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
       if (newIndex !== dragState.placeholderIndex) {
+        const previewRowIds = enforceLockedPositionsById(
+          rowIndex,
+          moveIdToIndex(dragState.originalRowIds, dragState.chipId, newIndex)
+        );
         setDragState((prev) =>
-          prev ? { ...prev, placeholderIndex: newIndex, hasMoved: true } : prev
+          prev
+            ? {
+                ...prev,
+                placeholderIndex: newIndex,
+                hasMoved: true,
+                previewRowIds
+              }
+            : prev
         );
       }
     };
@@ -217,16 +238,16 @@ export default function HueTest({ embed = false }) {
         return;
       }
       setRows((prev) => {
-        const currentRowIds = prev[dragState.rowIndex] || [];
-        const without = currentRowIds.filter(
-          (id) => id !== dragState.chipId
-        );
-        const nextRowIds = [...without];
-        nextRowIds.splice(dragState.placeholderIndex, 0, dragState.chipId);
-        const lockedRowIds = enforceLockedPositionsById(
-          dragState.rowIndex,
-          nextRowIds
-        );
+        const lockedRowIds =
+          dragState.previewRowIds ||
+          enforceLockedPositionsById(
+            dragState.rowIndex,
+            moveIdToIndex(
+              prev[dragState.rowIndex] || [],
+              dragState.chipId,
+              dragState.placeholderIndex
+            )
+          );
         const updated = [...prev];
         updated[dragState.rowIndex] = lockedRowIds;
         return updated;
@@ -384,24 +405,11 @@ export default function HueTest({ embed = false }) {
                 dragState.rowIndex === rowIndex &&
                 dragState.hasMoved
                   ? (() => {
-                      const without = dragState.originalRowIds.filter(
-                        (id) => id !== dragState.chipId
-                      );
-                      const placeholder = createPlaceholder(rowIndex);
-                      const nextRow = [...without];
-                      nextRow.splice(dragState.placeholderIndex, 0, placeholder);
-                      return nextRow;
+                      return dragState.previewRowIds || dragState.originalRowIds;
                     })()
                   : rowIds
                 ).map((item) =>
-                  item?.placeholder ? (
-                    <div
-                      key={item.id}
-                      className={`${styles.placeholder} hue-placeholder`}
-                      data-placeholder="true"
-                      aria-hidden="true"
-                    />
-                  ) : (
+                  (
                     (() => {
                       const chip = getChipMeta(item)?.chip;
                       if (!chip) return null;
