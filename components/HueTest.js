@@ -96,6 +96,20 @@ function buildPreviewRow(rowIds, dragState, rowIndex) {
   return next;
 }
 
+function getChipSnapshot(rowIds) {
+  return rowIds
+    .map((id) => {
+      const chip = getChipMeta(id)?.chip;
+      if (!chip) return null;
+      return {
+        id,
+        hex: chip.hex,
+        hue: chip.hue
+      };
+    })
+    .filter(Boolean);
+}
+
 function HueRadarChart({ values, bands }) {
   const canvasRef = useRef(null);
 
@@ -189,6 +203,7 @@ export default function HueTest({ embed = false }) {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [dragState, setDragState] = useState(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [debugLogs, setDebugLogs] = useState([]);
   const rowRefs = useRef([]);
 
   useEffect(() => {
@@ -245,6 +260,17 @@ export default function HueTest({ embed = false }) {
 
     const handleUp = () => {
       if (!dragState.hasMoved || dragState.placeholderIndex === dragState.startIndex) {
+        if (dragState?.startSnapshot) {
+          setDebugLogs((prev) => [
+            {
+              type: "click",
+              time: new Date().toISOString(),
+              before: dragState.startSnapshot,
+              after: null
+            },
+            ...prev
+          ]);
+        }
         setDragState(null);
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
@@ -263,6 +289,22 @@ export default function HueTest({ embed = false }) {
           );
         const updated = [...prev];
         updated[dragState.rowIndex] = lockedRowIds;
+        if (dragState?.startSnapshot) {
+          setDebugLogs((prevLogs) => [
+            {
+              type: "move",
+              time: new Date().toISOString(),
+              before: dragState.startSnapshot,
+              after: {
+                rowIndex: dragState.rowIndex,
+                chipId: dragState.chipId,
+                rowIds: lockedRowIds,
+                tiles: getChipSnapshot(lockedRowIds)
+              }
+            },
+            ...prevLogs
+          ]);
+        }
         return updated;
       });
       setDragState(null);
@@ -359,6 +401,7 @@ export default function HueTest({ embed = false }) {
     setResults(null);
     setSaveStatus("idle");
     setDragState(null);
+    setDebugLogs([]);
   }
 
   function handlePointerDown(event, rowIndex, chipId) {
@@ -380,7 +423,13 @@ export default function HueTest({ embed = false }) {
       originalRowIds: [...rowIds],
       startIndex: chipIndex,
       startPos: { x: event.clientX, y: event.clientY },
-      hasMoved: false
+      hasMoved: false,
+      startSnapshot: {
+        rowIndex,
+        chipId,
+        rowIds: [...rowIds],
+        tiles: getChipSnapshot(rowIds)
+      }
     });
     setDragPos({ x: event.clientX, y: event.clientY });
   }
@@ -469,6 +518,43 @@ export default function HueTest({ embed = false }) {
           <button className={styles.ghostButton} onClick={handleReset}>
             Reset
           </button>
+        </div>
+
+        <div className={styles.debugPanel}>
+          <div className={styles.debugHeader}>
+            <strong>Debug log</strong>
+            <button
+              type="button"
+              className={styles.debugClear}
+              onClick={() => setDebugLogs([])}
+            >
+              Clear
+            </button>
+          </div>
+          {debugLogs.length === 0 ? (
+            <div className={styles.debugEmpty}>No events yet.</div>
+          ) : (
+            <ul className={styles.debugList}>
+              {debugLogs.slice(0, 8).map((entry) => (
+                <li key={`${entry.time}-${entry.type}`} className={styles.debugItem}>
+                  <div className={styles.debugLine}>
+                    <span>{entry.type.toUpperCase()}</span>
+                    <span>{entry.time}</span>
+                  </div>
+                  <div className={styles.debugBlock}>
+                    <div className={styles.debugLabel}>Before</div>
+                    <pre>{JSON.stringify(entry.before, null, 2)}</pre>
+                  </div>
+                  {entry.after && (
+                    <div className={styles.debugBlock}>
+                      <div className={styles.debugLabel}>After</div>
+                      <pre>{JSON.stringify(entry.after, null, 2)}</pre>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {results && (
