@@ -55,6 +55,18 @@ function enforceLockedOrder(rowIndex, orderIds, byId) {
   return normalized.filter((id) => byId.has(id));
 }
 
+function enforceLockedPositions(rowIndex, row) {
+  const { firstId, lastId } = getLockedIds(rowIndex);
+  if (!firstId || !lastId) return row;
+  const byId = new Map(row.map((chip) => [chip.id, chip]));
+  const middle = row.filter((chip) => chip.id !== firstId && chip.id !== lastId);
+  const next = [];
+  if (byId.has(firstId)) next.push(byId.get(firstId));
+  next.push(...middle);
+  if (byId.has(lastId)) next.push(byId.get(lastId));
+  return next;
+}
+
 function HueRadarChart({ values }) {
   const canvasRef = useRef(null);
 
@@ -162,14 +174,11 @@ export default function HueTest({ embed = false }) {
         const without = row.filter((chip) => chip.id !== dragState.chip.id);
         const nextRow = [...without];
         nextRow.splice(dragState.placeholderIndex, 0, dragState.chip);
-        const byId = new Map(nextRow.map((chip) => [chip.id, chip]));
-        const normalized = enforceLockedOrder(
-          dragState.rowIndex,
-          nextRow.map((chip) => chip.id),
-          byId
-        );
         const updated = [...prev];
-        updated[dragState.rowIndex] = reorderRow(nextRow, normalized);
+        updated[dragState.rowIndex] = enforceLockedPositions(
+          dragState.rowIndex,
+          nextRow
+        );
         return updated;
       });
       setDragState(null);
@@ -276,7 +285,7 @@ export default function HueTest({ embed = false }) {
       chip,
       placeholderId: createPlaceholder(rowIndex).id,
       placeholderIndex: chipIndex,
-      originalRow: row
+      originalRow: [...row]
     });
     setDragPos({ x: event.clientX, y: event.clientY });
   }
