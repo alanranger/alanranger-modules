@@ -14,7 +14,12 @@ const CHIP_META = new Map(
   HUE_TEST_CONFIG.rows.flatMap((row, rowIndex) =>
     row.map((chip, orderIndex) => [
       chip.id,
-      { chip, rowIndex, orderIndex }
+      {
+        chip,
+        rowIndex,
+        orderIndex,
+        style: { backgroundColor: chip.hex }
+      }
     ])
   )
 );
@@ -485,7 +490,7 @@ export default function HueTest({ embed = false }) {
 
         <div className={styles.testArea}>
           {rows.map((rowIds, rowIndex) => (
-            <div key={rowIds[0] || `row-${rowIndex}`} className={styles.rowGroup}>
+            <div key={`row-${rowIndex}`} className={styles.rowGroup}>
               <div className={styles.rowTitle}>
                 Row {rowIndex + 1}: {HUE_TEST_CONFIG.rowLabels?.[rowIndex]}
               </div>
@@ -505,7 +510,8 @@ export default function HueTest({ embed = false }) {
                     />
                   ) : (
                     (() => {
-                      const chip = getChipMeta(item)?.chip;
+                      const chipMeta = getChipMeta(item);
+                      const chip = chipMeta?.chip;
                       if (!chip) return null;
                       return (
                     <div
@@ -517,7 +523,9 @@ export default function HueTest({ embed = false }) {
                     >
                       <div
                         className={`${styles.chipSwatch} hue-chip__swatch`}
-                        style={{ backgroundColor: chip.hex }}
+                        style={chipMeta?.style}
+                        data-hex={chip.hex}
+                        data-hue={chip.hue}
                         onPointerDown={(event) =>
                           handlePointerDown(event, rowIndex, chip.id)
                         }
@@ -671,7 +679,7 @@ export default function HueTest({ embed = false }) {
             <div
               className={styles.dragPreviewSwatch}
               style={{
-                backgroundColor: getChipMeta(dragState.chipId)?.chip?.hex
+                ...(getChipMeta(dragState.chipId)?.style || {})
               }}
             />
           </div>
