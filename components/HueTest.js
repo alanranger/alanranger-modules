@@ -74,13 +74,14 @@ function HueRadarChart({ values, bands }) {
     const canvas = canvasRef.current;
     if (!canvas || !Array.isArray(values)) return;
     const safeBands = Array.isArray(bands) ? bands : [];
-    const size = 260;
+    const size = 320;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     canvas.width = size;
     canvas.height = size;
     const center = size / 2;
-    const radius = center - 26;
+    const padding = 32;
+    const radius = center - padding;
     ctx.clearRect(0, 0, size, size);
 
     const bandCount = values.length || 12;
@@ -142,7 +143,7 @@ function HueRadarChart({ values, bands }) {
         safeBands[i]?.start !== undefined && safeBands[i]?.end !== undefined
           ? Math.round((safeBands[i].start + safeBands[i].end) / 2)
           : Math.round((i * 360) / bandCount);
-      const labelRadius = maxWedgeRadius + 10;
+      const labelRadius = maxWedgeRadius + 8;
       const x = center + labelRadius * Math.cos(angle);
       const y = center + labelRadius * Math.sin(angle);
       ctx.fillText(`${labelHue}°`, x - 8, y + 4);
