@@ -84,6 +84,18 @@ function moveIdToIndex(rowIds, chipId, targetIndex) {
   return next;
 }
 
+function buildPreviewRow(rowIds, dragState, rowIndex) {
+  if (!dragState || dragState.rowIndex !== rowIndex || !dragState.hasMoved) {
+    return rowIds;
+  }
+  const source =
+    dragState.previewRowIds || dragState.originalRowIds || rowIds;
+  const without = source.filter((id) => id !== dragState.chipId);
+  const next = [...without];
+  next.splice(dragState.placeholderIndex, 0, createPlaceholder(rowIndex));
+  return next;
+}
+
 function HueRadarChart({ values, bands }) {
   const canvasRef = useRef(null);
 
@@ -235,6 +247,7 @@ export default function HueTest({ embed = false }) {
       if (!dragState.hasMoved || dragState.placeholderIndex === dragState.startIndex) {
         setDragState(null);
         document.body.style.userSelect = "";
+        document.body.style.cursor = "";
         return;
       }
       setRows((prev) => {
@@ -254,6 +267,7 @@ export default function HueTest({ embed = false }) {
       });
       setDragState(null);
       document.body.style.userSelect = "";
+      document.body.style.cursor = "";
     };
 
     window.addEventListener("pointermove", handleMove);
@@ -355,6 +369,7 @@ export default function HueTest({ embed = false }) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     document.body.style.userSelect = "none";
+    document.body.style.cursor = "grabbing";
     const rowIds = rows[rowIndex] || [];
     const chipIndex = rowIds.findIndex((id) => id === chipId);
     setDragState({
@@ -401,15 +416,15 @@ export default function HueTest({ embed = false }) {
                   rowRefs.current[rowIndex] = el;
                 }}
               >
-                {(dragState &&
-                dragState.rowIndex === rowIndex &&
-                dragState.hasMoved
-                  ? (() => {
-                      return dragState.previewRowIds || dragState.originalRowIds;
-                    })()
-                  : rowIds
-                ).map((item) =>
-                  (
+                {buildPreviewRow(rowIds, dragState, rowIndex).map((item) =>
+                  item?.placeholder ? (
+                    <div
+                      key={item.id}
+                      className={`${styles.placeholder} hue-placeholder`}
+                      data-placeholder="true"
+                      aria-hidden="true"
+                    />
+                  ) : (
                     (() => {
                       const chip = getChipMeta(item)?.chip;
                       if (!chip) return null;

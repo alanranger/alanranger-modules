@@ -92,6 +92,17 @@
   border: 2px solid rgba(255, 255, 255, 0.15);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   transition: transform 0.12s ease, border-color 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chipIndex {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
 .chipLocked {
@@ -114,8 +125,10 @@
   width: var(--chip-size);
   height: var(--chip-size);
   border-radius: 10px;
-  border: 2px dashed rgba(251, 191, 36, 0.7);
-  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.25);
+  border: 2px dashed rgba(251, 191, 36, 0.9);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2),
+    inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.08);
 }
 
 .rowGroup {
