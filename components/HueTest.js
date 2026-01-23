@@ -433,6 +433,14 @@ export default function HueTest({ embed = false }) {
               <div className={styles.chartNotes}>
                 Higher values are better. Each spoke represents a 30° hue band.
                 The filled area shows your hue ordering accuracy.
+                <div className={styles.rowLegend}>
+                  {HUE_TEST_CONFIG.rowLabels?.map((label) => (
+                    <div key={`row-legend-${label}`} className={styles.rowLegendItem}>
+                      <span className={styles.rowLegendDot} />
+                      <span>{label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

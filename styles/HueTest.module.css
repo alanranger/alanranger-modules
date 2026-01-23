@@ -248,6 +248,29 @@
   line-height: 1.6;
 }
 
+.rowLegend {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+.rowLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowLegendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
+  flex: 0 0 auto;
+}
+
 .saveStatus {
   margin-top: 12px;
   font-size: 14px;
