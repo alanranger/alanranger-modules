@@ -137,41 +137,31 @@ export default function HueTest({ embed = false }) {
       const rowIndex = dragState.rowIndex;
       const rowEl = rowRefs.current[rowIndex];
       if (!rowEl) return;
-      const candidates = Array.from(
-        rowEl.querySelectorAll("[data-chip-id]")
-      ).filter((el) => el.dataset.placeholder !== "true");
-      if (!candidates.length) return;
-      const targetIndex = candidates.findIndex((el) => {
+      const items = Array.from(
+        rowEl.querySelectorAll(".hue-chip, .hue-placeholder")
+      );
+      if (!items.length) return;
+      const targetIndex = items.findIndex((el) => {
         const rect = el.getBoundingClientRect();
         return event.clientX < rect.left + rect.width / 2;
       });
-      const unclamped = targetIndex === -1 ? candidates.length : targetIndex;
+      const unclamped = targetIndex === -1 ? items.length : targetIndex;
       const minIndex = 1;
-      const maxIndex = Math.max(1, candidates.length - 1);
+      const maxIndex = Math.max(1, items.length - 1);
       const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
-      setRows((prev) => {
-        const row = prev[rowIndex];
-        const placeholderIndex = row.findIndex((chip) => chip.placeholder);
-        if (placeholderIndex === -1) return prev;
-        if (placeholderIndex === newIndex) return prev;
-        const placeholder = row[placeholderIndex];
-        const without = row.filter((chip) => !chip.placeholder);
-        const nextRow = [...without];
-        nextRow.splice(newIndex, 0, placeholder);
-        const updated = [...prev];
-        updated[rowIndex] = nextRow;
-        return updated;
-      });
+      if (newIndex !== dragState.placeholderIndex) {
+        setDragState((prev) =>
+          prev ? { ...prev, placeholderIndex: newIndex } : prev
+        );
+      }
     };
 
     const handleUp = () => {
       setRows((prev) => {
-        const row = prev[dragState.rowIndex];
-        const placeholderIndex = row.findIndex((chip) => chip.placeholder);
-        if (placeholderIndex === -1) return prev;
-        const without = row.filter((chip) => !chip.placeholder);
+        const row = dragState.originalRow;
+        const without = row.filter((chip) => chip.id !== dragState.chip.id);
         const nextRow = [...without];
-        nextRow.splice(placeholderIndex, 0, dragState.chip);
+        nextRow.splice(dragState.placeholderIndex, 0, dragState.chip);
         const byId = new Map(nextRow.map((chip) => [chip.id, chip]));
         const normalized = enforceLockedOrder(
           dragState.rowIndex,
@@ -279,18 +269,15 @@ export default function HueTest({ embed = false }) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     document.body.style.userSelect = "none";
-    const placeholder = createPlaceholder(rowIndex);
-    setRows((prev) => {
-      const row = prev[rowIndex];
-      const without = row.filter((item) => item.id !== chip.id);
-      const chipIndex = row.findIndex((item) => item.id === chip.id);
-      const nextRow = [...without];
-      nextRow.splice(chipIndex, 0, placeholder);
-      const updated = [...prev];
-      updated[rowIndex] = nextRow;
-      return updated;
+    const row = rows[rowIndex];
+    const chipIndex = row.findIndex((item) => item.id === chip.id);
+    setDragState({
+      rowIndex,
+      chip,
+      placeholderId: createPlaceholder(rowIndex).id,
+      placeholderIndex: chipIndex,
+      originalRow: row
     });
-    setDragState({ rowIndex, chip, placeholderId: placeholder.id });
     setDragPos({ x: event.clientX, y: event.clientY });
   }
 
@@ -323,13 +310,23 @@ export default function HueTest({ embed = false }) {
                   rowRefs.current[rowIndex] = el;
                 }}
               >
-                {row.map((chip) =>
+                {(dragState && dragState.rowIndex === rowIndex
+                  ? (() => {
+                      const without = dragState.originalRow.filter(
+                        (item) => item.id !== dragState.chip.id
+                      );
+                      const placeholder = createPlaceholder(rowIndex);
+                      const nextRow = [...without];
+                      nextRow.splice(dragState.placeholderIndex, 0, placeholder);
+                      return nextRow;
+                    })()
+                  : row
+                ).map((chip) =>
                   chip.placeholder ? (
                     <div
                       key={chip.id}
-                      className={styles.placeholder}
+                      className={`${styles.placeholder} hue-placeholder`}
                       data-placeholder="true"
-                      data-chip-id={chip.id}
                       aria-hidden="true"
                     />
                   ) : (
