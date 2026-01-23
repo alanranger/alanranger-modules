@@ -10,9 +10,13 @@ function shuffleRow(row) {
   return [row[0], ...shuffled, row.at(-1)];
 }
 
-function buildInitialRows() {
+const CHIP_LOOKUP = new Map(
+  HUE_TEST_CONFIG.rows.flatMap((row) => row.map((chip) => [chip.id, chip]))
+);
+
+function buildInitialRowIds() {
   return HUE_TEST_CONFIG.rows.map((row) =>
-    shuffleRow(row.map((chip) => ({ ...chip })))
+    shuffleRow(row.map((chip) => chip.id))
   );
 }
 
@@ -55,16 +59,11 @@ function enforceLockedOrder(rowIndex, orderIds, byId) {
   return normalized.filter((id) => byId.has(id));
 }
 
-function enforceLockedPositions(rowIndex, row) {
+function enforceLockedPositionsById(rowIndex, rowIds) {
   const { firstId, lastId } = getLockedIds(rowIndex);
-  if (!firstId || !lastId) return row;
-  const byId = new Map(row.map((chip) => [chip.id, chip]));
-  const middle = row.filter((chip) => chip.id !== firstId && chip.id !== lastId);
-  const next = [];
-  if (byId.has(firstId)) next.push(byId.get(firstId));
-  next.push(...middle);
-  if (byId.has(lastId)) next.push(byId.get(lastId));
-  return next;
+  if (!firstId || !lastId) return rowIds;
+  const middle = rowIds.filter((id) => id !== firstId && id !== lastId);
+  return [firstId, ...middle, lastId];
 }
 
 function HueRadarChart({ values, bands }) {
@@ -154,7 +153,7 @@ function HueRadarChart({ values, bands }) {
 }
 
 export default function HueTest({ embed = false }) {
-  const [rows, setRows] = useState(buildInitialRows);
+  const [rows, setRows] = useState(buildInitialRowIds);
   const [results, setResults] = useState(null);
   const [memberId, setMemberId] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle");
@@ -166,6 +165,13 @@ export default function HueTest({ embed = false }) {
     if (!dragState) return undefined;
     const handleMove = (event) => {
       setDragPos({ x: event.clientX, y: event.clientY });
+      if (dragState.startPos) {
+        const dx = event.clientX - dragState.startPos.x;
+        const dy = event.clientY - dragState.startPos.y;
+        if (Math.hypot(dx, dy) < 6) {
+          return;
+        }
+      }
       const rowIndex = dragState.rowIndex;
       const rowEl = rowRefs.current[rowIndex];
       if (!rowEl) return;
@@ -183,28 +189,30 @@ export default function HueTest({ embed = false }) {
       const newIndex = Math.min(Math.max(unclamped, minIndex), maxIndex);
       if (newIndex !== dragState.placeholderIndex) {
         setDragState((prev) =>
-          prev ? { ...prev, placeholderIndex: newIndex } : prev
+          prev ? { ...prev, placeholderIndex: newIndex, hasMoved: true } : prev
         );
       }
     };
 
     const handleUp = () => {
+      if (!dragState.hasMoved) {
+        setDragState(null);
+        document.body.style.userSelect = "";
+        return;
+      }
       setRows((prev) => {
-        const currentRow = prev[dragState.rowIndex] || [];
-        const without = currentRow.filter(
-          (chip) => chip.id !== dragState.chip.id
+        const currentRowIds = prev[dragState.rowIndex] || [];
+        const without = currentRowIds.filter(
+          (id) => id !== dragState.chipId
         );
-        const moving =
-          currentRow.find((chip) => chip.id === dragState.chip.id) ||
-          dragState.chip;
-        const nextRow = [...without];
-        nextRow.splice(dragState.placeholderIndex, 0, moving);
-        const lockedRow = enforceLockedPositions(
+        const nextRowIds = [...without];
+        nextRowIds.splice(dragState.placeholderIndex, 0, dragState.chipId);
+        const lockedRowIds = enforceLockedPositionsById(
           dragState.rowIndex,
-          nextRow
+          nextRowIds
         );
         const updated = [...prev];
-        updated[dragState.rowIndex] = lockedRow.map((chip) => ({ ...chip }));
+        updated[dragState.rowIndex] = lockedRowIds;
         return updated;
       });
       setDragState(null);
@@ -249,10 +257,7 @@ export default function HueTest({ embed = false }) {
     };
   }, []);
 
-  const rowOrders = useMemo(
-    () => rows.map((row) => row.map((chip) => chip.id)),
-    [rows]
-  );
+  const rowOrders = useMemo(() => rows, [rows]);
 
   const chartValues = useMemo(() => {
     if (!results?.bandErrors) return null;
@@ -260,7 +265,10 @@ export default function HueTest({ embed = false }) {
   }, [results]);
 
   async function handleScore() {
-    const scoring = scoreHueTest(rows, HUE_TEST_CONFIG.bands);
+    const scoringRows = rows.map((rowIds) =>
+      rowIds.map((id) => CHIP_LOOKUP.get(id)).filter(Boolean)
+    );
+    const scoring = scoreHueTest(scoringRows, HUE_TEST_CONFIG.bands);
     const interpretation = getInterpretation(scoring.totalScore);
     setResults({
       ...scoring,
@@ -296,27 +304,31 @@ export default function HueTest({ embed = false }) {
   }
 
   function handleReset() {
-    setRows(buildInitialRows());
+    setRows(buildInitialRowIds());
     setResults(null);
     setSaveStatus("idle");
     setDragState(null);
   }
 
-  function handlePointerDown(event, rowIndex, chip) {
-    if (chip.locked || chip.placeholder) return;
+  function handlePointerDown(event, rowIndex, chipId) {
+    const chip = CHIP_LOOKUP.get(chipId);
+    if (!chip || chip.locked) return;
     event.preventDefault();
     if (event.currentTarget?.setPointerCapture) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     document.body.style.userSelect = "none";
-    const row = rows[rowIndex];
-    const chipIndex = row.findIndex((item) => item.id === chip.id);
+    const rowIds = rows[rowIndex] || [];
+    const chipIndex = rowIds.findIndex((id) => id === chipId);
     setDragState({
       rowIndex,
-      chip,
+      chipId,
       placeholderId: createPlaceholder(rowIndex).id,
       placeholderIndex: chipIndex,
-      originalRow: [...row]
+      originalRowIds: [...rowIds],
+      startIndex: chipIndex,
+      startPos: { x: event.clientX, y: event.clientY },
+      hasMoved: false
     });
     setDragPos({ x: event.clientX, y: event.clientY });
   }
@@ -341,8 +353,8 @@ export default function HueTest({ embed = false }) {
         </div>
 
         <div className={styles.testArea}>
-          {rows.map((row, rowIndex) => (
-            <div key={row[0]?.id || `row-${rowIndex}`} className={styles.rowGroup}>
+          {rows.map((rowIds, rowIndex) => (
+            <div key={rowIds[0] || `row-${rowIndex}`} className={styles.rowGroup}>
               <div className={styles.rowTitle}>
                 Row {rowIndex + 1}: {HUE_TEST_CONFIG.rowLabels?.[rowIndex]}
               </div>
@@ -354,24 +366,28 @@ export default function HueTest({ embed = false }) {
               >
                 {(dragState && dragState.rowIndex === rowIndex
                   ? (() => {
-                      const without = dragState.originalRow.filter(
-                        (item) => item.id !== dragState.chip.id
+                      const without = dragState.originalRowIds.filter(
+                        (id) => id !== dragState.chipId
                       );
                       const placeholder = createPlaceholder(rowIndex);
                       const nextRow = [...without];
                       nextRow.splice(dragState.placeholderIndex, 0, placeholder);
                       return nextRow;
                     })()
-                  : row
-                ).map((chip) =>
-                  chip.placeholder ? (
+                  : rowIds
+                ).map((item) =>
+                  item?.placeholder ? (
                     <div
-                      key={chip.id}
+                      key={item.id}
                       className={`${styles.placeholder} hue-placeholder`}
                       data-placeholder="true"
                       aria-hidden="true"
                     />
                   ) : (
+                    (() => {
+                      const chip = CHIP_LOOKUP.get(item);
+                      if (!chip) return null;
+                      return (
                     <div
                       key={chip.id}
                       className={`hue-chip ${
@@ -383,13 +399,15 @@ export default function HueTest({ embed = false }) {
                         className={`${styles.chipSwatch} hue-chip__swatch`}
                         style={{ backgroundColor: chip.hex }}
                         onPointerDown={(event) =>
-                          handlePointerDown(event, rowIndex, chip)
+                          handlePointerDown(event, rowIndex, chip.id)
                         }
                       />
                       <div className={styles.chipLabel}>
                         {chip.locked ? "Locked" : "Drag"}
                       </div>
                     </div>
+                      );
+                    })()
                   )
                 )}
               </div>
@@ -474,7 +492,9 @@ export default function HueTest({ embed = false }) {
           >
             <div
               className={styles.dragPreviewSwatch}
-              style={{ backgroundColor: dragState.chip.hex }}
+              style={{
+                backgroundColor: CHIP_LOOKUP.get(dragState.chipId)?.hex
+              }}
             />
           </div>
         )}
