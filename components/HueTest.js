@@ -179,8 +179,11 @@ export default function HueTest({ embed = false }) {
       if (dragState.startPos) {
         const dx = event.clientX - dragState.startPos.x;
         const dy = event.clientY - dragState.startPos.y;
-        if (Math.hypot(dx, dy) < 6) {
+        if (Math.hypot(dx, dy) < 8) {
           return;
+        }
+        if (!dragState.hasMoved) {
+          setDragState((prev) => (prev ? { ...prev, hasMoved: true } : prev));
         }
       }
       const rowIndex = dragState.rowIndex;
@@ -375,7 +378,9 @@ export default function HueTest({ embed = false }) {
                   rowRefs.current[rowIndex] = el;
                 }}
               >
-                {(dragState && dragState.rowIndex === rowIndex
+                {(dragState &&
+                dragState.rowIndex === rowIndex &&
+                dragState.hasMoved
                   ? (() => {
                       const without = dragState.originalRowIds.filter(
                         (id) => id !== dragState.chipId
