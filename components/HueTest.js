@@ -3,8 +3,6 @@ import styles from "../styles/HueTest.module.css";
 import { HUE_TEST_CONFIG } from "../lib/hueTestConfig";
 import { scoreHueTest } from "../lib/hueTestScoring";
 
-const RADAR_LABELS = ["0°", "90°", "180°", "270°"];
-
 function shuffleRow(row) {
   if (row.length <= 2) return row;
   const middle = row.slice(1, -1);
@@ -69,12 +67,13 @@ function enforceLockedPositions(rowIndex, row) {
   return next;
 }
 
-function HueRadarChart({ values }) {
+function HueRadarChart({ values, bands }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !Array.isArray(values)) return;
+    const safeBands = Array.isArray(bands) ? bands : [];
     const size = 260;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -84,6 +83,24 @@ function HueRadarChart({ values }) {
     const radius = center - 26;
     ctx.clearRect(0, 0, size, size);
 
+    const bandCount = values.length || 12;
+    const wedgeAngle = (Math.PI * 2) / bandCount;
+    const maxWedgeRadius = radius + 18;
+    for (let i = 0; i < bandCount; i += 1) {
+      const startAngle = i * wedgeAngle - Math.PI / 2;
+      const endAngle = startAngle + wedgeAngle;
+      const midHue =
+        safeBands[i]?.start !== undefined && safeBands[i]?.end !== undefined
+          ? (safeBands[i].start + safeBands[i].end) / 2
+          : (i * 360) / bandCount;
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.arc(center, center, maxWedgeRadius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = `hsla(${midHue}, 70%, 50%, 0.12)`;
+      ctx.fill();
+    }
+
     ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
     ctx.lineWidth = 1;
     for (let ring = 1; ring <= 4; ring += 1) {
@@ -91,8 +108,6 @@ function HueRadarChart({ values }) {
       ctx.arc(center, center, (radius / 4) * ring, 0, Math.PI * 2);
       ctx.stroke();
     }
-
-    const bandCount = values.length || 12;
     for (let i = 0; i < bandCount; i += 1) {
       const angle = (i / bandCount) * Math.PI * 2 - Math.PI / 2;
       ctx.beginPath();
@@ -120,17 +135,19 @@ function HueRadarChart({ values }) {
     ctx.stroke();
 
     ctx.fillStyle = "rgba(226, 232, 240, 0.8)";
-    ctx.font = "12px sans-serif";
-    const labelOffsets = [
-      { x: 0, y: -radius - 10, label: RADAR_LABELS[0] },
-      { x: radius + 10, y: 4, label: RADAR_LABELS[1] },
-      { x: 0, y: radius + 18, label: RADAR_LABELS[2] },
-      { x: -radius - 28, y: 4, label: RADAR_LABELS[3] }
-    ];
-    labelOffsets.forEach((label) => {
-      ctx.fillText(label.label, center + label.x, center + label.y);
-    });
-  }, [values]);
+    ctx.font = "11px sans-serif";
+    for (let i = 0; i < bandCount; i += 1) {
+      const angle = (i / bandCount) * Math.PI * 2 - Math.PI / 2;
+      const labelHue =
+        safeBands[i]?.start !== undefined && safeBands[i]?.end !== undefined
+          ? Math.round((safeBands[i].start + safeBands[i].end) / 2)
+          : Math.round((i * 360) / bandCount);
+      const labelRadius = maxWedgeRadius + 10;
+      const x = center + labelRadius * Math.cos(angle);
+      const y = center + labelRadius * Math.sin(angle);
+      ctx.fillText(`${labelHue}°`, x - 8, y + 4);
+    }
+  }, [values, bands]);
 
   return <canvas ref={canvasRef} className={styles.chartCanvas} />;
 }
@@ -402,13 +419,13 @@ export default function HueTest({ embed = false }) {
                   className={styles.rowScoreCard}
                 >
                   <strong>Row {index + 1}</strong>
-                  <span>{score} error points</span>
+                  <span>{score} / 100</span>
                 </div>
               ))}
             </div>
 
             <div className={styles.chartSection}>
-              <HueRadarChart values={chartValues} />
+              <HueRadarChart values={chartValues} bands={HUE_TEST_CONFIG.bands} />
               <div className={styles.chartNotes}>
                 Higher values are better. Each spoke represents a 30° hue band.
                 The filled area shows your hue ordering accuracy.
