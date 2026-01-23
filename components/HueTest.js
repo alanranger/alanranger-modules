@@ -190,15 +190,21 @@ export default function HueTest({ embed = false }) {
 
     const handleUp = () => {
       setRows((prev) => {
-        const row = dragState.originalRow;
-        const without = row.filter((chip) => chip.id !== dragState.chip.id);
+        const currentRow = prev[dragState.rowIndex] || [];
+        const without = currentRow.filter(
+          (chip) => chip.id !== dragState.chip.id
+        );
+        const moving =
+          currentRow.find((chip) => chip.id === dragState.chip.id) ||
+          dragState.chip;
         const nextRow = [...without];
-        nextRow.splice(dragState.placeholderIndex, 0, dragState.chip);
-        const updated = [...prev];
-        updated[dragState.rowIndex] = enforceLockedPositions(
+        nextRow.splice(dragState.placeholderIndex, 0, moving);
+        const lockedRow = enforceLockedPositions(
           dragState.rowIndex,
           nextRow
         );
+        const updated = [...prev];
+        updated[dragState.rowIndex] = lockedRow.map((chip) => ({ ...chip }));
         return updated;
       });
       setDragState(null);

@@ -613,6 +613,10 @@ Keeps all styling + elements. Access guard still runs on live site.
   html.ar-academy #arp-checklists-tile .ar-tile__tip{
     display: none;
   }
+  /* Lift tip in Tools tile so it doesn't cover CTA */
+  html.ar-academy #arp-tools-tile .ar-tile__tip{
+    bottom: 74px;
+  }
   html.ar-academy .ar-tile__tip::before{
     content: "";
     width: 10px;
@@ -1250,8 +1254,17 @@ Keeps all styling + elements. Access guard still runs on live site.
           <div id="arp-ms-status">Loading membership status…</div>
           <button id="arp-ms-manage" type="button">Manage subscription</button>
           <button id="arp-upgrade-membership" type="button" style="display:none;">Upgrade Membership</button>
+          <div class="ar-tile__tip">Check your access level and manage your plan.</div>
+        </div>
+
+        <div id="arp-tools-tile" class="ar-tile ar-span-4">
+          <div class="ar-tile__kicker"><span class="ar-dot"></span>Tools</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">🧰</span>Learning Tools</div>
+          <div class="ar-tile__desc">Track your progress and build your skills.</div>
+
           <!-- Photography Style Quiz Section -->
-          <div id="arp-photography-quiz-section" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
+          <div id="arp-photography-quiz-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
+            <div style="font-size: 12px; font-weight: 700; color: rgba(148, 163, 184, 0.95); margin-bottom: 6px;">Photography Style Quiz</div>
             <div id="arp-photography-quiz-result" style="display: none;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 12px;">
                 <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95);">Your Photography Style Is:</div>
@@ -1267,32 +1280,22 @@ Keeps all styling + elements. Access guard still runs on live site.
               <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; background-color: hsl(16, 88%, 54%); color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 750; cursor: pointer; margin-top: 8px; width: 100%;">Take Photography Personality Quiz</button>
             </div>
           </div>
-          <div class="ar-tile__tip">Check your access level and manage your plan.</div>
-        </div>
 
-        <div id="arp-social-tile" class="ar-tile ar-span-4">
-          <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
-          <div class="ar-tile__title"><span class="ar-tile__icon">🔗</span>Connect Social Accounts</div>
-          <div class="ar-tile__desc">Connect Google or Facebook so you can sign in with them too.</div>
-
-          <!-- Memberstack: Manage Connected Providers -->
-          <div data-ms-auth="manage-providers" class="ms-provider-wrap" aria-label="Connected accounts">
-            <button type="button" class="ms-provider-btn" data-ms-auth-provider="google">
-              <span class="ms-provider-icon">G</span>
-              <span>Connect Google</span>
-              <span class="ms-provider-state" aria-hidden="true"></span>
-            </button>
-            <button type="button" class="ms-provider-btn" data-ms-auth-provider="facebook">
-              <span class="ms-provider-icon">f</span>
-              <span>Connect Facebook</span>
-              <span class="ms-provider-state" aria-hidden="true"></span>
+          <!-- Colour IQ / Hue Test Placeholder -->
+          <div id="arp-hue-test-tools" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff;">
+              <span style="font-size:18px;">🎨</span>
+              <span>Colour IQ / Hue Test</span>
+            </div>
+            <div style="color: var(--ar-text-muted); font-size: 12px; margin-top: 6px;">
+              Arrange colours and see your hue range profile.
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: #fbbf24; font-weight: 700;">Coming soon</div>
+            <button type="button" style="margin-top:10px; width:100%; padding:10px 16px; border-radius:50px; border:1px solid rgba(148,163,184,0.5); background:transparent; color:#e2e8f0; font-size:13px; font-weight:700; cursor:not-allowed;" disabled>
+              Take Hue Test
             </button>
           </div>
-
-          <div class="ms-provider-note">
-            Tip: connect the provider you prefer, then next time you can log in with it.
-          </div>
-          <div class="ar-tile__tip">Connect Google/Facebook so login is faster on any device.</div>
+          <div class="ar-tile__tip">Use these tools to personalize your learning.</div>
         </div>
 
         <!-- Bookmarks & Recent Activity Tile (LIVE MINI LISTS) -->
@@ -1320,26 +1323,6 @@ Keeps all styling + elements. Access guard still runs on live site.
           <div class="ar-tile__tip">View your saved bookmarks and recent activity.</div>
         </div>
 
-        <div id="arp-hue-test-tile" class="ar-tile ar-span-4">
-          <div class="ar-tile__kicker"><span class="ar-dot"></span>Tools</div>
-          <div class="ar-tile__title">
-            <span class="ar-tile__icon">🎨</span>
-            <span>Colour IQ / Hue Test</span>
-          </div>
-          <div class="ar-tile__desc">
-            Arrange colours and see your hue range profile.
-          </div>
-          <div id="ar-hue-test-score" class="ar-hue-score">—</div>
-          <div id="ar-hue-test-date" class="ar-hue-subtext">
-            Take the test to get your score.
-          </div>
-          <a
-            id="ar-hue-test-link"
-            href="/tools/hue-test"
-            style="display:inline-flex; margin-top:12px; color:#fff; background:#e57200; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:700; text-decoration:none; position:relative; z-index:10;"
-          >Take Hue Test</a>
-          <div class="ar-tile__tip">Check your latest hue test score.</div>
-        </div>
       </div>
       </div>
       
@@ -3077,117 +3060,120 @@ Keeps all styling + elements. Access guard still runs on live site.
             }
             
             fetch(apiUrl, fetchOptions)
-            .then(function(response) {
-              if (!response.ok) {
-                if (response.status === 403) {
-                  throw new Error('Admin access required. Please log in as an admin first.');
-                } else if (response.status === 404) {
-                  throw new Error('Member not found');
+              .then(function(response) {
+                if (!response.ok) {
+                  if (response.status === 403) {
+                    throw new Error('Admin access required. Please log in as an admin first.');
+                  } else if (response.status === 404) {
+                    throw new Error('Member not found');
+                  }
+                  throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
                 }
-                throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
-              }
-              return response.json();
-            })
-            .then(function(ghostData) {
-          console.log("[Ghost Login] Ghost member data:", ghostData);
-          
-          // Remove loading banner and show success banner
-          var bannerEl = document.getElementById('ar-ghost-mode-banner');
-          if (bannerEl) {
-            var actualMemberId = ghostData.member?.id || ghostMemberId;
-            var actualEmail = ghostData.member?.auth?.email || ghostData.member?.email || ghostEmail;
-            var bannerText = ghostEmail ? (escapeHtml(actualEmail) + ' (ID: ' + escapeHtml(actualMemberId) + ')') : escapeHtml(actualMemberId);
-            bannerEl.innerHTML = '👻 GHOST MODE: Viewing dashboard as ' + bannerText + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit Ghost Mode</a>';
-          }
-          
-          // Replace member data with ghost member data
-          var ghostMember = ghostData.member || {};
-          var ghostMemberJson = ghostData.memberJson || {};
-          
-          // Use the actual member ID from the response (in case we searched by email)
-          var actualGhostMemberId = ghostMember.id || ghostMemberId;
-          
-          // Create a mock member object that matches the expected structure
-          var mockMember = {
-            id: actualGhostMemberId,
-            data: {
-              id: actualGhostMemberId,
-              email: ghostMember.auth?.email || ghostMember.email || ghostEmail || '',
-              customFields: ghostMember.customFields || {},
-              planConnections: ghostMember.planConnections || [],
-              auth: ghostMember.auth || {}
-            }
-          };
-          
-          // Wait for Memberstack to be available, then override getMemberJSON
-          waitForMemberstack(8000).then(function(ms){
-            if (!ms) {
-              console.error("[Ghost Login] Memberstack not available");
-              return;
-            }
-            
-            // Override getMemberJSON to return ghost member's JSON
-            if (typeof ms.getMemberJSON === 'function') {
-              var originalGetMemberJSON = ms.getMemberJSON;
-              ms.getMemberJSON = function() {
-                return Promise.resolve(ghostMemberJson);
-              };
-            }
-            
-            // Override getCurrentMember to return ghost member
-            if (typeof ms.getCurrentMember === 'function') {
-              var originalGetCurrentMember = ms.getCurrentMember;
-              ms.getCurrentMember = function() {
-                return Promise.resolve(mockMember);
-              };
-            }
-            
-            // Show dashboard with ghost member data
-            if (dashboardEl) dashboardEl.classList.add("is-ready");
-            renderMemberStatus(mockMember, ms);
-            loadExamProgress(mockMember);
-            loadQAQuestionCounts(mockMember, ms);
-            renderProviderState(mockMember);
-            wirePortal(ms);
-            
-            // Load module progress with ghost member JSON
-            if (typeof run === 'function') {
-              setTimeout(function() {
-                run().catch(function(err) {
-                  console.error("[Ghost Login] Error in run():", err);
+                return response.json();
+              })
+              .then(function(ghostData) {
+                console.log("[Ghost Login] Ghost member data:", ghostData);
+
+                // Remove loading banner and show success banner
+                var bannerEl = document.getElementById('ar-ghost-mode-banner');
+                if (bannerEl) {
+                  var actualMemberId = ghostData.member?.id || ghostMemberId;
+                  var actualEmail = ghostData.member?.auth?.email || ghostData.member?.email || ghostEmail;
+                  var bannerText = ghostEmail
+                    ? (escapeHtml(actualEmail) + ' (ID: ' + escapeHtml(actualMemberId) + ')')
+                    : escapeHtml(actualMemberId);
+                  bannerEl.innerHTML = '👻 GHOST MODE: Viewing dashboard as ' + bannerText + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit Ghost Mode</a>';
+                }
+
+                // Replace member data with ghost member data
+                var ghostMember = ghostData.member || {};
+                var ghostMemberJson = ghostData.memberJson || {};
+
+                // Use the actual member ID from the response (in case we searched by email)
+                var actualGhostMemberId = ghostMember.id || ghostMemberId;
+
+                // Create a mock member object that matches the expected structure
+                var mockMember = {
+                  id: actualGhostMemberId,
+                  data: {
+                    id: actualGhostMemberId,
+                    email: ghostMember.auth?.email || ghostMember.email || ghostEmail || '',
+                    customFields: ghostMember.customFields || {},
+                    planConnections: ghostMember.planConnections || [],
+                    auth: ghostMember.auth || {}
+                  }
+                };
+
+                // Wait for Memberstack to be available, then override getMemberJSON
+                waitForMemberstack(8000).then(function(ms){
+                  if (!ms) {
+                    console.error("[Ghost Login] Memberstack not available");
+                    return;
+                  }
+
+                  // Override getMemberJSON to return ghost member's JSON
+                  if (typeof ms.getMemberJSON === 'function') {
+                    var originalGetMemberJSON = ms.getMemberJSON;
+                    ms.getMemberJSON = function() {
+                      return Promise.resolve(ghostMemberJson);
+                    };
+                  }
+
+                  // Override getCurrentMember to return ghost member
+                  if (typeof ms.getCurrentMember === 'function') {
+                    var originalGetCurrentMember = ms.getCurrentMember;
+                    ms.getCurrentMember = function() {
+                      return Promise.resolve(mockMember);
+                    };
+                  }
+
+                  // Show dashboard with ghost member data
+                  if (dashboardEl) dashboardEl.classList.add("is-ready");
+                  renderMemberStatus(mockMember, ms);
+                  loadExamProgress(mockMember);
+                  loadQAQuestionCounts(mockMember, ms);
+                  renderProviderState(mockMember);
+                  wirePortal(ms);
+
+                  // Load module progress with ghost member JSON
+                  if (typeof run === 'function') {
+                    setTimeout(function() {
+                      run().catch(function(err) {
+                        console.error("[Ghost Login] Error in run():", err);
+                      });
+                    }, 500);
+                  } else {
+                    console.warn("[Ghost Login] run() function not found, module progress may not load");
+                  }
                 });
-              }, 500);
-            } else {
-              console.warn("[Ghost Login] run() function not found, module progress may not load");
-            }
-          });
-            })
-            .catch(function(error) {
-          console.error("[Ghost Login] Error:", error);
-          var bannerEl = document.getElementById('ar-ghost-mode-banner');
-          if (bannerEl) {
-            bannerEl.style.background = '#ef4444';
-            bannerEl.innerHTML = '❌ Ghost Login Failed: ' + escapeHtml(error.message) + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
-          }
-          
-          // If it's an admin access error, redirect to login after 3 seconds
-          if (error.message.includes('Admin access required')) {
-            setTimeout(function() {
-              safeRedirect(LOGIN_URL + '?error=admin-login-required');
-            }, 3000);
-          } else {
-            // For other errors, remove ghost parameters and reload after 3 seconds
-            setTimeout(function() {
-              try {
-                var newParams = new URLSearchParams(urlParams);
-                newParams.delete("ghost");
-                newParams.delete("ghostEmail");
-                globalThis.location.href = globalThis.location.pathname + (newParams.toString() ? ("?" + newParams.toString()) : "");
-              } catch(e) {
-                globalThis.location.href = globalThis.location.pathname;
-              }
-            }, 3000);
-          }
+              })
+              .catch(function(error) {
+                console.error("[Ghost Login] Error:", error);
+                var bannerEl = document.getElementById('ar-ghost-mode-banner');
+                if (bannerEl) {
+                  bannerEl.style.background = '#ef4444';
+                  bannerEl.innerHTML = '❌ Ghost Login Failed: ' + escapeHtml(error.message) + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+                }
+
+                // If it's an admin access error, redirect to login after 3 seconds
+                if (error.message.includes('Admin access required')) {
+                  setTimeout(function() {
+                    safeRedirect(LOGIN_URL + '?error=admin-login-required');
+                  }, 3000);
+                } else {
+                  // For other errors, remove ghost parameters and reload after 3 seconds
+                  setTimeout(function() {
+                    try {
+                      var newParams = new URLSearchParams(urlParams);
+                      newParams.delete("ghost");
+                      newParams.delete("ghostEmail");
+                      globalThis.location.href = globalThis.location.pathname + (newParams.toString() ? ("?" + newParams.toString()) : "");
+                    } catch(e) {
+                      globalThis.location.href = globalThis.location.pathname;
+                    }
+                  }, 3000);
+                }
+              });
             }).catch(function(err) {
               console.error("[Ghost Login] Error getting admin member:", err);
               var bannerEl = document.getElementById('ar-ghost-mode-banner');
