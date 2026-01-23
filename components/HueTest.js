@@ -179,7 +179,7 @@ export default function HueTest({ embed = false }) {
       if (dragState.startPos) {
         const dx = event.clientX - dragState.startPos.x;
         const dy = event.clientY - dragState.startPos.y;
-        if (Math.hypot(dx, dy) < 8) {
+        if (Math.hypot(dx, dy) < 12) {
           return;
         }
         if (!dragState.hasMoved) {
@@ -209,7 +209,7 @@ export default function HueTest({ embed = false }) {
     };
 
     const handleUp = () => {
-      if (!dragState.hasMoved) {
+      if (!dragState.hasMoved || dragState.placeholderIndex === dragState.startIndex) {
         setDragState(null);
         document.body.style.userSelect = "";
         return;
