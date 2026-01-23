@@ -56,10 +56,15 @@
 }
 
 .row {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(60px, 1fr));
-  gap: 20px;
+  --chip-size: 64px;
+  display: flex;
+  gap: 18px;
   padding: 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 14px;
@@ -72,6 +77,8 @@
   gap: 6px;
   cursor: grab;
   touch-action: none;
+  width: var(--chip-size);
+  flex: 0 0 var(--chip-size);
 }
 
 .chip:active {
@@ -79,8 +86,8 @@
 }
 
 .chipSwatch {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  width: var(--chip-size);
+  height: var(--chip-size);
   border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.15);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -260,7 +267,7 @@
 
 @media (max-width: 720px) {
   .row {
-    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    --chip-size: 56px;
     gap: 14px;
     padding: 16px;
   }
