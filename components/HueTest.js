@@ -296,7 +296,7 @@ export default function HueTest({ embed = false }) {
         <div className={styles.instructions}>
           <p>Drag the colour chips to arrange by hue.</p>
           <p>First and last chip in each row are fixed.</p>
-          <p>Complete all five rows, then click Score.</p>
+          <p>Complete all four rows, then click Score.</p>
           <p>Results depend on your screen/brightness.</p>
         </div>
 
