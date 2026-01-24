@@ -97,6 +97,11 @@
   justify-content: center;
 }
 
+.chipHighlight .chipSwatch {
+  border-color: rgba(251, 191, 36, 0.9);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.22);
+}
+
 .chipIndex {
   font-size: 13px;
   font-weight: 800;
@@ -425,6 +430,17 @@
   border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dragPreviewLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
 }
 
 @media (max-width: 720px) {

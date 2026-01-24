@@ -257,9 +257,11 @@ export default function HueTest({ embed = false }) {
   const [debugLogs, setDebugLogs] = useState([]);
   const [copyStatus, setCopyStatus] = useState("idle");
   const [renderEpoch, setRenderEpoch] = useState(0);
+  const [highlightId, setHighlightId] = useState(null);
   const rowRefs = useRef([]);
   const lastPointer = useRef({ x: 0, y: 0 });
   const pendingDomLog = useRef(null);
+  const highlightTimer = useRef(null);
 
   useEffect(() => {
     if (!dragState) return undefined;
@@ -359,6 +361,14 @@ export default function HueTest({ embed = false }) {
         }
         return updated;
       });
+      setHighlightId(dragState.chipId);
+      if (highlightTimer.current) {
+        clearTimeout(highlightTimer.current);
+      }
+      highlightTimer.current = setTimeout(() => {
+        setHighlightId(null);
+        highlightTimer.current = null;
+      }, 1200);
       setRenderEpoch((prev) => prev + 1);
       setDragState(null);
       document.body.style.userSelect = "";
@@ -421,6 +431,14 @@ export default function HueTest({ embed = false }) {
     ]);
     pendingDomLog.current = null;
   }, [rows]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimer.current) {
+        clearTimeout(highlightTimer.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -487,6 +505,11 @@ export default function HueTest({ embed = false }) {
     setSaveStatus("idle");
     setDragState(null);
     setDebugLogs([]);
+    setHighlightId(null);
+    if (highlightTimer.current) {
+      clearTimeout(highlightTimer.current);
+      highlightTimer.current = null;
+    }
     setRenderEpoch((prev) => prev + 1);
   }
 
@@ -598,7 +621,9 @@ export default function HueTest({ embed = false }) {
                       key={`${chip.id}-${renderEpoch}`}
                       className={`hue-chip ${
                         chip.locked ? "hue-chip--locked" : ""
-                      } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
+                      } ${styles.chip} ${chip.locked ? styles.chipLocked : ""} ${
+                        highlightId === chip.id ? styles.chipHighlight : ""
+                      }`}
                       data-chip-id={chip.id}
                     >
                       <div
@@ -761,7 +786,11 @@ export default function HueTest({ embed = false }) {
               style={{
                 ...(getChipMeta(dragState.chipId)?.style || {})
               }}
-            />
+            >
+              <span className={styles.dragPreviewLabel}>
+                {dragState.chipId}
+              </span>
+            </div>
           </div>
         )}
       </div>
