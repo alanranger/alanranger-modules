@@ -256,6 +256,7 @@ export default function HueTest({ embed = false }) {
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [debugLogs, setDebugLogs] = useState([]);
   const [copyStatus, setCopyStatus] = useState("idle");
+  const [renderEpoch, setRenderEpoch] = useState(0);
   const rowRefs = useRef([]);
   const lastPointer = useRef({ x: 0, y: 0 });
   const pendingDomLog = useRef(null);
@@ -358,6 +359,7 @@ export default function HueTest({ embed = false }) {
         }
         return updated;
       });
+      setRenderEpoch((prev) => prev + 1);
       setDragState(null);
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
@@ -485,6 +487,7 @@ export default function HueTest({ embed = false }) {
     setSaveStatus("idle");
     setDragState(null);
     setDebugLogs([]);
+    setRenderEpoch((prev) => prev + 1);
   }
 
   async function handleCopyLogs() {
@@ -592,7 +595,7 @@ export default function HueTest({ embed = false }) {
                       if (!chip) return null;
                       return (
                     <div
-                      key={chip.id}
+                      key={`${chip.id}-${renderEpoch}`}
                       className={`hue-chip ${
                         chip.locked ? "hue-chip--locked" : ""
                       } ${styles.chip} ${chip.locked ? styles.chipLocked : ""}`}
