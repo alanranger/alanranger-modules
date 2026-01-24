@@ -1259,9 +1259,8 @@ Keeps all styling + elements. Access guard still runs on live site.
 
         <div id="arp-tools-tile" class="ar-tile ar-span-4">
           <div class="ar-tile__kicker"><span class="ar-dot"></span>Tools</div>
-          <div class="ar-tile__title"><span class="ar-tile__icon">📏</span>Exposure Calculator</div>
-          <div class="ar-tile__desc">Visualise and calculate exposure settings for your outdoor photography.</div>
-          <div style="margin-top: 10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div class="ar-tile__title"><span class="ar-tile__icon">📏</span>Exposure Calculator</div>
             <button
               type="button"
               onclick="window.location.href='https://www.alanranger.com/outdoor-photography-exposure-calculator';"
@@ -1270,12 +1269,18 @@ Keeps all styling + elements. Access guard still runs on live site.
               Exposure Calculator
             </button>
           </div>
+          <div class="ar-tile__desc">Visualise and calculate exposure settings for your outdoor photography.</div>
 
           <!-- Photography Style Quiz Section -->
           <div id="arp-photography-quiz-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
-            <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff; margin-bottom: 6px;">
-              <span style="font-size:18px;">📷</span>
-              <span>Photography Style Quiz</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 6px;">
+              <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff;">
+                <span style="font-size:18px;">📷</span>
+                <span>Photography Style Quiz</span>
+              </div>
+              <div id="arp-photography-quiz-button-container" style="display: none;">
+                <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Take Photography Personality Quiz</button>
+              </div>
             </div>
             <div id="arp-photography-quiz-result" style="display: none;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 12px;">
@@ -1287,9 +1292,6 @@ Keeps all styling + elements. Access guard still runs on live site.
                 <div style="font-size: 11px; font-weight: 700; color: rgba(148, 163, 184, 0.8); margin-bottom: 6px;">Your other Interests and Influences are:</div>
                 <div id="arp-photography-other-interests-list" style="font-size: 12px; color: rgba(148, 163, 184, 0.65); line-height: 1.6;"></div>
               </div>
-            </div>
-            <div id="arp-photography-quiz-button-container" style="display: none;">
-              <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; background-color: hsl(16, 88%, 54%); color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 750; cursor: pointer; margin-top: 8px; width: 100%;">Take Photography Personality Quiz</button>
             </div>
           </div>
 
