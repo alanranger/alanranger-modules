@@ -50,6 +50,7 @@
     <span>Back to Dashboard</span>
   </a>
   <iframe
+    id="ar-hue-embed-frame"
     class="ar-hue-embed-frame"
     src="https://alanranger-modules.vercel.app/tools/hue-test?embed=1"
     title="Colour IQ / Hue Test"
@@ -58,6 +59,40 @@
   ></iframe>
 </div>
 `;
+    var baseSrc = "https://alanranger-modules.vercel.app/tools/hue-test?embed=1";
+    function setFrame(memberId) {
+      var frame = document.getElementById("ar-hue-embed-frame");
+      if (!frame) return;
+      var nextSrc = baseSrc;
+      if (memberId) {
+        nextSrc += "&member_id=" + encodeURIComponent(memberId);
+      }
+      frame.src = nextSrc;
+    }
+
+    function waitForMemberstack(maxMs) {
+      var start = Date.now();
+      function tick() {
+        if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === "function") {
+          window.$memberstackDom.getCurrentMember().then(function(res) {
+            var member = res && (res.data || res);
+            var memberId = member && member.id;
+            setFrame(memberId);
+          }).catch(function() {
+            setFrame(null);
+          });
+          return;
+        }
+        if (Date.now() - start > maxMs) {
+          setFrame(null);
+          return;
+        }
+        setTimeout(tick, 200);
+      }
+      tick();
+    }
+
     document.write(html);
+    waitForMemberstack(5000);
   })();
 </script>

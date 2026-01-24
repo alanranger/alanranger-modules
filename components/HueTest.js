@@ -416,6 +416,17 @@ export default function HueTest({ embed = false }) {
   }, []);
 
   useEffect(() => {
+    if (memberId) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery =
+      params.get("member_id") || params.get("memberId") || params.get("member");
+    if (fromQuery) {
+      setMemberId(fromQuery);
+    }
+  }, [memberId]);
+
+  useEffect(() => {
     if (!pendingDomLog.current) return;
     const pending = pendingDomLog.current;
     const rowEl = rowRefs.current[pending.rowIndex];

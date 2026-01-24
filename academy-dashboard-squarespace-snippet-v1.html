@@ -2548,17 +2548,26 @@ Keeps all styling + elements. Access guard still runs on live site.
     function loadHueTestLatest(member) {
       var scoreEl = document.getElementById("ar-hue-test-score");
       var dateEl = document.getElementById("ar-hue-test-date");
+      var linkEl = document.getElementById("arp-hue-test-link");
       if (!scoreEl || !dateEl) return;
 
       var memberId = member && (member.id || (member.data && member.data.id));
       if (!memberId) {
         scoreEl.textContent = "—";
         dateEl.textContent = "Sign in to save your score.";
+        if (linkEl) {
+          linkEl.href = "https://alanranger-modules.vercel.app/tools/hue-test";
+        }
         return;
       }
 
       scoreEl.textContent = "Loading...";
       dateEl.textContent = "";
+      if (linkEl) {
+        linkEl.href =
+          "https://alanranger-modules.vercel.app/tools/hue-test?member_id=" +
+          encodeURIComponent(memberId);
+      }
 
       var apiBase = "https://alanranger-modules.vercel.app";
       fetch(
