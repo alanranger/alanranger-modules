@@ -387,6 +387,51 @@
   line-height: 1.6;
 }
 
+.chartMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scoreTable {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.scoreTableTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.scoreTableGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.scoreTableRow {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #e2e8f0;
+}
+
+.scoreRange {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.scoreBandLabel {
+  color: #cbd5f5;
+}
+
 .rowLegend {
   display: grid;
   gap: 8px;

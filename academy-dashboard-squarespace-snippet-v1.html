@@ -2539,10 +2539,18 @@ Keeps all styling + elements. Access guard still runs on live site.
     }
 
     function interpretHueScore(score) {
+      if (score >= 100) return "Perfect";
       if (score >= 95) return "Excellent";
+      if (score >= 90) return "Very good";
       if (score >= 80) return "Good";
-      if (score >= 60) return "Average";
-      return "Needs improvement";
+      if (score >= 70) return "Fair";
+      if (score >= 60) return "Below average";
+      if (score >= 50) return "Needs improvement";
+      if (score >= 40) return "Poor";
+      if (score >= 30) return "Very poor";
+      if (score >= 20) return "Severe";
+      if (score >= 10) return "Critical";
+      return "Extremely poor";
     }
 
     function loadHueTestLatest(member) {

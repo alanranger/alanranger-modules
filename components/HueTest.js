@@ -473,6 +473,23 @@ export default function HueTest({ embed = false }) {
     return results.bandErrors.map((value) => Math.max(0, 100 - value));
   }, [results]);
 
+  const scoreRanges = useMemo(() => {
+    const ranges = [];
+    let minScore = 0;
+    HUE_TEST_CONFIG.thresholds.forEach((threshold) => {
+      const rawMax =
+        threshold.maxScore === Infinity ? 100 : threshold.maxScore;
+      const maxScore = Math.min(100, rawMax);
+      ranges.push({
+        label: threshold.label,
+        min: minScore,
+        max: maxScore
+      });
+      minScore = Math.min(100, maxScore + 1);
+    });
+    return ranges;
+  }, []);
+
   async function handleScore() {
     if (hasScored) return;
     const scoringRows = rows.map((rowIds) =>
@@ -783,16 +800,41 @@ export default function HueTest({ embed = false }) {
 
             <div className={styles.chartSection}>
               <HueRadarChart values={chartValues} bands={HUE_TEST_CONFIG.bands} />
-              <div className={styles.chartNotes}>
-                Higher values are better. Each spoke represents a 30° hue band.
-                The filled area shows your hue ordering accuracy.
-                <div className={styles.rowLegend}>
-                  {HUE_TEST_CONFIG.rowLabels?.map((label) => (
-                    <div key={`row-legend-${label}`} className={styles.rowLegendItem}>
-                      <span className={styles.rowLegendDot} />
-                      <span>{label}</span>
-                    </div>
-                  ))}
+              <div className={styles.chartMeta}>
+                <div className={styles.scoreTable}>
+                  <div className={styles.scoreTableTitle}>Score bands</div>
+                  <div className={styles.scoreTableGrid}>
+                    {scoreRanges.map((range) => (
+                      <div
+                        key={`${range.label}-${range.min}-${range.max}`}
+                        className={styles.scoreTableRow}
+                      >
+                        <span className={styles.scoreRange}>
+                          {range.min === range.max
+                            ? range.max
+                            : `${range.min}–${range.max}`}
+                        </span>
+                        <span className={styles.scoreBandLabel}>
+                          {range.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.chartNotes}>
+                  Higher values are better. Each spoke represents a 30° hue band.
+                  The filled area shows your hue ordering accuracy.
+                  <div className={styles.rowLegend}>
+                    {HUE_TEST_CONFIG.rowLabels?.map((label) => (
+                      <div
+                        key={`row-legend-${label}`}
+                        className={styles.rowLegendItem}
+                      >
+                        <span className={styles.rowLegendDot} />
+                        <span>{label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
