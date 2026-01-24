@@ -25,6 +25,7 @@ const CHIP_META = new Map(
 );
 
 const SHOW_TILE_NUMBERS = false;
+const SHOW_DEBUG_LOG = false;
 
 function getChipMeta(id) {
   return CHIP_META.get(id);
@@ -258,6 +259,7 @@ export default function HueTest({ embed = false }) {
   const [copyStatus, setCopyStatus] = useState("idle");
   const [renderEpoch, setRenderEpoch] = useState(0);
   const [highlightId, setHighlightId] = useState(null);
+  const [hasScored, setHasScored] = useState(false);
   const rowRefs = useRef([]);
   const lastPointer = useRef({ x: 0, y: 0 });
   const pendingDomLog = useRef(null);
@@ -461,6 +463,7 @@ export default function HueTest({ embed = false }) {
   }, [results]);
 
   async function handleScore() {
+    if (hasScored) return;
     const scoringRows = rows.map((rowIds) =>
       rowIds.map((id) => getChipMeta(id)?.chip).filter(Boolean)
     );
@@ -470,6 +473,7 @@ export default function HueTest({ embed = false }) {
       ...scoring,
       interpretation
     });
+    setHasScored(true);
 
     if (!memberId) {
       setSaveStatus("not-logged-in");
@@ -506,6 +510,7 @@ export default function HueTest({ embed = false }) {
     setDragState(null);
     setDebugLogs([]);
     setHighlightId(null);
+    setHasScored(false);
     if (highlightTimer.current) {
       clearTimeout(highlightTimer.current);
       highlightTimer.current = null;
@@ -655,7 +660,17 @@ export default function HueTest({ embed = false }) {
         </div>
 
         <div className={styles.buttonRow}>
-          <button className={styles.primaryButton} onClick={handleScore}>
+          <button
+            className={styles.primaryButton}
+            onClick={handleScore}
+            disabled={hasScored}
+            aria-disabled={hasScored}
+            title={
+              hasScored
+                ? "You need to reset before scoring again."
+                : "Score my test"
+            }
+          >
             Score my test
           </button>
           <button className={styles.ghostButton} onClick={handleReset}>
@@ -663,57 +678,62 @@ export default function HueTest({ embed = false }) {
           </button>
         </div>
 
-        <div className={styles.debugPanel}>
-          <div className={styles.debugHeader}>
-            <strong>Debug log</strong>
-            <div className={styles.debugActions}>
-              <button
-                type="button"
-                className={styles.debugCopy}
-                onClick={handleCopyLogs}
-              >
-                {copyStatus === "copied"
-                  ? "Copied"
-                  : copyStatus === "empty"
-                    ? "No logs"
-                    : copyStatus === "error"
-                      ? "Copy failed"
-                      : "Copy log"}
-              </button>
-              <button
-                type="button"
-                className={styles.debugClear}
-                onClick={() => setDebugLogs([])}
-              >
-                Clear
-              </button>
+        {SHOW_DEBUG_LOG && (
+          <div className={styles.debugPanel}>
+            <div className={styles.debugHeader}>
+              <strong>Debug log</strong>
+              <div className={styles.debugActions}>
+                <button
+                  type="button"
+                  className={styles.debugCopy}
+                  onClick={handleCopyLogs}
+                >
+                  {copyStatus === "copied"
+                    ? "Copied"
+                    : copyStatus === "empty"
+                      ? "No logs"
+                      : copyStatus === "error"
+                        ? "Copy failed"
+                        : "Copy log"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.debugClear}
+                  onClick={() => setDebugLogs([])}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-          </div>
-          {debugLogs.length === 0 ? (
-            <div className={styles.debugEmpty}>No events yet.</div>
-          ) : (
-            <ul className={styles.debugList}>
-              {debugLogs.slice(0, 8).map((entry) => (
-                <li key={`${entry.time}-${entry.type}`} className={styles.debugItem}>
-                  <div className={styles.debugLine}>
-                    <span>{entry.type.toUpperCase()}</span>
-                    <span>{entry.time}</span>
-                  </div>
-                  <div className={styles.debugBlock}>
-                    <div className={styles.debugLabel}>Before</div>
-                    <pre>{JSON.stringify(entry.before, null, 2)}</pre>
-                  </div>
-                  {entry.after && (
-                    <div className={styles.debugBlock}>
-                      <div className={styles.debugLabel}>After</div>
-                      <pre>{JSON.stringify(entry.after, null, 2)}</pre>
+            {debugLogs.length === 0 ? (
+              <div className={styles.debugEmpty}>No events yet.</div>
+            ) : (
+              <ul className={styles.debugList}>
+                {debugLogs.slice(0, 8).map((entry) => (
+                  <li
+                    key={`${entry.time}-${entry.type}`}
+                    className={styles.debugItem}
+                  >
+                    <div className={styles.debugLine}>
+                      <span>{entry.type.toUpperCase()}</span>
+                      <span>{entry.time}</span>
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    <div className={styles.debugBlock}>
+                      <div className={styles.debugLabel}>Before</div>
+                      <pre>{JSON.stringify(entry.before, null, 2)}</pre>
+                    </div>
+                    {entry.after && (
+                      <div className={styles.debugBlock}>
+                        <div className={styles.debugLabel}>After</div>
+                        <pre>{JSON.stringify(entry.after, null, 2)}</pre>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {results && (
           <div className={styles.results}>

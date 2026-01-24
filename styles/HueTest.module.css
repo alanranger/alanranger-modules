@@ -262,6 +262,13 @@
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
+.primaryButton:disabled,
+.ghostButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 .primaryButton {
   background: #e57200;
   color: #fff;
