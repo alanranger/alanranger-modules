@@ -473,6 +473,14 @@ export default function HueTest({ embed = false }) {
     return results.bandErrors.map((value) => Math.max(0, 100 - value));
   }, [results]);
 
+  const wrongTilesCount = useMemo(() => {
+    if (!results?.rowScores) return 0;
+    return results.rowScores.reduce((sum, score) => {
+      const wrong = Math.round((100 - score) / 10);
+      return sum + Math.max(0, wrong);
+    }, 0);
+  }, [results]);
+
   const scoreRanges = useMemo(() => {
     const ranges = [];
     let minScore = 0;
@@ -777,9 +785,15 @@ export default function HueTest({ embed = false }) {
                 <div className={styles.scoreLabel}>Total score</div>
                 <div className={styles.scoreValue}>{results.totalScore}</div>
               </div>
-              <div className={styles.interpretation}>
-                <strong>{results.interpretation.label}:</strong>{" "}
-                {results.interpretation.detail}
+              <div className={styles.interpretationBlock}>
+                <div className={styles.interpretation}>
+                  <strong>{results.interpretation.label}:</strong>{" "}
+                  {results.interpretation.detail}
+                </div>
+                <div className={styles.wrongTilesLabel}>
+                  How many tiles were incorrectly placed?{" "}
+                  <span>{wrongTilesCount}</span>
+                </div>
               </div>
             </div>
 

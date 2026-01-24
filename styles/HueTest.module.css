@@ -469,8 +469,28 @@
 
 .interpretation {
   margin-top: 10px;
-  font-size: 14px;
+  font-size: 35px;
+  line-height: 1.3;
   color: #e2e8f0;
+}
+
+.interpretationBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  text-align: right;
+}
+
+.wrongTilesLabel {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.wrongTilesLabel span {
+  color: #fbbf24;
+  font-weight: 800;
+  margin-left: 6px;
 }
 
 .dragGhost {
