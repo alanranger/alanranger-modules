@@ -1282,6 +1282,9 @@ Keeps all styling + elements. Access guard still runs on live site.
                 <button id="arp-photography-quiz-button" type="button" style="display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Take Photography Personality Quiz</button>
               </div>
             </div>
+            <div class="ar-tile__desc" style="margin-top: 4px;">
+              What type of photographer are you? Take the personality test.
+            </div>
             <div id="arp-photography-quiz-result" style="display: none;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 12px;">
                 <div style="font-size: 12px; font-weight: 750; color: rgba(148, 163, 184, 0.95);">Your Photography Style Is:</div>
@@ -1308,7 +1311,7 @@ Keeps all styling + elements. Access guard still runs on live site.
                 Take Hue Test
               </button>
             </div>
-            <div style="color: var(--ar-text-muted); font-size: 12px; margin-top: 6px;">
+            <div class="ar-tile__desc" style="margin-top: 6px;">
               Arrange colours and see your hue range profile.
             </div>
             <div id="ar-hue-test-result" style="margin-top: 12px; font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
@@ -1457,6 +1460,51 @@ Keeps all styling + elements. Access guard still runs on live site.
                   <li>Access them quickly from your dashboard</li>
                 </ul>
                 <p><strong>Recent Activity</strong> shows the last 10 pages you've visited, making it easy to pick up where you left off.</p>
+              </div>
+            </div>
+
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Exposure Calculator</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>Use the <strong>Exposure Calculator</strong> to visualise camera settings for outdoor light:</p>
+                <ul>
+                  <li>Open it from the Tools tile</li>
+                  <li>Experiment with aperture, shutter speed, and ISO</li>
+                  <li>Great for planning exposure before a shoot</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Colour IQ / Hue Test</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>The <strong>Colour IQ / Hue Test</strong> measures your hue perception:</p>
+                <ul>
+                  <li>Open it from the Tools tile</li>
+                  <li>Arrange each row from left (start) to right (end)</li>
+                  <li>Score and save your results to your dashboard</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="ar-members-guide__item">
+              <button class="ar-members-guide__button" type="button" aria-expanded="false">
+                <span class="ar-members-guide__button-text">Your Questions and Answers</span>
+                <span class="ar-members-guide__button-icon">▼</span>
+              </button>
+              <div class="ar-members-guide__content">
+                <p>This is your private Q&A area to ask Alan questions:</p>
+                <ul>
+                  <li>Your questions are private and only seen by Alan</li>
+                  <li>No other members can view your questions</li>
+                  <li>Check back for replies and updates</li>
+                </ul>
               </div>
             </div>
             
