@@ -1290,7 +1290,7 @@ Keeps all styling + elements. Access guard still runs on live site.
               </div>
               <button id="arp-hue-test-link" type="button" data-href="https://alanranger-modules.vercel.app/tools/hue-test"
                  onclick="window.location.href = this.dataset.href || 'https://alanranger-modules.vercel.app/tools/hue-test';"
-                 style="display:inline-flex; align-items:center; justify-content:center; padding:6px 16px; background-color: hsl(16, 88%, 54%); color: #fff; border: none; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+                 style="display:inline-flex; align-items:center; justify-content:center; padding:6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">
                 Take Hue Test
               </button>
             </div>
@@ -2607,7 +2607,13 @@ Keeps all styling + elements. Access guard still runs on live site.
               var label = rowLabels[idx] || ("Row " + (idx + 1));
               return label + " " + scoreValue + " / 100";
             });
-            rowsEl.innerHTML = "Row results:<br>" + rowLines.join("<br>");
+            rowsEl.innerHTML =
+              "<div style=\"font-weight:700; margin-bottom:6px;\">Row results:</div>" +
+              "<div style=\"display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:6px 14px;\">" +
+              rowLines.map(function(line) {
+                return "<div>" + line + "</div>";
+              }).join("") +
+              "</div>";
           } else {
             rowsEl.textContent = "";
           }
