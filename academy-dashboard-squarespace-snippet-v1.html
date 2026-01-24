@@ -2560,7 +2560,12 @@ Keeps all styling + elements. Access guard still runs on live site.
       scoreEl.textContent = "Loading...";
       dateEl.textContent = "";
 
-      fetch("/api/hue-test/latest?member_id=" + encodeURIComponent(memberId))
+      var apiBase = "https://alanranger-modules.vercel.app";
+      fetch(
+        apiBase +
+          "/api/hue-test/latest?member_id=" +
+          encodeURIComponent(memberId)
+      )
         .then(function(r) {
           if (!r.ok) throw new Error("Failed to load hue test result");
           return r.json();
