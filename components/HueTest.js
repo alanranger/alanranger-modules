@@ -469,6 +469,10 @@ export default function HueTest({ embed = false }) {
   const rowOrders = useMemo(() => rows, [rows]);
 
   const chartValues = useMemo(() => {
+    if (!results) return null;
+    if (Array.isArray(results.bandAccuracy)) {
+      return results.bandAccuracy;
+    }
     if (!results?.bandErrors) return null;
     return results.bandErrors.map((value) => Math.max(0, 100 - value));
   }, [results]);
