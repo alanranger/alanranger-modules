@@ -1288,10 +1288,11 @@ Keeps all styling + elements. Access guard still runs on live site.
                 <span style="font-size:18px;">🎨</span>
                 <span>Colour IQ / Hue Test</span>
               </div>
-              <a id="arp-hue-test-link" href="https://alanranger-modules.vercel.app/tools/hue-test"
-                 style="display:inline-flex; align-items:center; justify-content:center; padding:6px 16px; background-color: hsl(16, 88%, 54%); color: #fff; border: none; border-radius:999px; font-size:12px; font-weight:700; text-decoration:none; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+              <button id="arp-hue-test-link" type="button" data-href="https://alanranger-modules.vercel.app/tools/hue-test"
+                 onclick="window.location.href = this.dataset.href || 'https://alanranger-modules.vercel.app/tools/hue-test';"
+                 style="display:inline-flex; align-items:center; justify-content:center; padding:6px 16px; background-color: hsl(16, 88%, 54%); color: #fff; border: none; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;">
                 Take Hue Test
-              </a>
+              </button>
             </div>
             <div style="color: var(--ar-text-muted); font-size: 12px; margin-top: 6px;">
               Arrange colours and see your hue range profile.
@@ -2557,7 +2558,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         resultEl.textContent = "Sign in to save your score.";
         rowsEl.textContent = "";
         if (linkEl) {
-          linkEl.href = "https://alanranger-modules.vercel.app/tools/hue-test";
+          linkEl.dataset.href = "https://alanranger-modules.vercel.app/tools/hue-test";
         }
         return;
       }
@@ -2566,7 +2567,7 @@ Keeps all styling + elements. Access guard still runs on live site.
       resultEl.textContent = "";
       rowsEl.textContent = "";
       if (linkEl) {
-        linkEl.href =
+        linkEl.dataset.href =
           "https://alanranger-modules.vercel.app/tools/hue-test?member_id=" +
           encodeURIComponent(memberId);
       }
@@ -2596,17 +2597,17 @@ Keeps all styling + elements. Access guard still runs on live site.
             ? payload.data.row_scores
             : [];
           var rowLabels = [
-            "Hue 10–80",
-            "Hue 95–165",
-            "Hue 180–250",
-            "Hue 270–340"
+            "Row 1 - (orange range)",
+            "Row 2 - (green range)",
+            "Row 3 - (cyan/blue range)",
+            "Row 4 - (purple/magenta)"
           ];
           if (rowScores.length) {
             var rowLines = rowScores.map(function(scoreValue, idx) {
               var label = rowLabels[idx] || ("Row " + (idx + 1));
-              return label + ": " + scoreValue + " / 100";
+              return label + " " + scoreValue + " / 100";
             });
-            rowsEl.textContent = "Row results: " + rowLines.join(" · ");
+            rowsEl.innerHTML = "Row results:<br>" + rowLines.join("<br>");
           } else {
             rowsEl.textContent = "";
           }
