@@ -1283,24 +1283,23 @@ Keeps all styling + elements. Access guard still runs on live site.
 
           <!-- Colour IQ / Hue Test -->
           <div id="arp-hue-test-tools" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-            <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff;">
-              <span style="font-size:18px;">🎨</span>
-              <span>Colour IQ / Hue Test</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff;">
+                <span style="font-size:18px;">🎨</span>
+                <span>Colour IQ / Hue Test</span>
+              </div>
+              <a id="arp-hue-test-link" href="https://alanranger-modules.vercel.app/tools/hue-test"
+                 style="display:inline-flex; align-items:center; justify-content:center; padding:6px 16px; background-color: hsl(16, 88%, 54%); color: #fff; border: none; border-radius:999px; font-size:12px; font-weight:700; text-decoration:none; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+                Take Hue Test
+              </a>
             </div>
             <div style="color: var(--ar-text-muted); font-size: 12px; margin-top: 6px;">
               Arrange colours and see your hue range profile.
             </div>
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 10px; font-size: 12px; color: rgba(226,232,240,0.85);">
-              <span>Latest score</span>
-              <strong id="ar-hue-test-score" style="color:#fbbf24;">—</strong>
-            </div>
-            <div id="ar-hue-test-date" style="margin-top: 4px; font-size: 11px; color: rgba(148, 163, 184, 0.8);"></div>
-            <a id="arp-hue-test-link" href="https://alanranger-modules.vercel.app/tools/hue-test"
-               style="margin-top:10px; width:100%; padding:10px 16px; border-radius:50px; border:1px solid rgba(148,163,184,0.5); background:transparent; color:#e2e8f0; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
-              Take Hue Test
-            </a>
+            <div id="ar-hue-test-result" style="margin-top: 12px; font-size: 16px; font-weight: 850; color: hsl(16, 88%, 54%);"></div>
+            <div id="ar-hue-test-score" style="margin-top: 6px; font-size: 20px; font-weight: 850; color:#fbbf24;"></div>
+            <div id="ar-hue-test-rows" style="margin-top: 8px; font-size: 12px; color: rgba(226,232,240,0.8); line-height: 1.5;"></div>
           </div>
-          <div class="ar-tile__tip">Use these tools to personalize your learning.</div>
         </div>
 
         <!-- Bookmarks & Recent Activity Tile (LIVE MINI LISTS) -->
@@ -2539,22 +2538,24 @@ Keeps all styling + elements. Access guard still runs on live site.
     }
 
     function interpretHueScore(score) {
-      if (score <= 450) return "Excellent";
-      if (score <= 900) return "Good";
-      if (score <= 1500) return "Average";
+      if (score >= 95) return "Excellent";
+      if (score >= 80) return "Good";
+      if (score >= 60) return "Average";
       return "Needs improvement";
     }
 
     function loadHueTestLatest(member) {
       var scoreEl = document.getElementById("ar-hue-test-score");
-      var dateEl = document.getElementById("ar-hue-test-date");
+      var resultEl = document.getElementById("ar-hue-test-result");
+      var rowsEl = document.getElementById("ar-hue-test-rows");
       var linkEl = document.getElementById("arp-hue-test-link");
-      if (!scoreEl || !dateEl) return;
+      if (!scoreEl || !resultEl || !rowsEl) return;
 
       var memberId = member && (member.id || (member.data && member.data.id));
       if (!memberId) {
-        scoreEl.textContent = "—";
-        dateEl.textContent = "Sign in to save your score.";
+        scoreEl.textContent = "";
+        resultEl.textContent = "Sign in to save your score.";
+        rowsEl.textContent = "";
         if (linkEl) {
           linkEl.href = "https://alanranger-modules.vercel.app/tools/hue-test";
         }
@@ -2562,7 +2563,8 @@ Keeps all styling + elements. Access guard still runs on live site.
       }
 
       scoreEl.textContent = "Loading...";
-      dateEl.textContent = "";
+      resultEl.textContent = "";
+      rowsEl.textContent = "";
       if (linkEl) {
         linkEl.href =
           "https://alanranger-modules.vercel.app/tools/hue-test?member_id=" +
@@ -2581,20 +2583,39 @@ Keeps all styling + elements. Access guard still runs on live site.
         })
         .then(function(payload) {
           if (!payload || !payload.data) {
-            scoreEl.textContent = "—";
-            dateEl.textContent = "No saved score yet.";
+            scoreEl.textContent = "";
+            resultEl.textContent = "No saved score yet.";
+            rowsEl.textContent = "";
             return;
           }
           var score = payload.data.total_score;
-          scoreEl.textContent = score;
           var tag = interpretHueScore(score);
-          var savedAt = payload.data.created_at ? formatDate(payload.data.created_at) : "";
-          dateEl.textContent = tag + (savedAt ? " • " + savedAt : "");
+          resultEl.textContent = "You have " + tag.toUpperCase() + " Colour Vision";
+          scoreEl.textContent = "Latest Score " + score;
+          var rowScores = Array.isArray(payload.data.row_scores)
+            ? payload.data.row_scores
+            : [];
+          var rowLabels = [
+            "Hue 10–80",
+            "Hue 95–165",
+            "Hue 180–250",
+            "Hue 270–340"
+          ];
+          if (rowScores.length) {
+            var rowLines = rowScores.map(function(scoreValue, idx) {
+              var label = rowLabels[idx] || ("Row " + (idx + 1));
+              return label + ": " + scoreValue + " / 100";
+            });
+            rowsEl.textContent = "Row results: " + rowLines.join(" · ");
+          } else {
+            rowsEl.textContent = "";
+          }
         })
         .catch(function(err) {
           console.error("[Dashboard] Hue test fetch error:", err);
-          scoreEl.textContent = "—";
-          dateEl.textContent = "Unable to load score.";
+          scoreEl.textContent = "";
+          resultEl.textContent = "Unable to load score.";
+          rowsEl.textContent = "";
         });
     }
 
