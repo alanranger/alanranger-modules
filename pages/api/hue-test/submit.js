@@ -42,6 +42,14 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  const url = req.url ? new URL(req.url, "http://localhost") : null;
+  const pathname = url?.pathname || "";
+  if (pathname.includes("/admin/refresh")) {
+    const refreshModule = require("../admin/refresh");
+    const refreshHandler = refreshModule.default || refreshModule;
+    return refreshHandler(req, res);
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }

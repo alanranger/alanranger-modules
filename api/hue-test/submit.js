@@ -45,6 +45,10 @@ module.exports = async (req, res) => {
   const url = req.url ? new URL(req.url, "http://localhost") : null;
   const pathname = url?.pathname || "";
   const isLatestPath = pathname.endsWith("/latest");
+  if (pathname.includes("/admin/refresh")) {
+    const refreshHandler = require("../admin/refresh");
+    return refreshHandler(req, res);
+  }
 
   const supabase = getSupabase();
   if (!supabase) {
