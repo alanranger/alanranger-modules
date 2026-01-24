@@ -1,0 +1,63 @@
+<!-- AR | Hue Test Embed Snippet (Squarespace code block) -->
+<script>
+  (function () {
+    var html = `
+<style>
+  .ar-hue-embed-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+  }
+  .ar-hue-back-btn {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 9999;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: #e57200;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(229, 114, 0, 0.35);
+  }
+  .ar-hue-back-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35);
+  }
+  .ar-hue-embed-frame {
+    width: 100%;
+    height: 100vh;
+    border: 0;
+  }
+  @media (max-width: 720px) {
+    .ar-hue-back-btn {
+      top: 12px;
+      right: 12px;
+      font-size: 14px;
+      padding: 10px 16px;
+    }
+  }
+</style>
+
+<div class="ar-hue-embed-wrap">
+  <a class="ar-hue-back-btn" href="https://www.alanranger.com/academy/dashboard">
+    <span aria-hidden="true">←</span>
+    <span>Back to Dashboard</span>
+  </a>
+  <iframe
+    class="ar-hue-embed-frame"
+    src="https://alanranger-modules.vercel.app/tools/hue-test?embed=1"
+    title="Colour IQ / Hue Test"
+    loading="eager"
+    allow="clipboard-write"
+  ></iframe>
+</div>
+`;
+    document.write(html);
+  })();
+</script>

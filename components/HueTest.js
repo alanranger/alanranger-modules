@@ -787,7 +787,9 @@ export default function HueTest({ embed = false }) {
               {saveStatus === "not-logged-in" && (
                 <>
                   Sign in to save your score —{" "}
-                  <a href="/academy/login">go to login</a>
+                  <a href="https://www.alanranger.com/academy/login">
+                    go to login
+                  </a>
                 </>
               )}
             </div>
