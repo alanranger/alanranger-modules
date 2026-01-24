@@ -301,6 +301,16 @@
   color: #e2e8f0;
 }
 
+.resetAfterScore {
+  border-color: rgba(239, 68, 68, 0.9);
+  color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+
+.resetAfterScore:hover {
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.2);
+}
+
 .primaryButton:hover,
 .ghostButton:hover {
   transform: translateY(-1px);

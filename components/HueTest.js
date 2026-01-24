@@ -193,7 +193,7 @@ function HueRadarChart({ values, bands }) {
       ctx.moveTo(center, center);
       ctx.arc(center, center, maxWedgeRadius, startAngle, endAngle);
       ctx.closePath();
-      ctx.fillStyle = `hsla(${midHue}, 70%, 50%, 0.12)`;
+      ctx.fillStyle = `hsla(${midHue}, 70%, 50%, 0.28)`;
       ctx.fill();
     }
 
@@ -716,7 +716,12 @@ export default function HueTest({ embed = false }) {
           >
             Score my test
           </button>
-          <button className={styles.ghostButton} onClick={handleReset}>
+          <button
+            className={`${styles.ghostButton} ${
+              hasScored ? styles.resetAfterScore : ""
+            }`}
+            onClick={handleReset}
+          >
             Reset
           </button>
         </div>
