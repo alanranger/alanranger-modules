@@ -587,6 +587,13 @@ export default function HueTest({ embed = false }) {
               Arrange each row from left (start) to right (end).
             </p>
           </div>
+          <a
+            className={styles.backButton}
+            href="https://www.alanranger.com/academy/dashboard"
+          >
+            <span aria-hidden="true">←</span>
+            <span>Back to Dashboard</span>
+          </a>
         </div>
 
         <div className={styles.instructions}>

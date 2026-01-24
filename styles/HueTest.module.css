@@ -35,6 +35,26 @@
   font-size: 14px;
 }
 
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: #e57200;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(229, 114, 0, 0.35);
+  white-space: nowrap;
+}
+
+.backButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35);
+}
+
 .instructions {
   background: #111827;
   border: 1px solid rgba(148, 163, 184, 0.2);
