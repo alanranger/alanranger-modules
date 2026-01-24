@@ -435,13 +435,6 @@
   justify-content: center;
 }
 
-.dragPreviewLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-}
 
 @media (max-width: 720px) {
   .row {

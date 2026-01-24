@@ -786,11 +786,7 @@ export default function HueTest({ embed = false }) {
               style={{
                 ...(getChipMeta(dragState.chipId)?.style || {})
               }}
-            >
-              <span className={styles.dragPreviewLabel}>
-                {dragState.chipId}
-              </span>
-            </div>
+            />
           </div>
         )}
       </div>
