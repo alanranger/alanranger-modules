@@ -35,20 +35,53 @@ function isValidArray(value) {
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  const url = req.url ? new URL(req.url, "http://localhost") : null;
+  const pathname = url?.pathname || "";
+  const isLatestPath = pathname.endsWith("/latest");
 
   const supabase = getSupabase();
   if (!supabase) {
     return res.status(500).json({ error: "Supabase not configured" });
+  }
+
+  if (isLatestPath) {
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const memberId =
+      url?.searchParams.get("member_id") || (req.query && req.query.member_id);
+
+    if (!memberId) {
+      return res.status(400).json({ error: "member_id is required" });
+    }
+
+    const { data, error } = await supabase
+      .from("academy_hue_test_results")
+      .select("id, created_at, total_score, row_scores, band_errors, source")
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("[hue-test] Latest fetch error", error);
+      return res.status(500).json({ error: "Failed to fetch result" });
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    const latest = data?.length ? data[0] : null;
+    return res.status(200).json({ data: latest });
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const ip = getIp(req);
