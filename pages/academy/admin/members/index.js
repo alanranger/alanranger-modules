@@ -562,12 +562,20 @@ export default function MembersDirectory() {
                     >
                       Type {getSortIcon('photography_style')}
                     </th>
+                    <th
+                      onClick={() => handleSort('hue_test_score')}
+                      style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none', minWidth: '64px' }}
+                    >
+                      <span style={{ display: 'inline-block', lineHeight: 1.1 }}>
+                        Colour<br />IQ {getSortIcon('hue_test_score')}
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="12" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
@@ -620,6 +628,9 @@ export default function MembersDirectory() {
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.bookmarks_count}</td>
                         <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
                           {member.photography_style || '—'}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'center', fontWeight: 600 }}>
+                          {member.hue_test_score ?? '—'}
                         </td>
                       </tr>
                     ))

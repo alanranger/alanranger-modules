@@ -178,6 +178,17 @@ module.exports = async (req, res) => {
       .eq('event_type', 'bookmark_add')
       .in('member_id', memberIds);
 
+  // Get latest Hue Test total score per member
+  const { data: hueResults, error: hueError } = await supabase
+    .from('academy_hue_test_results')
+    .select('member_id, total_score, created_at')
+    .in('member_id', memberIds)
+    .order('created_at', { ascending: false });
+
+  if (hueError) {
+    console.error('[members] Hue test fetch error:', hueError);
+  }
+
     // Build lookup maps
     const lastSeenMap = {};
     lastActivities?.forEach(activity => {
@@ -252,6 +263,13 @@ module.exports = async (req, res) => {
       bookmarksMap[memberId] = (bookmarksMap[memberId] || 0) + 1;
     });
 
+  const hueScoreMap = {};
+  hueResults?.forEach(result => {
+    if (hueScoreMap[result.member_id] == null) {
+      hueScoreMap[result.member_id] = result.total_score;
+    }
+  });
+
     // Enrich members with stats from both Supabase events AND Memberstack JSON
     const enrichedMembers = filteredValidMembers?.map(member => {
       const memberId = member.member_id;
@@ -297,7 +315,8 @@ module.exports = async (req, res) => {
         exams_attempted: (examStatsMap[memberId]?.attempts || 0) + (examStatsByEmailMap[member.email]?.attempts || 0),
         exams_passed: (examStatsMap[memberId]?.passed || 0) + (examStatsByEmailMap[member.email]?.passed || 0),
         bookmarks_count: bookmarksCount,
-        photography_style: member.photography_style || null
+      photography_style: member.photography_style || null,
+      hue_test_score: hueScoreMap[memberId] ?? null
       };
     }) || [];
 
