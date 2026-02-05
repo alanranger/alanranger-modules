@@ -143,6 +143,13 @@ export default async function handler(req, res) {
         
         const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
         
+        // Check if member already exists to preserve plan info and created_at
+        const { data: existingMember } = await supabase
+          .from("ms_members_cache")
+          .select("plan_summary, created_at")
+          .eq("member_id", memberId)
+          .single();
+        
         // Find trial plan first (if exists), then active plan
         const trialPlan = planConnections.find(p => (p?.planId || p?.id) === trialPlanId);
         const activePlan = planConnections.find(
@@ -174,7 +181,10 @@ export default async function handler(req, res) {
         const isTrial = planId === trialPlanId || (planToUse?.paymentMode === "ONETIME" && expiryDate);
         
         // For trials without expiryDate, calculate it (30 days from created_at or now)
-        const memberCreatedAt = safeIso(fullMemberData?.createdAt) || new Date().toISOString();
+        const memberCreatedAt =
+          safeIso(fullMemberData?.createdAt) ||
+          existingMember?.created_at ||
+          new Date().toISOString();
         if (isTrial && !expiryDate) {
           // Calculate 30 days from member creation date
           const createdDate = new Date(memberCreatedAt);
@@ -213,7 +223,7 @@ export default async function handler(req, res) {
           planName = planConnections[0]?.planName || planConnections[0]?.name || "Plan Connected";
         }
 
-        const planSummary = {
+        let planSummary = {
           plan_id: planId,
           plan_name: planName,
           status: planStatus, // ACTIVE, CANCELED, PAST_DUE, UNPAID
@@ -225,13 +235,9 @@ export default async function handler(req, res) {
           plan_type: planType,
           cancel_at_period_end: cancelAtPeriodEnd,
         };
-
-        // Check if member already exists to track new vs updated
-        const { data: existingMember } = await supabase
-          .from("ms_members_cache")
-          .select("plan_summary")
-          .eq("member_id", memberId)
-          .single();
+        if (!planId && planConnections.length === 0 && existingMember?.plan_summary) {
+          planSummary = existingMember.plan_summary;
+        }
 
         const wasTrial = existingMember?.plan_summary?.is_trial === true;
         const wasAnnual = existingMember?.plan_summary?.plan_type === "annual" && existingMember?.plan_summary?.is_paid === true;
@@ -247,7 +253,7 @@ export default async function handler(req, res) {
                 email,
                 name,
                 plan_summary: planSummary,
-                created_at: safeIso(fullMemberData?.createdAt) || new Date().toISOString(),
+                created_at: memberCreatedAt,
                 updated_at: new Date().toISOString(),
                 raw: {
                   ...(memberResponse || {}),

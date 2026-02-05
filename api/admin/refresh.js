@@ -92,6 +92,12 @@ module.exports = async (req, res) => {
           name = email.split('@')[0];
         }
 
+        const { data: existingMember } = await supabase
+          .from("ms_members_cache")
+          .select("plan_summary, created_at")
+          .eq("member_id", memberId)
+          .maybeSingle();
+
         let planConnections = [];
         if (Array.isArray(fullMemberData?.planConnections)) {
           planConnections = fullMemberData.planConnections;
@@ -156,7 +162,10 @@ module.exports = async (req, res) => {
         }
         
         const isTrial = planId === trialPlanId || (planConnectionType === "ONETIME" && expiryDate);
-        const memberCreatedAt = safeIso(fullMemberData?.createdAt) || new Date().toISOString();
+        const memberCreatedAt =
+          safeIso(fullMemberData?.createdAt) ||
+          existingMember?.created_at ||
+          new Date().toISOString();
         if (isTrial && !expiryDate) {
           const createdDate = new Date(memberCreatedAt);
           const trialEndDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -189,7 +198,7 @@ module.exports = async (req, res) => {
           planName = planConnections[0]?.planName || planConnections[0]?.name || "Plan Connected";
         }
 
-        const planSummary = {
+        let planSummary = {
           plan_id: planId,
           plan_name: planName,
           status: planStatus,
@@ -201,6 +210,9 @@ module.exports = async (req, res) => {
           plan_type: planType,
           cancel_at_period_end: cancelAtPeriodEnd,
         };
+        if (!planId && planConnections.length === 0 && existingMember?.plan_summary) {
+          planSummary = existingMember.plan_summary;
+        }
 
         const { error: upsertMemberErr } = await supabase
           .from("ms_members_cache")
@@ -211,7 +223,7 @@ module.exports = async (req, res) => {
                 email,
                 name,
                 plan_summary: planSummary,
-                created_at: safeIso(fullMemberData?.createdAt) || new Date().toISOString(),
+                created_at: memberCreatedAt,
                 updated_at: new Date().toISOString(),
                 raw: {
                   ...(memberResponse || {}),
