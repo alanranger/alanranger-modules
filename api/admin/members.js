@@ -115,8 +115,11 @@ const fetchStripeRefundsByEmail = async (members) => {
     let total = (invoice.amount_refunded || 0) / 100;
     if (total > 0 || !invoice.charge) return total;
 
+    const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge?.id;
+    if (!chargeId) return total;
+
     try {
-      const refundsList = await stripe.refunds.list({ charge: invoice.charge, limit: 100 });
+      const refundsList = await stripe.refunds.list({ charge: chargeId, limit: 100 });
       (refundsList.data || []).forEach(refund => {
         total += (refund.amount || 0) / 100;
       });
