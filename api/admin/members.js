@@ -98,9 +98,11 @@ module.exports = async (req, res) => {
         .lte('annual_end_at', new Date().toISOString());
 
       const expiredMap = new Map();
+      const expiredIds = new Set();
 
       (expiredTrialHistory || []).forEach(row => {
         if (!row?.member_id || !row.trial_end_at) return;
+        expiredIds.add(row.member_id);
         const cached = cacheById.get(row.member_id);
         if (cached) {
           expiredMap.set(row.member_id, cached);
@@ -125,6 +127,7 @@ module.exports = async (req, res) => {
 
       (expiredAnnualHistory || []).forEach(row => {
         if (!row?.member_id || !row.annual_end_at) return;
+        expiredIds.add(row.member_id);
         const cached = cacheById.get(row.member_id);
         if (cached) {
           expiredMap.set(row.member_id, cached);
@@ -146,6 +149,39 @@ module.exports = async (req, res) => {
           });
         }
       });
+
+      const expiredIdList = Array.from(expiredIds);
+      if (expiredIdList.length > 0) {
+        const { data: expiredProfiles } = await supabase
+          .from('ms_members_cache')
+          .select('member_id, name, email')
+          .in('member_id', expiredIdList);
+
+        const profileMap = new Map((expiredProfiles || []).map(p => [p.member_id, p]));
+
+        const { data: eventEmails } = await supabase
+          .from('academy_plan_events')
+          .select('ms_member_id, email, created_at')
+          .in('ms_member_id', expiredIdList)
+          .not('email', 'is', null)
+          .order('created_at', { ascending: false });
+
+        const emailMap = new Map();
+        (eventEmails || []).forEach(row => {
+          if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
+            emailMap.set(row.ms_member_id, row.email);
+          }
+        });
+
+        expiredIdList.forEach(memberId => {
+          const existing = expiredMap.get(memberId);
+          if (!existing) return;
+          const profile = profileMap.get(memberId);
+          const email = profile?.email || emailMap.get(memberId) || existing.email || null;
+          const name = profile?.name || existing.name || null;
+          expiredMap.set(memberId, { ...existing, email, name });
+        });
+      }
 
       baseMembers = Array.from(expiredMap.values());
     }
