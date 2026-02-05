@@ -706,7 +706,12 @@ const applyRevenueAllTimeFilter = (membersList) => {
     const totalPaid = normalizeNumber(member.total_paid) || 0;
     const refundsTotal = normalizeNumber(member.refunds_total) || 0;
     const planType = member.plan_type || '';
-    const isPaidPlan = member.is_paid || planType === 'annual' || planType === 'monthly';
+    const planName = String(member.plan_name || '').toLowerCase();
+    const isPaidPlan = member.is_paid
+      || planType === 'annual'
+      || planType === 'monthly'
+      || planName.includes('annual')
+      || planName.includes('monthly');
     return isPaidPlan || totalPaid > 0 || refundsTotal > 0;
   });
 };
