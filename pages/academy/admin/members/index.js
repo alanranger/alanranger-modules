@@ -103,7 +103,7 @@ export default function MembersDirectory() {
   useEffect(() => {
     // Fetch members when pagination, filters, or sort changes
     fetchMembers();
-  }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, activeNowFilter, sortConfig]);
+  }, [pagination.page, pagination.limit, planFilter, statusFilter, searchQuery, lastSeenFilter, activeNowFilter, tileFilter, sortConfig]);
 
   // Fetch active now count and set up polling every 1 minute
   useEffect(() => {
