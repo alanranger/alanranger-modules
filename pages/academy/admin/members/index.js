@@ -729,7 +729,9 @@ export default function MembersDirectory() {
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 165, 0, 0.1)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
-                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.name || '—'}</td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
+                          {member.name || member.email || '—'}
+                        </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.email || '—'}</td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.plan_name}</td>
                         <td style={{ padding: '12px' }}>
