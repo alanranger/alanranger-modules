@@ -1293,16 +1293,22 @@ async function handleMembers(req, res) {
       'annual_all_time'
     ]);
     const shouldFetchInvoiceAmounts = tileFilter && invoiceAmountFilters.has(tileFilter);
+    const shouldFetchStripeTotals = shouldFetchInvoiceAmounts || filteredValidMembers.some(member => {
+      const plan = member?.plan_summary || {};
+      const isPaidPlan = plan.is_paid || plan.plan_type === 'annual' || plan.plan_type === 'monthly';
+      if (!isPaidPlan) return false;
+      return plan.total_paid == null || plan.amount == null || plan.refunds_total == null;
+    });
     const invoiceAmounts = shouldFetchInvoiceAmounts
       ? await fetchAnnualInvoiceAmounts(supabase, memberIds)
       : new Map();
     const invoiceEmailTotalsResult = tileFilter === 'revenue_all_time'
       ? await fetchStripeInvoiceEmailTotals(filteredValidMembers)
       : { totalsByEmail: new Map(), refundsByEmail: new Map() };
-    const stripeTotalsByEmail = shouldFetchInvoiceAmounts
+    const stripeTotalsByEmail = shouldFetchStripeTotals
       ? await fetchStripeTotalsByEmail(filteredValidMembers)
       : new Map();
-    const stripeRefundsByEmail = shouldFetchInvoiceAmounts
+    const stripeRefundsByEmail = shouldFetchStripeTotals
       ? await fetchStripeRefundsByEmail(filteredValidMembers)
       : new Map();
     
