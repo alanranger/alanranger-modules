@@ -25,6 +25,8 @@ module.exports = async (req, res) => {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
+    const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+
     // 1. Total members (all-time from cache)
     // Get all members first, then filter to only count those with valid plans
     // This matches the Members page filter logic
@@ -277,7 +279,6 @@ module.exports = async (req, res) => {
 
     // Build member plan timeline map
     const memberPlans = {};
-    const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
     const ANNUAL_PRICE = 79; // £79 annual plan price
     const trialStartsByMember = {};
 
