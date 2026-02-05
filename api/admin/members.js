@@ -2,7 +2,9 @@
 // Returns paginated member directory with filters
 // Combines ms_members_cache with engagement stats from academy_events
 
+const path = require('node:path');
 const { createClient } = require("@supabase/supabase-js");
+const { isAcademyInvoice } = require('../../lib/academyStripeConfig');
 
 const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
 const HISTORY_FILTER_KEYS = new Set([
@@ -43,6 +45,56 @@ const normalizeNumber = (value) => {
   if (value == null) return null;
   const num = typeof value === 'number' ? value : Number.parseFloat(value);
   return Number.isNaN(num) ? null : num;
+};
+
+const getStripeClient = () => {
+  try {
+    const stripePath = path.join(process.cwd(), 'lib', 'stripe');
+    const getStripe = require(stripePath);
+    return getStripe();
+  } catch (error) {
+    console.warn('[members] Stripe client unavailable:', error.message);
+    return null;
+  }
+};
+
+const fetchStripeTotalsByEmail = async (members) => {
+  const stripe = getStripeClient();
+  if (!stripe) return new Map();
+
+  const emails = Array.from(new Set((members || [])
+    .map(member => member?.email)
+    .filter(Boolean)
+    .map(email => String(email).toLowerCase())));
+
+  if (emails.length === 0) return new Map();
+
+  const totals = new Map();
+
+  for (const email of emails) {
+    let sum = 0;
+    try {
+      const customers = await stripe.customers.list({ email, limit: 10 });
+      for (const customer of customers.data || []) {
+        const invoices = await stripe.invoices.list({
+          customer: customer.id,
+          status: 'paid',
+          limit: 100,
+          expand: ['data.lines.data.price']
+        });
+        (invoices.data || []).forEach(invoice => {
+          if (isAcademyInvoice(invoice)) {
+            sum += (invoice.amount_paid || 0) / 100;
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('[members] Stripe lookup failed for email:', email, error.message);
+    }
+    totals.set(email, sum);
+  }
+
+  return totals;
 };
 
 const extractNameFromPayload = (payload) => {
@@ -1023,6 +1075,9 @@ async function handleMembers(req, res) {
     const invoiceAmounts = shouldFetchInvoiceAmounts
       ? await fetchAnnualInvoiceAmounts(supabase, memberIds)
       : new Map();
+    const stripeTotalsByEmail = shouldFetchInvoiceAmounts
+      ? await fetchStripeTotalsByEmail(filteredValidMembers)
+      : new Map();
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -1247,7 +1302,8 @@ async function handleMembers(req, res) {
         null
       );
       const invoiceAmount = invoiceAmounts.get(memberId);
-      const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? null;
+      const stripeTotal = member.email ? stripeTotalsByEmail.get(String(member.email).toLowerCase()) : null;
+      const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? stripeTotal ?? null;
 
       return {
         member_id: memberId,

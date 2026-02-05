@@ -768,7 +768,7 @@ export default function MembersDirectory() {
                           {member.hue_test_score ?? '—'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
-                          {formatMoney(member.total_paid, member.currency)}
+                          {formatMoney(member.total_paid ?? 0, member.currency)}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
                           {formatMoney(member.current_amount, member.currency)}
