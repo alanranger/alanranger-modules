@@ -1180,8 +1180,8 @@ function TopMembersList({ refreshTrigger }) {
 
       switch (sortColumn) {
         case 'email':
-          aVal = (a.email || a.member_id || 'Unknown').toLowerCase();
-          bVal = (b.email || b.member_id || 'Unknown').toLowerCase();
+          aVal = (a.name || a.email || a.member_id || 'Unknown').toLowerCase();
+          bVal = (b.name || b.email || b.member_id || 'Unknown').toLowerCase();
           break;
         case 'login_days_30d':
           aVal = a.login_days_30d || 0;
@@ -1323,7 +1323,7 @@ function TopMembersList({ refreshTrigger }) {
       <tbody>
         {sortedMembers.map((member, idx) => (
           <tr key={idx}>
-            <td>{member.email || member.member_id || 'Unknown'}</td>
+            <td>{member.name || member.email || member.member_id || 'Unknown'}</td>
             <td>{member.login_days_30d || 0}</td>
             <td>{member.login_days_alltime || 0}</td>
             <td>{formatDate(member.last_login)}</td>

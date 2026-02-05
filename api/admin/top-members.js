@@ -102,8 +102,33 @@ module.exports = async (req, res) => {
       memberMap[key].login_days_alltime = allTimeLoginMap[key] ? allTimeLoginMap[key].size : 0;
     });
 
-    // Get question counts per member (excluding example questions)
+    // Enrich with cached name/email (prefer Memberstack profile)
     const memberIds = Object.keys(memberMap);
+    if (memberIds.length > 0) {
+      const { data: memberProfiles, error: memberError } = await supabase
+        .from('ms_members_cache')
+        .select('member_id, name, email')
+        .in('member_id', memberIds);
+
+      if (!memberError && memberProfiles) {
+        const profileMap = {};
+        memberProfiles.forEach(profile => {
+          profileMap[profile.member_id] = profile;
+        });
+
+        Object.keys(memberMap).forEach(key => {
+          const profile = profileMap[key];
+          if (profile?.name) {
+            memberMap[key].name = profile.name;
+          }
+          if (profile?.email) {
+            memberMap[key].email = profile.email;
+          }
+        });
+      }
+    }
+
+    // Get question counts per member (excluding example questions)
     if (memberIds.length > 0) {
       const { data: questionCounts, error: qaError } = await supabase
         .from('academy_qa_questions')
