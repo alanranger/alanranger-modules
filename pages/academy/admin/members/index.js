@@ -730,7 +730,7 @@ export default function MembersDirectory() {
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
-                          {member.name || member.email || '—'}
+                          {member.name || member.email || member.member_id || '—'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.email || '—'}</td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.plan_name}</td>

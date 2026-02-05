@@ -45,6 +45,15 @@ const normalizeNumber = (value) => {
   return Number.isNaN(num) ? null : num;
 };
 
+const extractNameFromPayload = (payload) => {
+  if (!payload) return null;
+  const customerDetails = payload?.data?.object?.customer_details;
+  if (customerDetails?.name) return customerDetails.name;
+  if (payload?.data?.object?.customer_name) return payload.data.object.customer_name;
+  if (payload?.data?.object?.billing_details?.name) return payload.data.object.billing_details.name;
+  return null;
+};
+
 const buildPlanTimeline = (member) => {
   const plan = member.plan_summary || {};
   const isTrial = isTrialPlan(plan);
@@ -191,22 +200,39 @@ const backfillMemberProfiles = async (supabase, members) => {
 
   const { data: eventEmails } = await supabase
     .from('academy_plan_events')
-    .select('ms_member_id, email, created_at')
+    .select('ms_member_id, email, payload, created_at')
     .in('ms_member_id', missingEmailIds)
     .not('email', 'is', null)
     .order('created_at', { ascending: false });
 
   const emailMap = new Map();
+  const nameMap = new Map();
   (eventEmails || []).forEach(row => {
     if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
       emailMap.set(row.ms_member_id, row.email);
     }
+    if (row.ms_member_id && row.payload && !nameMap.has(row.ms_member_id)) {
+      try {
+        const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+        const extractedName = extractNameFromPayload(payload);
+        if (extractedName) {
+          nameMap.set(row.ms_member_id, extractedName);
+        }
+      } catch (error) {
+        console.warn('[members] Failed to parse name payload:', error.message);
+      }
+    }
   });
 
   mergedMembers = mergedMembers.map(member => {
-    if (member.email || !member.member_id) return member;
+    if (!member.member_id) return member;
     const fallbackEmail = emailMap.get(member.member_id);
-    return fallbackEmail ? { ...member, email: fallbackEmail } : member;
+    const fallbackName = nameMap.get(member.member_id);
+    return {
+      ...member,
+      email: member.email || fallbackEmail || null,
+      name: member.name || fallbackName || null
+    };
   });
 
   return mergedMembers;
@@ -722,15 +748,27 @@ const applyExpiredFilter = async (supabase, baseMembers, now) => {
 
   const { data: eventEmails } = await supabase
     .from('academy_plan_events')
-    .select('ms_member_id, email, created_at')
+    .select('ms_member_id, email, payload, created_at')
     .in('ms_member_id', expiredIdList)
     .not('email', 'is', null)
     .order('created_at', { ascending: false });
 
   const emailMap = new Map();
+  const nameMap = new Map();
   (eventEmails || []).forEach(row => {
     if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
       emailMap.set(row.ms_member_id, row.email);
+    }
+    if (row.ms_member_id && row.payload && !nameMap.has(row.ms_member_id)) {
+      try {
+        const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+        const extractedName = extractNameFromPayload(payload);
+        if (extractedName) {
+          nameMap.set(row.ms_member_id, extractedName);
+        }
+      } catch (error) {
+        console.warn('[members] Failed to parse name payload:', error.message);
+      }
     }
   });
 
@@ -739,7 +777,7 @@ const applyExpiredFilter = async (supabase, baseMembers, now) => {
     if (!existing) return;
     const profile = profileMap.get(memberId);
     const email = profile?.email || emailMap.get(memberId) || existing.email || null;
-    const name = profile?.name || existing.name || null;
+    const name = profile?.name || nameMap.get(memberId) || existing.name || null;
     expiredMap.set(memberId, { ...existing, email, name });
   });
 
