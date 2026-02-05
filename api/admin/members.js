@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== 'expired') {
       query = query.contains('plan_summary', { status: statusFilter });
     }
 
