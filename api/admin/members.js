@@ -1364,7 +1364,9 @@ async function handleMembers(req, res) {
       const stripeTotal = member.email ? stripeTotalsByEmail.get(String(member.email).toLowerCase()) : null;
       const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? stripeTotal ?? null;
       const stripeRefundTotal = member.email ? stripeRefundsByEmail.get(String(member.email).toLowerCase()) : null;
-      const resolvedRefundsTotal = refundsTotal ?? stripeRefundTotal ?? null;
+      const resolvedRefundsTotal = stripeRefundTotal != null && (refundsTotal == null || stripeRefundTotal > refundsTotal)
+        ? stripeRefundTotal
+        : (refundsTotal ?? stripeRefundTotal ?? null);
 
       return {
         member_id: memberId,
