@@ -732,7 +732,9 @@ export default function MembersDirectory() {
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
                           {member.name || member.email || member.member_id || '—'}
                         </td>
-                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.email || '—'}</td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
+                          {member.email || member.member_id || '—'}
+                        </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.plan_name}</td>
                         <td style={{ padding: '12px' }}>
                           <span style={{
