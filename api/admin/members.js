@@ -595,21 +595,29 @@ const filterAllExpiring = (members, memberPlanMap, windowEnd, now) => {
 };
 
 const filterNetMemberGrowth = (members, memberPlanMap, start30d, now) => {
-  const growthIds = new Set();
+  const newMemberIds = new Set();
+  const churnedMemberIds = new Set();
+
   memberPlanMap.forEach(planTimeline => {
     if (planTimeline.isTrial && planTimeline.trialStartAt && planTimeline.trialStartAt >= start30d) {
-      growthIds.add(planTimeline.member_id);
+      newMemberIds.add(planTimeline.member_id);
     }
     if (planTimeline.isTrial && planTimeline.trialEndAt && planTimeline.trialEndAt >= start30d && planTimeline.trialEndAt <= now) {
       if (!planTimeline.annualStartAt || planTimeline.annualStartAt > planTimeline.trialEndAt) {
-        growthIds.add(planTimeline.member_id);
+        churnedMemberIds.add(planTimeline.member_id);
       }
     }
     if (planTimeline.isAnnual && planTimeline.annualEndAt && planTimeline.annualEndAt >= start30d && planTimeline.annualEndAt <= now) {
-      growthIds.add(planTimeline.member_id);
+      churnedMemberIds.add(planTimeline.member_id);
     }
   });
-  return filterByMemberIds(members, growthIds);
+
+  const netMemberIds = new Set();
+  newMemberIds.forEach(memberId => {
+    if (!churnedMemberIds.has(memberId)) netMemberIds.add(memberId);
+  });
+
+  return filterByMemberIds(members, netMemberIds);
 };
 
 const filterNetPaidGrowth = (members, memberPlanMap, start30d, now) => {
