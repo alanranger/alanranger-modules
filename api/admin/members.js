@@ -5,6 +5,25 @@
 const { createClient } = require("@supabase/supabase-js");
 
 const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+const HISTORY_FILTER_KEYS = new Set([
+  'all_members_all_time',
+  'trial_conversions_30d',
+  'trial_conversions_all_time',
+  'trial_dropoff_30d',
+  'trial_dropoff_all_time',
+  'trials_ended_30d',
+  'at_risk_trials_7d',
+  'annual_all_time',
+  'direct_annual_all_time',
+  'annual_revenue_30d',
+  'direct_annual_30d',
+  'net_member_growth_30d',
+  'net_paid_growth_30d',
+  'annual_churn_90d',
+  'at_risk_annual_30d',
+  'trial_opportunity_all',
+  'trial_opportunity_3pct'
+]);
 
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 const parseDate = (value) => {
@@ -122,6 +141,104 @@ const buildAnnualHistorySets = (annualHistoryRows, start30d) => {
   });
 
   return { annualHistoryMemberIds, annualStarts30dIds };
+};
+
+const backfillMemberProfiles = async (supabase, members) => {
+  const missingIds = (members || [])
+    .filter(member => {
+      if (!member?.member_id) return false;
+      const plan = member.plan_summary || {};
+      const missingProfile = !member.name || !member.email;
+      const missingPlan = !plan.plan_type || plan.total_paid == null || plan.amount == null;
+      return missingProfile || missingPlan;
+    })
+    .map(member => member.member_id);
+
+  if (missingIds.length === 0) return members;
+
+  const { data: cachedProfiles } = await supabase
+    .from('ms_members_cache')
+    .select('member_id, name, email, created_at, updated_at, raw, plan_summary')
+    .in('member_id', missingIds);
+
+  const cacheById = new Map((cachedProfiles || []).map(row => [row.member_id, row]));
+
+  let mergedMembers = (members || []).map(member => {
+    const cached = cacheById.get(member.member_id);
+    if (!cached) return member;
+    const mergedPlanSummary = {
+      ...cached.plan_summary,
+      ...member.plan_summary
+    };
+    const hasRaw = member.raw && Object.keys(member.raw).length > 0;
+    const raw = hasRaw ? member.raw : (cached.raw || member.raw);
+    return {
+      ...member,
+      name: member.name || cached.name || null,
+      email: member.email || cached.email || null,
+      created_at: member.created_at || cached.created_at || null,
+      updated_at: member.updated_at || cached.updated_at || null,
+      raw,
+      plan_summary: mergedPlanSummary
+    };
+  });
+
+  const missingEmailIds = mergedMembers
+    .filter(member => member?.member_id && !member.email)
+    .map(member => member.member_id);
+
+  if (missingEmailIds.length === 0) return mergedMembers;
+
+  const { data: eventEmails } = await supabase
+    .from('academy_plan_events')
+    .select('ms_member_id, email, created_at')
+    .in('ms_member_id', missingEmailIds)
+    .not('email', 'is', null)
+    .order('created_at', { ascending: false });
+
+  const emailMap = new Map();
+  (eventEmails || []).forEach(row => {
+    if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
+      emailMap.set(row.ms_member_id, row.email);
+    }
+  });
+
+  mergedMembers = mergedMembers.map(member => {
+    if (member.email || !member.member_id) return member;
+    const fallbackEmail = emailMap.get(member.member_id);
+    return fallbackEmail ? { ...member, email: fallbackEmail } : member;
+  });
+
+  return mergedMembers;
+};
+
+const fetchAnnualInvoiceAmounts = async (supabase, memberIds) => {
+  if (!memberIds || memberIds.length === 0) return new Map();
+  const { data: events } = await supabase
+    .from('academy_plan_events')
+    .select('ms_member_id, event_type, ms_price_id, payload, created_at')
+    .in('ms_member_id', memberIds)
+    .eq('event_type', 'invoice.paid')
+    .order('created_at', { ascending: false });
+
+  const amountMap = new Map();
+  (events || []).forEach(event => {
+    const memberId = event.ms_member_id;
+    if (!memberId || amountMap.has(memberId)) return;
+    const priceId = event.ms_price_id || '';
+    if (!priceId.includes('annual') && priceId !== 'prc_annual-membership-jj7y0h89') return;
+    try {
+      const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+      const amount = payload?.data?.object?.amount_paid || payload?.data?.object?.total || 0;
+      if (amount > 0) {
+        amountMap.set(memberId, amount / 100);
+      }
+    } catch (error) {
+      console.warn('[members] Failed to parse invoice payload:', error.message);
+    }
+  });
+
+  return amountMap;
 };
 
 const filterSignups = (members, cutoff) => {
@@ -434,6 +551,207 @@ const applyTileFilter = async ({
   return await handler();
 };
 
+const applyExpiredFilter = async (supabase, baseMembers, now) => {
+  const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
+  const nowIso = now.toISOString();
+
+  const { data: expiredTrialHistory } = await supabase
+    .from('academy_trial_history')
+    .select('member_id, trial_end_at')
+    .lte('trial_end_at', nowIso);
+
+  const { data: expiredAnnualHistory } = await supabase
+    .from('academy_annual_history')
+    .select('member_id, annual_end_at')
+    .lte('annual_end_at', nowIso);
+
+  const expiredMap = new Map();
+  const expiredIds = new Set();
+
+  (expiredTrialHistory || []).forEach(row => {
+    if (!row?.member_id || !row.trial_end_at) return;
+    expiredIds.add(row.member_id);
+    const cached = cacheById.get(row.member_id);
+    if (cached) {
+      expiredMap.set(row.member_id, cached);
+    } else {
+      expiredMap.set(row.member_id, {
+        member_id: row.member_id,
+        email: null,
+        name: null,
+        created_at: null,
+        updated_at: null,
+        raw: {},
+        plan_summary: {
+          plan_type: 'trial',
+          plan_name: 'Academy Trial',
+          status: 'expired',
+          expiry_date: row.trial_end_at,
+          is_trial: true
+        }
+      });
+    }
+  });
+
+  (expiredAnnualHistory || []).forEach(row => {
+    if (!row?.member_id || !row.annual_end_at) return;
+    expiredIds.add(row.member_id);
+    const cached = cacheById.get(row.member_id);
+    if (cached) {
+      expiredMap.set(row.member_id, cached);
+    } else {
+      expiredMap.set(row.member_id, {
+        member_id: row.member_id,
+        email: null,
+        name: null,
+        created_at: null,
+        updated_at: null,
+        raw: {},
+        plan_summary: {
+          plan_type: 'annual',
+          plan_name: 'Academy Annual',
+          status: 'expired',
+          expiry_date: row.annual_end_at,
+          is_paid: true
+        }
+      });
+    }
+  });
+
+  const expiredIdList = Array.from(expiredIds);
+  if (expiredIdList.length === 0) return baseMembers;
+
+  const { data: expiredProfiles } = await supabase
+    .from('ms_members_cache')
+    .select('member_id, name, email')
+    .in('member_id', expiredIdList);
+
+  const profileMap = new Map((expiredProfiles || []).map(p => [p.member_id, p]));
+
+  const { data: eventEmails } = await supabase
+    .from('academy_plan_events')
+    .select('ms_member_id, email, created_at')
+    .in('ms_member_id', expiredIdList)
+    .not('email', 'is', null)
+    .order('created_at', { ascending: false });
+
+  const emailMap = new Map();
+  (eventEmails || []).forEach(row => {
+    if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
+      emailMap.set(row.ms_member_id, row.email);
+    }
+  });
+
+  expiredIdList.forEach(memberId => {
+    const existing = expiredMap.get(memberId);
+    if (!existing) return;
+    const profile = profileMap.get(memberId);
+    const email = profile?.email || emailMap.get(memberId) || existing.email || null;
+    const name = profile?.name || existing.name || null;
+    expiredMap.set(memberId, { ...existing, email, name });
+  });
+
+  return Array.from(expiredMap.values());
+};
+
+const loadHistoryMembers = async (supabase, baseMembers, needsHistory) => {
+  if (!needsHistory) {
+    return { baseMembers, trialHistoryRows: [], annualHistoryRows: [] };
+  }
+
+  const { data: trialHistory } = await supabase
+    .from('academy_trial_history')
+    .select('member_id, trial_start_at, trial_end_at, converted_at');
+  const trialHistoryRows = Array.isArray(trialHistory) ? trialHistory : [];
+
+  const { data: annualHistory } = await supabase
+    .from('academy_annual_history')
+    .select('member_id, annual_start_at, annual_end_at');
+  const annualHistoryRows = Array.isArray(annualHistory) ? annualHistory : [];
+
+  const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
+  const trialHistoryByMember = new Map();
+  const annualHistoryByMember = new Map();
+
+  trialHistoryRows.forEach(row => {
+    if (!row?.member_id) return;
+    if (!trialHistoryByMember.has(row.member_id)) {
+      trialHistoryByMember.set(row.member_id, row);
+      return;
+    }
+    const existing = trialHistoryByMember.get(row.member_id);
+    const existingEnd = parseDate(existing?.trial_end_at);
+    const nextEnd = parseDate(row.trial_end_at);
+    if (nextEnd && (!existingEnd || nextEnd > existingEnd)) {
+      trialHistoryByMember.set(row.member_id, row);
+    }
+  });
+
+  annualHistoryRows.forEach(row => {
+    if (!row?.member_id) return;
+    if (!annualHistoryByMember.has(row.member_id)) {
+      annualHistoryByMember.set(row.member_id, row);
+      return;
+    }
+    const existing = annualHistoryByMember.get(row.member_id);
+    const existingStart = parseDate(existing?.annual_start_at);
+    const nextStart = parseDate(row.annual_start_at);
+    if (nextStart && (!existingStart || nextStart > existingStart)) {
+      annualHistoryByMember.set(row.member_id, row);
+    }
+  });
+
+  const historyMemberIds = new Set([
+    ...Array.from(trialHistoryByMember.keys()),
+    ...Array.from(annualHistoryByMember.keys())
+  ]);
+
+  historyMemberIds.forEach(memberId => {
+    if (cacheById.has(memberId)) return;
+    const trialRow = trialHistoryByMember.get(memberId);
+    const annualRow = annualHistoryByMember.get(memberId);
+    if (annualRow) {
+      baseMembers.push({
+        member_id: memberId,
+        email: null,
+        name: null,
+        created_at: null,
+        updated_at: null,
+        raw: {},
+        plan_summary: {
+          plan_type: 'annual',
+          plan_name: 'Academy Annual',
+          status: 'expired',
+          current_period_end: annualRow.annual_end_at || null,
+          is_trial: false,
+          is_paid: true
+        }
+      });
+      return;
+    }
+    if (trialRow) {
+      baseMembers.push({
+        member_id: memberId,
+        email: null,
+        name: null,
+        created_at: null,
+        updated_at: null,
+        raw: {},
+        plan_summary: {
+          plan_type: 'trial',
+          plan_name: 'Academy Trial',
+          status: 'expired',
+          expiry_date: trialRow.trial_end_at || null,
+          is_trial: true,
+          is_paid: false
+        }
+      });
+    }
+  });
+
+  return { baseMembers, trialHistoryRows, annualHistoryRows };
+};
+
 async function handleMembers(req, res) {
   try {
     if (req.method !== "GET") {
@@ -496,221 +814,16 @@ async function handleMembers(req, res) {
     let baseMembers = members || [];
 
     if (isExpiredFilter) {
-      const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
-
-      const { data: expiredTrialHistory } = await supabase
-        .from('academy_trial_history')
-        .select('member_id, trial_end_at')
-        .lte('trial_end_at', new Date().toISOString());
-
-      const { data: expiredAnnualHistory } = await supabase
-        .from('academy_annual_history')
-        .select('member_id, annual_end_at')
-        .lte('annual_end_at', new Date().toISOString());
-
-      const expiredMap = new Map();
-      const expiredIds = new Set();
-
-      (expiredTrialHistory || []).forEach(row => {
-        if (!row?.member_id || !row.trial_end_at) return;
-        expiredIds.add(row.member_id);
-        const cached = cacheById.get(row.member_id);
-        if (cached) {
-          expiredMap.set(row.member_id, cached);
-        } else {
-          expiredMap.set(row.member_id, {
-            member_id: row.member_id,
-            email: null,
-            name: null,
-            created_at: null,
-            updated_at: null,
-            raw: {},
-            plan_summary: {
-              plan_type: 'trial',
-              plan_name: 'Academy Trial',
-              status: 'expired',
-              expiry_date: row.trial_end_at,
-              is_trial: true
-            }
-          });
-        }
-      });
-
-      (expiredAnnualHistory || []).forEach(row => {
-        if (!row?.member_id || !row.annual_end_at) return;
-        expiredIds.add(row.member_id);
-        const cached = cacheById.get(row.member_id);
-        if (cached) {
-          expiredMap.set(row.member_id, cached);
-        } else {
-          expiredMap.set(row.member_id, {
-            member_id: row.member_id,
-            email: null,
-            name: null,
-            created_at: null,
-            updated_at: null,
-            raw: {},
-            plan_summary: {
-              plan_type: 'annual',
-              plan_name: 'Academy Annual',
-              status: 'expired',
-              expiry_date: row.annual_end_at,
-              is_paid: true
-            }
-          });
-        }
-      });
-
-      const expiredIdList = Array.from(expiredIds);
-      if (expiredIdList.length > 0) {
-        const { data: expiredProfiles } = await supabase
-          .from('ms_members_cache')
-          .select('member_id, name, email')
-          .in('member_id', expiredIdList);
-
-        const profileMap = new Map((expiredProfiles || []).map(p => [p.member_id, p]));
-
-        const { data: eventEmails } = await supabase
-          .from('academy_plan_events')
-          .select('ms_member_id, email, created_at')
-          .in('ms_member_id', expiredIdList)
-          .not('email', 'is', null)
-          .order('created_at', { ascending: false });
-
-        const emailMap = new Map();
-        (eventEmails || []).forEach(row => {
-          if (row.ms_member_id && row.email && !emailMap.has(row.ms_member_id)) {
-            emailMap.set(row.ms_member_id, row.email);
-          }
-        });
-
-        expiredIdList.forEach(memberId => {
-          const existing = expiredMap.get(memberId);
-          if (!existing) return;
-          const profile = profileMap.get(memberId);
-          const email = profile?.email || emailMap.get(memberId) || existing.email || null;
-          const name = profile?.name || existing.name || null;
-          expiredMap.set(memberId, { ...existing, email, name });
-        });
-      }
-
-      baseMembers = Array.from(expiredMap.values());
+      baseMembers = await applyExpiredFilter(supabase, baseMembers, now);
     }
 
-    const historyFilterKeys = new Set([
-      'all_members_all_time',
-      'trial_conversions_30d',
-      'trial_conversions_all_time',
-      'trial_dropoff_30d',
-      'trial_dropoff_all_time',
-      'trials_ended_30d',
-      'at_risk_trials_7d',
-      'annual_all_time',
-      'direct_annual_all_time',
-      'annual_revenue_30d',
-      'direct_annual_30d',
-      'net_member_growth_30d',
-      'net_paid_growth_30d',
-      'annual_churn_90d',
-      'at_risk_annual_30d',
-      'trial_opportunity_all',
-      'trial_opportunity_3pct'
-    ]);
+    const needsHistory = isExpiredFilter || (tileFilter && HISTORY_FILTER_KEYS.has(tileFilter));
+    const historyResult = await loadHistoryMembers(supabase, baseMembers, needsHistory);
+    baseMembers = historyResult.baseMembers;
+    let { trialHistoryRows, annualHistoryRows } = historyResult;
 
-    const needsHistory = isExpiredFilter || (tileFilter && historyFilterKeys.has(tileFilter));
-    let trialHistoryRows = [];
-    let annualHistoryRows = [];
-
-    if (needsHistory) {
-      const { data: trialHistory } = await supabase
-        .from('academy_trial_history')
-        .select('member_id, trial_start_at, trial_end_at, converted_at');
-      trialHistoryRows = Array.isArray(trialHistory) ? trialHistory : [];
-
-      const { data: annualHistory } = await supabase
-        .from('academy_annual_history')
-        .select('member_id, annual_start_at, annual_end_at');
-      annualHistoryRows = Array.isArray(annualHistory) ? annualHistory : [];
-
-      const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
-      const trialHistoryByMember = new Map();
-      const annualHistoryByMember = new Map();
-
-      trialHistoryRows.forEach(row => {
-        if (!row?.member_id) return;
-        if (!trialHistoryByMember.has(row.member_id)) {
-          trialHistoryByMember.set(row.member_id, row);
-          return;
-        }
-        const existing = trialHistoryByMember.get(row.member_id);
-        const existingEnd = parseDate(existing?.trial_end_at);
-        const nextEnd = parseDate(row.trial_end_at);
-        if (nextEnd && (!existingEnd || nextEnd > existingEnd)) {
-          trialHistoryByMember.set(row.member_id, row);
-        }
-      });
-
-      annualHistoryRows.forEach(row => {
-        if (!row?.member_id) return;
-        if (!annualHistoryByMember.has(row.member_id)) {
-          annualHistoryByMember.set(row.member_id, row);
-          return;
-        }
-        const existing = annualHistoryByMember.get(row.member_id);
-        const existingStart = parseDate(existing?.annual_start_at);
-        const nextStart = parseDate(row.annual_start_at);
-        if (nextStart && (!existingStart || nextStart > existingStart)) {
-          annualHistoryByMember.set(row.member_id, row);
-        }
-      });
-
-      const historyMemberIds = new Set([
-        ...Array.from(trialHistoryByMember.keys()),
-        ...Array.from(annualHistoryByMember.keys())
-      ]);
-
-      historyMemberIds.forEach(memberId => {
-        if (cacheById.has(memberId)) return;
-        const trialRow = trialHistoryByMember.get(memberId);
-        const annualRow = annualHistoryByMember.get(memberId);
-        if (annualRow) {
-          baseMembers.push({
-            member_id: memberId,
-            email: null,
-            name: null,
-            created_at: null,
-            updated_at: null,
-            raw: {},
-            plan_summary: {
-              plan_type: 'annual',
-              plan_name: 'Academy Annual',
-              status: 'expired',
-              current_period_end: annualRow.annual_end_at || null,
-              is_trial: false,
-              is_paid: true
-            }
-          });
-          return;
-        }
-        if (trialRow) {
-          baseMembers.push({
-            member_id: memberId,
-            email: null,
-            name: null,
-            created_at: null,
-            updated_at: null,
-            raw: {},
-            plan_summary: {
-              plan_type: 'trial',
-              plan_name: 'Academy Trial',
-              status: 'expired',
-              expiry_date: trialRow.trial_end_at || null,
-              is_trial: true,
-              is_paid: false
-            }
-          });
-        }
-      });
+    if (needsHistory && !isExpiredFilter) {
+      baseMembers = await backfillMemberProfiles(supabase, baseMembers);
     }
 
     const hasTileFilter = Boolean(tileFilter);
@@ -765,6 +878,19 @@ async function handleMembers(req, res) {
     });
     memberIds = activeNowResult.memberIds;
     filteredValidMembers = activeNowResult.filteredValidMembers;
+
+    const invoiceAmountFilters = new Set([
+      'trial_conversions_all_time',
+      'trial_conversions_30d',
+      'direct_annual_all_time',
+      'direct_annual_30d',
+      'annual_revenue_30d',
+      'annual_all_time'
+    ]);
+    const shouldFetchInvoiceAmounts = tileFilter && invoiceAmountFilters.has(tileFilter);
+    const invoiceAmounts = shouldFetchInvoiceAmounts
+      ? await fetchAnnualInvoiceAmounts(supabase, memberIds)
+      : new Map();
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -988,6 +1114,8 @@ async function handleMembers(req, res) {
         plan.refunded ??
         null
       );
+      const invoiceAmount = invoiceAmounts.get(memberId);
+      const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? null;
 
       return {
         member_id: memberId,
@@ -1011,7 +1139,7 @@ async function handleMembers(req, res) {
         photography_style: member.photography_style || null,
         hue_test_score: hueScoreMap[memberId] ?? null,
         currency,
-        total_paid: totalPaid,
+        total_paid: resolvedTotalPaid,
         current_amount: currentAmount,
         refunds_total: refundsTotal
       };

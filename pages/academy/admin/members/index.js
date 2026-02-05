@@ -1,7 +1,7 @@
 // /pages/academy/admin/members/index.js
 // Members directory page with filters and table
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -52,6 +52,7 @@ export default function MembersDirectory() {
   const [lastSeenFilter, setLastSeenFilter] = useState('');
   const [activeNowFilter, setActiveNowFilter] = useState(false);
   const [tileFilter, setTileFilter] = useState('');
+  const latestRequestId = useRef(0);
 
   const tileFilterLabels = {
     all_members_all_time: 'Total members (all-time)',
@@ -119,6 +120,7 @@ export default function MembersDirectory() {
   }, []);
 
   async function fetchMembers() {
+    const requestId = ++latestRequestId.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -140,13 +142,19 @@ export default function MembersDirectory() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const data = await res.json();
-      // Members are already sorted on the server, no need for client-side sorting
-      setMembers(data.members || []);
-      setPagination(data.pagination || pagination);
+      if (requestId === latestRequestId.current) {
+        // Members are already sorted on the server, no need for client-side sorting
+        setMembers(data.members || []);
+        setPagination(data.pagination || pagination);
+      }
     } catch (error) {
-      console.error('Failed to fetch members:', error);
+      if (requestId === latestRequestId.current) {
+        console.error('Failed to fetch members:', error);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestId.current) {
+        setLoading(false);
+      }
     }
   }
 
