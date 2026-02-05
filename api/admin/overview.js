@@ -261,6 +261,18 @@ module.exports = async (req, res) => {
       });
     }
 
+    const trialStartsFromEvents = Object.entries(trialStartsByMember).map(([memberId, startedAt]) => ({
+      member_id: memberId,
+      trialStartAt: startedAt
+    }));
+    const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const trialsEndedFromEventsAll = trialStartsFromEvents
+      .map(t => ({ member_id: t.member_id, trialEndAt: addDays(t.trialStartAt, 30) }))
+      .filter(t => !isNaN(t.trialEndAt.getTime()) && t.trialEndAt <= now);
+    const trialsEndedFromEvents30d = trialsEndedFromEventsAll.filter(t =>
+      t.trialEndAt >= start30d && t.trialEndAt <= now
+    );
+
     if (allMembersForBI) {
       allMembersForBI.forEach(member => {
         const plan = member.plan_summary || {};
@@ -545,17 +557,10 @@ module.exports = async (req, res) => {
     // IMPORTANT: No time restrictions on conversions - if someone had a trial and later got annual, it's ALWAYS a conversion
     // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
     // Trials that ended in last 30d (for reporting purposes only)
-    const trialsEnded30d = Object.values(memberPlans).filter(m => 
-      m.isTrial && 
-      m.trialEndAt && 
-      m.trialEndAt >= start30d && 
-      m.trialEndAt <= now
-    );
+    const trialsEnded30d = trialsEndedFromEvents30d;
     
-    // Get all-time trials ended count (any trial that has ended)
-    const allTrialsEndedCount = Object.values(memberPlans).filter(m => 
-      m.isTrial && m.trialEndAt && m.trialEndAt <= now
-    ).length;
+    // Get all-time trials ended count from events (historical, even if member removed)
+    const allTrialsEndedCount = trialsEndedFromEventsAll.length;
     
     // All-time conversion rate: all conversions / all trials ended
     // Use Supabase data (allConversions) - no Stripe dependency needed
@@ -676,7 +681,7 @@ module.exports = async (req, res) => {
     );
 
     // All-time trials ended without conversion (exclude anyone who later converted)
-    const trialsEndedWithoutConversionAllTime = allTrialsEnded.filter(m => {
+    const trialsEndedWithoutConversionAllTime = trialsEndedFromEventsAll.filter(m => {
       // If this member converted (at any time), exclude them from "without conversion"
       return !convertedMemberIds.has(m.member_id);
     });
