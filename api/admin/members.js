@@ -75,19 +75,34 @@ module.exports = async (req, res) => {
       throw error;
     }
 
+    const now = new Date();
+    const isExpiredPlan = (plan) => {
+      const endDate = plan.current_period_end || plan.expiry_date;
+      if (!endDate) return false;
+      const expiry = new Date(endDate);
+      return !isNaN(expiry.getTime()) && expiry < now;
+    };
+
     // Filter out test accounts and members without valid plans (trial or annual)
-    // Only show members with trial or annual plans that are ACTIVE or TRIALING
+    // Default to ACTIVE/TRIALING unless status filter requests otherwise
     const validMembers = (members || []).filter(member => {
       const plan = member.plan_summary || {};
       const planType = plan.plan_type || '';
       const status = (plan.status || '').toUpperCase();
       
-      // Only include members with trial or annual plans that are ACTIVE or TRIALING
-      // Exclude test accounts and members without valid plans
-      return (
-        (planType === 'trial' || planType === 'annual') &&
-        (status === 'ACTIVE' || status === 'TRIALING')
-      );
+      const hasPlan = planType === 'trial' || planType === 'annual';
+      if (!hasPlan) return false;
+
+      if (statusFilter === 'expired') {
+        return isExpiredPlan(plan);
+      }
+
+      if (statusFilter) {
+        return status === statusFilter.toUpperCase();
+      }
+
+      // Default: only include ACTIVE/TRIALING
+      return status === 'ACTIVE' || status === 'TRIALING';
     });
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)

@@ -411,6 +411,7 @@ export default function MembersDirectory() {
                 <option value="active">Active</option>
                 <option value="trialing">Trialing</option>
                 <option value="canceled">Canceled</option>
+                <option value="expired">Expired</option>
               </select>
             </div>
             <div>
