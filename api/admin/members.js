@@ -216,7 +216,7 @@ module.exports = async (req, res) => {
 
     // Build lookup maps
     const lastSeenMap = {};
-    lastActivities?.forEach(activity => {
+    activities?.forEach(activity => {
       const memberId = activity.member_id;
       if (!lastSeenMap[memberId] || new Date(activity.created_at) > new Date(lastSeenMap[memberId])) {
         lastSeenMap[memberId] = activity.created_at;
