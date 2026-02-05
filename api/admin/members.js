@@ -58,6 +58,26 @@ const getStripeClient = () => {
   }
 };
 
+const normalizeEmailKey = (value) => {
+  if (!value) return null;
+  return String(value).toLowerCase().trim();
+};
+
+const collectStripeCustomerIds = (members) => {
+  const map = new Map();
+  (members || []).forEach(member => {
+    const email = normalizeEmailKey(member?.email);
+    if (!email) return;
+    const plan = member?.plan_summary || {};
+    const rawCustomer = plan.customer_id || plan.stripe_customer_id || plan.customer || plan.customerId || null;
+    const customerId = typeof rawCustomer === 'string' ? rawCustomer : rawCustomer?.id;
+    if (!customerId) return;
+    if (!map.has(email)) map.set(email, new Set());
+    map.get(email).add(customerId);
+  });
+  return map;
+};
+
 const fetchStripeTotalsByEmail = async (members) => {
   const stripe = getStripeClient();
   if (!stripe) return new Map();
@@ -69,15 +89,20 @@ const fetchStripeTotalsByEmail = async (members) => {
 
   if (emails.length === 0) return new Map();
 
+  const customerIdsByEmail = collectStripeCustomerIds(members);
   const totals = new Map();
 
   for (const email of emails) {
     let sum = 0;
     try {
       const customers = await stripe.customers.list({ email, limit: 10 });
-      for (const customer of customers.data || []) {
+      const customerIds = new Set([
+        ...(customerIdsByEmail.get(email) || []),
+        ...((customers.data || []).map(customer => customer.id))
+      ]);
+      for (const customerId of customerIds) {
         const invoices = await stripe.invoices.list({
-          customer: customer.id,
+          customer: customerId,
           status: 'paid',
           limit: 100,
           expand: ['data.lines.data.price', 'data.lines.data.price.product']
@@ -110,6 +135,7 @@ const fetchStripeRefundsByEmail = async (members) => {
 
   const refunds = new Map();
   const planTypeByEmail = new Map();
+  const customerIdsByEmail = collectStripeCustomerIds(members);
 
   (members || []).forEach(member => {
     const email = member?.email ? String(member.email).toLowerCase() : null;
@@ -142,9 +168,13 @@ const fetchStripeRefundsByEmail = async (members) => {
     let fallbackSum = 0;
     try {
       const customers = await stripe.customers.list({ email, limit: 10 });
-      for (const customer of customers.data || []) {
+      const customerIds = new Set([
+        ...(customerIdsByEmail.get(email) || []),
+        ...((customers.data || []).map(customer => customer.id))
+      ]);
+      for (const customerId of customerIds) {
         const invoices = await stripe.invoices.list({
-          customer: customer.id,
+          customer: customerId,
           limit: 100,
           expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge']
         });
