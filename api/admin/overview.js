@@ -5,6 +5,9 @@
 const { createClient } = require("@supabase/supabase-js");
 
 const buildOrigin = (req) => {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
   const proto = req.headers['x-forwarded-proto'] || 'http';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   return `${proto}://${host}`;
