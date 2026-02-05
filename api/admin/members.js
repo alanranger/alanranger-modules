@@ -78,6 +78,66 @@ const collectStripeCustomerIds = (members) => {
   return map;
 };
 
+const fetchStripeInvoiceEmailTotals = async (members) => {
+  const stripe = getStripeClient();
+  if (!stripe) return { totalsByEmail: new Map(), refundsByEmail: new Map() };
+
+  const emails = new Set((members || [])
+    .map(member => normalizeEmailKey(member?.email))
+    .filter(Boolean));
+
+  if (emails.size === 0) return { totalsByEmail: new Map(), refundsByEmail: new Map() };
+
+  const totalsByEmail = new Map();
+  const refundsByEmail = new Map();
+
+  const getInvoiceRefundMinor = async (invoice) => {
+    if (invoice.amount_refunded) return invoice.amount_refunded;
+    const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge?.id;
+    if (!chargeId) return 0;
+    let total = 0;
+    try {
+      const refundsList = await stripe.refunds.list({ charge: chargeId, limit: 100 });
+      (refundsList.data || []).forEach(refund => {
+        total += refund.amount || 0;
+      });
+    } catch (error) {
+      console.warn('[members] Stripe refund list failed:', error.message);
+    }
+    return total;
+  };
+
+  let hasMore = true;
+  let startingAfter = null;
+  while (hasMore) {
+    const params = {
+      limit: 100,
+      status: 'paid',
+      expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge', 'data.customer']
+    };
+    if (startingAfter) params.starting_after = startingAfter;
+    const response = await stripe.invoices.list(params);
+    const invoices = response.data || [];
+    for (const invoice of invoices) {
+      if (!isAcademyInvoice(invoice)) continue;
+      const email = normalizeEmailKey(invoice.customer_email || invoice.customer?.email);
+      if (!email || !emails.has(email)) continue;
+      const totalPaidMinor = invoice.amount_paid ?? invoice.total ?? 0;
+      const refundMinor = await getInvoiceRefundMinor(invoice);
+      totalsByEmail.set(email, (totalsByEmail.get(email) || 0) + totalPaidMinor / 100);
+      refundsByEmail.set(email, (refundsByEmail.get(email) || 0) + refundMinor / 100);
+    }
+    hasMore = Boolean(response.has_more);
+    if (hasMore && invoices.length > 0) {
+      startingAfter = invoices[invoices.length - 1].id;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return { totalsByEmail, refundsByEmail };
+};
+
 const fetchStripeTotalsByEmail = async (members) => {
   const stripe = getStripeClient();
   if (!stripe) return new Map();
@@ -1180,6 +1240,9 @@ async function handleMembers(req, res) {
     const stripeRefundsByEmail = shouldFetchInvoiceAmounts
       ? await fetchStripeRefundsByEmail(filteredValidMembers)
       : new Map();
+    const invoiceEmailTotalsResult = tileFilter === 'revenue_all_time'
+      ? await fetchStripeInvoiceEmailTotals(filteredValidMembers)
+      : { totalsByEmail: new Map(), refundsByEmail: new Map() };
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -1404,12 +1467,16 @@ async function handleMembers(req, res) {
         null
       );
       const invoiceAmount = invoiceAmounts.get(memberId);
-      const stripeTotal = member.email ? stripeTotalsByEmail.get(String(member.email).toLowerCase()) : null;
+      const emailKey = normalizeEmailKey(member.email);
+      const invoiceEmailTotal = emailKey ? invoiceEmailTotalsResult.totalsByEmail.get(emailKey) : null;
+      const stripeTotal = emailKey ? stripeTotalsByEmail.get(emailKey) : null;
       const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? stripeTotal ?? null;
-      const stripeRefundTotal = member.email ? stripeRefundsByEmail.get(String(member.email).toLowerCase()) : null;
-      const resolvedRefundsTotal = stripeRefundTotal != null && (refundsTotal == null || stripeRefundTotal > refundsTotal)
-        ? stripeRefundTotal
-        : (refundsTotal ?? stripeRefundTotal ?? null);
+      const invoiceEmailRefund = emailKey ? invoiceEmailTotalsResult.refundsByEmail.get(emailKey) : null;
+      const stripeRefundTotal = emailKey ? stripeRefundsByEmail.get(emailKey) : null;
+      const preferredRefundTotal = invoiceEmailRefund ?? stripeRefundTotal;
+      const resolvedRefundsTotal = preferredRefundTotal != null && (refundsTotal == null || preferredRefundTotal > refundsTotal)
+        ? preferredRefundTotal
+        : (refundsTotal ?? preferredRefundTotal ?? null);
 
       return {
         member_id: memberId,
