@@ -81,9 +81,78 @@ module.exports = async (req, res) => {
       return !isNaN(expiry.getTime()) && expiry < now;
     };
 
+    const isExpiredFilter = statusFilter === 'expired';
+    let baseMembers = members || [];
+
+    if (isExpiredFilter) {
+      const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
+
+      const { data: expiredTrialHistory } = await supabase
+        .from('academy_trial_history')
+        .select('member_id, trial_end_at')
+        .lte('trial_end_at', new Date().toISOString());
+
+      const { data: expiredAnnualHistory } = await supabase
+        .from('academy_annual_history')
+        .select('member_id, annual_end_at')
+        .lte('annual_end_at', new Date().toISOString());
+
+      const expiredMap = new Map();
+
+      (expiredTrialHistory || []).forEach(row => {
+        if (!row?.member_id || !row.trial_end_at) return;
+        const cached = cacheById.get(row.member_id);
+        if (cached) {
+          expiredMap.set(row.member_id, cached);
+        } else {
+          expiredMap.set(row.member_id, {
+            member_id: row.member_id,
+            email: null,
+            name: null,
+            created_at: null,
+            updated_at: null,
+            raw: {},
+            plan_summary: {
+              plan_type: 'trial',
+              plan_name: 'Academy Trial',
+              status: 'expired',
+              expiry_date: row.trial_end_at,
+              is_trial: true
+            }
+          });
+        }
+      });
+
+      (expiredAnnualHistory || []).forEach(row => {
+        if (!row?.member_id || !row.annual_end_at) return;
+        const cached = cacheById.get(row.member_id);
+        if (cached) {
+          expiredMap.set(row.member_id, cached);
+        } else {
+          expiredMap.set(row.member_id, {
+            member_id: row.member_id,
+            email: null,
+            name: null,
+            created_at: null,
+            updated_at: null,
+            raw: {},
+            plan_summary: {
+              plan_type: 'annual',
+              plan_name: 'Academy Annual',
+              status: 'expired',
+              expiry_date: row.annual_end_at,
+              is_paid: true
+            }
+          });
+        }
+      });
+
+      baseMembers = Array.from(expiredMap.values());
+    }
+
     // Filter out test accounts and members without valid plans (trial or annual)
     // Default to ACTIVE/TRIALING unless status filter requests otherwise
-    const validMembers = (members || []).filter(member => {
+    const validMembers = (baseMembers || []).filter(member => {
       const plan = member.plan_summary || {};
       const planType = plan.plan_type || '';
       const status = (plan.status || '').toUpperCase();
@@ -91,8 +160,8 @@ module.exports = async (req, res) => {
       const hasPlan = planType === 'trial' || planType === 'annual';
       if (!hasPlan) return false;
 
-      if (statusFilter === 'expired') {
-        return isExpiredPlan(plan);
+      if (isExpiredFilter) {
+        return isExpiredPlan(plan) || status === 'EXPIRED';
       }
 
       if (statusFilter) {
