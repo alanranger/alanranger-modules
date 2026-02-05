@@ -78,6 +78,22 @@ const collectStripeCustomerIds = (members) => {
   return map;
 };
 
+const addTotalsByEmail = ({ totalsByEmail, refundsByEmail, email, totalPaidMinor, refundMinor }) => {
+  if (!email) return;
+  totalsByEmail.set(email, (totalsByEmail.get(email) || 0) + totalPaidMinor / 100);
+  refundsByEmail.set(email, (refundsByEmail.get(email) || 0) + refundMinor / 100);
+};
+
+const buildInvoiceListParams = (startingAfter) => {
+  const params = {
+    limit: 100,
+    status: 'paid',
+    expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge', 'data.customer']
+  };
+  if (startingAfter) params.starting_after = startingAfter;
+  return params;
+};
+
 const fetchStripeInvoiceEmailTotals = async (members) => {
   const stripe = getStripeClient();
   if (!stripe) return { totalsByEmail: new Map(), refundsByEmail: new Map() };
@@ -107,16 +123,10 @@ const fetchStripeInvoiceEmailTotals = async (members) => {
     return total;
   };
 
-  let hasMore = true;
   let startingAfter = null;
+  let hasMore = true;
   while (hasMore) {
-    const params = {
-      limit: 100,
-      status: 'paid',
-      expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge', 'data.customer']
-    };
-    if (startingAfter) params.starting_after = startingAfter;
-    const response = await stripe.invoices.list(params);
+    const response = await stripe.invoices.list(buildInvoiceListParams(startingAfter));
     const invoices = response.data || [];
     for (const invoice of invoices) {
       if (!isAcademyInvoice(invoice)) continue;
@@ -124,11 +134,9 @@ const fetchStripeInvoiceEmailTotals = async (members) => {
       if (!email || !emails.has(email)) continue;
       const totalPaidMinor = invoice.amount_paid ?? invoice.total ?? 0;
       const refundMinor = await getInvoiceRefundMinor(invoice);
-      totalsByEmail.set(email, (totalsByEmail.get(email) || 0) + totalPaidMinor / 100);
-      refundsByEmail.set(email, (refundsByEmail.get(email) || 0) + refundMinor / 100);
+      addTotalsByEmail({ totalsByEmail, refundsByEmail, email, totalPaidMinor, refundMinor });
     }
-    hasMore = Boolean(response.has_more);
-    if (hasMore && invoices.length > 0) {
+    if (response.has_more && invoices.length > 0) {
       startingAfter = invoices[invoices.length - 1].id;
     } else {
       hasMore = false;
@@ -693,6 +701,72 @@ const compareSortValues = (aVal, bVal, sortOrder) => {
   return aNorm > bNorm ? direction : -direction;
 };
 
+const applyRevenueAllTimeFilter = (membersList) => {
+  return membersList.filter(member => {
+    const totalPaid = normalizeNumber(member.total_paid) || 0;
+    const refundsTotal = normalizeNumber(member.refunds_total) || 0;
+    const planType = member.plan_type || '';
+    const isPaidPlan = member.is_paid || planType === 'annual' || planType === 'monthly';
+    return isPaidPlan || totalPaid > 0 || refundsTotal > 0;
+  });
+};
+
+const filterValidMembers = ({
+  baseMembers,
+  isExpiredFilter,
+  statusFilter,
+  hasTileFilter,
+  isRevenueAllTimeFilter,
+  now
+}) => {
+  return (baseMembers || []).filter(member => {
+    const plan = member.plan_summary || {};
+    const planType = plan.plan_type || '';
+    const status = getPlanStatus(plan);
+    const isTrial = isTrialPlan(plan);
+    const hasPlan = planType === 'trial' || planType === 'annual' || isTrial || (isRevenueAllTimeFilter && planType === 'monthly');
+    if (!hasPlan) return false;
+
+    if (isExpiredFilter) {
+      const endDate = plan.current_period_end || plan.expiry_date;
+      if (!endDate) return false;
+      const expiry = new Date(endDate);
+      return (!Number.isNaN(expiry.getTime()) && expiry < now) || status === 'EXPIRED';
+    }
+
+    if (statusFilter) {
+      return status === statusFilter.toUpperCase();
+    }
+
+    if (!hasTileFilter) {
+      return status === 'ACTIVE' || status === 'TRIALING';
+    }
+
+    return true;
+  });
+};
+
+const loadMembersWithHistory = async ({ supabase, baseMembers, isExpiredFilter, tileFilter }) => {
+  let nextMembers = baseMembers;
+  if (isExpiredFilter) {
+    nextMembers = await applyExpiredFilter(supabase, nextMembers, new Date());
+  }
+
+  const needsHistory = isExpiredFilter || (tileFilter && HISTORY_FILTER_KEYS.has(tileFilter));
+  const historyResult = await loadHistoryMembers(supabase, nextMembers, needsHistory);
+  nextMembers = historyResult.baseMembers;
+
+  if (needsHistory && !isExpiredFilter) {
+    nextMembers = await backfillMemberProfiles(supabase, nextMembers);
+  }
+
+  return {
+    baseMembers: nextMembers,
+    trialHistoryRows: historyResult.trialHistoryRows,
+    annualHistoryRows: historyResult.annualHistoryRows
+  };
+};
+
 const normalizeSortValue = (value, sortField) => {
   if (value == null || value === '') return null;
   if (['signed_up', 'last_seen', 'plan_expiry_date'].includes(sortField)) {
@@ -1142,56 +1216,30 @@ async function handleMembers(req, res) {
       throw error;
     }
 
-    const isExpiredPlan = (plan) => {
-      const endDate = plan.current_period_end || plan.expiry_date;
-      if (!endDate) return false;
-      const expiry = new Date(endDate);
-      return !Number.isNaN(expiry.getTime()) && expiry < now;
-    };
-
     const isExpiredFilter = statusFilter === 'expired';
     const isRevenueAllTimeFilter = tileFilter === 'revenue_all_time';
     let baseMembers = members || [];
 
-    if (isExpiredFilter) {
-      baseMembers = await applyExpiredFilter(supabase, baseMembers, now);
-    }
-
-    const needsHistory = isExpiredFilter || (tileFilter && HISTORY_FILTER_KEYS.has(tileFilter));
-    const historyResult = await loadHistoryMembers(supabase, baseMembers, needsHistory);
+    const historyResult = await loadMembersWithHistory({
+      supabase,
+      baseMembers,
+      isExpiredFilter,
+      tileFilter
+    });
     baseMembers = historyResult.baseMembers;
     let { trialHistoryRows, annualHistoryRows } = historyResult;
-
-    if (needsHistory && !isExpiredFilter) {
-      baseMembers = await backfillMemberProfiles(supabase, baseMembers);
-    }
 
     const hasTileFilter = Boolean(tileFilter);
 
     // Filter out test accounts and members without valid plans (trial or annual)
     // Default to ACTIVE/TRIALING unless status filter requests otherwise
-    const validMembers = (baseMembers || []).filter(member => {
-      const plan = member.plan_summary || {};
-      const planType = plan.plan_type || '';
-      const status = getPlanStatus(plan);
-      const isTrial = isTrialPlan(plan);
-      const hasPlan = planType === 'trial' || planType === 'annual' || isTrial || (isRevenueAllTimeFilter && planType === 'monthly');
-      if (!hasPlan) return false;
-
-      if (isExpiredFilter) {
-        return isExpiredPlan(plan) || status === 'EXPIRED';
-      }
-
-      if (statusFilter) {
-        return status === statusFilter.toUpperCase();
-      }
-
-      if (!hasTileFilter) {
-        // Default: only include ACTIVE/TRIALING
-        return status === 'ACTIVE' || status === 'TRIALING';
-      }
-
-      return true;
+    const validMembers = filterValidMembers({
+      baseMembers,
+      isExpiredFilter,
+      statusFilter,
+      hasTileFilter,
+      isRevenueAllTimeFilter,
+      now
     });
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
@@ -1234,15 +1282,15 @@ async function handleMembers(req, res) {
     const invoiceAmounts = shouldFetchInvoiceAmounts
       ? await fetchAnnualInvoiceAmounts(supabase, memberIds)
       : new Map();
+    const invoiceEmailTotalsResult = tileFilter === 'revenue_all_time'
+      ? await fetchStripeInvoiceEmailTotals(filteredValidMembers)
+      : { totalsByEmail: new Map(), refundsByEmail: new Map() };
     const stripeTotalsByEmail = shouldFetchInvoiceAmounts
       ? await fetchStripeTotalsByEmail(filteredValidMembers)
       : new Map();
     const stripeRefundsByEmail = shouldFetchInvoiceAmounts
       ? await fetchStripeRefundsByEmail(filteredValidMembers)
       : new Map();
-    const invoiceEmailTotalsResult = tileFilter === 'revenue_all_time'
-      ? await fetchStripeInvoiceEmailTotals(filteredValidMembers)
-      : { totalsByEmail: new Map(), refundsByEmail: new Map() };
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -1470,7 +1518,7 @@ async function handleMembers(req, res) {
       const emailKey = normalizeEmailKey(member.email);
       const invoiceEmailTotal = emailKey ? invoiceEmailTotalsResult.totalsByEmail.get(emailKey) : null;
       const stripeTotal = emailKey ? stripeTotalsByEmail.get(emailKey) : null;
-      const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? stripeTotal ?? null;
+      const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? invoiceEmailTotal ?? stripeTotal ?? null;
       const invoiceEmailRefund = emailKey ? invoiceEmailTotalsResult.refundsByEmail.get(emailKey) : null;
       const stripeRefundTotal = emailKey ? stripeRefundsByEmail.get(emailKey) : null;
       const preferredRefundTotal = invoiceEmailRefund ?? stripeRefundTotal;
@@ -1508,11 +1556,7 @@ async function handleMembers(req, res) {
 
     // Apply revenue filter post-enrichment
     if (tileFilter === 'revenue_all_time') {
-      enrichedMembers = enrichedMembers.filter(member => {
-        const totalPaid = normalizeNumber(member.total_paid) || 0;
-        const refundsTotal = normalizeNumber(member.refunds_total) || 0;
-        return totalPaid > 0 || refundsTotal > 0;
-      });
+      enrichedMembers = applyRevenueAllTimeFilter(enrichedMembers);
     }
 
     // Apply last_seen filter if specified
