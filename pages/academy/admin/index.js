@@ -622,7 +622,7 @@ export default function AdminDashboard() {
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Conversion rate: Of all people who ever had a trial, what % converted to annual in the last 30 days? Formula: (Conversions in last 30d) / (All people who ever had a trial) × 100. This shows recent conversion activity regardless of when the trial ended."
+            title="Conversion rate: (Conversions in last 30d) / (Trials active in last 30d) × 100. Uses trial history for active trials and conversions."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -654,7 +654,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Trials that ended in the last 30 days without converting to annual, divided by total trials ended in the period. Conversion window: 7 days after trial end."
+            title="Trials that ended in the last 30 days without converting, divided by total trials ended in the last 30 days."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -672,7 +672,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Total number of trials that ended (all-time). Supporting stat for conversion calculations."
+            title="Total number of trials that ended in the last 30 days."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -684,7 +684,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Trials expiring in 7d with low activation (under 3 module opens and 0 exam attempts)."
+            title="Trials expiring in the next 7 days with no login event in the last 7 days."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">
@@ -737,7 +737,7 @@ export default function AdminDashboard() {
           </div>
           <div 
             className="ar-admin-kpi-tile" 
-            title="Net paid revenue from trial-to-annual conversions. Conversion = annual subscription started within 7 days of trial end. All-time total."
+            title="Net paid revenue attributed to trial-to-annual conversions (from Stripe metrics). All-time total."
             style={{ cursor: 'help' }}
           >
             <div className="ar-admin-kpi-label">

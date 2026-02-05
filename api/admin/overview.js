@@ -798,89 +798,32 @@ module.exports = async (req, res) => {
       ? daysToConvert.sort((a, b) => a - b)[Math.floor(daysToConvert.length / 2)]
       : null;
 
-    // 2. At-risk trials (expiring next 7d + low activation)
-    // Get activation data (module opens and exam attempts) for trials
-    // Only count active trials (not yet expired) that are expiring soon
+    // 2. At-risk trials (expiring next 7d + no login in last 7d)
     const expiringTrials = hasTrialHistory
       ? trialHistoryRows
           .filter(row => {
-            if (!row.trial_start_at || !row.trial_end_at) return false;
-            const startAt = new Date(row.trial_start_at);
+            if (!row.trial_end_at) return false;
             const endAt = new Date(row.trial_end_at);
-            if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return false;
-            return endAt > now && endAt <= next7d && startAt <= now;
+            if (isNaN(endAt.getTime())) return false;
+            return endAt > now && endAt <= next7d;
           })
-          .map(row => ({
-            member_id: row.member_id,
-            trial_start_at: row.trial_start_at
-          }))
+          .map(row => row.member_id)
       : Object.values(memberPlans)
-          .filter(m => {
-            if (!m.isTrial || !m.trialEndAt || !m.trialStartAt) return false;
-            // Trial must be active (not expired, has started) and expiring in next 7 days
-            return m.trialEndAt > now && m.trialEndAt <= next7d && m.trialStartAt <= now;
-          })
-          .map(m => ({
-            member_id: m.member_id,
-            trial_start_at: m.trialStartAt
-          }));
+          .filter(m => m.isTrial && m.trialEndAt && m.trialEndAt > now && m.trialEndAt <= next7d)
+          .map(m => m.member_id);
 
-    const expiringTrialMap = new Map();
-    expiringTrials.forEach(trial => {
-      if (!trial?.member_id || !trial?.trial_start_at) return;
-      const startAt = new Date(trial.trial_start_at);
-      if (isNaN(startAt.getTime())) return;
-      const existing = expiringTrialMap.get(trial.member_id);
-      if (!existing || startAt > existing.startAt) {
-        expiringTrialMap.set(trial.member_id, { startAt });
-      }
-    });
-    const trialMemberIds = Array.from(expiringTrialMap.keys());
-
+    const expiringTrialIds = Array.from(new Set(expiringTrials.filter(Boolean)));
     let atRiskTrialsNext7d = 0;
-    if (trialMemberIds.length > 0) {
-      // Get module opens for these trials
-      const { data: moduleOpensForTrials } = await supabase
+    if (expiringTrialIds.length > 0) {
+      const { data: recentLogins } = await supabase
         .from('academy_events')
-        .select('member_id, created_at')
-        .eq('event_type', 'module_open')
-        .in('member_id', trialMemberIds);
+        .select('member_id')
+        .eq('event_type', 'login')
+        .gte('created_at', start7d.toISOString())
+        .in('member_id', expiringTrialIds);
 
-      // Get exam attempts for these trials
-      const { data: examAttemptsForTrials } = await supabase
-        .from('module_results_ms')
-        .select('memberstack_id, created_at')
-        .in('memberstack_id', trialMemberIds);
-
-      // Check activation for each at-risk trial
-      trialMemberIds.forEach(memberId => {
-        const startAt = expiringTrialMap.get(memberId)?.startAt;
-        if (!startAt || isNaN(startAt.getTime())) return;
-
-        const activationWindowEnd = new Date(Math.min(
-          startAt.getTime() + 7 * 24 * 60 * 60 * 1000,
-          now.getTime()
-        ));
-
-        // Count module opens in first 7 days
-        const moduleOpensInTrial = (moduleOpensForTrials || []).filter(e => 
-          e.member_id === memberId && 
-          new Date(e.created_at) >= startAt &&
-          new Date(e.created_at) <= activationWindowEnd
-        ).length;
-
-        // Count exam attempts in first 7 days
-        const examAttemptsInTrial = (examAttemptsForTrials || []).filter(e => 
-          e.memberstack_id === memberId &&
-          new Date(e.created_at) >= startAt &&
-          new Date(e.created_at) <= activationWindowEnd
-        ).length;
-
-        // At risk if: expiring soon AND (less than 3 module opens OR 0 exam attempts)
-        if (moduleOpensInTrial < 3 && examAttemptsInTrial === 0) {
-          atRiskTrialsNext7d++;
-        }
-      });
+      const loggedInIds = new Set((recentLogins || []).map(row => row.member_id).filter(Boolean));
+      atRiskTrialsNext7d = expiringTrialIds.filter(id => !loggedInIds.has(id)).length;
     }
 
     // 3. Annual churn (90d)
