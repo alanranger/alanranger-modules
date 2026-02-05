@@ -240,6 +240,20 @@ module.exports = async (req, res) => {
       .from('ms_members_cache')
       .select('member_id, email, created_at, plan_summary');
 
+    // Historical trial records (persistent)
+    const { data: trialHistory } = await supabase
+      .from('academy_trial_history')
+      .select('member_id, trial_start_at, trial_end_at, converted_at');
+    const trialHistoryRows = Array.isArray(trialHistory) ? trialHistory : [];
+    const hasTrialHistory = trialHistoryRows.length > 0;
+    const trialHistoryEndedAllTime = trialHistoryRows.filter(row => {
+      if (!row.trial_end_at) return false;
+      const endAt = new Date(row.trial_end_at);
+      return !isNaN(endAt.getTime()) && endAt <= now;
+    });
+    const trialHistoryEndedWithoutConversionAllTime = trialHistoryEndedAllTime.filter(row => !row.converted_at);
+    const trialHistoryConversionsAllTime = trialHistoryRows.filter(row => row.converted_at);
+
     // Build member plan timeline map
     const memberPlans = {};
     const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
@@ -560,11 +574,15 @@ module.exports = async (req, res) => {
     const trialsEnded30d = trialsEndedFromEvents30d;
     
     // Get all-time trials ended count from events (historical, even if member removed)
-    const allTrialsEndedCount = trialsEndedFromEventsAll.length;
+    const allTrialsEndedCount = hasTrialHistory
+      ? trialHistoryEndedAllTime.length
+      : trialsEndedFromEventsAll.length;
     
     // All-time conversion rate: all conversions / all trials ended
     // Use Supabase data (allConversions) - no Stripe dependency needed
-    const conversionsCountAllTime = allConversions.length;
+    const conversionsCountAllTime = hasTrialHistory
+      ? trialHistoryConversionsAllTime.length
+      : allConversions.length;
     const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
       ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
       : null;
@@ -681,10 +699,12 @@ module.exports = async (req, res) => {
     );
 
     // All-time trials ended without conversion (exclude anyone who later converted)
-    const trialsEndedWithoutConversionAllTime = trialsEndedFromEventsAll.filter(m => {
-      // If this member converted (at any time), exclude them from "without conversion"
-      return !convertedMemberIds.has(m.member_id);
-    });
+    const trialsEndedWithoutConversionAllTime = hasTrialHistory
+      ? trialHistoryEndedWithoutConversionAllTime
+      : trialsEndedFromEventsAll.filter(m => {
+          // If this member converted (at any time), exclude them from "without conversion"
+          return !convertedMemberIds.has(m.member_id);
+        });
 
     // Get annual price from Stripe metrics or use default (stripeMetrics is now initialized above)
     const annualPrice = stripeMetrics?.academy_annual_list_price_gbp || 79;
@@ -922,9 +942,9 @@ module.exports = async (req, res) => {
       // BI Metrics: Revenue & Retention
       bi: {
         // Conversion metrics (from Supabase - no Stripe dependency)
-        trialStartsAllTime: trialsStartedAllTime.length,
+        trialStartsAllTime: hasTrialHistory ? trialHistoryRows.length : trialsStartedAllTime.length,
         trialStarts30d: trialsStarted30d.length,
-        trialToAnnualConversionsAllTime: allConversions.length,
+        trialToAnnualConversionsAllTime: conversionsCountAllTime,
         trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
