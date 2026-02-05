@@ -242,8 +242,13 @@ const fetchAnnualInvoiceAmounts = async (supabase, memberIds) => {
   return amountMap;
 };
 
-const fetchConversionEventSets = async (supabase, memberIds, start30d) => {
-  if (!memberIds || memberIds.length === 0) {
+const fetchConversionEventSets = async (supabase, members, trialHistoryRows, start30d) => {
+  if (!members || members.length === 0) {
+    return { conversionsAllTimeIds: new Set(), conversions30dIds: new Set() };
+  }
+
+  const memberIds = members.map(member => member.member_id).filter(Boolean);
+  if (memberIds.length === 0) {
     return { conversionsAllTimeIds: new Set(), conversions30dIds: new Set() };
   }
 
@@ -255,6 +260,8 @@ const fetchConversionEventSets = async (supabase, memberIds, start30d) => {
     .order('created_at', { ascending: true });
 
   const timelines = new Map();
+  const trialStartEventIds = new Set();
+  const trialHistoryIds = new Set((trialHistoryRows || []).map(row => row.member_id).filter(Boolean));
   (events || []).forEach(event => {
     if (!event?.ms_member_id || !event.created_at) return;
     const memberId = event.ms_member_id;
@@ -268,6 +275,7 @@ const fetchConversionEventSets = async (supabase, memberIds, start30d) => {
     if (event.event_type === 'checkout.session.completed') {
       const priceId = event.ms_price_id || '';
       if (priceId.includes('trial') || priceId.includes('30-day')) {
+        trialStartEventIds.add(memberId);
         if (!timeline.trialStartAt || eventDate < timeline.trialStartAt) {
           timeline.trialStartAt = eventDate;
         }
@@ -287,9 +295,17 @@ const fetchConversionEventSets = async (supabase, memberIds, start30d) => {
   const conversionsAllTimeIds = new Set();
   const conversions30dIds = new Set();
 
+  const memberMap = new Map(members.map(member => [member.member_id, member]));
+
   timelines.forEach((timeline, memberId) => {
-    if (!timeline.trialStartAt || !timeline.annualPaidAt) return;
-    if (timeline.annualPaidAt <= timeline.trialStartAt) return;
+    if (!timeline.annualPaidAt) return;
+    const member = memberMap.get(memberId);
+    const createdAt = parseDate(member?.created_at);
+    const daysBetween = createdAt
+      ? (timeline.annualPaidAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      : 0;
+    const hadTrial = trialStartEventIds.has(memberId) || trialHistoryIds.has(memberId) || daysBetween > 1;
+    if (!hadTrial) return;
     conversionsAllTimeIds.add(memberId);
     if (timeline.annualPaidAt >= start30d) {
       conversions30dIds.add(memberId);
@@ -534,7 +550,8 @@ const applyTileFilter = async ({
     revenue_conversions_all_time: async () => {
       const conversionSets = await fetchConversionEventSets(
         supabase,
-        validMembers.map(member => member.member_id),
+        validMembers,
+        trialHistoryRows,
         start30d
       );
       return filterByMemberIds(validMembers, conversionSets.conversionsAllTimeIds);
@@ -542,7 +559,8 @@ const applyTileFilter = async ({
     revenue_conversions_30d: async () => {
       const conversionSets = await fetchConversionEventSets(
         supabase,
-        validMembers.map(member => member.member_id),
+        validMembers,
+        trialHistoryRows,
         start30d
       );
       return filterByMemberIds(validMembers, conversionSets.conversions30dIds);
