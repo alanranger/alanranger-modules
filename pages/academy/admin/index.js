@@ -38,7 +38,26 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/overview');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setKpis(data);
+      let nextData = data;
+      try {
+        const netRes = await fetch('/api/admin/members?filter=net_member_growth_30d&limit=1');
+        if (netRes.ok) {
+          const netData = await netRes.json();
+          const netTotal = netData?.pagination?.total;
+          if (netTotal != null) {
+            nextData = {
+              ...data,
+              bi: {
+                ...data.bi,
+                netMemberGrowth30d: netTotal
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('[admin] Failed to sync net member growth total:', error.message);
+      }
+      setKpis(nextData);
       addDebugLog('KPIs loaded successfully', { counts: data });
     } catch (error) {
       addDebugLog('Failed to fetch KPIs', { error: error.message });
