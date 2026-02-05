@@ -224,14 +224,15 @@ const fetchAnnualInvoiceAmounts = async (supabase, memberIds) => {
   const amountMap = new Map();
   (events || []).forEach(event => {
     const memberId = event.ms_member_id;
-    if (!memberId || amountMap.has(memberId)) return;
+    if (!memberId) return;
     const priceId = event.ms_price_id || '';
     if (!priceId.includes('annual') && priceId !== 'prc_annual-membership-jj7y0h89') return;
     try {
       const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
       const amount = payload?.data?.object?.amount_paid || payload?.data?.object?.total || 0;
       if (amount > 0) {
-        amountMap.set(memberId, amount / 100);
+        const existingAmount = amountMap.get(memberId) || 0;
+        amountMap.set(memberId, existingAmount + amount / 100);
       }
     } catch (error) {
       console.warn('[members] Failed to parse invoice payload:', error.message);
