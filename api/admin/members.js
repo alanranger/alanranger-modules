@@ -97,6 +97,45 @@ const fetchStripeTotalsByEmail = async (members) => {
   return totals;
 };
 
+const fetchStripeRefundsByEmail = async (members) => {
+  const stripe = getStripeClient();
+  if (!stripe) return new Map();
+
+  const emails = Array.from(new Set((members || [])
+    .map(member => member?.email)
+    .filter(Boolean)
+    .map(email => String(email).toLowerCase())));
+
+  if (emails.length === 0) return new Map();
+
+  const refunds = new Map();
+
+  for (const email of emails) {
+    let sum = 0;
+    try {
+      const customers = await stripe.customers.list({ email, limit: 10 });
+      for (const customer of customers.data || []) {
+        const invoices = await stripe.invoices.list({
+          customer: customer.id,
+          limit: 100,
+          expand: ['data.lines.data.price']
+        });
+        (invoices.data || []).forEach(invoice => {
+          if (isAcademyInvoice(invoice)) {
+            const refunded = (invoice.amount_refunded || 0) / 100;
+            sum += refunded;
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('[members] Stripe refund lookup failed for email:', email, error.message);
+    }
+    refunds.set(email, sum);
+  }
+
+  return refunds;
+};
+
 const extractNameFromPayload = (payload) => {
   if (!payload) return null;
   const customerDetails = payload?.data?.object?.customer_details;
@@ -1078,6 +1117,9 @@ async function handleMembers(req, res) {
     const stripeTotalsByEmail = shouldFetchInvoiceAmounts
       ? await fetchStripeTotalsByEmail(filteredValidMembers)
       : new Map();
+    const stripeRefundsByEmail = shouldFetchInvoiceAmounts
+      ? await fetchStripeRefundsByEmail(filteredValidMembers)
+      : new Map();
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -1304,6 +1346,8 @@ async function handleMembers(req, res) {
       const invoiceAmount = invoiceAmounts.get(memberId);
       const stripeTotal = member.email ? stripeTotalsByEmail.get(String(member.email).toLowerCase()) : null;
       const resolvedTotalPaid = totalPaid ?? invoiceAmount ?? stripeTotal ?? null;
+      const stripeRefundTotal = member.email ? stripeRefundsByEmail.get(String(member.email).toLowerCase()) : null;
+      const resolvedRefundsTotal = refundsTotal ?? stripeRefundTotal ?? null;
 
       return {
         member_id: memberId,
@@ -1329,7 +1373,7 @@ async function handleMembers(req, res) {
         currency,
         total_paid: resolvedTotalPaid,
         current_amount: currentAmount,
-        refunds_total: refundsTotal
+        refunds_total: resolvedRefundsTotal
       };
     }) || [];
 

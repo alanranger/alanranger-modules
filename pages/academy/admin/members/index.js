@@ -771,10 +771,10 @@ export default function MembersDirectory() {
                           {formatMoney(member.total_paid ?? 0, member.currency)}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
-                          {formatMoney(member.current_amount, member.currency)}
+                          {formatMoney(member.current_amount ?? 0, member.currency)}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
-                          {formatMoney(member.refunds_total, member.currency)}
+                          {formatMoney(member.refunds_total ?? 0, member.currency)}
                         </td>
                       </tr>
                     ))
