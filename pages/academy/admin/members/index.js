@@ -73,6 +73,8 @@ export default function MembersDirectory() {
     arr_active_annual: 'Active annual (ARR cohort)',
     annual_revenue_30d: 'Annual starts (30d)',
     direct_annual_30d: 'Direct annual (30d)',
+    revenue_conversions_all_time: 'Revenue from conversions (all-time)',
+    revenue_conversions_30d: 'Revenue from conversions (30d)',
     net_member_growth_30d: 'Net member growth (30d)',
     net_paid_growth_30d: 'Net paid growth (30d)',
     annual_churn_90d: 'Annual churn (90d)',

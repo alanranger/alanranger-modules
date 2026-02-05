@@ -241,6 +241,63 @@ const fetchAnnualInvoiceAmounts = async (supabase, memberIds) => {
   return amountMap;
 };
 
+const fetchConversionEventSets = async (supabase, memberIds, start30d) => {
+  if (!memberIds || memberIds.length === 0) {
+    return { conversionsAllTimeIds: new Set(), conversions30dIds: new Set() };
+  }
+
+  const { data: events } = await supabase
+    .from('academy_plan_events')
+    .select('ms_member_id, event_type, ms_price_id, payload, created_at')
+    .in('ms_member_id', memberIds)
+    .in('event_type', ['checkout.session.completed', 'invoice.paid'])
+    .order('created_at', { ascending: true });
+
+  const timelines = new Map();
+  (events || []).forEach(event => {
+    if (!event?.ms_member_id || !event.created_at) return;
+    const memberId = event.ms_member_id;
+    if (!timelines.has(memberId)) {
+      timelines.set(memberId, { trialStartAt: null, annualPaidAt: null });
+    }
+    const timeline = timelines.get(memberId);
+    const eventDate = new Date(event.created_at);
+    if (Number.isNaN(eventDate.getTime())) return;
+
+    if (event.event_type === 'checkout.session.completed') {
+      const priceId = event.ms_price_id || '';
+      if (priceId.includes('trial') || priceId.includes('30-day')) {
+        if (!timeline.trialStartAt || eventDate < timeline.trialStartAt) {
+          timeline.trialStartAt = eventDate;
+        }
+      }
+    }
+
+    if (event.event_type === 'invoice.paid') {
+      const priceId = event.ms_price_id || '';
+      if (priceId.includes('annual') || priceId === 'prc_annual-membership-jj7y0h89') {
+        if (!timeline.annualPaidAt || eventDate < timeline.annualPaidAt) {
+          timeline.annualPaidAt = eventDate;
+        }
+      }
+    }
+  });
+
+  const conversionsAllTimeIds = new Set();
+  const conversions30dIds = new Set();
+
+  timelines.forEach((timeline, memberId) => {
+    if (!timeline.trialStartAt || !timeline.annualPaidAt) return;
+    if (timeline.annualPaidAt <= timeline.trialStartAt) return;
+    conversionsAllTimeIds.add(memberId);
+    if (timeline.annualPaidAt >= start30d) {
+      conversions30dIds.add(memberId);
+    }
+  });
+
+  return { conversionsAllTimeIds, conversions30dIds };
+};
+
 const filterSignups = (members, cutoff) => {
   return members.filter(member => {
     const createdAt = parseDate(member.created_at);
@@ -473,6 +530,22 @@ const applyTileFilter = async ({
     all_expiring: () => filterAllExpiring(validMembers, memberPlanMap, next7d, now),
     trial_conversions_all_time: () => filterByMemberIds(validMembers, trialSets.trialConversionsAllTimeIds),
     trial_conversions_30d: () => filterByMemberIds(validMembers, trialSets.trialConversions30dIds),
+    revenue_conversions_all_time: async () => {
+      const conversionSets = await fetchConversionEventSets(
+        supabase,
+        validMembers.map(member => member.member_id),
+        start30d
+      );
+      return filterByMemberIds(validMembers, conversionSets.conversionsAllTimeIds);
+    },
+    revenue_conversions_30d: async () => {
+      const conversionSets = await fetchConversionEventSets(
+        supabase,
+        validMembers.map(member => member.member_id),
+        start30d
+      );
+      return filterByMemberIds(validMembers, conversionSets.conversions30dIds);
+    },
     trial_dropoff_30d: () => filterByMemberIds(validMembers, trialSets.trialDropoff30dIds),
     trial_dropoff_all_time: () => filterByMemberIds(validMembers, trialSets.trialDropoffAllTimeIds),
     trials_ended_30d: () => filterByMemberIds(validMembers, trialSets.trialsEnded30dIds),
@@ -882,6 +955,8 @@ async function handleMembers(req, res) {
     const invoiceAmountFilters = new Set([
       'trial_conversions_all_time',
       'trial_conversions_30d',
+      'revenue_conversions_all_time',
+      'revenue_conversions_30d',
       'direct_annual_all_time',
       'direct_annual_30d',
       'annual_revenue_30d',

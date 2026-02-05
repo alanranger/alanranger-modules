@@ -742,7 +742,7 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">All-time (all plans)</div>
           </Link>
           <Link
-            href="/academy/admin/members?filter=trial_conversions_all_time"
+            href="/academy/admin/members?filter=revenue_conversions_all_time"
             className="ar-admin-kpi-tile"
             title="Net paid revenue attributed to trial-to-annual conversions (from Stripe metrics). All-time total."
             style={{ cursor: 'pointer' }}
@@ -856,7 +856,7 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">Last 30 days</div>
           </Link>
           <Link
-            href="/academy/admin/members?filter=trial_conversions_30d"
+            href="/academy/admin/members?filter=revenue_conversions_30d"
             className="ar-admin-kpi-tile"
             title="Net paid revenue from trial-to-annual conversions in the last 30 days. Net = after Stripe fees."
             style={{ cursor: 'pointer' }}
