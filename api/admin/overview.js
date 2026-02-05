@@ -149,33 +149,43 @@ module.exports = async (req, res) => {
       return created >= periods['30d'];
     }).length;
 
+    async function fetchActiveMemberIds(sinceIso) {
+      const ids = new Set();
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: page } = await supabase
+          .from('academy_events')
+          .select('member_id')
+          .gte('created_at', sinceIso)
+          .not('member_id', 'is', null)
+          .range(from, from + pageSize - 1);
+
+        const rows = page || [];
+        rows.forEach(row => row?.member_id && ids.add(row.member_id));
+        hasMore = rows.length === pageSize;
+        from += pageSize;
+      }
+
+      return ids;
+    }
+
     // 4. Active members (based on last activity in academy_events)
-    const { data: active24h } = await supabase
-      .from('academy_events')
-      .select('member_id')
-      .gte('created_at', periods['24h'].toISOString())
-      .not('member_id', 'is', null);
+    const [active24hIds, active7dIds, active30dIds] = await Promise.all([
+      fetchActiveMemberIds(periods['24h'].toISOString()),
+      fetchActiveMemberIds(periods['7d'].toISOString()),
+      fetchActiveMemberIds(periods['30d'].toISOString())
+    ]);
 
-    const { data: active7d } = await supabase
-      .from('academy_events')
-      .select('member_id')
-      .gte('created_at', periods['7d'].toISOString())
-      .not('member_id', 'is', null);
-
-    const { data: active30d } = await supabase
-      .from('academy_events')
-      .select('member_id')
-      .gte('created_at', periods['30d'].toISOString())
-      .not('member_id', 'is', null);
-
-    const filterActiveMembers = (rows) => {
-      const ids = new Set((rows || []).map(e => e.member_id).filter(Boolean));
+    const filterActiveMembers = (ids) => {
       if (validMemberIds.size === 0) return ids.size;
       return Array.from(ids).filter(id => validMemberIds.has(id)).length;
     };
-    const activeMembers24h = filterActiveMembers(active24h);
-    const activeMembers7d = filterActiveMembers(active7d);
-    const activeMembers30d = filterActiveMembers(active30d);
+    const activeMembers24h = filterActiveMembers(active24hIds);
+    const activeMembers7d = filterActiveMembers(active7dIds);
+    const activeMembers30d = filterActiveMembers(active30dIds);
 
     // 5. Engagement metrics (30d)
     const { data: moduleOpens30d } = await supabase
@@ -791,7 +801,7 @@ module.exports = async (req, res) => {
     // 2. At-risk trials (expiring next 7d + low activation)
     // Get activation data (module opens and exam attempts) for trials
     // Only count active trials (not yet expired) that are expiring soon
-    const trialMemberIds = hasTrialHistory
+    const expiringTrials = hasTrialHistory
       ? trialHistoryRows
           .filter(row => {
             if (!row.trial_start_at || !row.trial_end_at) return false;
@@ -800,14 +810,32 @@ module.exports = async (req, res) => {
             if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return false;
             return endAt > now && endAt <= next7d && startAt <= now;
           })
-          .map(row => row.member_id)
+          .map(row => ({
+            member_id: row.member_id,
+            trial_start_at: row.trial_start_at
+          }))
       : Object.values(memberPlans)
           .filter(m => {
             if (!m.isTrial || !m.trialEndAt || !m.trialStartAt) return false;
             // Trial must be active (not expired, has started) and expiring in next 7 days
             return m.trialEndAt > now && m.trialEndAt <= next7d && m.trialStartAt <= now;
           })
-          .map(m => m.member_id);
+          .map(m => ({
+            member_id: m.member_id,
+            trial_start_at: m.trialStartAt
+          }));
+
+    const expiringTrialMap = new Map();
+    expiringTrials.forEach(trial => {
+      if (!trial?.member_id || !trial?.trial_start_at) return;
+      const startAt = new Date(trial.trial_start_at);
+      if (isNaN(startAt.getTime())) return;
+      const existing = expiringTrialMap.get(trial.member_id);
+      if (!existing || startAt > existing.startAt) {
+        expiringTrialMap.set(trial.member_id, { startAt });
+      }
+    });
+    const trialMemberIds = Array.from(expiringTrialMap.keys());
 
     let atRiskTrialsNext7d = 0;
     if (trialMemberIds.length > 0) {
@@ -826,13 +854,8 @@ module.exports = async (req, res) => {
 
       // Check activation for each at-risk trial
       trialMemberIds.forEach(memberId => {
-        const member = memberPlans[memberId];
-        const trialStartAt = hasTrialHistory
-          ? trialHistoryRows.find(row => row.member_id === memberId)?.trial_start_at
-          : member?.trialStartAt;
-        if (!trialStartAt) return;
-        const startAt = new Date(trialStartAt);
-        if (isNaN(startAt.getTime())) return;
+        const startAt = expiringTrialMap.get(memberId)?.startAt;
+        if (!startAt || isNaN(startAt.getTime())) return;
 
         const activationWindowEnd = new Date(Math.min(
           startAt.getTime() + 7 * 24 * 60 * 60 * 1000,
@@ -1016,7 +1039,7 @@ module.exports = async (req, res) => {
         trialStartsAllTime: hasTrialHistory ? trialHistoryRows.length : trialsStartedAllTime.length,
         trialStarts30d: hasTrialHistory ? trialHistoryStarted30d.length : trialsStarted30d.length,
         trialToAnnualConversionsAllTime: conversionsCountAllTime,
-        trialToAnnualConversions30d: conversions30d.length,
+        trialToAnnualConversions30d: hasTrialHistory ? trialHistoryConversions30d.length : conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
         trialConversionRate30d: trialConversionRate30d,
         activeTrials30d: activeTrials30dCount, // Trials that were active during last 30d
