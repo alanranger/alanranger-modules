@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     addDebugLog('Dashboard initialized');
     fetchKPIs();
+    prefetchMembersList();
   }, []);
 
   function addDebugLog(message, data = null) {
@@ -64,6 +65,14 @@ export default function AdminDashboard() {
       console.error('Failed to fetch KPIs:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function prefetchMembersList() {
+    try {
+      await fetch('/api/admin/members?limit=50');
+    } catch (error) {
+      console.warn('[admin] Members prefetch failed:', error.message);
     }
   }
 

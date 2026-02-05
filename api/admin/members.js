@@ -28,8 +28,12 @@ const HISTORY_FILTER_KEYS = new Set([
 ]);
 
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-const MEMBERS_CACHE_TTL_MS = 60 * 1000;
+const MEMBERS_CACHE_TTL_MS = 120 * 1000;
+const MEMBERS_CACHE_MAX_ENTRIES = 200;
+const STRIPE_TOTALS_CACHE_TTL_MS = 10 * 60 * 1000;
 const membersResponseCache = new Map();
+const stripeTotalsCache = new Map();
+const stripeRefundsCache = new Map();
 
 const buildCacheKey = (req) => {
   const params = new URLSearchParams();
@@ -64,6 +68,24 @@ const setCachedMembersResponse = (req, payload) => {
   const cacheKey = buildCacheKey(req);
   if (!cacheKey) return;
   membersResponseCache.set(cacheKey, { timestamp: Date.now(), payload });
+  if (membersResponseCache.size > MEMBERS_CACHE_MAX_ENTRIES) {
+    const oldestKey = membersResponseCache.keys().next().value;
+    if (oldestKey) membersResponseCache.delete(oldestKey);
+  }
+};
+
+const getCachedStripeValue = (cacheMap, email) => {
+  const entry = cacheMap.get(email);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > STRIPE_TOTALS_CACHE_TTL_MS) {
+    cacheMap.delete(email);
+    return null;
+  }
+  return entry.value;
+};
+
+const setCachedStripeValue = (cacheMap, email, value) => {
+  cacheMap.set(email, { timestamp: Date.now(), value });
 };
 const parseDate = (value) => {
   if (!value) return null;
@@ -198,6 +220,11 @@ const fetchStripeTotalsByEmail = async (members) => {
   const totals = new Map();
 
   for (const email of emails) {
+    const cachedTotal = getCachedStripeValue(stripeTotalsCache, email);
+    if (cachedTotal != null) {
+      totals.set(email, cachedTotal);
+      continue;
+    }
     let sum = 0;
     try {
       const customers = await stripe.customers.list({ email, limit: 10 });
@@ -222,6 +249,7 @@ const fetchStripeTotalsByEmail = async (members) => {
       console.warn('[members] Stripe lookup failed for email:', email, error.message);
     }
     totals.set(email, sum);
+    setCachedStripeValue(stripeTotalsCache, email, sum);
   }
 
   return totals;
@@ -269,6 +297,11 @@ const fetchStripeRefundsByEmail = async (members) => {
   };
 
   for (const email of emails) {
+    const cachedRefund = getCachedStripeValue(stripeRefundsCache, email);
+    if (cachedRefund != null) {
+      refunds.set(email, cachedRefund);
+      continue;
+    }
     let academySum = 0;
     let fallbackSum = 0;
     try {
@@ -293,7 +326,9 @@ const fetchStripeRefundsByEmail = async (members) => {
     }
     const planType = planTypeByEmail.get(email);
     const useFallback = academySum === 0 && fallbackSum > 0 && planType === 'annual';
-    refunds.set(email, useFallback ? fallbackSum : academySum);
+    const resolvedRefund = useFallback ? fallbackSum : academySum;
+    refunds.set(email, resolvedRefund);
+    setCachedStripeValue(stripeRefundsCache, email, resolvedRefund);
   }
 
   return refunds;
