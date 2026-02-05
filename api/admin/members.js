@@ -599,6 +599,7 @@ const filterNetMemberGrowth = (members, memberPlanMap, start30d, now) => {
   const churnedMemberIds = new Set();
 
   memberPlanMap.forEach(planTimeline => {
+    if (!planTimeline.member_id) return;
     if (planTimeline.isTrial && planTimeline.trialStartAt && planTimeline.trialStartAt >= start30d) {
       newMemberIds.add(planTimeline.member_id);
     }

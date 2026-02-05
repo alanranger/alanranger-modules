@@ -953,6 +953,7 @@ module.exports = async (req, res) => {
     const newMemberIds30d = new Set();
     const churnedMemberIds30d = new Set();
     Object.values(memberPlans).forEach(m => {
+      if (!m.member_id) return;
       if (m.isTrial && m.trialStartAt && m.trialStartAt >= start30d) {
         newMemberIds30d.add(m.member_id);
       }
