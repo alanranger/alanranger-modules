@@ -50,6 +50,7 @@ module.exports = async (req, res) => {
         (status === 'ACTIVE' || status === 'TRIALING')
       );
     });
+    const validMemberIds = new Set(validMembers.map(member => member.member_id).filter(Boolean));
     
     const totalMembers = validMembers.length;
 
@@ -167,9 +168,14 @@ module.exports = async (req, res) => {
       .gte('created_at', periods['30d'].toISOString())
       .not('member_id', 'is', null);
 
-    const activeMembers24h = new Set(active24h?.map(e => e.member_id) || []).size;
-    const activeMembers7d = new Set(active7d?.map(e => e.member_id) || []).size;
-    const activeMembers30d = new Set(active30d?.map(e => e.member_id) || []).size;
+    const filterActiveMembers = (rows) => {
+      const ids = new Set((rows || []).map(e => e.member_id).filter(Boolean));
+      if (validMemberIds.size === 0) return ids.size;
+      return Array.from(ids).filter(id => validMemberIds.has(id)).length;
+    };
+    const activeMembers24h = filterActiveMembers(active24h);
+    const activeMembers7d = filterActiveMembers(active7d);
+    const activeMembers30d = filterActiveMembers(active30d);
 
     // 5. Engagement metrics (30d)
     const { data: moduleOpens30d } = await supabase
@@ -255,6 +261,28 @@ module.exports = async (req, res) => {
     });
     const trialHistoryEndedWithoutConversionAllTime = trialHistoryEndedAllTime.filter(row => !row.converted_at);
     const trialHistoryConversionsAllTime = trialHistoryRows.filter(row => row.converted_at);
+    const trialHistoryStarted30d = trialHistoryRows.filter(row => {
+      if (!row.trial_start_at) return false;
+      const startAt = new Date(row.trial_start_at);
+      return !isNaN(startAt.getTime()) && startAt >= start30d;
+    });
+    const trialHistoryConversions30d = trialHistoryRows.filter(row => {
+      if (!row.converted_at) return false;
+      const convertedAt = new Date(row.converted_at);
+      return !isNaN(convertedAt.getTime()) && convertedAt >= start30d;
+    });
+    const trialHistoryEnded30d = trialHistoryRows.filter(row => {
+      if (!row.trial_end_at) return false;
+      const endAt = new Date(row.trial_end_at);
+      return !isNaN(endAt.getTime()) && endAt >= start30d && endAt <= now;
+    });
+    const trialHistoryActive30d = trialHistoryRows.filter(row => {
+      if (!row.trial_start_at || !row.trial_end_at) return false;
+      const startAt = new Date(row.trial_start_at);
+      const endAt = new Date(row.trial_end_at);
+      if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return false;
+      return startAt <= now && endAt >= start30d;
+    });
 
     const { data: annualHistory } = await supabase
       .from('academy_annual_history')
@@ -593,7 +621,7 @@ module.exports = async (req, res) => {
     // IMPORTANT: No time restrictions on conversions - if someone had a trial and later got annual, it's ALWAYS a conversion
     // ===== DROP-OFF (Fixed: Use "trials ended" logic, not 1 - conversion) =====
     // Trials that ended in last 30d (for reporting purposes only)
-    const trialsEnded30d = trialsEndedFromEvents30d;
+    const trialsEnded30d = trialHistoryEnded30d;
     
     // Get all-time trials ended count from events (historical, even if member removed)
     const allTrialsEndedCount = hasTrialHistory
@@ -614,7 +642,9 @@ module.exports = async (req, res) => {
     // - It started before or during the period (trialStartAt <= now)
     // - It ended after the start of the period (trialEndAt >= start30d) OR hasn't ended yet (trialEndAt is null or > now)
     // This shows: "Of trials active in the last 30 days, what % converted?"
-    const conversionsCount30d = conversions30d.length;
+    const conversionsCount30d = hasTrialHistory
+      ? trialHistoryConversions30d.length
+      : conversions30d.length;
     
     // Count trials that were active at any point during the last 30 days
     const activeTrials30d = Object.values(memberPlans).filter(m => {
@@ -637,7 +667,9 @@ module.exports = async (req, res) => {
       return true; // Trial was active during the 30d period
     });
     
-    const activeTrials30dCount = activeTrials30d.length;
+    const activeTrials30dCount = hasTrialHistory
+      ? trialHistoryActive30d.length
+      : activeTrials30d.length;
     const trialConversionRate30d = activeTrials30dCount > 0 
       ? Math.round((conversionsCount30d / activeTrials30dCount) * 100 * 10) / 10
       : null;
@@ -650,10 +682,12 @@ module.exports = async (req, res) => {
     // Build set of member IDs who converted (from allConversions)
     const convertedMemberIds = new Set(allConversions.map(c => c.ms_member_id));
     
-    const trialsEndedWithoutConversion30d = trialsEnded30d.filter(m => {
-      // If this member converted (at any time), exclude them from "without conversion"
-      return !convertedMemberIds.has(m.member_id);
-    });
+    const trialsEndedWithoutConversion30d = hasTrialHistory
+      ? trialHistoryEnded30d.filter(m => !m.converted_at)
+      : trialsEnded30d.filter(m => {
+          // If this member converted (at any time), exclude them from "without conversion"
+          return !convertedMemberIds.has(m.member_id);
+        });
 
     const trialDropOff30d = trialsEndedWithoutConversion30d.length;
     const trialDropoffRate30d = trialsEnded30d.length > 0
@@ -757,13 +791,23 @@ module.exports = async (req, res) => {
     // 2. At-risk trials (expiring next 7d + low activation)
     // Get activation data (module opens and exam attempts) for trials
     // Only count active trials (not yet expired) that are expiring soon
-    const trialMemberIds = Object.values(memberPlans)
-      .filter(m => {
-        if (!m.isTrial || !m.trialEndAt || !m.trialStartAt) return false;
-        // Trial must be active (not expired, has started) and expiring in next 7 days
-        return m.trialEndAt > now && m.trialEndAt <= next7d && m.trialStartAt <= now;
-      })
-      .map(m => m.member_id);
+    const trialMemberIds = hasTrialHistory
+      ? trialHistoryRows
+          .filter(row => {
+            if (!row.trial_start_at || !row.trial_end_at) return false;
+            const startAt = new Date(row.trial_start_at);
+            const endAt = new Date(row.trial_end_at);
+            if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return false;
+            return endAt > now && endAt <= next7d && startAt <= now;
+          })
+          .map(row => row.member_id)
+      : Object.values(memberPlans)
+          .filter(m => {
+            if (!m.isTrial || !m.trialEndAt || !m.trialStartAt) return false;
+            // Trial must be active (not expired, has started) and expiring in next 7 days
+            return m.trialEndAt > now && m.trialEndAt <= next7d && m.trialStartAt <= now;
+          })
+          .map(m => m.member_id);
 
     let atRiskTrialsNext7d = 0;
     if (trialMemberIds.length > 0) {
@@ -783,24 +827,29 @@ module.exports = async (req, res) => {
       // Check activation for each at-risk trial
       trialMemberIds.forEach(memberId => {
         const member = memberPlans[memberId];
-        if (!member || !member.trialStartAt) return;
+        const trialStartAt = hasTrialHistory
+          ? trialHistoryRows.find(row => row.member_id === memberId)?.trial_start_at
+          : member?.trialStartAt;
+        if (!trialStartAt) return;
+        const startAt = new Date(trialStartAt);
+        if (isNaN(startAt.getTime())) return;
 
         const activationWindowEnd = new Date(Math.min(
-          member.trialStartAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+          startAt.getTime() + 7 * 24 * 60 * 60 * 1000,
           now.getTime()
         ));
 
         // Count module opens in first 7 days
         const moduleOpensInTrial = (moduleOpensForTrials || []).filter(e => 
           e.member_id === memberId && 
-          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) >= startAt &&
           new Date(e.created_at) <= activationWindowEnd
         ).length;
 
         // Count exam attempts in first 7 days
         const examAttemptsInTrial = (examAttemptsForTrials || []).filter(e => 
           e.memberstack_id === memberId &&
-          new Date(e.created_at) >= member.trialStartAt &&
+          new Date(e.created_at) >= startAt &&
           new Date(e.created_at) <= activationWindowEnd
         ).length;
 
@@ -965,7 +1014,7 @@ module.exports = async (req, res) => {
       bi: {
         // Conversion metrics (from Supabase - no Stripe dependency)
         trialStartsAllTime: hasTrialHistory ? trialHistoryRows.length : trialsStartedAllTime.length,
-        trialStarts30d: trialsStarted30d.length,
+        trialStarts30d: hasTrialHistory ? trialHistoryStarted30d.length : trialsStarted30d.length,
         trialToAnnualConversionsAllTime: conversionsCountAllTime,
         trialToAnnualConversions30d: conversions30d.length,
         trialToAnnualConversionRateAllTime: trialToAnnualConversionRateAllTime,
