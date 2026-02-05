@@ -4,6 +4,25 @@
 
 const { createClient } = require("@supabase/supabase-js");
 
+const buildOrigin = (req) => {
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return `${proto}://${host}`;
+};
+
+const fetchMembersTotal = async (req, query) => {
+  try {
+    const origin = buildOrigin(req);
+    const res = await fetch(`${origin}/api/admin/members?${query}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.pagination?.total ?? null;
+  } catch (error) {
+    console.warn('[overview] Failed to fetch members total:', error.message);
+    return null;
+  }
+};
+
 module.exports = async (req, res) => {
   try {
     if (req.method !== "GET") {
@@ -949,7 +968,11 @@ module.exports = async (req, res) => {
       if (!churnedMemberIds30d.has(memberId)) netMemberIds30d.add(memberId);
     });
 
-    const netMemberGrowth30d = netMemberIds30d.size;
+    let netMemberGrowth30d = netMemberIds30d.size;
+    const netMemberGrowthTotal = await fetchMembersTotal(req, 'filter=net_member_growth_30d&limit=1');
+    if (netMemberGrowthTotal != null) {
+      netMemberGrowth30d = netMemberGrowthTotal;
+    }
 
     // New annual starts in last 30d
     const newAnnualStarts30d = Object.values(memberPlans).filter(m => 
