@@ -725,7 +725,7 @@ export default function AdminDashboard() {
         </div>
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
           <Link
-            href="/academy/admin/members?filter=annual_all_time"
+            href="/academy/admin/members?filter=revenue_all_time"
             className="ar-admin-kpi-tile"
             title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
             style={{ cursor: 'pointer' }}

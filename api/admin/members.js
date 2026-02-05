@@ -109,9 +109,16 @@ const fetchStripeRefundsByEmail = async (members) => {
   if (emails.length === 0) return new Map();
 
   const refunds = new Map();
+  const planTypeByEmail = new Map();
 
-  const getInvoiceRefundTotal = async (invoice) => {
-    if (!isAcademyInvoice(invoice)) return 0;
+  (members || []).forEach(member => {
+    const email = member?.email ? String(member.email).toLowerCase() : null;
+    if (!email || planTypeByEmail.has(email)) return;
+    planTypeByEmail.set(email, member?.plan_summary?.plan_type || null);
+  });
+
+  const getInvoiceRefundTotal = async (invoice, skipAcademyCheck = false) => {
+    if (!skipAcademyCheck && !isAcademyInvoice(invoice)) return 0;
     let total = (invoice.amount_refunded || 0) / 100;
     if (total > 0 || !invoice.charge) return total;
 
@@ -131,7 +138,8 @@ const fetchStripeRefundsByEmail = async (members) => {
   };
 
   for (const email of emails) {
-    let sum = 0;
+    let academySum = 0;
+    let fallbackSum = 0;
     try {
       const customers = await stripe.customers.list({ email, limit: 10 });
       for (const customer of customers.data || []) {
@@ -141,13 +149,16 @@ const fetchStripeRefundsByEmail = async (members) => {
           expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge']
         });
         for (const invoice of invoices.data || []) {
-          sum += await getInvoiceRefundTotal(invoice);
+          academySum += await getInvoiceRefundTotal(invoice);
+          fallbackSum += await getInvoiceRefundTotal(invoice, true);
         }
       }
     } catch (error) {
       console.warn('[members] Stripe refund lookup failed for email:', email, error.message);
     }
-    refunds.set(email, sum);
+    const planType = planTypeByEmail.get(email);
+    const useFallback = academySum === 0 && fallbackSum > 0 && planType === 'annual';
+    refunds.set(email, useFallback ? fallbackSum : academySum);
   }
 
   return refunds;
@@ -1049,6 +1060,7 @@ async function handleMembers(req, res) {
     };
 
     const isExpiredFilter = statusFilter === 'expired';
+    const isRevenueAllTimeFilter = tileFilter === 'revenue_all_time';
     let baseMembers = members || [];
 
     if (isExpiredFilter) {
@@ -1073,7 +1085,7 @@ async function handleMembers(req, res) {
       const planType = plan.plan_type || '';
       const status = getPlanStatus(plan);
       const isTrial = isTrialPlan(plan);
-      const hasPlan = planType === 'trial' || planType === 'annual' || isTrial;
+      const hasPlan = planType === 'trial' || planType === 'annual' || isTrial || (isRevenueAllTimeFilter && planType === 'monthly');
       if (!hasPlan) return false;
 
       if (isExpiredFilter) {
@@ -1122,6 +1134,7 @@ async function handleMembers(req, res) {
       'trial_conversions_30d',
       'revenue_conversions_all_time',
       'revenue_conversions_30d',
+      'revenue_all_time',
       'direct_annual_all_time',
       'direct_annual_30d',
       'annual_revenue_30d',
@@ -1307,7 +1320,7 @@ async function handleMembers(req, res) {
   });
 
     // Enrich members with stats from both Supabase events AND Memberstack JSON
-    const enrichedMembers = filteredValidMembers?.map(member => {
+    let enrichedMembers = filteredValidMembers?.map(member => {
       const memberId = member.member_id;
       const plan = member.plan_summary || {};
       
@@ -1395,6 +1408,15 @@ async function handleMembers(req, res) {
         refunds_total: resolvedRefundsTotal
       };
     }) || [];
+
+    // Apply revenue filter post-enrichment
+    if (tileFilter === 'revenue_all_time') {
+      enrichedMembers = enrichedMembers.filter(member => {
+        const totalPaid = normalizeNumber(member.total_paid) || 0;
+        const refundsTotal = normalizeNumber(member.refunds_total) || 0;
+        return totalPaid > 0 || refundsTotal > 0;
+      });
+    }
 
     // Apply last_seen filter if specified
     let filteredMembers = applyLastSeenFilter(enrichedMembers, lastSeenFilter);
