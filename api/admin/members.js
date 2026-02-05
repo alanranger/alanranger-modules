@@ -80,7 +80,7 @@ const fetchStripeTotalsByEmail = async (members) => {
           customer: customer.id,
           status: 'paid',
           limit: 100,
-          expand: ['data.lines.data.price']
+          expand: ['data.lines.data.price', 'data.lines.data.price.product']
         });
         (invoices.data || []).forEach(invoice => {
           if (isAcademyInvoice(invoice)) {
@@ -138,7 +138,7 @@ const fetchStripeRefundsByEmail = async (members) => {
         const invoices = await stripe.invoices.list({
           customer: customer.id,
           limit: 100,
-          expand: ['data.lines.data.price', 'data.charge']
+          expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge']
         });
         for (const invoice of invoices.data || []) {
           sum += await getInvoiceRefundTotal(invoice);
