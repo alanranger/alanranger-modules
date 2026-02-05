@@ -52,9 +52,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    if (statusFilter && statusFilter !== 'expired') {
-      query = query.contains('plan_summary', { status: statusFilter });
-    }
+    // Status filter is applied in JS below to handle case differences and expired logic
 
     if (search) {
       query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
@@ -339,19 +337,19 @@ module.exports = async (req, res) => {
     let filteredMembers = enrichedMembers;
     if (lastSeenFilter) {
       const now = new Date();
-      let cutoffDate;
-      if (lastSeenFilter === '24h') {
-        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      } else if (lastSeenFilter === '7d') {
-        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      } else if (lastSeenFilter === '30d') {
-        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      }
+      if (lastSeenFilter === 'never') {
+        filteredMembers = enrichedMembers.filter(m => !m.last_seen);
+      } else {
+        let cutoffDate;
+        if (lastSeenFilter === '24h') {
+          cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        } else if (lastSeenFilter === '7d') {
+          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (lastSeenFilter === '30d') {
+          cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
 
-      if (cutoffDate) {
-        if (lastSeenFilter === 'never') {
-          filteredMembers = enrichedMembers.filter(m => !m.last_seen);
-        } else {
+        if (cutoffDate) {
           filteredMembers = enrichedMembers.filter(m => 
             m.last_seen && new Date(m.last_seen) >= cutoffDate
           );
