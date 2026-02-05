@@ -244,17 +244,38 @@ module.exports = async (req, res) => {
     const memberPlans = {};
     const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
     const ANNUAL_PRICE = 79; // £79 annual plan price
+    const trialStartsByMember = {};
+
+    if (planEvents) {
+      planEvents.forEach(event => {
+        if (!event.ms_member_id || !event.created_at) return;
+        if (event.event_type !== 'checkout.session.completed') return;
+        const priceId = event.ms_price_id || '';
+        if (!priceId.includes('trial') && !priceId.includes('30-day')) return;
+        const startedAt = new Date(event.created_at);
+        if (isNaN(startedAt.getTime())) return;
+        const existing = trialStartsByMember[event.ms_member_id];
+        if (!existing || startedAt < existing) {
+          trialStartsByMember[event.ms_member_id] = startedAt;
+        }
+      });
+    }
 
     if (allMembersForBI) {
       allMembersForBI.forEach(member => {
         const plan = member.plan_summary || {};
-        const isTrial = plan.plan_id === trialPlanId || (plan.payment_mode === "ONETIME" && plan.expiry_date);
+        const hasTrialFromPlan =
+          plan.plan_type === 'trial' ||
+          plan.plan_id === trialPlanId ||
+          (plan.payment_mode === "ONETIME" && plan.expiry_date);
+        const trialStartFromEvents = trialStartsByMember[member.member_id] || null;
+        const isTrial = hasTrialFromPlan || Boolean(trialStartFromEvents);
         
         // Calculate trial start/end
         let trialStartAt = null;
         let trialEndAt = null;
         if (isTrial) {
-          trialStartAt = member.created_at ? new Date(member.created_at) : null;
+          trialStartAt = trialStartFromEvents || (member.created_at ? new Date(member.created_at) : null);
           if (plan.expiry_date) {
             trialEndAt = new Date(plan.expiry_date);
           } else if (trialStartAt) {
