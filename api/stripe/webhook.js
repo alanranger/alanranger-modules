@@ -40,6 +40,57 @@ function extractMemberstackMeta(obj) {
   };
 }
 
+function addDays(date, days) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function isTrialPriceId(priceId) {
+  if (!priceId) return false;
+  const val = String(priceId).toLowerCase();
+  return val.includes('trial') || val.includes('30-day');
+}
+
+function isAnnualPriceId(priceId) {
+  if (!priceId) return false;
+  return String(priceId).toLowerCase().includes('annual');
+}
+
+async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt }) {
+  if (!msMemberId || !createdAt) return;
+  const createdDate = new Date(createdAt);
+  if (isNaN(createdDate.getTime())) return;
+
+  if (eventType === 'checkout.session.completed' && isTrialPriceId(msPriceId)) {
+    const trialEndAt = addDays(createdDate, 30).toISOString();
+    await supabaseAdmin
+      .from('academy_trial_history')
+      .upsert({
+        member_id: msMemberId,
+        trial_start_at: createdAt,
+        trial_end_at: trialEndAt,
+        source: 'stripe_webhook'
+      }, { onConflict: 'member_id,trial_start_at' });
+  }
+
+  if (eventType === 'invoice.paid' && isAnnualPriceId(msPriceId)) {
+    const { data: latestTrial } = await supabaseAdmin
+      .from('academy_trial_history')
+      .select('id, trial_start_at, converted_at')
+      .eq('member_id', msMemberId)
+      .lte('trial_start_at', createdAt)
+      .order('trial_start_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestTrial && !latestTrial.converted_at) {
+      await supabaseAdmin
+        .from('academy_trial_history')
+        .update({ converted_at: createdAt, updated_at: new Date().toISOString() })
+        .eq('id', latestTrial.id);
+    }
+  }
+}
+
 /**
  * Check if an event is Academy-related by examining line items and price metadata
  * @param {Object} obj - Stripe object (invoice, checkout session, subscription, etc.)
@@ -415,6 +466,17 @@ module.exports = async (req, res) => {
       
       console.error('[stripe-webhook] Database insert error:', error);
       throw error;
+    }
+
+    try {
+      await upsertTrialHistory({
+        eventType: event.type,
+        msMemberId,
+        msPriceId,
+        createdAt: new Date(event.created * 1000).toISOString()
+      });
+    } catch (historyError) {
+      console.warn('[stripe-webhook] Trial history upsert failed:', historyError.message);
     }
 
     console.log(`[stripe-webhook] Stored Academy event ${event.type} (event ID: ${event.id})${msMemberId ? ` for member ${msMemberId}` : ' (ms_member_id: null)'}`);
