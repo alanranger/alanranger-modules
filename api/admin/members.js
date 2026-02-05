@@ -142,23 +142,35 @@ module.exports = async (req, res) => {
     
     // Get last activity per member - use a more efficient query
     // Get the most recent event per member by using a subquery approach
-    const { data: lastActivities } = await supabase
-      .from('academy_events')
-      .select('member_id, created_at')
-      .in('member_id', memberIds)
-      .order('created_at', { ascending: false });
-    
-    // Get last login events per member (for last_login field)
-    const { data: lastLogins } = await supabase
-      .from('academy_events')
-      .select('member_id, created_at')
-      .in('member_id', memberIds)
-      .eq('event_type', 'login')
-      .order('created_at', { ascending: false });
-    
-    // If no events found, use empty array
-    const activities = lastActivities || [];
-    const logins = lastLogins || [];
+    async function fetchAllEvents({ eventType }) {
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
+      const all = [];
+      while (hasMore) {
+        let query = supabase
+          .from('academy_events')
+          .select('member_id, created_at')
+          .in('member_id', memberIds)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (eventType) {
+          query = query.eq('event_type', eventType);
+        }
+        const { data: page, error: pageError } = await query;
+        if (pageError) {
+          throw pageError;
+        }
+        const rows = page || [];
+        all.push(...rows);
+        hasMore = rows.length === pageSize;
+        from += pageSize;
+      }
+      return all;
+    }
+
+    const activities = await fetchAllEvents({ eventType: null });
+    const logins = await fetchAllEvents({ eventType: 'login' });
 
     // Get module opens count per member
     const { data: moduleOpens } = await supabase
