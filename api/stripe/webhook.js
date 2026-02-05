@@ -91,6 +91,22 @@ async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt 
   }
 }
 
+async function upsertAnnualHistory({ eventType, msMemberId, msPriceId, createdAt }) {
+  if (!msMemberId || !createdAt) return;
+  const createdDate = new Date(createdAt);
+  if (isNaN(createdDate.getTime())) return;
+
+  if ((eventType === 'invoice.paid' || eventType === 'customer.subscription.created') && isAnnualPriceId(msPriceId)) {
+    await supabaseAdmin
+      .from('academy_annual_history')
+      .upsert({
+        member_id: msMemberId,
+        annual_start_at: createdAt,
+        source: 'stripe_webhook'
+      }, { onConflict: 'member_id,annual_start_at' });
+  }
+}
+
 /**
  * Check if an event is Academy-related by examining line items and price metadata
  * @param {Object} obj - Stripe object (invoice, checkout session, subscription, etc.)
@@ -470,6 +486,12 @@ module.exports = async (req, res) => {
 
     try {
       await upsertTrialHistory({
+        eventType: event.type,
+        msMemberId,
+        msPriceId,
+        createdAt: new Date(event.created * 1000).toISOString()
+      });
+      await upsertAnnualHistory({
         eventType: event.type,
         msMemberId,
         msPriceId,

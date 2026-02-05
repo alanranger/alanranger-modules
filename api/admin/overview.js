@@ -254,6 +254,27 @@ module.exports = async (req, res) => {
     const trialHistoryEndedWithoutConversionAllTime = trialHistoryEndedAllTime.filter(row => !row.converted_at);
     const trialHistoryConversionsAllTime = trialHistoryRows.filter(row => row.converted_at);
 
+    const { data: annualHistory } = await supabase
+      .from('academy_annual_history')
+      .select('member_id, annual_start_at');
+    const annualHistoryRows = Array.isArray(annualHistory) ? annualHistory : [];
+
+    const cacheMemberIds = new Set((allMembersRaw || [])
+      .filter(member => {
+        const plan = member.plan_summary || {};
+        const planType = plan.plan_type || '';
+        const isTrial =
+          plan.plan_id === trialPlanId ||
+          (plan.payment_mode === 'ONETIME' && plan.expiry_date);
+        return planType === 'trial' || planType === 'annual' || isTrial;
+      })
+      .map(member => member.member_id)
+      .filter(Boolean));
+    const allMemberIds = new Set(cacheMemberIds);
+    trialHistoryRows.forEach(row => row.member_id && allMemberIds.add(row.member_id));
+    annualHistoryRows.forEach(row => row.member_id && allMemberIds.add(row.member_id));
+    const totalMembersAllTime = allMemberIds.size;
+
     // Build member plan timeline map
     const memberPlans = {};
     const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
@@ -910,7 +931,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       // Member counts
-      totalMembers: totalMembers || 0,
+      totalMembers: totalMembersAllTime || totalMembers || 0,
       trials: trials,
       annual: annual,
       monthly: monthly,
