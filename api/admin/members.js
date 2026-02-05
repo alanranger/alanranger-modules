@@ -28,6 +28,43 @@ const HISTORY_FILTER_KEYS = new Set([
 ]);
 
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+const MEMBERS_CACHE_TTL_MS = 60 * 1000;
+const membersResponseCache = new Map();
+
+const buildCacheKey = (req) => {
+  const params = new URLSearchParams();
+  Object.keys(req.query || {})
+    .sort()
+    .forEach(key => {
+      const value = req.query[key];
+      if (value == null) return;
+      if (Array.isArray(value)) {
+        value.forEach(entry => params.append(key, entry));
+      } else {
+        params.append(key, value);
+      }
+    });
+  return params.toString();
+};
+
+const getCachedMembersResponse = (req) => {
+  if (req.query?.cache === '0') return null;
+  const cacheKey = buildCacheKey(req);
+  if (!cacheKey) return null;
+  const entry = membersResponseCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > MEMBERS_CACHE_TTL_MS) {
+    membersResponseCache.delete(cacheKey);
+    return null;
+  }
+  return entry.payload;
+};
+
+const setCachedMembersResponse = (req, payload) => {
+  const cacheKey = buildCacheKey(req);
+  if (!cacheKey) return;
+  membersResponseCache.set(cacheKey, { timestamp: Date.now(), payload });
+};
 const parseDate = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -1185,6 +1222,11 @@ async function handleMembers(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
+    const cachedResponse = getCachedMembersResponse(req);
+    if (cachedResponse) {
+      return res.status(200).json(cachedResponse);
+    }
+
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -1589,7 +1631,7 @@ async function handleMembers(req, res) {
     const totalFiltered = filteredMembers.length;
     const paginatedMembers = filteredMembers.slice(offset, offset + limit);
 
-    return res.status(200).json({
+    const responsePayload = {
       members: paginatedMembers,
       pagination: {
         page,
@@ -1597,7 +1639,10 @@ async function handleMembers(req, res) {
         total: totalFiltered,
         totalPages: Math.ceil(totalFiltered / limit)
       }
-    });
+    };
+
+    setCachedMembersResponse(req, responsePayload);
+    return res.status(200).json(responsePayload);
 
   } catch (error) {
     console.error('[members] Error:', error);
