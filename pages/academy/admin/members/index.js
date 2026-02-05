@@ -5,6 +5,33 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+const formatDate = (dateString) => {
+  if (!dateString) return 'Never';
+  const date = new Date(dateString);
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatMoney = (amount, currency = 'GBP') => {
+  if (amount == null || Number.isNaN(amount)) return '—';
+  const value = typeof amount === 'number' ? amount : Number.parseFloat(amount);
+  if (Number.isNaN(value)) return '—';
+  const normalizedCurrency = (currency || 'GBP').toUpperCase();
+  if (normalizedCurrency === 'GBP') {
+    return `£${Math.round(value)}`;
+  }
+  return `${Math.round(value)} ${normalizedCurrency}`;
+};
+
+const getStatusBadgeStyle = (status) => {
+  if (status === 'active') {
+    return { background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' };
+  }
+  if (status === 'trialing') {
+    return { background: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' };
+  }
+  return { background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' };
+};
+
 export default function MembersDirectory() {
   const router = useRouter();
   const { sort = 'updated_at', order = 'desc' } = router.query;
@@ -24,17 +51,47 @@ export default function MembersDirectory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastSeenFilter, setLastSeenFilter] = useState('');
   const [activeNowFilter, setActiveNowFilter] = useState(false);
+  const [tileFilter, setTileFilter] = useState('');
+
+  const tileFilterLabels = {
+    all_members_all_time: 'Total members (all-time)',
+    signups_24h: 'New signups (24h)',
+    signups_7d: 'New signups (7d)',
+    signups_30d: 'New signups (30d)',
+    trials_expiring: 'Trials expiring (30d)',
+    annual_expiring: 'Annuals expiring (30d)',
+    all_expiring: 'All plans expiring (7d)',
+    trial_conversions_30d: 'Trial → annual conversions (30d)',
+    trial_conversions_all_time: 'Trial → annual conversions (all-time)',
+    trial_dropoff_30d: 'Trial drop-off (30d)',
+    trial_dropoff_all_time: 'Expired trials (no conversion, all-time)',
+    trials_ended_30d: 'Trials ended (30d)',
+    at_risk_trials_7d: 'At-risk trials (next 7d)',
+    annual_all_time: 'Annual members (all-time)',
+    direct_annual_all_time: 'Direct annual (all-time)',
+    arr_active_annual: 'Active annual (ARR cohort)',
+    annual_revenue_30d: 'Annual starts (30d)',
+    direct_annual_30d: 'Direct annual (30d)',
+    net_member_growth_30d: 'Net member growth (30d)',
+    net_paid_growth_30d: 'Net paid growth (30d)',
+    annual_churn_90d: 'Annual churn (90d)',
+    at_risk_annual_30d: 'At-risk annual (next 30d)',
+    trial_opportunity_all: 'Active trials (opportunity)',
+    trial_opportunity_3pct: 'Trials expiring (30d, 3% target)'
+  };
 
   useEffect(() => {
     // Read filters from URL query params
-    const { plan, status, search, last_seen, active_now, page, limit, sort, order } = router.query;
+    const { plan, status, search, last_seen, active_now, page, limit, sort, order, filter } = router.query;
     if (plan) setPlanFilter(plan);
     if (status) setStatusFilter(status);
     if (search) setSearchQuery(search);
     if (last_seen) setLastSeenFilter(last_seen);
     if (active_now !== undefined) setActiveNowFilter(active_now === 'true');
-    if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
-    if (limit) setPagination(prev => ({ ...prev, limit: parseInt(limit) }));
+    if (filter) setTileFilter(filter);
+    if (!filter) setTileFilter('');
+    if (page) setPagination(prev => ({ ...prev, page: Number.parseInt(page, 10) }));
+    if (limit) setPagination(prev => ({ ...prev, limit: Number.parseInt(limit, 10) }));
     if (sort) {
       setSortConfig({ field: sort, direction: order || 'desc' });
     } else {
@@ -72,6 +129,7 @@ export default function MembersDirectory() {
       if (searchQuery) params.append('search', searchQuery);
       if (lastSeenFilter) params.append('last_seen', lastSeenFilter);
       if (activeNowFilter) params.append('active_now', 'true');
+      if (tileFilter) params.append('filter', tileFilter);
       // Add sort parameters for server-side sorting
       if (sortConfig.field) {
         params.append('sort', sortConfig.field);
@@ -139,6 +197,7 @@ export default function MembersDirectory() {
         ...(searchQuery && { search: searchQuery }),
         ...(lastSeenFilter && { last_seen: lastSeenFilter }),
         ...(newActiveNowFilter && { active_now: 'true' }),
+        ...(tileFilter && { filter: tileFilter }),
         sort: sortConfig.field,
         order: sortConfig.direction,
         page: 1,
@@ -156,6 +215,7 @@ export default function MembersDirectory() {
         ...(searchQuery && { search: searchQuery }),
         ...(lastSeenFilter && { last_seen: lastSeenFilter }),
         ...(activeNowFilter && { active_now: 'true' }),
+        ...(tileFilter && { filter: tileFilter }),
         sort: sortConfig.field,
         order: sortConfig.direction,
         page: 1, // Reset to page 1 when filters change
@@ -181,6 +241,19 @@ export default function MembersDirectory() {
         ...router.query,
         limit: newLimit,
         page: 1 // Reset to page 1 when limit changes
+      }
+    });
+  }
+
+  function handleClearTileFilter() {
+    const { filter, ...rest } = router.query;
+    setTileFilter('');
+    setPagination(prev => ({ ...prev, page: 1 }));
+    router.push({
+      pathname: '/academy/admin/members',
+      query: {
+        ...rest,
+        page: 1
       }
     });
   }
@@ -214,14 +287,8 @@ export default function MembersDirectory() {
     return sortConfig.direction === 'asc' ? '↑' : '↓';
   }
 
-  function formatDate(dateString) {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
   return (
-    <div className="ar-admin-container">
+    <div className="ar-admin-container ar-admin-container--wide">
       <div className="ar-admin-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>
@@ -314,23 +381,41 @@ export default function MembersDirectory() {
 
         {/* Active Now Tile */}
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '24px' }}>
-          <div 
-            className="ar-admin-kpi-tile" 
-            onClick={handleActiveNowClick}
-            style={{ 
-              cursor: 'pointer', 
-              position: 'relative',
-              border: activeNowFilter ? '2px solid var(--ar-orange)' : '1px solid var(--ar-border)',
-              background: activeNowFilter ? 'rgba(255, 152, 0, 0.1)' : 'var(--ar-card)'
-            }}
-            title={activeNowFilter ? 'Click to clear filter' : 'Click to filter by logged in members'}
-          >
+          <div style={{ position: 'relative' }}>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                fetchActiveNow();
+              type="button"
+              className="ar-admin-kpi-tile"
+              onClick={handleActiveNowClick}
+              aria-pressed={Boolean(activeNowFilter)}
+              style={{ 
+                cursor: 'pointer', 
+                position: 'relative',
+                border: activeNowFilter ? '2px solid var(--ar-orange)' : '1px solid var(--ar-border)',
+                background: activeNowFilter ? 'rgba(255, 152, 0, 0.1)' : 'var(--ar-card)',
+                width: '100%',
+                textAlign: 'left'
               }}
+              title={activeNowFilter ? 'Click to clear filter' : 'Click to filter by logged in members'}
+            >
+              <div className="ar-admin-kpi-label">
+                Logged In Right Now
+                {activeNowFilter && <span style={{ marginLeft: '8px', color: 'var(--ar-orange)' }}>●</span>}
+              </div>
+              <div className="ar-admin-kpi-value">
+                {activeNowLoading ? '...' : activeNowCount}
+              </div>
+              <div className="ar-admin-kpi-period">
+                {lastUpdated
+                  ? `Updated ${lastUpdated.toLocaleTimeString()}`
+                  : 'Refreshing every 1 minute'
+                }
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={fetchActiveNow}
               disabled={activeNowLoading}
+              aria-label="Refresh active now count"
               style={{
                 position: 'absolute',
                 top: '8px',
@@ -349,19 +434,6 @@ export default function MembersDirectory() {
             >
               {activeNowLoading ? '...' : '↻'}
             </button>
-            <div className="ar-admin-kpi-label">
-              Logged In Right Now
-              {activeNowFilter && <span style={{ marginLeft: '8px', color: 'var(--ar-orange)' }}>●</span>}
-            </div>
-            <div className="ar-admin-kpi-value">
-              {activeNowLoading ? '...' : activeNowCount}
-            </div>
-            <div className="ar-admin-kpi-period">
-              {lastUpdated
-                ? `Updated ${lastUpdated.toLocaleTimeString()}`
-                : 'Refreshing every 1 minute'
-              }
-            </div>
           </div>
         </div>
 
@@ -369,8 +441,9 @@ export default function MembersDirectory() {
         <div className="ar-admin-card" style={{ marginBottom: '24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Plan</label>
+              <label htmlFor="filter-plan" style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Plan</label>
               <select
+                id="filter-plan"
                 value={planFilter}
                 onChange={(e) => setPlanFilter(e.target.value)}
                 onBlur={handleFilterChange}
@@ -392,8 +465,9 @@ export default function MembersDirectory() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Status</label>
+              <label htmlFor="filter-status" style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Status</label>
               <select
+                id="filter-status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 onBlur={handleFilterChange}
@@ -415,8 +489,9 @@ export default function MembersDirectory() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Last Seen</label>
+              <label htmlFor="filter-last-seen" style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Last Seen</label>
               <select
+                id="filter-last-seen"
                 value={lastSeenFilter}
                 onChange={(e) => setLastSeenFilter(e.target.value)}
                 onBlur={handleFilterChange}
@@ -438,8 +513,9 @@ export default function MembersDirectory() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Search</label>
+              <label htmlFor="filter-search" style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--ar-text-muted)' }}>Search</label>
               <input
+                id="filter-search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -457,6 +533,37 @@ export default function MembersDirectory() {
               />
             </div>
           </div>
+          {tileFilter ? (
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>Tile filter:</span>
+              <span style={{
+                padding: '6px 10px',
+                borderRadius: '999px',
+                background: 'rgba(229, 114, 0, 0.15)',
+                border: '1px solid rgba(229, 114, 0, 0.4)',
+                color: 'var(--ar-text)',
+                fontSize: '12px',
+                fontWeight: 600
+              }}>
+                {tileFilterLabels[tileFilter] || tileFilter}
+              </span>
+              <button
+                type="button"
+                onClick={handleClearTileFilter}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: 'transparent',
+                  border: '1px solid var(--ar-border)',
+                  color: 'var(--ar-text-muted)',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear tile filter
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* Members Table */}
@@ -467,10 +574,11 @@ export default function MembersDirectory() {
             <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <h2 className="ar-admin-card-title">Members ({pagination.total})</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>Show:</label>
+                <label htmlFor="members-per-page" style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>Show:</label>
                 <select
+                  id="members-per-page"
                   value={pagination.limit}
-                  onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                  onChange={(e) => handleLimitChange(Number.parseInt(e.target.value, 10))}
                   style={{
                     padding: '6px 12px',
                     background: 'var(--ar-bg)',
@@ -494,7 +602,7 @@ export default function MembersDirectory() {
             </div>
             
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
                     <th 
@@ -571,12 +679,30 @@ export default function MembersDirectory() {
                         Colour<br />IQ {getSortIcon('hue_test_score')}
                       </span>
                     </th>
+                    <th
+                      onClick={() => handleSort('total_paid')}
+                      style={{ padding: '12px', textAlign: 'right', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none', minWidth: '120px' }}
+                    >
+                      Total Paid {getSortIcon('total_paid')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('current_amount')}
+                      style={{ padding: '12px', textAlign: 'right', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none', minWidth: '140px' }}
+                    >
+                      Current Amount {getSortIcon('current_amount')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('refunds_total')}
+                      style={{ padding: '12px', textAlign: 'right', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none', minWidth: '140px' }}
+                    >
+                      Refunds/Credits {getSortIcon('refunds_total')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="12" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="15" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
@@ -602,11 +728,7 @@ export default function MembersDirectory() {
                             borderRadius: '4px',
                             fontSize: '12px',
                             fontWeight: 600,
-                            background: member.status === 'active' ? 'rgba(34, 197, 94, 0.2)' : 
-                                       member.status === 'trialing' ? 'rgba(251, 191, 36, 0.2)' : 
-                                       'rgba(239, 68, 68, 0.2)',
-                            color: member.status === 'active' ? '#22c55e' : 
-                                   member.status === 'trialing' ? '#fbbf24' : '#ef4444'
+                            ...getStatusBadgeStyle(member.status)
                           }}>
                             {member.status}
                           </span>
@@ -632,6 +754,15 @@ export default function MembersDirectory() {
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'center', fontWeight: 600 }}>
                           {member.hue_test_score ?? '—'}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
+                          {formatMoney(member.total_paid, member.currency)}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
+                          {formatMoney(member.current_amount, member.currency)}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)', textAlign: 'right', fontWeight: 600 }}>
+                          {formatMoney(member.refunds_total, member.currency)}
                         </td>
                       </tr>
                     ))

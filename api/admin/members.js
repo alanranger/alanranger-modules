@@ -4,7 +4,437 @@
 
 const { createClient } = require("@supabase/supabase-js");
 
-module.exports = async (req, res) => {
+const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+
+const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+const getPlanStatus = (plan = {}) => (plan.status || '').toUpperCase();
+const isTrialPlan = (plan = {}) => {
+  return (
+    plan.plan_type === 'trial' ||
+    plan.plan_id === TRIAL_PLAN_ID ||
+    (plan.payment_mode === 'ONETIME' && plan.expiry_date)
+  );
+};
+const normalizeNumber = (value) => {
+  if (value == null) return null;
+  const num = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isNaN(num) ? null : num;
+};
+
+const buildPlanTimeline = (member) => {
+  const plan = member.plan_summary || {};
+  const isTrial = isTrialPlan(plan);
+  const isAnnual = plan.plan_type === 'annual';
+  const status = getPlanStatus(plan);
+
+  let trialStartAt = null;
+  let trialEndAt = null;
+  if (isTrial) {
+    trialStartAt = parseDate(plan.trial_start_at) || parseDate(member.created_at);
+    trialEndAt = parseDate(plan.expiry_date) || (trialStartAt ? addDays(trialStartAt, 30) : null);
+  }
+
+  let annualStartAt = null;
+  let annualEndAt = null;
+  if (isAnnual) {
+    annualStartAt = parseDate(plan.current_period_start) || parseDate(member.created_at);
+    annualEndAt = parseDate(plan.current_period_end) || parseDate(plan.expiry_date) || (annualStartAt ? addDays(annualStartAt, 365) : null);
+  }
+
+  return {
+    member_id: member.member_id,
+    isTrial,
+    isAnnual,
+    status,
+    trialStartAt,
+    trialEndAt,
+    annualStartAt,
+    annualEndAt
+  };
+};
+
+const filterByMemberIds = (members, ids) => members.filter(member => ids.has(member.member_id));
+
+const buildMemberPlanMap = (members) => {
+  const map = new Map();
+  members.forEach(member => {
+    map.set(member.member_id, buildPlanTimeline(member));
+  });
+  return map;
+};
+
+const buildTrialHistorySets = (trialHistoryRows, start30d, now) => {
+  const trialHistoryMemberIds = new Set();
+  const trialConversionsAllTimeIds = new Set();
+  const trialConversions30dIds = new Set();
+  const trialsEnded30dIds = new Set();
+  const trialDropoff30dIds = new Set();
+  const trialDropoffAllTimeIds = new Set();
+
+  trialHistoryRows.forEach(row => {
+    if (!row?.member_id) return;
+    trialHistoryMemberIds.add(row.member_id);
+    const convertedAt = parseDate(row.converted_at);
+    const endAt = parseDate(row.trial_end_at);
+    if (row.converted_at) {
+      trialConversionsAllTimeIds.add(row.member_id);
+    }
+    if (convertedAt && convertedAt >= start30d) {
+      trialConversions30dIds.add(row.member_id);
+    }
+    if (endAt && endAt >= start30d && endAt <= now) {
+      trialsEnded30dIds.add(row.member_id);
+      if (!row.converted_at) {
+        trialDropoff30dIds.add(row.member_id);
+      }
+    }
+    if (endAt && endAt <= now && !row.converted_at) {
+      trialDropoffAllTimeIds.add(row.member_id);
+    }
+  });
+
+  return {
+    trialHistoryMemberIds,
+    trialConversionsAllTimeIds,
+    trialConversions30dIds,
+    trialsEnded30dIds,
+    trialDropoff30dIds,
+    trialDropoffAllTimeIds
+  };
+};
+
+const buildAnnualHistorySets = (annualHistoryRows, start30d) => {
+  const annualHistoryMemberIds = new Set();
+  const annualStarts30dIds = new Set();
+
+  annualHistoryRows.forEach(row => {
+    if (!row?.member_id) return;
+    annualHistoryMemberIds.add(row.member_id);
+    const startAt = parseDate(row.annual_start_at);
+    if (startAt && startAt >= start30d) {
+      annualStarts30dIds.add(row.member_id);
+    }
+  });
+
+  return { annualHistoryMemberIds, annualStarts30dIds };
+};
+
+const filterSignups = (members, cutoff) => {
+  return members.filter(member => {
+    const createdAt = parseDate(member.created_at);
+    if (!createdAt) return false;
+    const status = getPlanStatus(member.plan_summary || {});
+    return createdAt >= cutoff && (status === 'ACTIVE' || status === 'TRIALING');
+  });
+};
+
+const filterTrialsExpiring = (members, memberPlanMap, windowEnd, now) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    if (!planTimeline?.isTrial || !planTimeline.trialEndAt) return false;
+    return planTimeline.trialEndAt > now && planTimeline.trialEndAt <= windowEnd;
+  });
+};
+
+const filterAnnualsExpiring = (members, memberPlanMap, windowEnd, now) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    if (!planTimeline?.isAnnual || !planTimeline.annualEndAt) return false;
+    return planTimeline.annualEndAt > now && planTimeline.annualEndAt <= windowEnd;
+  });
+};
+
+const filterAllExpiring = (members, memberPlanMap, windowEnd, now) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    const trialEnd = planTimeline?.trialEndAt;
+    const annualEnd = planTimeline?.annualEndAt;
+    const trialMatch = trialEnd && trialEnd > now && trialEnd <= windowEnd;
+    const annualMatch = annualEnd && annualEnd > now && annualEnd <= windowEnd;
+    return Boolean(trialMatch || annualMatch);
+  });
+};
+
+const filterNetMemberGrowth = (members, memberPlanMap, start30d, now) => {
+  const growthIds = new Set();
+  memberPlanMap.forEach(planTimeline => {
+    if (planTimeline.isTrial && planTimeline.trialStartAt && planTimeline.trialStartAt >= start30d) {
+      growthIds.add(planTimeline.member_id);
+    }
+    if (planTimeline.isTrial && planTimeline.trialEndAt && planTimeline.trialEndAt >= start30d && planTimeline.trialEndAt <= now) {
+      if (!planTimeline.annualStartAt || planTimeline.annualStartAt > planTimeline.trialEndAt) {
+        growthIds.add(planTimeline.member_id);
+      }
+    }
+    if (planTimeline.isAnnual && planTimeline.annualEndAt && planTimeline.annualEndAt >= start30d && planTimeline.annualEndAt <= now) {
+      growthIds.add(planTimeline.member_id);
+    }
+  });
+  return filterByMemberIds(members, growthIds);
+};
+
+const filterNetPaidGrowth = (members, memberPlanMap, start30d, now) => {
+  const paidGrowthIds = new Set();
+  memberPlanMap.forEach(planTimeline => {
+    if (planTimeline.isAnnual && planTimeline.annualStartAt && planTimeline.annualStartAt >= start30d) {
+      paidGrowthIds.add(planTimeline.member_id);
+    }
+    if (planTimeline.isAnnual && planTimeline.annualEndAt && planTimeline.annualEndAt >= start30d && planTimeline.annualEndAt <= now) {
+      paidGrowthIds.add(planTimeline.member_id);
+    }
+  });
+  return filterByMemberIds(members, paidGrowthIds);
+};
+
+const filterAnnualChurn = (members, memberPlanMap, start90d, now) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    return planTimeline?.isAnnual && planTimeline.annualEndAt && planTimeline.annualEndAt >= start90d && planTimeline.annualEndAt <= now;
+  });
+};
+
+const filterAtRiskAnnual = (members, memberPlanMap, now, next30d) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    return planTimeline?.isAnnual && planTimeline.annualEndAt && planTimeline.annualEndAt > now && planTimeline.annualEndAt <= next30d;
+  });
+};
+
+const filterActiveTrials = (members, memberPlanMap, now) => {
+  return members.filter(member => {
+    const planTimeline = memberPlanMap.get(member.member_id);
+    return planTimeline?.isTrial && planTimeline.trialEndAt && planTimeline.trialEndAt > now;
+  });
+};
+
+const filterDirectAnnual = (members, annualHistoryMemberIds, trialHistoryMemberIds, annualStartAfter) => {
+  const directAnnualIds = new Set();
+  annualHistoryMemberIds.forEach(memberId => {
+    if (!trialHistoryMemberIds.has(memberId)) directAnnualIds.add(memberId);
+  });
+  members.forEach(member => {
+    const isAnnual = member.plan_summary?.plan_type === 'annual';
+    const planStart = parseDate(member.plan_summary?.current_period_start) || parseDate(member.created_at);
+    if (isAnnual && !trialHistoryMemberIds.has(member.member_id)) {
+      if (!annualStartAfter || (planStart && planStart >= annualStartAfter)) {
+        directAnnualIds.add(member.member_id);
+      }
+    }
+  });
+  return directAnnualIds;
+};
+
+const applyLastSeenFilter = (members, lastSeenFilter) => {
+  if (!lastSeenFilter) return members;
+  if (lastSeenFilter === 'never') {
+    return members.filter(member => !member.last_seen);
+  }
+  const now = new Date();
+  let cutoffDate = null;
+  if (lastSeenFilter === '24h') {
+    cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  } else if (lastSeenFilter === '7d') {
+    cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  } else if (lastSeenFilter === '30d') {
+    cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+  if (!cutoffDate) return members;
+  return members.filter(member => member.last_seen && new Date(member.last_seen) >= cutoffDate);
+};
+
+const normalizeComparable = (value) => {
+  if (typeof value === 'string') return value.toLowerCase();
+  if (typeof value === 'boolean') return value ? 1 : 0;
+  return value;
+};
+
+const compareSortValues = (aVal, bVal, sortOrder) => {
+  const direction = sortOrder === 'asc' ? 1 : -1;
+  if (aVal == null && bVal == null) return 0;
+  if (aVal == null) return 1;
+  if (bVal == null) return -1;
+  const aNorm = normalizeComparable(aVal);
+  const bNorm = normalizeComparable(bVal);
+  if (typeof aNorm === 'number' && typeof bNorm === 'number') {
+    return (aNorm - bNorm) * direction;
+  }
+  if (aNorm === bNorm) return 0;
+  return aNorm > bNorm ? direction : -direction;
+};
+
+const normalizeSortValue = (value, sortField) => {
+  if (value == null || value === '') return null;
+  if (['signed_up', 'last_seen', 'plan_expiry_date'].includes(sortField)) {
+    return new Date(value).getTime();
+  }
+  return value;
+};
+
+const sortMembers = (members, sortField, sortOrder) => {
+  if (!sortField) return members;
+  const sorted = [...members];
+  sorted.sort((a, b) => {
+    const aVal = normalizeSortValue(a[sortField], sortField);
+    const bVal = normalizeSortValue(b[sortField], sortField);
+    return compareSortValues(aVal, bVal, sortOrder);
+  });
+  return sorted;
+};
+
+const applyActiveNowFilter = async ({ supabase, activeNowFilter, memberIds, validMembers }) => {
+  if (!activeNowFilter || memberIds.length === 0) {
+    return { memberIds, filteredValidMembers: validMembers };
+  }
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: recentActivities, error: activitiesError } = await supabase
+    .from('academy_events')
+    .select('member_id')
+    .in('member_id', memberIds)
+    .gte('created_at', thirtyMinutesAgo);
+
+  if (activitiesError) {
+    throw activitiesError;
+  }
+
+  const activeMemberIds = new Set((recentActivities || []).map(a => a.member_id));
+  const nextMemberIds = memberIds.filter(id => activeMemberIds.has(id));
+  const nextMembers = validMembers.filter(m => nextMemberIds.includes(m.member_id));
+  return { memberIds: nextMemberIds, filteredValidMembers: nextMembers };
+};
+
+const buildMembersQuery = (supabase, planFilter, search) => {
+  let query = supabase.from('ms_members_cache').select('*');
+
+  if (planFilter === 'trial') {
+    query = query.contains('plan_summary', { is_trial: true });
+  } else if (planFilter === 'paid') {
+    query = query.contains('plan_summary', { is_paid: true });
+  } else if (planFilter === 'annual') {
+    query = query.contains('plan_summary', { plan_type: 'annual' });
+  } else if (planFilter === 'monthly') {
+    query = query.contains('plan_summary', { plan_type: 'monthly' });
+  }
+
+  if (search) {
+    query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+  }
+
+  return query;
+};
+
+const applyTileFilter = async ({
+  tileFilter,
+  validMembers,
+  trialHistoryRows,
+  annualHistoryRows,
+  now,
+  start7d,
+  start30d,
+  start90d,
+  next7d,
+  next30d,
+  supabase
+}) => {
+  if (!tileFilter) return validMembers;
+
+  const trialSets = buildTrialHistorySets(trialHistoryRows, start30d, now);
+  const annualSets = buildAnnualHistorySets(annualHistoryRows, start30d);
+  const memberPlanMap = buildMemberPlanMap(validMembers);
+
+  const handlers = {
+    all_members_all_time: () => validMembers,
+    signups_24h: () => filterSignups(validMembers, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
+    signups_7d: () => filterSignups(validMembers, start7d),
+    signups_30d: () => filterSignups(validMembers, start30d),
+    trials_expiring: () => filterTrialsExpiring(validMembers, memberPlanMap, next30d, now),
+    annual_expiring: () => filterAnnualsExpiring(validMembers, memberPlanMap, next30d, now),
+    all_expiring: () => filterAllExpiring(validMembers, memberPlanMap, next7d, now),
+    trial_conversions_all_time: () => filterByMemberIds(validMembers, trialSets.trialConversionsAllTimeIds),
+    trial_conversions_30d: () => filterByMemberIds(validMembers, trialSets.trialConversions30dIds),
+    trial_dropoff_30d: () => filterByMemberIds(validMembers, trialSets.trialDropoff30dIds),
+    trial_dropoff_all_time: () => filterByMemberIds(validMembers, trialSets.trialDropoffAllTimeIds),
+    trials_ended_30d: () => filterByMemberIds(validMembers, trialSets.trialsEnded30dIds),
+    annual_all_time: () => {
+      const annualIds = new Set(annualSets.annualHistoryMemberIds);
+      validMembers.forEach(member => {
+        if (member.plan_summary?.plan_type === 'annual') annualIds.add(member.member_id);
+      });
+      return filterByMemberIds(validMembers, annualIds);
+    },
+    direct_annual_all_time: () => {
+      const directAnnualIds = filterDirectAnnual(validMembers, annualSets.annualHistoryMemberIds, trialSets.trialHistoryMemberIds);
+      return filterByMemberIds(validMembers, directAnnualIds);
+    },
+    arr_active_annual: () => validMembers.filter(member => {
+      const planTimeline = memberPlanMap.get(member.member_id);
+      return planTimeline?.isAnnual && (planTimeline.status === 'ACTIVE' || planTimeline.status === 'TRIALING');
+    }),
+    annual_revenue_30d: () => {
+      const annualIds = new Set(annualSets.annualStarts30dIds);
+      validMembers.forEach(member => {
+        const planTimeline = memberPlanMap.get(member.member_id);
+        if (planTimeline?.isAnnual && planTimeline.annualStartAt && planTimeline.annualStartAt >= start30d) {
+          annualIds.add(member.member_id);
+        }
+      });
+      return filterByMemberIds(validMembers, annualIds);
+    },
+    direct_annual_30d: () => {
+      const directAnnualIds = filterDirectAnnual(validMembers, annualSets.annualHistoryMemberIds, trialSets.trialHistoryMemberIds, start30d);
+      return filterByMemberIds(validMembers, directAnnualIds);
+    },
+    net_member_growth_30d: () => filterNetMemberGrowth(validMembers, memberPlanMap, start30d, now),
+    net_paid_growth_30d: () => filterNetPaidGrowth(validMembers, memberPlanMap, start30d, now),
+    annual_churn_90d: () => filterAnnualChurn(validMembers, memberPlanMap, start90d, now),
+    at_risk_annual_30d: () => filterAtRiskAnnual(validMembers, memberPlanMap, now, next30d),
+    trial_opportunity_all: () => filterActiveTrials(validMembers, memberPlanMap, now),
+    trial_opportunity_3pct: () => filterTrialsExpiring(validMembers, memberPlanMap, next30d, now),
+    at_risk_trials_7d: async () => {
+      const expiringTrialIds = new Set();
+      if (trialHistoryRows.length > 0) {
+        trialHistoryRows.forEach(row => {
+          const endAt = parseDate(row.trial_end_at);
+          if (endAt && endAt > now && endAt <= next7d && row.member_id) {
+            expiringTrialIds.add(row.member_id);
+          }
+        });
+      } else {
+        memberPlanMap.forEach(planTimeline => {
+          if (planTimeline.isTrial && planTimeline.trialEndAt && planTimeline.trialEndAt > now && planTimeline.trialEndAt <= next7d) {
+            expiringTrialIds.add(planTimeline.member_id);
+          }
+        });
+      }
+
+      if (expiringTrialIds.size === 0) return [];
+
+      const { data: recentLogins } = await supabase
+        .from('academy_events')
+        .select('member_id')
+        .eq('event_type', 'login')
+        .gte('created_at', start7d.toISOString())
+        .in('member_id', Array.from(expiringTrialIds));
+
+      const loggedInIds = new Set((recentLogins || []).map(row => row.member_id).filter(Boolean));
+      const atRiskIds = new Set();
+      expiringTrialIds.forEach(memberId => {
+        if (!loggedInIds.has(memberId)) atRiskIds.add(memberId);
+      });
+      return filterByMemberIds(validMembers, atRiskIds);
+    }
+  };
+
+  const handler = handlers[tileFilter];
+  if (!handler) return validMembers;
+  return await handler();
+};
+
+async function handleMembers(req, res) {
   try {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method Not Allowed" });
@@ -16,8 +446,8 @@ module.exports = async (req, res) => {
     );
 
     // Parse query params
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const page = Number.parseInt(req.query.page, 10) || 1;
+    const limit = Number.parseInt(req.query.limit, 10) || 50;
     const offset = (page - 1) * limit;
     
     const planFilter = req.query.plan; // 'trial', 'paid', 'annual', 'monthly'
@@ -25,46 +455,28 @@ module.exports = async (req, res) => {
     const search = req.query.search; // name or email search
     const lastSeenFilter = req.query.last_seen; // '24h', '7d', '30d', 'never'
     const activeNowFilter = req.query.active_now === 'true'; // filter to members with recent activity (last 30 min)
+    const tileFilter = req.query.filter; // custom tile cohort filter
     const sortField = req.query.sort || 'updated_at'; // field to sort by
     const sortOrder = req.query.order || 'desc'; // 'asc' or 'desc'
 
+    const now = new Date();
+    const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const start30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const start90d = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const next7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const next30d = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     // Build query - by default, only show members with trial or annual plans
     // This excludes test accounts and members without valid plans
-    let query = supabase.from('ms_members_cache').select('*', { count: 'exact' });
-    
-    // Default filter: only show members with trial or annual plans that are ACTIVE or TRIALING
-    // This can be overridden by explicit planFilter if provided
-    if (!planFilter) {
-      // Filter to only show members with valid plans (trial or annual, active/trialing status)
-      // We'll do this in JavaScript after fetching, as Supabase JSONB filtering is complex
-    }
-
-    // Apply explicit filters
-    if (planFilter) {
-      if (planFilter === 'trial') {
-        query = query.contains('plan_summary', { is_trial: true });
-      } else if (planFilter === 'paid') {
-        query = query.contains('plan_summary', { is_paid: true });
-      } else if (planFilter === 'annual') {
-        query = query.contains('plan_summary', { plan_type: 'annual' });
-      } else if (planFilter === 'monthly') {
-        query = query.contains('plan_summary', { plan_type: 'monthly' });
-      }
-    }
+    const query = buildMembersQuery(supabase, planFilter, search);
 
     // Status filter is applied in JS below to handle case differences and expired logic
-
-    if (search) {
-      query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
-    }
 
     // For server-side sorting, we need to fetch ALL members first, then sort and paginate
     // This is because some sort fields are computed (like modules_opened_unique, exams_attempted)
     // So we'll fetch all, enrich, sort, then paginate
     
     // Get total count first (before pagination)
-    const { count } = await query;
-
     // Fetch ALL members (no pagination yet) - we'll sort and paginate after enrichment
     // Use a reasonable limit to prevent memory issues (e.g., 1000 members max)
     const { data: members, error } = await query.order('updated_at', { ascending: false }).limit(1000);
@@ -73,12 +485,11 @@ module.exports = async (req, res) => {
       throw error;
     }
 
-    const now = new Date();
     const isExpiredPlan = (plan) => {
       const endDate = plan.current_period_end || plan.expiry_date;
       if (!endDate) return false;
       const expiry = new Date(endDate);
-      return !isNaN(expiry.getTime()) && expiry < now;
+      return !Number.isNaN(expiry.getTime()) && expiry < now;
     };
 
     const isExpiredFilter = statusFilter === 'expired';
@@ -186,14 +597,132 @@ module.exports = async (req, res) => {
       baseMembers = Array.from(expiredMap.values());
     }
 
+    const historyFilterKeys = new Set([
+      'all_members_all_time',
+      'trial_conversions_30d',
+      'trial_conversions_all_time',
+      'trial_dropoff_30d',
+      'trial_dropoff_all_time',
+      'trials_ended_30d',
+      'at_risk_trials_7d',
+      'annual_all_time',
+      'direct_annual_all_time',
+      'annual_revenue_30d',
+      'direct_annual_30d',
+      'net_member_growth_30d',
+      'net_paid_growth_30d',
+      'annual_churn_90d',
+      'at_risk_annual_30d',
+      'trial_opportunity_all',
+      'trial_opportunity_3pct'
+    ]);
+
+    const needsHistory = isExpiredFilter || (tileFilter && historyFilterKeys.has(tileFilter));
+    let trialHistoryRows = [];
+    let annualHistoryRows = [];
+
+    if (needsHistory) {
+      const { data: trialHistory } = await supabase
+        .from('academy_trial_history')
+        .select('member_id, trial_start_at, trial_end_at, converted_at');
+      trialHistoryRows = Array.isArray(trialHistory) ? trialHistory : [];
+
+      const { data: annualHistory } = await supabase
+        .from('academy_annual_history')
+        .select('member_id, annual_start_at, annual_end_at');
+      annualHistoryRows = Array.isArray(annualHistory) ? annualHistory : [];
+
+      const cacheById = new Map(baseMembers.map(member => [member.member_id, member]));
+      const trialHistoryByMember = new Map();
+      const annualHistoryByMember = new Map();
+
+      trialHistoryRows.forEach(row => {
+        if (!row?.member_id) return;
+        if (!trialHistoryByMember.has(row.member_id)) {
+          trialHistoryByMember.set(row.member_id, row);
+          return;
+        }
+        const existing = trialHistoryByMember.get(row.member_id);
+        const existingEnd = parseDate(existing?.trial_end_at);
+        const nextEnd = parseDate(row.trial_end_at);
+        if (nextEnd && (!existingEnd || nextEnd > existingEnd)) {
+          trialHistoryByMember.set(row.member_id, row);
+        }
+      });
+
+      annualHistoryRows.forEach(row => {
+        if (!row?.member_id) return;
+        if (!annualHistoryByMember.has(row.member_id)) {
+          annualHistoryByMember.set(row.member_id, row);
+          return;
+        }
+        const existing = annualHistoryByMember.get(row.member_id);
+        const existingStart = parseDate(existing?.annual_start_at);
+        const nextStart = parseDate(row.annual_start_at);
+        if (nextStart && (!existingStart || nextStart > existingStart)) {
+          annualHistoryByMember.set(row.member_id, row);
+        }
+      });
+
+      const historyMemberIds = new Set([
+        ...Array.from(trialHistoryByMember.keys()),
+        ...Array.from(annualHistoryByMember.keys())
+      ]);
+
+      historyMemberIds.forEach(memberId => {
+        if (cacheById.has(memberId)) return;
+        const trialRow = trialHistoryByMember.get(memberId);
+        const annualRow = annualHistoryByMember.get(memberId);
+        if (annualRow) {
+          baseMembers.push({
+            member_id: memberId,
+            email: null,
+            name: null,
+            created_at: null,
+            updated_at: null,
+            raw: {},
+            plan_summary: {
+              plan_type: 'annual',
+              plan_name: 'Academy Annual',
+              status: 'expired',
+              current_period_end: annualRow.annual_end_at || null,
+              is_trial: false,
+              is_paid: true
+            }
+          });
+          return;
+        }
+        if (trialRow) {
+          baseMembers.push({
+            member_id: memberId,
+            email: null,
+            name: null,
+            created_at: null,
+            updated_at: null,
+            raw: {},
+            plan_summary: {
+              plan_type: 'trial',
+              plan_name: 'Academy Trial',
+              status: 'expired',
+              expiry_date: trialRow.trial_end_at || null,
+              is_trial: true,
+              is_paid: false
+            }
+          });
+        }
+      });
+    }
+
+    const hasTileFilter = Boolean(tileFilter);
+
     // Filter out test accounts and members without valid plans (trial or annual)
     // Default to ACTIVE/TRIALING unless status filter requests otherwise
     const validMembers = (baseMembers || []).filter(member => {
       const plan = member.plan_summary || {};
       const planType = plan.plan_type || '';
-      const status = (plan.status || '').toUpperCase();
-      
-      const hasPlan = planType === 'trial' || planType === 'annual';
+      const status = getPlanStatus(plan);
+      const isTrial = isTrialPlan(plan);
+      const hasPlan = planType === 'trial' || planType === 'annual' || isTrial;
       if (!hasPlan) return false;
 
       if (isExpiredFilter) {
@@ -204,33 +733,38 @@ module.exports = async (req, res) => {
         return status === statusFilter.toUpperCase();
       }
 
-      // Default: only include ACTIVE/TRIALING
-      return status === 'ACTIVE' || status === 'TRIALING';
+      if (!hasTileFilter) {
+        // Default: only include ACTIVE/TRIALING
+        return status === 'ACTIVE' || status === 'TRIALING';
+      }
+
+      return true;
     });
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
-    let memberIds = validMembers?.map(m => m.member_id) || [];
-    let filteredValidMembers = validMembers; // Start with all valid members
+    let filteredValidMembers = await applyTileFilter({
+      tileFilter,
+      validMembers,
+      trialHistoryRows,
+      annualHistoryRows,
+      now,
+      start7d,
+      start30d,
+      start90d,
+      next7d,
+      next30d,
+      supabase
+    });
+    let memberIds = filteredValidMembers.map(m => m.member_id);
     
-    // If active_now filter is enabled, filter to only members with activity in last 30 minutes
-    if (activeNowFilter && memberIds.length > 0) {
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      const { data: recentActivities, error: activitiesError } = await supabase
-        .from('academy_events')
-        .select('member_id')
-        .in('member_id', memberIds)
-        .gte('created_at', thirtyMinutesAgo);
-      
-      if (activitiesError) {
-        throw activitiesError;
-      }
-      
-      const activeMemberIds = new Set((recentActivities || []).map(a => a.member_id));
-      memberIds = memberIds.filter(id => activeMemberIds.has(id));
-      
-      // Filter validMembers to only include active members
-      filteredValidMembers = validMembers.filter(m => memberIds.includes(m.member_id));
-    }
+    const activeNowResult = await applyActiveNowFilter({
+      supabase,
+      activeNowFilter,
+      memberIds,
+      validMembers: filteredValidMembers
+    });
+    memberIds = activeNowResult.memberIds;
+    filteredValidMembers = activeNowResult.filteredValidMembers;
     
     // If no member IDs after filtering, return empty result
     if (memberIds.length === 0) {
@@ -426,6 +960,35 @@ module.exports = async (req, res) => {
       // Get expiry date: for trials use expiry_date, for annual use current_period_end
       const expiryDate = plan.is_trial ? plan.expiry_date : (plan.current_period_end || plan.expiry_date);
       
+      const currency =
+        plan.currency ||
+        plan.currency_code ||
+        plan.plan_currency ||
+        plan.price_currency ||
+        plan.default_currency ||
+        'GBP';
+      const totalPaid = normalizeNumber(
+        plan.total_paid ??
+        plan.lifetime_value ??
+        plan.lifetime_paid ??
+        plan.total_spent ??
+        null
+      );
+      const currentAmount = normalizeNumber(
+        plan.amount ??
+        plan.plan_amount ??
+        plan.unit_amount ??
+        plan.price ??
+        plan.subscription_amount ??
+        null
+      );
+      const refundsTotal = normalizeNumber(
+        plan.refunds_total ??
+        plan.amount_refunded ??
+        plan.refunded ??
+        null
+      );
+
       return {
         member_id: memberId,
         email: member.email,
@@ -445,92 +1008,20 @@ module.exports = async (req, res) => {
         exams_attempted: (examStatsMap[memberId]?.attempts || 0) + (examStatsByEmailMap[member.email]?.attempts || 0),
         exams_passed: (examStatsMap[memberId]?.passed || 0) + (examStatsByEmailMap[member.email]?.passed || 0),
         bookmarks_count: bookmarksCount,
-      photography_style: member.photography_style || null,
-      hue_test_score: hueScoreMap[memberId] ?? null
+        photography_style: member.photography_style || null,
+        hue_test_score: hueScoreMap[memberId] ?? null,
+        currency,
+        total_paid: totalPaid,
+        current_amount: currentAmount,
+        refunds_total: refundsTotal
       };
     }) || [];
 
     // Apply last_seen filter if specified
-    let filteredMembers = enrichedMembers;
-    if (lastSeenFilter) {
-      const now = new Date();
-      if (lastSeenFilter === 'never') {
-        filteredMembers = enrichedMembers.filter(m => !m.last_seen);
-      } else {
-        let cutoffDate;
-        if (lastSeenFilter === '24h') {
-          cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        } else if (lastSeenFilter === '7d') {
-          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        } else if (lastSeenFilter === '30d') {
-          cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        }
-
-        if (cutoffDate) {
-          filteredMembers = enrichedMembers.filter(m => 
-            m.last_seen && new Date(m.last_seen) >= cutoffDate
-          );
-        }
-      }
-    }
+    let filteredMembers = applyLastSeenFilter(enrichedMembers, lastSeenFilter);
 
     // Apply server-side sorting
-    if (sortField) {
-      filteredMembers.sort((a, b) => {
-        let aVal = a[sortField];
-        let bVal = b[sortField];
-        
-        // Handle null/undefined values - put them at the end
-        const aIsNull = aVal == null || aVal === '';
-        const bIsNull = bVal == null || bVal === '';
-        
-        if (aIsNull && bIsNull) return 0;
-        if (aIsNull) return 1; // null values go to end
-        if (bIsNull) return -1; // null values go to end
-        
-        // Handle dates
-        if (sortField === 'signed_up' || sortField === 'last_seen' || sortField === 'plan_expiry_date') {
-          aVal = aVal ? new Date(aVal).getTime() : 0;
-          bVal = bVal ? new Date(bVal).getTime() : 0;
-        }
-        
-        // Handle numbers (including modules_opened_unique, exams_attempted, exams_passed, bookmarks_count)
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          if (sortOrder === 'asc') {
-            return aVal - bVal;
-          } else {
-            return bVal - aVal;
-          }
-        }
-        
-        // Handle strings (name, email, plan_name, status, photography_style)
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-          aVal = aVal.toLowerCase();
-          bVal = bVal.toLowerCase();
-          if (sortOrder === 'asc') {
-            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          } else {
-            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-          }
-        }
-        
-        // Handle boolean values
-        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
-          if (sortOrder === 'asc') {
-            return aVal === bVal ? 0 : aVal ? 1 : -1;
-          } else {
-            return aVal === bVal ? 0 : aVal ? -1 : 1;
-          }
-        }
-        
-        // Fallback for mixed types
-        if (sortOrder === 'asc') {
-          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-        } else {
-          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-        }
-      });
-    }
+    filteredMembers = sortMembers(filteredMembers, sortField, sortOrder);
 
     // Apply pagination AFTER sorting
     const totalFiltered = filteredMembers.length;
@@ -550,4 +1041,6 @@ module.exports = async (req, res) => {
     console.error('[members] Error:', error);
     return res.status(500).json({ error: error.message });
   }
-};
+}
+
+module.exports = handleMembers;
