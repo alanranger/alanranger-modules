@@ -88,7 +88,7 @@ const buildInvoiceListParams = (startingAfter) => {
   const params = {
     limit: 100,
     status: 'paid',
-    expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge', 'data.customer']
+    expand: ['data.lines.data.price', 'data.charge', 'data.customer']
   };
   if (startingAfter) params.starting_after = startingAfter;
   return params;
@@ -173,7 +173,7 @@ const fetchStripeTotalsByEmail = async (members) => {
           customer: customerId,
           status: 'paid',
           limit: 100,
-          expand: ['data.lines.data.price', 'data.lines.data.price.product']
+          expand: ['data.lines.data.price']
         });
         (invoices.data || []).forEach(invoice => {
           if (isAcademyInvoice(invoice)) {
@@ -244,7 +244,7 @@ const fetchStripeRefundsByEmail = async (members) => {
         const invoices = await stripe.invoices.list({
           customer: customerId,
           limit: 100,
-          expand: ['data.lines.data.price', 'data.lines.data.price.product', 'data.charge']
+          expand: ['data.lines.data.price', 'data.charge']
         });
         for (const invoice of invoices.data || []) {
           academySum += await getInvoiceRefundTotal(invoice);
