@@ -110,6 +110,23 @@ const fetchStripeRefundsByEmail = async (members) => {
 
   const refunds = new Map();
 
+  const getInvoiceRefundTotal = async (invoice) => {
+    if (!isAcademyInvoice(invoice)) return 0;
+    let total = (invoice.amount_refunded || 0) / 100;
+    if (total > 0 || !invoice.charge) return total;
+
+    try {
+      const refundsList = await stripe.refunds.list({ charge: invoice.charge, limit: 100 });
+      (refundsList.data || []).forEach(refund => {
+        total += (refund.amount || 0) / 100;
+      });
+    } catch (refundError) {
+      console.warn('[members] Stripe refund charge lookup failed:', refundError.message);
+    }
+
+    return total;
+  };
+
   for (const email of emails) {
     let sum = 0;
     try {
@@ -118,14 +135,11 @@ const fetchStripeRefundsByEmail = async (members) => {
         const invoices = await stripe.invoices.list({
           customer: customer.id,
           limit: 100,
-          expand: ['data.lines.data.price']
+          expand: ['data.lines.data.price', 'data.charge']
         });
-        (invoices.data || []).forEach(invoice => {
-          if (isAcademyInvoice(invoice)) {
-            const refunded = (invoice.amount_refunded || 0) / 100;
-            sum += refunded;
-          }
-        });
+        for (const invoice of invoices.data || []) {
+          sum += await getInvoiceRefundTotal(invoice);
+        }
       }
     } catch (error) {
       console.warn('[members] Stripe refund lookup failed for email:', email, error.message);
