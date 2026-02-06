@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     addDebugLog('Dashboard initialized');
     fetchKPIs();
+    prefetchMembersList();
   }, []);
 
   function addDebugLog(message, data = null) {
@@ -38,13 +39,40 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/overview');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setKpis(data);
+      let nextData = data;
+      try {
+        const netRes = await fetch('/api/admin/members?filter=net_member_growth_30d&limit=1');
+        if (netRes.ok) {
+          const netData = await netRes.json();
+          const netTotal = netData?.pagination?.total;
+          if (netTotal != null) {
+            nextData = {
+              ...data,
+              bi: {
+                ...data.bi,
+                netMemberGrowth30d: netTotal
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('[admin] Failed to sync net member growth total:', error.message);
+      }
+      setKpis(nextData);
       addDebugLog('KPIs loaded successfully', { counts: data });
     } catch (error) {
       addDebugLog('Failed to fetch KPIs', { error: error.message });
       console.error('Failed to fetch KPIs:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function prefetchMembersList() {
+    try {
+      await fetch('/api/admin/members?limit=50');
+    } catch (error) {
+      console.warn('[admin] Members prefetch failed:', error.message);
     }
   }
 
@@ -536,7 +564,7 @@ export default function AdminDashboard() {
 
       {/* Member Counts Row */}
       <div className="ar-admin-kpi-grid">
-        <Link href="/academy/admin/members" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?filter=all_members_all_time" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Total Members</div>
           <div className="ar-admin-kpi-value">{kpis?.totalMembers || 0}</div>
           <div className="ar-admin-kpi-period">All-time</div>
@@ -570,32 +598,32 @@ export default function AdminDashboard() {
 
       {/* Signups Row */}
       <div className="ar-admin-kpi-grid">
-        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?filter=signups_24h&sort=created_at&order=desc" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">New Signups</div>
           <div className="ar-admin-kpi-value">{kpis?.signups24h || 0}</div>
           <div className="ar-admin-kpi-period">24 hours</div>
         </Link>
-        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?filter=signups_7d&sort=created_at&order=desc" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">New Signups</div>
           <div className="ar-admin-kpi-value">{kpis?.signups7d || 0}</div>
           <div className="ar-admin-kpi-period">7 days</div>
         </Link>
-        <Link href="/academy/admin/members?sort=created_at&order=desc" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?filter=signups_30d&sort=created_at&order=desc" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">New Signups</div>
           <div className="ar-admin-kpi-value">{kpis?.signups30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
         </Link>
-        <Link href="/academy/admin/activity?period=24h" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?last_seen=24h" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Active Members</div>
           <div className="ar-admin-kpi-value">{kpis?.activeMembers24h || 0}</div>
           <div className="ar-admin-kpi-period">24 hours</div>
         </Link>
-        <Link href="/academy/admin/activity?period=7d" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?last_seen=7d" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Active Members</div>
           <div className="ar-admin-kpi-value">{kpis?.activeMembers7d || 0}</div>
           <div className="ar-admin-kpi-period">7 days</div>
         </Link>
-        <Link href="/academy/admin/activity?period=30d" className="ar-admin-kpi-tile">
+        <Link href="/academy/admin/members?last_seen=30d" className="ar-admin-kpi-tile">
           <div className="ar-admin-kpi-label">Active Members</div>
           <div className="ar-admin-kpi-value">{kpis?.activeMembers30d || 0}</div>
           <div className="ar-admin-kpi-period">30 days</div>
@@ -620,10 +648,11 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
-          <div 
-            className="ar-admin-kpi-tile" 
+          <Link
+            href="/academy/admin/members?filter=trial_conversions_30d"
+            className="ar-admin-kpi-tile"
             title="Conversion rate: (Conversions in last 30d) / (Trials active in last 30d) × 100. Uses trial history for active trials and conversions."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Trial → Annual Conversion
@@ -639,11 +668,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.trialToAnnualConversions30d ?? 0}/{kpis?.bi?.activeTrials30d ?? 0} trials (30d active)
             </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trial_conversions_all_time"
+            className="ar-admin-kpi-tile"
             title="Total number of members who started a trial and later converted to annual plan. All-time count."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Conversions — Trial → Annual
@@ -651,11 +681,12 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}</div>
             <div className="ar-admin-kpi-period">All-time</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trial_dropoff_30d"
+            className="ar-admin-kpi-tile"
             title="Trials that ended in the last 30 days without converting, divided by total trials ended in the last 30 days."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Trial Drop-off
@@ -669,11 +700,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.trialDropOff30d || 0}/{kpis?.bi?.trialsEnded30d || 0} ended (30d)
             </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trials_ended_30d"
+            className="ar-admin-kpi-tile"
             title="Total number of trials that ended in the last 30 days."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Trials Ended
@@ -681,11 +713,12 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">{kpis?.bi?.trialsEnded30d || 0}</div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=at_risk_trials_7d"
+            className="ar-admin-kpi-tile"
             title="Trials expiring in the next 7 days with no login event in the last 7 days."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               At-Risk Trials
@@ -693,7 +726,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskTrialsNext7d || 0}</div>
             <div className="ar-admin-kpi-period">Next 7 days</div>
-          </div>
+          </Link>
         </div>
         
         {/* Divider */}
@@ -719,10 +752,11 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
-          <div 
-            className="ar-admin-kpi-tile" 
+          <Link
+            href="/academy/admin/members?filter=revenue_all_time"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue from Stripe paid invoices (all plans). Revenue is based on Stripe paid invoices (after discounts, before Stripe fees). All-time total."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Total Revenue (Net)
@@ -734,11 +768,12 @@ export default function AdminDashboard() {
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time (all plans)</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=revenue_conversions_all_time"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue attributed to trial-to-annual conversions (from Stripe metrics). All-time total."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue from Conversions
@@ -752,11 +787,12 @@ export default function AdminDashboard() {
                   : '£0')}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=direct_annual_all_time"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue from direct annual signups (no trial first). All-time total."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue from Direct Annual
@@ -768,11 +804,12 @@ export default function AdminDashboard() {
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">All-time</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=arr_active_annual"
+            className="ar-admin-kpi-tile"
             title="Annual Run-Rate: Sum of annual subscription revenue from all active annual subscriptions (price × quantity per year)."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               ARR (Annual Run-Rate)
@@ -784,11 +821,12 @@ export default function AdminDashboard() {
                 : '—'}
             </div>
             <div className="ar-admin-kpi-period">From active annuals</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trial_dropoff_all_time"
+            className="ar-admin-kpi-tile"
             title="Lost revenue from trials that expired without converting. Calculated as: expired trials without conversion × annual price. All-time total."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Lost Revenue (Expired Trials)
@@ -802,7 +840,7 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.trialsEndedWithoutConversionAllTime ?? 0} expired (all-time)
             </div>
-          </div>
+          </Link>
         </div>
         
         {/* Divider */}
@@ -828,10 +866,11 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="ar-admin-kpi-grid" style={{ marginBottom: '18px' }}>
-          <div 
-            className="ar-admin-kpi-tile" 
+          <Link
+            href="/academy/admin/members?filter=annual_revenue_30d"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue from annual subscriptions in the last 30 days. Includes both direct annual signups and trial conversions. Net = after Stripe fees."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Annual Revenue (Net)
@@ -843,11 +882,12 @@ export default function AdminDashboard() {
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=revenue_conversions_30d"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue from trial-to-annual conversions in the last 30 days. Net = after Stripe fees."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue from Conversions (30d)
@@ -861,11 +901,12 @@ export default function AdminDashboard() {
                   : '£0')}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=direct_annual_30d"
+            className="ar-admin-kpi-tile"
             title="Net paid revenue from direct annual signups (no trial first) in the last 30 days. Net = after Stripe fees."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue from Direct Annual (30d)
@@ -877,11 +918,12 @@ export default function AdminDashboard() {
                 : '£0'}
             </div>
             <div className="ar-admin-kpi-period">Last 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=net_member_growth_30d"
+            className="ar-admin-kpi-tile"
             title="Net change in total members over last 30 days (new members minus churned members)."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Net Member Growth
@@ -893,11 +935,12 @@ export default function AdminDashboard() {
               {(kpis?.bi?.netMemberGrowth30d || 0) >= 0 ? '+' : ''}{kpis?.bi?.netMemberGrowth30d || 0}
             </div>
             <div className="ar-admin-kpi-period">30 days (new - churned)</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=net_paid_growth_30d"
+            className="ar-admin-kpi-tile"
             title="Net change in paid (annual) members over last 30 days (new annual starts minus annual churn)."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Net Paid Growth
@@ -909,7 +952,7 @@ export default function AdminDashboard() {
               {(kpis?.bi?.netPaidGrowth30d || 0) >= 0 ? '+' : ''}{kpis?.bi?.netPaidGrowth30d || 0}
             </div>
             <div className="ar-admin-kpi-period">30 days (new annual - churned)</div>
-          </div>
+          </Link>
         </div>
         
         {/* Divider */}
@@ -935,10 +978,11 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="ar-admin-kpi-grid">
-          <div 
-            className="ar-admin-kpi-tile" 
+          <Link
+            href="/academy/admin/members?filter=annual_churn_90d"
+            className="ar-admin-kpi-tile"
             title="Annual subscriptions with status='canceled' and ended_at within last 90 days. Churn rate = churned / (active at start + churned)."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Annual Churn
@@ -952,11 +996,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.annualChurnCount90d || 0} churned (90d)
             </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=at_risk_annual_30d"
+            className="ar-admin-kpi-tile"
             title="Annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Sum of subscription revenue for these at-risk subscriptions."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Revenue at Risk
@@ -970,11 +1015,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               {kpis?.bi?.atRiskAnnualCount || 0} at-risk (next 30d)
             </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=at_risk_annual_30d"
+            className="ar-admin-kpi-tile"
             title="Number of annual subscriptions with cancel_at_period_end=true AND current_period_end within next 30 days. Supporting stat for revenue at risk."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               At-Risk Annual
@@ -982,11 +1028,12 @@ export default function AdminDashboard() {
             </div>
             <div className="ar-admin-kpi-value">{kpis?.bi?.atRiskAnnualCount || 0}</div>
             <div className="ar-admin-kpi-period">Next 30 days</div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trial_opportunity_all"
+            className="ar-admin-kpi-tile"
             title="Potential revenue if all active trials convert to annual. Gross = active trials × annual price."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Trial Opportunity (if 100% convert)
@@ -1000,11 +1047,12 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               Gross ({kpis?.trials || 0} active trials)
             </div>
-          </div>
-          <div 
-            className="ar-admin-kpi-tile" 
+          </Link>
+          <Link
+            href="/academy/admin/members?filter=trial_opportunity_3pct"
+            className="ar-admin-kpi-tile"
             title="Realistic potential revenue from trials expiring in next 30 days at 3% conversion rate. Formula: (Trials expiring in next 30d) × 3% × £79 per conversion."
-            style={{ cursor: 'help' }}
+            style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Trial Opportunity (if 3% convert)
@@ -1022,7 +1070,7 @@ export default function AdminDashboard() {
             <div className="ar-admin-kpi-period">
               3% target ({kpis?.trialsExpiring30d || 0} expiring)
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 

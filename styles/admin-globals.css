@@ -37,6 +37,10 @@ body {
   padding: 22px;
 }
 
+.ar-admin-container--wide {
+  max-width: 1800px;
+}
+
 .ar-admin-header {
   margin-bottom: 28px;
 }

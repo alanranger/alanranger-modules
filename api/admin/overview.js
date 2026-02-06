@@ -4,6 +4,28 @@
 
 const { createClient } = require("@supabase/supabase-js");
 
+const buildOrigin = (req) => {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return `${proto}://${host}`;
+};
+
+const fetchMembersTotal = async (req, query) => {
+  try {
+    const origin = buildOrigin(req);
+    const res = await fetch(`${origin}/api/admin/members?${query}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.pagination?.total ?? null;
+  } catch (error) {
+    console.warn('[overview] Failed to fetch members total:', error.message);
+    return null;
+  }
+};
+
 module.exports = async (req, res) => {
   try {
     if (req.method !== "GET") {
@@ -928,7 +950,33 @@ module.exports = async (req, res) => {
       return false;
     }).length;
 
-    const netMemberGrowth30d = newMembers30d - membersChurned30d;
+    const newMemberIds30d = new Set();
+    const churnedMemberIds30d = new Set();
+    Object.values(memberPlans).forEach(m => {
+      if (!m.member_id) return;
+      if (m.isTrial && m.trialStartAt && m.trialStartAt >= start30d) {
+        newMemberIds30d.add(m.member_id);
+      }
+      if (m.isTrial && m.trialEndAt && m.trialEndAt >= start30d && m.trialEndAt <= now) {
+        if (!m.annualStartAt || m.annualStartAt > m.trialEndAt) {
+          churnedMemberIds30d.add(m.member_id);
+        }
+      }
+      if (m.isAnnual && m.annualEndAt && m.annualEndAt >= start30d && m.annualEndAt <= now) {
+        churnedMemberIds30d.add(m.member_id);
+      }
+    });
+
+    const netMemberIds30d = new Set();
+    newMemberIds30d.forEach(memberId => {
+      if (!churnedMemberIds30d.has(memberId)) netMemberIds30d.add(memberId);
+    });
+
+    let netMemberGrowth30d = netMemberIds30d.size;
+    const netMemberGrowthTotal = await fetchMembersTotal(req, 'filter=net_member_growth_30d&limit=1');
+    if (netMemberGrowthTotal != null) {
+      netMemberGrowth30d = netMemberGrowthTotal;
+    }
 
     // New annual starts in last 30d
     const newAnnualStarts30d = Object.values(memberPlans).filter(m => 

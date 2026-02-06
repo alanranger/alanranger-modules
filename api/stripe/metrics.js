@@ -707,21 +707,38 @@ async function calculateStripeMetrics(forceRefresh = false) {
     const academyInvoices = allPaidInvoices.filter(invoice => isAcademyInvoice(invoice));
     console.log(`[stripe-metrics] Filtered ${academyInvoices.length} Academy invoices from ${allPaidInvoices.length} total paid invoices`);
     
-    // Helper to get revenue from invoice (minimum correct approach: use invoice.total)
-    // This includes discounts and is after refunds, before Stripe fees
-    const getInvoiceRevenue = (invoice) => {
-      // Use invoice.total (includes discounts, after refunds, before Stripe fees)
-      // This is the minimum correct approach per user requirements
-      if (invoice.total && invoice.currency === 'gbp') {
-        return invoice.total / 100; // Convert from minor units to GBP
+    const refundTotalsByCharge = new Map();
+
+    const getInvoiceRefundTotalMinor = async (invoice) => {
+      if (invoice.amount_refunded && invoice.currency === 'gbp') {
+        return invoice.amount_refunded;
       }
-      
-      // Fallback: use amount_paid if total is missing
-      if (invoice.amount_paid && invoice.currency === 'gbp') {
-        return invoice.amount_paid / 100;
+      if (!invoice.charge) return 0;
+      const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
+      if (!chargeId) return 0;
+      if (refundTotalsByCharge.has(chargeId)) {
+        return refundTotalsByCharge.get(chargeId);
       }
-      
-      return 0;
+      let total = 0;
+      try {
+        const refundsList = await stripe.refunds.list({ charge: chargeId, limit: 100 });
+        (refundsList.data || []).forEach(refund => {
+          total += refund.amount || 0;
+        });
+      } catch (err) {
+        console.warn(`[stripe-metrics] Refund lookup failed for charge ${chargeId}:`, err.message);
+      }
+      refundTotalsByCharge.set(chargeId, total);
+      return total;
+    };
+
+    // Helper to get net revenue from invoice (amount paid minus refunds)
+    const getInvoiceRevenue = async (invoice) => {
+      if (invoice.currency !== 'gbp') return 0;
+      const amountPaid = invoice.amount_paid ?? invoice.total ?? 0;
+      const refunded = await getInvoiceRefundTotalMinor(invoice);
+      const net = Math.max(amountPaid - refunded, 0);
+      return net / 100;
     };
     
     // Helper to get net revenue from invoice (after Stripe fees)
@@ -792,7 +809,7 @@ async function calculateStripeMetrics(forceRefresh = false) {
 
       // Use invoice.total (includes discounts, after refunds, before Stripe fees)
       // invoice.total is in minor units (pence), so divide by 100
-      const invoiceRevenue = getInvoiceRevenue(invoice);
+      const invoiceRevenue = await getInvoiceRevenue(invoice);
       
       // Log invoice details for debugging
       if (invoice.total && invoice.total > 0) {
