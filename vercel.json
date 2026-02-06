@@ -2,11 +2,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/admin/cleanup-cron",
-      "schedule": "0 */8 * * *"
-    }
-  ]
+  "framework": "nextjs"
 }
