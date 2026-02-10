@@ -1,7 +1,7 @@
 // API endpoint for automated cleanup cron job
 // This endpoint runs the cleanup script to remove members without plans
-// Designed to be called by Vercel Cron Jobs every 8 hours
-// Schedule: Every 8 hours (0 */8 * * *)
+// Designed to be called by Vercel Cron Jobs daily
+// Schedule: Every day at 23:00 (0 23 * * *)
 
 const path = require("path");
 const fs = require("fs");

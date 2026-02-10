@@ -6,7 +6,10 @@
 // 4. Cleans up any orphaned records
 // 
 // Designed to be run via cron job every 8 hours
-// Can also be run manually: node scripts/auto-cleanup-no-plan-members.js
+// Can also be run manually:
+//   node scripts/auto-cleanup-no-plan-members.js --dry-run
+//   node scripts/auto-cleanup-no-plan-members.js --dry-run --hours=72
+//   node scripts/auto-cleanup-no-plan-members.js
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
@@ -28,6 +31,11 @@ if (!MEMBERSTACK_SECRET_KEY) {
 
 const memberstack = memberstackAdmin.init(MEMBERSTACK_SECRET_KEY);
 
+const DRY_RUN = process.argv.includes("--dry-run");
+const hoursArg = process.argv.find(arg => arg.startsWith("--hours="));
+const HOURS_WINDOW = hoursArg ? Number(hoursArg.split("=")[1]) : 24;
+const WINDOW_MS = HOURS_WINDOW * 60 * 60 * 1000;
+
 async function cleanupMembersWithoutPlans() {
   console.log("\n🔄 Starting automated cleanup of members without plans...\n");
   console.log(`⏰ Started at: ${new Date().toISOString()}\n`);
@@ -38,7 +46,9 @@ async function cleanupMembersWithoutPlans() {
     deletedFromMemberstack: 0,
     deletedFromSupabase: 0,
     orphanedRecordsCleaned: 0,
-    errors: []
+    errors: [],
+    dryRun: DRY_RUN,
+    hoursWindow: HOURS_WINDOW
   };
 
   try {
@@ -87,10 +97,13 @@ async function cleanupMembersWithoutPlans() {
     console.log(`✅ Found ${memberstackMembers.length} total members in Memberstack\n`);
 
     // Step 2: Identify members without plans
-    console.log("🔍 Identifying members without plans...");
+    console.log(`🔍 Identifying members without plans in the last ${HOURS_WINDOW} hours...`);
     for (const member of memberstackMembers) {
       const email = member.auth?.email || member.email || "";
       const memberId = member.id;
+      const createdAt = member.createdAt || member.created_at || null;
+      const createdAtMs = createdAt ? new Date(createdAt).getTime() : null;
+      const withinWindow = createdAtMs && Date.now() - createdAtMs <= WINDOW_MS;
       
       // Check if member has any active plans
       const hasActivePlan = member.planConnections && 
@@ -101,11 +114,12 @@ async function cleanupMembersWithoutPlans() {
           return status === "ACTIVE" || status === "TRIALING";
         });
 
-      if (!hasActivePlan) {
+      if (!hasActivePlan && withinWindow) {
         results.membersWithoutPlans.push({
           member_id: memberId,
           email: email,
-          name: member.name || "N/A"
+          name: member.name || "N/A",
+          created_at: createdAt
         });
       }
     }
@@ -118,10 +132,19 @@ async function cleanupMembersWithoutPlans() {
     }
 
     // Step 3: Delete from Memberstack and Supabase
-    console.log(`🗑️  Deleting ${results.membersWithoutPlans.length} members without plans...\n`);
+    if (DRY_RUN) {
+      console.log(`🧪 Dry run: ${results.membersWithoutPlans.length} members would be deleted\n`);
+    } else {
+      console.log(`🗑️  Deleting ${results.membersWithoutPlans.length} members without plans...\n`);
+    }
 
     for (const member of results.membersWithoutPlans) {
       try {
+        if (DRY_RUN) {
+          console.log(`   🧪 Would delete ${member.email || member.member_id}`);
+          continue;
+        }
+
         // Delete from Memberstack
         console.log(`   Deleting ${member.email || member.member_id} from Memberstack...`);
         const { error: deleteError } = await memberstack.members.delete({ id: member.member_id });
@@ -154,9 +177,11 @@ async function cleanupMembersWithoutPlans() {
     }
 
     // Step 4: Clean up orphaned records
-    console.log("\n🧹 Cleaning up orphaned records...");
-    const orphanedCount = await cleanupOrphanedRecords(memberstackMembers);
-    results.orphanedRecordsCleaned = orphanedCount;
+    if (!DRY_RUN) {
+      console.log("\n🧹 Cleaning up orphaned records...");
+      const orphanedCount = await cleanupOrphanedRecords(memberstackMembers);
+      results.orphanedRecordsCleaned = orphanedCount;
+    }
 
     console.log("\n✨ Cleanup complete!\n");
     console.log("📊 Summary:");
@@ -165,6 +190,8 @@ async function cleanupMembersWithoutPlans() {
     console.log(`   Deleted from Memberstack: ${results.deletedFromMemberstack}`);
     console.log(`   Deleted from Supabase: ${results.deletedFromSupabase}`);
     console.log(`   Orphaned records cleaned: ${results.orphanedRecordsCleaned}`);
+    console.log(`   Dry run: ${results.dryRun}`);
+    console.log(`   Hours window: ${results.hoursWindow}`);
     console.log(`   Errors: ${results.errors.length}\n`);
 
     return results;
