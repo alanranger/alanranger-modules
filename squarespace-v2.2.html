@@ -4236,14 +4236,45 @@ async function queryExamResults(column, value, passedOnly) {
   return data || [];
 }
 
+async function queryExamResultsFromStatusApi(passedOnly) {
+  const rows = [];
+  for (const moduleDef of modules || []) {
+    try {
+      const latest = await getLatestStatusViaMemberstack(moduleDef.id);
+      if (!latest) continue;
+      if (passedOnly && !latest.passed) continue;
+      rows.push({
+        module_id: moduleDef.id,
+        score_percent: latest.score_percent,
+        passed: latest.passed,
+        created_at: latest.created_at
+      });
+    } catch (e) {
+      debugLog('⚠️ Status API fallback failed for module:', moduleDef.id, e?.message || e);
+    }
+  }
+  return rows;
+}
+
 async function fetchExamResultsForIdentity({ passedOnly = false } = {}) {
   if (!memberstackIdentity) return { data: [], source: null };
 
-  const byMemberId = await queryExamResults('memberstack_id', memberstackIdentity.memberstack_id || null, passedOnly);
-  if (byMemberId.length) return { data: byMemberId, source: 'memberstack_id' };
+  try {
+    const byMemberId = await queryExamResults('memberstack_id', memberstackIdentity.memberstack_id || null, passedOnly);
+    if (byMemberId.length) return { data: byMemberId, source: 'memberstack_id' };
+  } catch (e) {
+    debugLog('⚠️ memberstack_id query failed, trying fallback:', e?.message || e);
+  }
 
-  const byEmail = await queryExamResults('email', memberstackIdentity.email || null, passedOnly);
-  if (byEmail.length) return { data: byEmail, source: 'email' };
+  try {
+    const byEmail = await queryExamResults('email', memberstackIdentity.email || null, passedOnly);
+    if (byEmail.length) return { data: byEmail, source: 'email' };
+  } catch (e) {
+    debugLog('⚠️ email query failed, trying status API fallback:', e?.message || e);
+  }
+
+  const byStatusApi = await queryExamResultsFromStatusApi(passedOnly);
+  if (byStatusApi.length) return { data: byStatusApi, source: 'status_api' };
 
   return { data: [], source: null };
 }
