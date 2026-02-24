@@ -4753,128 +4753,13 @@ document.getElementById("btn-pdf").addEventListener("click", async () => {
 
 /* ---------- CERTIFICATE PDF ---------- */
 document.getElementById("btn-certificate").addEventListener("click", async () => {
-  console.log("Certificate button clicked", lastReport);
-  if (!lastReport || !lastReport.pass) { console.log("No report or didn't pass"); return; }
-  
+  if (!lastReport || !lastReport.pass) return;
   try {
-    console.log("Starting certificate generation...");
-    const doc = new jsPDF({ orientation:'l', unit:'mm', format:'a4', compress: true });
-    console.log("jsPDF created");
-    
-    console.log("Loading images from URLs:", {logo: branding.logoUrl, academy: branding.academyUrl, sign: branding.signatureUrl, emblem: branding.emblemUrl});
-    
-    const [logo, academy, sign, emblem] = await Promise.all([
-      toDataURL(branding.logoUrl).catch(err => { console.error("Logo failed to load:", err); return null; }),
-      toDataURL(branding.academyUrl).catch(err => { console.error("Academy failed to load:", err); return null; }),
-      toDataURL(branding.signatureUrl).catch(err => { console.error("Signature failed to load:", err); return null; }),
-      toDataURLWithTransparency(branding.emblemUrl).catch(err => { console.error("Emblem failed to load:", err); return null; })
-    ]);
-    console.log("Images loaded", {logo: !!logo, academy: !!academy, sign: !!sign, emblem: !!emblem});
-
-  doc.setDrawColor(240,89,34); doc.setLineWidth(3);  doc.rect(10,10,277,187);
-  doc.setDrawColor(200,200,200); doc.setLineWidth(0.6); doc.rect(16,16,265,175);
-
-  // Add your full logo back in top-left (no distortion)
-  if (logo) { const logoDims=await getImgDims(logo); const logoFitted=fitWithin(logoDims.w,logoDims.h,50,20);
-    addPdfImage(doc, logo, 22, 22, logoFitted.w, logoFitted.h); }
-  
-  
-  if (academy) addPdfImage(doc, academy, 290-42, 22, 20, 20);
-  
-  // Add emblem to top center with proper aspect ratio
-  if (emblem) {
-    try {
-      const emblemDims = await getImgDims(emblem);
-      console.log("Emblem dimensions:", emblemDims);
-      
-      // Scale to fit within 40x40mm while preserving aspect ratio
-      const maxSize = 40;
-      const fitted = fitWithin(emblemDims.w, emblemDims.h, maxSize, maxSize);
-      console.log("Fitted emblem dimensions:", fitted);
-      
-      // Center horizontally: (297 - fitted.w) / 2
-      const x = (297 - fitted.w) / 2;
-      const y = 22;
-      
-      addPdfImage(doc, emblem, x, y, fitted.w, fitted.h);
-      console.log(`Emblem added successfully at position (${x}, ${y}) with size ${fitted.w}x${fitted.h}`);
-    } catch (err) {
-      console.error("Failed to add emblem:", err);
-    }
-  } else {
-    console.log("No emblem available, skipping...");
-  }
-
-  doc.setFont('times','bold'); doc.setFontSize(30); doc.text('Certificate of Achievement',148.5,72,{align:'center'});
-  doc.setFont('times','normal'); doc.setFontSize(14); doc.text('This certifies that',148.5,88,{align:'center'});
-  doc.setFont('times','bold'); doc.setFontSize(26); doc.setTextColor(0,0,139); doc.text(lastReport.name||'Student',148.5,104,{align:'center'});
-  doc.setFont('times','normal'); doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text('has successfully passed',148.5,120,{align:'center'});
-  doc.setFont('times','bold'); doc.setFontSize(20); doc.setTextColor(0,0,139); doc.text(currentQuizConfig.moduleTitle,148.5,136,{align:'center'});
-  // Score line with mixed colors and formatting - italic score, bold date
-  doc.setFont('times','italic'); doc.setFontSize(13);
-  
-  const prefix = `with a score of `;
-  const scoreResults = `${lastReport.percent}% (${lastReport.correct}/${lastReport.total})`;
-  const suffix = ` on `;
-  const dateText = `${formatDate(new Date(lastReport.timestamp))}.`;
-  const fullText = prefix + scoreResults + suffix + dateText;
-  
-  // Calculate text widths for positioning
-  const prefixWidth = doc.getTextWidth(prefix);
-  const scoreWidth = doc.getTextWidth(scoreResults);
-  const suffixWidth = doc.getTextWidth(suffix);
-  const dateWidth = doc.getTextWidth(dateText);
-  const totalWidth = prefixWidth + scoreWidth + suffixWidth + dateWidth;
-  
-  // Center the entire text block
-  const startX = 148.5 - (totalWidth / 2);
-  
-  // Draw each segment with appropriate color and formatting
-  doc.setTextColor(0,0,0); // Black for prefix
-  doc.text(prefix, startX, 150);
-  
-  doc.setTextColor(50,50,50); // Dark grey for score results
-  doc.text(scoreResults, startX + prefixWidth, 150);
-  
-  doc.setTextColor(0,0,0); // Black for suffix
-  doc.text(suffix, startX + prefixWidth + scoreWidth, 150);
-  
-  doc.setFont('times','bold'); // Bold for date
-  doc.setTextColor(0,0,0); // Black for date
-  doc.text(dateText, startX + prefixWidth + scoreWidth + suffixWidth, 150);
-  doc.setFont('helvetica','normal'); doc.setFontSize(11);
-  doc.text('Alan Ranger Photography Academy — Beginners Modules',148.5,160,{align:'center'});
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(12);
-  doc.text('Instructor: Alan Ranger',22,172);
-  const siteText='Website: alanranger.com'; doc.text(siteText,22,180); doc.link(22,176,doc.getTextWidth(siteText),6,{url:branding.siteUrl});
-
-  const sigLineY=184;
-  if (sign){ 
-    console.log("Adding signature to certificate...");
-    try {
-      const dims=await getImgDims(sign); 
-      const fitted=fitWithin(dims.w,dims.h,130*0.8,50*0.8);
-      const x=290-22-fitted.w; 
-      const y=sigLineY-fitted.h+3; 
-      addPdfImage(doc, sign, x, y, fitted.w, fitted.h);
-      console.log("Signature added successfully");
-    } catch (err) {
-      console.error("Failed to add signature:", err);
-    }
-  } else {
-    console.log("No signature available, skipping...");
-  }
-  doc.setDrawColor(240,89,34); doc.setLineWidth(0.6); doc.line(290-80,sigLineY,290-22,sigLineY);
-  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.text('Signature',290-22,sigLineY+6,{align:'right'});
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  doc.text(`Certificate ID: ${slugify(lastReport.moduleId)}-${Date.now()}`,290-16,46,{align:'right'});
-
-  console.log("About to save certificate...");
-  doc.save(`${slugify(lastReport.moduleId)}-certificate-${Date.now()}.pdf`);
-  console.log("Certificate saved successfully!");
-  
+    await window.downloadCertificatePDF(
+      currentQuizConfig.moduleId,
+      lastReport.timestamp || null,
+      lastReport.name || null
+    );
   } catch (error) {
     console.error("Error generating certificate:", error);
     alert("Error generating certificate: " + error.message);
