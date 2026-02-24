@@ -3564,11 +3564,64 @@ function debugLog(...args){
   }
 }
 
+const PDF_IMAGE_MAX_DIMENSION = 1400;
+
+async function blobToResizedDataUrl(blob, { preserveTransparency = false } = {}) {
+  return await new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          PDF_IMAGE_MAX_DIMENSION / Math.max(1, img.naturalWidth),
+          PDF_IMAGE_MAX_DIMENSION / Math.max(1, img.naturalHeight)
+        );
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          resolve(null);
+          return;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        if (!preserveTransparency) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const format = preserveTransparency ? 'image/png' : 'image/jpeg';
+        const quality = preserveTransparency ? undefined : 0.82;
+        resolve(canvas.toDataURL(format, quality));
+      } catch (e) {
+        resolve(null);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+    img.src = objectUrl;
+  });
+}
+
 // --- Tiny helper to make remote images PDF-safe (avoids CORS issues) ---
 async function toDataURL(url){
   const res = await fetch(url, { mode: 'cors' });
   if (!res.ok) throw new Error(`Image fetch failed ${res.status} ${res.statusText}`);
   const blob = await res.blob();
+  const optimized = await blobToResizedDataUrl(blob, { preserveTransparency: false });
+  if (optimized) return optimized;
   return await new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onloadend = ()=>resolve(reader.result);
@@ -3989,7 +4042,7 @@ window.downloadResultsPDF = async function(moduleId){
     const jsp = (window.jspdf || {}).jsPDF;
     if (!jsp) throw new Error('jsPDF not loaded (check network/ad blockers)');
 
-    const doc = new jsp({ unit:'pt', format:'a4' });
+    const doc = new jsp({ unit:'pt', format:'a4', compress: true });
     const pw = doc.internal.pageSize.getWidth();
 
     // Calculate questions ratio
@@ -4106,7 +4159,7 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
     debugLog('🔍 jsPDF object:', jsp);
     if (!jsp) throw new Error('jsPDF not loaded (check network/ad blockers)');
 
-    const doc = new jsp({ orientation:'l', unit:'mm', format:'a4' });
+    const doc = new jsp({ orientation:'l', unit:'mm', format:'a4', compress: true });
     
     // Load all branding images with error handling
     const [logo, academy, sign, emblem] = await Promise.all([
@@ -4336,7 +4389,7 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     
     debugLog('✅ jsPDF loaded, creating document...');
 
-    const doc = new jsp({ orientation:'l', unit:'mm', format:'a4' });
+    const doc = new jsp({ orientation:'l', unit:'mm', format:'a4', compress: true });
 
     // Brand assets
     const [logo, academy, sign, emblem] = await Promise.all([
@@ -4442,7 +4495,7 @@ window.downloadMasterTranscriptPDF = async function(){
     for (const row of data) if (!latest[row.module_id]) latest[row.module_id] = row;
 
     const jsp = (window.jspdf || {}).jsPDF;
-    const doc = new jsp({ unit:'pt', format:'a4' });
+    const doc = new jsp({ unit:'pt', format:'a4', compress: true });
     const pw = doc.internal.pageSize.getWidth();
 
     // Brand assets
@@ -4619,27 +4672,9 @@ async function toDataURLWithTransparency(url) {
   try {
     const res = await fetch(url, {mode: 'cors'});
     const blob = await res.blob();
-    
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        
-        // Clear canvas with transparent background
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw image preserving transparency
-        ctx.drawImage(img, 0, 0);
-        
-        // Convert to data URL with transparency
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = () => resolve(null);
-      img.src = URL.createObjectURL(blob);
-    });
+    const optimized = await blobToResizedDataUrl(blob, { preserveTransparency: true });
+    if (optimized) return optimized;
+    return null;
   } catch (e) {
     return null;
   }
@@ -4664,7 +4699,7 @@ const { jsPDF } = window.jspdf;
 /* ---------- RESULTS PDF ---------- */
 document.getElementById("btn-pdf").addEventListener("click", async () => {
   if (!lastReport) return;
-  const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
+  const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4', compress: true });
   const [logo, academy] = await Promise.all([toDataURL(branding.logoUrl), toDataURL(branding.academyUrl)]);
 
   doc.setFillColor(240,89,34); doc.rect(0,0,210,24,'F');
@@ -4714,7 +4749,7 @@ document.getElementById("btn-certificate").addEventListener("click", async () =>
   
   try {
     console.log("Starting certificate generation...");
-    const doc = new jsPDF({ orientation:'l', unit:'mm', format:'a4' });
+    const doc = new jsPDF({ orientation:'l', unit:'mm', format:'a4', compress: true });
     console.log("jsPDF created");
     
     console.log("Loading images from URLs:", {logo: branding.logoUrl, academy: branding.academyUrl, sign: branding.signatureUrl, emblem: branding.emblemUrl});
