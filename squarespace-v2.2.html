@@ -639,9 +639,14 @@ function showMasteryModal(){
     masterCertBtn.textContent = 'Generating PDF...';
     
     try {
-      await window.downloadMasterCertificatePDF(capturedName);
-      // Close modal after successful download
-      modal.remove();
+      const didDownload = await window.downloadMasterCertificatePDF(capturedName);
+      if (didDownload) {
+        // Close modal only after a real successful download.
+        modal.remove();
+      } else {
+        masterCertBtn.disabled = false;
+        masterCertBtn.textContent = 'Download Master Certificate';
+      }
     } catch (err) {
       debugLog('❌ Error generating certificate:', err.message);
       masterCertBtn.disabled = false;
@@ -1362,7 +1367,7 @@ async function getApiHeaders(additionalHeaders = {}) {
   };
   
   const ghostCtx = getGhostContext();
-  const inGhostMode = !!(ghostCtx && ghostCtx.memberstack_id);
+  const inGhostMode = !!(ghostCtx && (ghostCtx.memberstack_id || ghostCtx.email));
   const token = inGhostMode ? null : await getMemberstackToken();
   if (inGhostMode) {
     console.log("[getApiHeaders] Ghost mode active - skipping admin Authorization token");
@@ -1413,9 +1418,9 @@ function getGhostContext() {
       }
     } catch (e) { /* no-op */ }
 
-    if (!ghostMemberId) return null;
+    if (!ghostMemberId && !ghostEmail) return null;
     return {
-      memberstack_id: String(ghostMemberId),
+      memberstack_id: ghostMemberId ? String(ghostMemberId) : null,
       email: ghostEmail ? String(ghostEmail) : null
     };
   } catch (e) {
@@ -1427,6 +1432,57 @@ function updateGhostModeUi() {
   const btn = document.getElementById('btn-exit-ghost');
   if (!btn) return;
   btn.style.display = getGhostContext() ? 'inline-block' : 'none';
+}
+
+async function resolveGhostContextIfNeeded(ghostCtx) {
+  if (!ghostCtx) return null;
+  if (ghostCtx.memberstack_id) return ghostCtx;
+  if (!ghostCtx.email) return ghostCtx;
+
+  try {
+    // We need admin member ID to authorize ghost lookup by email.
+    const ms = window.$memberstackDom;
+    if (!ms || typeof ms.getCurrentMember !== 'function') return ghostCtx;
+
+    const adminMember = await ms.getCurrentMember();
+    const adminMemberId = adminMember?.id || adminMember?.data?.id || null;
+    if (!adminMemberId) return ghostCtx;
+
+    const apiUrl = 'https://alanranger-modules.vercel.app/api/admin/ghost-login?email=' + encodeURIComponent(ghostCtx.email);
+    const res = await fetch(apiUrl, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'X-Memberstack-Id': adminMemberId }
+    });
+    if (!res.ok) {
+      console.warn('[Ghost Mode] Failed to resolve ghost member by email: HTTP', res.status);
+      return ghostCtx;
+    }
+
+    const data = await res.json();
+    const member = data && data.member ? data.member : null;
+    const resolvedId = member && member.id ? String(member.id) : null;
+    const resolvedEmail = member?.auth?.email || member?.email || ghostCtx.email || null;
+    if (!resolvedId) return ghostCtx;
+
+    try {
+      sessionStorage.setItem(GHOST_CONTEXT_KEY, JSON.stringify({
+        memberId: resolvedId,
+        email: resolvedEmail,
+        setAt: Date.now()
+      }));
+    } catch (e) {
+      console.warn('[Ghost Mode] Failed to persist resolved ghost context:', e && e.message);
+    }
+
+    return {
+      memberstack_id: resolvedId,
+      email: resolvedEmail
+    };
+  } catch (e) {
+    console.warn('[Ghost Mode] Error resolving ghost context:', e && e.message);
+    return ghostCtx;
+  }
 }
 
 function exitGhostMode() {
@@ -1460,7 +1516,8 @@ async function getExamIdentity() {
     updateGhostModeUi();
 
     // Ghost mode: use persisted impersonation identity from dashboard navigation.
-    const ghostCtx = getGhostContext();
+    const initialGhostCtx = getGhostContext();
+    const ghostCtx = await resolveGhostContextIfNeeded(initialGhostCtx);
     if (ghostCtx && ghostCtx.memberstack_id) {
       memberstackIdentity = {
         memberstack_id: ghostCtx.memberstack_id,
@@ -4164,56 +4221,78 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
 }
 
 // Master Certificate generator
+async function queryExamResults(column, value, passedOnly) {
+  if (!value) return [];
+
+  let query = supabase
+    .from('module_results_ms')
+    .select('module_id, score_percent, passed, created_at')
+    .eq(column, value)
+    .order('created_at', { ascending: false });
+  if (passedOnly) query = query.eq('passed', true);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchExamResultsForIdentity({ passedOnly = false } = {}) {
+  if (!memberstackIdentity) return { data: [], source: null };
+
+  const byMemberId = await queryExamResults('memberstack_id', memberstackIdentity.memberstack_id || null, passedOnly);
+  if (byMemberId.length) return { data: byMemberId, source: 'memberstack_id' };
+
+  const byEmail = await queryExamResults('email', memberstackIdentity.email || null, passedOnly);
+  if (byEmail.length) return { data: byEmail, source: 'email' };
+
+  return { data: [], source: null };
+}
+
+async function ensureCertificateIdentity() {
+  if (!memberstackIdentity) {
+    debugLog('🔍 No memberstackIdentity, fetching...');
+    memberstackIdentity = await getExamIdentity();
+  }
+  if (!memberstackIdentity || !memberstackIdentity.email) {
+    debugLog('❌ No memberstack identity or email');
+    showToast('Please sign in to download the Master Certificate', 'error');
+    return false;
+  }
+  debugLog('✅ Memberstack identity found:', memberstackIdentity.email);
+  return true;
+}
+
+async function getMasterCertificateProgress() {
+  debugLog('📊 Querying module_results_ms for passed modules...');
+  const { data, source } = await fetchExamResultsForIdentity({ passedOnly: true });
+  debugLog('📊 Certificate query source:', source || 'none');
+  debugLog('📊 Query result:', data?.length || 0, 'passed modules found');
+
+  if (!data?.length) {
+    debugLog('❌ No passed modules found');
+    throw new Error('No passed modules found');
+  }
+
+  const latestPass = {};
+  for (const row of data) if (!latestPass[row.module_id]) latestPass[row.module_id] = row;
+
+  const total = modules.length;
+  const passedCount = Object.keys(latestPass).length;
+  debugLog(`📊 Passed count: ${passedCount}/${total}`);
+  return { passedCount, total };
+}
+
 window.downloadMasterCertificatePDF = async function(capturedName = null){
   try{
     debugLog('🎓 Starting Master Certificate generation...');
-    
-    // Use Memberstack authentication
-    if (!memberstackIdentity) {
-      debugLog('🔍 No memberstackIdentity, fetching...');
-      memberstackIdentity = await getExamIdentity();
-    }
-    if (!memberstackIdentity || !memberstackIdentity.email) {
-      debugLog('❌ No memberstack identity or email');
-      showToast('Please sign in to download the Master Certificate', 'error');
-      return;
-    }
-    
-    debugLog('✅ Memberstack identity found:', memberstackIdentity.email);
-
-    // Get latest passed result per module from module_results_ms
-    debugLog('📊 Querying module_results_ms for passed modules...');
-    const { data, error } = await supabase
-      .from('module_results_ms')
-      .select('module_id, score_percent, passed, created_at')
-      .eq('email', memberstackIdentity.email)
-      .eq('passed', true)
-      .order('created_at', { ascending:false });
-
-    if (error) {
-      debugLog('❌ Supabase query error:', error.message);
-      throw error;
-    }
-    
-    debugLog('📊 Query result:', data?.length || 0, 'passed modules found');
-    
-    if (!data?.length) {
-      debugLog('❌ No passed modules found');
-      throw new Error('No passed modules found');
-    }
-
-    // Deduplicate to latest pass per module
-    const latestPass = {};
-    for (const row of data) if (!latestPass[row.module_id]) latestPass[row.module_id] = row;
-
-    const total = modules.length;
-    const passedCount = Object.keys(latestPass).length;
-    debugLog(`📊 Passed count: ${passedCount}/${total}`);
+    const isAuthenticated = await ensureCertificateIdentity();
+    if (!isAuthenticated) return false;
+    const { passedCount, total } = await getMasterCertificateProgress();
     
     if (passedCount < total){
       debugLog(`❌ Not all modules passed: ${passedCount}/${total}`);
       showToast(`You've passed ${passedCount}/${total}. Finish all to unlock the Master Certificate.`, 'info');
-      return;
+      return false;
     }
 
     debugLog('✅ All modules passed, generating PDF...');
@@ -4301,6 +4380,7 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     doc.save(`master-certificate-${displayName ? slugify(displayName) : 'student'}.pdf`);
     debugLog('✅ Master Certificate PDF saved successfully');
     showToast('Master Certificate downloaded.', 'success');
+    return true;
   }catch(err){
     console.error('❌ Master Certificate error:', err);
     debugLog('❌ Master Certificate generation failed:', err.message);
@@ -4322,13 +4402,8 @@ window.downloadMasterTranscriptPDF = async function(){
       return;
     }
 
-    const { data, error } = await supabase
-      .from('module_results_ms')
-      .select('module_id, score_percent, passed, created_at')
-      .eq('email', memberstackIdentity.email)
-      .order('created_at', { ascending:false });
-
-    if (error) throw error;
+    const { data, source } = await fetchExamResultsForIdentity({ passedOnly: false });
+    debugLog('📊 Transcript query source:', source || 'none');
     if (!data?.length) throw new Error('No attempts found');
 
     // Latest per module
