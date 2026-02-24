@@ -1151,7 +1151,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         </div>
   
         <div class="ar-tile ar-span-6" id="ar-exams-tile">
-          <a href="https://www.alanranger.com/academy/photography-exams-certification" style="display:block; text-decoration:none; color:inherit;">
+          <a id="ar-exams-tile-link" href="https://www.alanranger.com/academy/photography-exams-certification" style="display:block; text-decoration:none; color:inherit;">
             <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Track progress</div>
             <div class="ar-tile__title">
               <span class="ar-tile__icon">🎓</span>
@@ -1618,6 +1618,47 @@ Keeps all styling + elements. Access guard still runs on live site.
     var LOGIN_URL = "/academy/login";
     var DASHBOARD_URL = "/academy/dashboard";
     var EXPIRED_URL = "/academy/trial-expired";
+    var GHOST_CONTEXT_KEY = "ar_ghost_context_v1";
+    function setGhostSessionContext(memberId, email) {
+      try {
+        var payload = {
+          memberId: memberId || null,
+          email: email || null,
+          setAt: Date.now()
+        };
+        sessionStorage.setItem(GHOST_CONTEXT_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn("[Ghost Login] Failed to persist ghost context:", e && e.message);
+      }
+    }
+
+    function getGhostSessionContext() {
+      try {
+        var raw = sessionStorage.getItem(GHOST_CONTEXT_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        if (!parsed || (!parsed.memberId && !parsed.email)) return null;
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function buildExamPageUrl(moduleId) {
+      var base = "/academy/photography-exams-certification";
+      var params = new URLSearchParams();
+      if (moduleId) params.set("module", String(moduleId));
+
+      var ctx = getGhostSessionContext();
+      if (ctx) {
+        if (ctx.memberId) params.set("ghost", String(ctx.memberId));
+        if (ctx.email) params.set("ghostEmail", String(ctx.email));
+      }
+
+      var qs = params.toString();
+      return qs ? (base + "?" + qs) : base;
+    }
+
   
     var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
     // Keep the old annual price id for legacy members, but also support the new annual-with-trial price id.
@@ -2316,7 +2357,7 @@ Keeps all styling + elements. Access guard still runs on live site.
             // Close drawer before navigating
             closeExamDrawer();
             // Navigate to exam page with module parameter
-            window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+            window.location.href = buildExamPageUrl(moduleId);
           }
         });
       });
@@ -2521,7 +2562,7 @@ Keeps all styling + elements. Access guard still runs on live site.
               e.stopPropagation();
               var moduleId = this.getAttribute('data-module-id');
               if (moduleId) {
-                window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+                window.location.href = buildExamPageUrl(moduleId);
               }
             });
           });
@@ -3120,6 +3161,11 @@ Keeps all styling + elements. Access guard still runs on live site.
         ghostEmail = urlParams.get("ghostEmail");
       } catch(e) { /* ignore */ }
 
+      // Persist any explicit ghost query params immediately for same-tab navigation continuity.
+      if (ghostMemberId || ghostEmail) {
+        setGhostSessionContext(ghostMemberId, ghostEmail);
+      }
+
       // If ghost mode is requested, handle it BEFORE normal authentication
       // This allows admins to ghost login even if they're not logged into Memberstack on Squarespace
       if (ghostMemberId || ghostEmail) {
@@ -3208,13 +3254,17 @@ Keeps all styling + elements. Access guard still runs on live site.
 
                 // Use the actual member ID from the response (in case we searched by email)
                 var actualGhostMemberId = ghostMember.id || ghostMemberId;
+                var actualGhostEmail = ghostMember.auth?.email || ghostMember.email || ghostEmail || '';
+
+                // Persist ghost context so navigation to Exams/other pages keeps impersonation.
+                setGhostSessionContext(actualGhostMemberId, actualGhostEmail);
 
                 // Create a mock member object that matches the expected structure
                 var mockMember = {
                   id: actualGhostMemberId,
                   data: {
                     id: actualGhostMemberId,
-                    email: ghostMember.auth?.email || ghostMember.email || ghostEmail || '',
+                    email: actualGhostEmail,
                     customFields: ghostMember.customFields || {},
                     planConnections: ghostMember.planConnections || [],
                     auth: ghostMember.auth || {}
@@ -3251,6 +3301,14 @@ Keeps all styling + elements. Access guard still runs on live site.
                   loadQAQuestionCounts(mockMember, ms);
                   renderProviderState(mockMember);
                   wirePortal(ms);
+
+                  // Ensure main Exams tile link carries ghost context params too.
+                  try {
+                    var examsTileLink = document.getElementById('ar-exams-tile-link');
+                    if (examsTileLink) {
+                      examsTileLink.href = buildExamPageUrl(null);
+                    }
+                  } catch (e) { /* no-op */ }
 
                   // Load module progress with ghost member JSON
                   if (typeof run === 'function') {

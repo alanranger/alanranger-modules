@@ -217,6 +217,7 @@
   <div id="ar-auth">
     <span id="ar-auth-status" class="badge">Not signed in</span>
     <span id="ar-auth-email"></span>
+    <button id="btn-exit-ghost" type="button" class="mini-btn" style="display:none; background:#92400e;color:#fff;border-color:#92400e;">Exit Ghost Mode</button>
     <!-- Magic-link UI hidden - Memberstack-only authentication -->
     <button id="btn-magic" type="button" class="mini-btn" style="display:none; background:#F05922;color:#fff;border-color:#F05922;">Send magic link</button>
     <button id="btn-clear" type="button" class="mini-btn" style="display:none; background:#6b7280;color:#fff;border-color:#6b7280;">Clear results / Sign out</button>
@@ -1360,7 +1361,12 @@ async function getApiHeaders(additionalHeaders = {}) {
     ...additionalHeaders
   };
   
-  const token = await getMemberstackToken();
+  const ghostCtx = getGhostContext();
+  const inGhostMode = !!(ghostCtx && ghostCtx.memberstack_id);
+  const token = inGhostMode ? null : await getMemberstackToken();
+  if (inGhostMode) {
+    console.log("[getApiHeaders] Ghost mode active - skipping admin Authorization token");
+  }
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
     console.log("[getApiHeaders] Added Authorization header with token (length:", token.length, ")");
@@ -1383,6 +1389,66 @@ async function getApiHeaders(additionalHeaders = {}) {
 /* ---------- MEMBERSTACK API FUNCTIONS ---------- */
 let memberstackIdentity = null; // { memberstack_id, email, permissions, planConnections }
 let memberstackDataLoaded = false; // Flag to prevent clearing grid after Memberstack data is loaded
+const GHOST_CONTEXT_KEY = "ar_ghost_context_v1";
+
+function getGhostContext() {
+  try {
+    let ghostMemberId = null;
+    let ghostEmail = null;
+
+    // First preference: explicit URL params
+    try {
+      const params = new URLSearchParams(String(window.location && window.location.search || ""));
+      ghostMemberId = params.get("ghost") || null;
+      ghostEmail = params.get("ghostEmail") || null;
+    } catch (e) { /* no-op */ }
+
+    // Fallback/merge: session storage persisted by dashboard
+    try {
+      const raw = sessionStorage.getItem(GHOST_CONTEXT_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw);
+        if (!ghostMemberId && stored && stored.memberId) ghostMemberId = stored.memberId;
+        if (!ghostEmail && stored && stored.email) ghostEmail = stored.email;
+      }
+    } catch (e) { /* no-op */ }
+
+    if (!ghostMemberId) return null;
+    return {
+      memberstack_id: String(ghostMemberId),
+      email: ghostEmail ? String(ghostEmail) : null
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateGhostModeUi() {
+  const btn = document.getElementById('btn-exit-ghost');
+  if (!btn) return;
+  btn.style.display = getGhostContext() ? 'inline-block' : 'none';
+}
+
+function exitGhostMode() {
+  try {
+    sessionStorage.removeItem(GHOST_CONTEXT_KEY);
+  } catch (e) {
+    console.warn('[Ghost Mode] Failed to clear session context:', e && e.message);
+  }
+
+  let nextUrl = globalThis.location.pathname || '/academy/photography-exams-certification';
+  try {
+    const params = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+    params.delete('ghost');
+    params.delete('ghostEmail');
+    const qs = params.toString();
+    nextUrl = (globalThis.location.pathname || '/academy/photography-exams-certification') + (qs ? ('?' + qs) : '');
+  } catch (e) {
+    console.warn('[Ghost Mode] Failed to clean URL params:', e && e.message);
+  }
+
+  globalThis.location.href = nextUrl;
+}
 
 /**
  * Get Memberstack identity via API
@@ -1391,6 +1457,27 @@ let memberstackDataLoaded = false; // Flag to prevent clearing grid after Member
 async function getExamIdentity() {
   try {
     updateDebugPanel();
+    updateGhostModeUi();
+
+    // Ghost mode: use persisted impersonation identity from dashboard navigation.
+    const ghostCtx = getGhostContext();
+    if (ghostCtx && ghostCtx.memberstack_id) {
+      memberstackIdentity = {
+        memberstack_id: ghostCtx.memberstack_id,
+        email: ghostCtx.email || null,
+        permissions: [],
+        planConnections: []
+      };
+      debugData.memberstackIdentity = memberstackIdentity;
+      updateDebugPanel();
+      debugLog('👻 Ghost mode active - using ghost identity:', memberstackIdentity.email || memberstackIdentity.memberstack_id);
+
+      if (memberstackIdentity.email) {
+        const emailField = document.getElementById('email');
+        if (emailField) emailField.value = memberstackIdentity.email;
+      }
+      return memberstackIdentity;
+    }
     
     // Check if Memberstack client API is available
     if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
@@ -2215,9 +2302,16 @@ const authEmail = document.getElementById('ar-auth-email');
 const statusDiv = document.getElementById('ar-status');
 const btnMagic = document.getElementById('btn-magic');
 const btnClear = document.getElementById('btn-clear');
+const btnExitGhost = document.getElementById('btn-exit-ghost');
 
 let lastMagicSentAt = 0;
 const MAGIC_DEBOUNCE_MS = 60000;
+
+if (btnExitGhost) {
+  btnExitGhost.addEventListener('click', function() {
+    exitGhostMode();
+  });
+}
 
 function setAuthUI(user){
   if (user){
