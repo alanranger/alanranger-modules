@@ -3564,7 +3564,7 @@ function debugLog(...args){
   }
 }
 
-const PDF_IMAGE_MAX_DIMENSION = 1400;
+const PDF_IMAGE_MAX_DIMENSION = 1000;
 
 async function blobToResizedDataUrl(blob, { preserveTransparency = false } = {}) {
   return await new Promise((resolve) => {
@@ -3628,6 +3628,15 @@ async function toDataURL(url){
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function getPdfImageFormat(dataUrl) {
+  return String(dataUrl || '').startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+}
+
+function addPdfImage(doc, dataUrl, x, y, w, h) {
+  if (!doc || !dataUrl) return;
+  doc.addImage(dataUrl, getPdfImageFormat(dataUrl), x, y, w, h);
 }
 
 const showLoadingSpinner = (text = "Loading your progress...") => {
@@ -4061,13 +4070,13 @@ window.downloadResultsPDF = async function(moduleId){
       try {
         const d = await getImgDims(logo); 
         const f = fitWithin(d.w, d.h, 40, 20); 
-        doc.addImage(logo, 'PNG', 40, 20, f.w, f.h);
+        addPdfImage(doc, logo, 40, 20, f.w, f.h);
       } catch(e) {}
     }
     
     if (academy) {
       try {
-        doc.addImage(academy, 'PNG', pw-60, 20, 20, 20);
+        addPdfImage(doc, academy, pw-60, 20, 20, 20);
       } catch(e) {}
     }
 
@@ -4177,10 +4186,10 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
     if (logo) { 
       const logoDims = await getImgDims(logo); 
       const logoFitted = fitWithin(logoDims.w, logoDims.h, 50, 20);
-      doc.addImage(logo,'PNG', 22, 22, logoFitted.w, logoFitted.h); 
+      addPdfImage(doc, logo, 22, 22, logoFitted.w, logoFitted.h); 
     }
     
-    if (academy) doc.addImage(academy,'PNG', 290-42, 22, 20, 20);
+    if (academy) addPdfImage(doc, academy, 290-42, 22, 20, 20);
     
     // Add emblem to top center
     if (emblem) {
@@ -4190,7 +4199,7 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
         const fitted = fitWithin(emblemDims.w, emblemDims.h, maxSize, maxSize);
         const x = (297 - fitted.w) / 2;
         const y = 22;
-        doc.addImage(emblem, 'PNG', x, y, fitted.w, fitted.h);
+        addPdfImage(doc, emblem, x, y, fitted.w, fitted.h);
       } catch (err) {
         debugLog('⚠️ Failed to add emblem:', err?.message || err);
       }
@@ -4252,7 +4261,7 @@ window.downloadCertificatePDF = async function(moduleId, attemptId = null, userN
         const fitted = fitWithin(dims.w, dims.h, 130*0.8, 50*0.8);
         const x = 290-22-fitted.w; 
         const y = sigLineY-fitted.h+3; 
-        doc.addImage(sign, 'PNG', x, y, fitted.w, fitted.h);
+      addPdfImage(doc, sign, x, y, fitted.w, fitted.h);
       } catch (err) {
         debugLog('⚠️ Failed to add signature:', err?.message || err);
       }
@@ -4403,9 +4412,9 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     doc.setDrawColor(240,89,34); doc.setLineWidth(3);  doc.rect(10,10,277,187);
     doc.setDrawColor(200,200,200); doc.setLineWidth(0.6); doc.rect(16,16,265,175);
 
-    if (logo){ const d=await getImgDims(logo); const f=fitWithin(d.w,d.h,50,20); doc.addImage(logo,'PNG',22,22,f.w,f.h); }
-    if (academy) doc.addImage(academy,'PNG',290-42,22,20,20);
-    if (emblem){ try{ const d=await getImgDims(emblem); const f=fitWithin(d.w,d.h,40,40); const x=(297-f.w)/2; doc.addImage(emblem,'PNG',x,22,f.w,f.h);}catch{} }
+    if (logo){ const d=await getImgDims(logo); const f=fitWithin(d.w,d.h,50,20); addPdfImage(doc, logo, 22, 22, f.w, f.h); }
+    if (academy) addPdfImage(doc, academy, 290-42, 22, 20, 20);
+    if (emblem){ try{ const d=await getImgDims(emblem); const f=fitWithin(d.w,d.h,40,40); const x=(297-f.w)/2; addPdfImage(doc, emblem, x, 22, f.w, f.h);}catch{} }
 
     // Headings
     doc.setFont('times','bold'); doc.setFontSize(30);
@@ -4450,7 +4459,7 @@ window.downloadMasterCertificatePDF = async function(capturedName = null){
     const sigLineY=184;
     if (sign){ try{
       const dims=await getImgDims(sign); const f=fitWithin(dims.w,dims.h,130*0.8,50*0.8);
-      const x=290-22-f.w; const y=sigLineY-f.h+3; doc.addImage(sign,'PNG',x,y,f.w,f.h);
+      const x=290-22-f.w; const y=sigLineY-f.h+3; addPdfImage(doc, sign, x, y, f.w, f.h);
     }catch{} }
     doc.setDrawColor(240,89,34); doc.setLineWidth(0.6); doc.line(290-80,sigLineY,290-22,sigLineY);
     doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.text('Signature',290-22,sigLineY+6,{align:'right'});
@@ -4509,13 +4518,13 @@ window.downloadMasterTranscriptPDF = async function(){
       try {
         const d = await getImgDims(logo); 
         const f = fitWithin(d.w, d.h, 40, 20); 
-        doc.addImage(logo, 'PNG', 40, 20, f.w, f.h);
+        addPdfImage(doc, logo, 40, 20, f.w, f.h);
       } catch(e) {}
     }
     
     if (academy) {
       try {
-        doc.addImage(academy, 'PNG', pw-60, 20, 20, 20);
+        addPdfImage(doc, academy, pw-60, 20, 20, 20);
       } catch(e) {}
     }
 
@@ -4704,8 +4713,8 @@ document.getElementById("btn-pdf").addEventListener("click", async () => {
 
   doc.setFillColor(240,89,34); doc.rect(0,0,210,24,'F');
   if (logo) { const logoDims=await getImgDims(logo); const logoFitted=fitWithin(logoDims.w,logoDims.h,20,16);
-    doc.addImage(logo,'PNG',8,4,logoFitted.w,logoFitted.h); }
-  if (academy) doc.addImage(academy,'PNG',210-24,4,16,16);
+    addPdfImage(doc, logo, 8, 4, logoFitted.w, logoFitted.h); }
+  if (academy) addPdfImage(doc, academy, 210-24, 4, 16, 16);
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
   doc.text(currentQuizConfig.moduleTitle,28,15); doc.setTextColor(0,0,0);
 
@@ -4767,10 +4776,10 @@ document.getElementById("btn-certificate").addEventListener("click", async () =>
 
   // Add your full logo back in top-left (no distortion)
   if (logo) { const logoDims=await getImgDims(logo); const logoFitted=fitWithin(logoDims.w,logoDims.h,50,20);
-    doc.addImage(logo,'PNG',22,22,logoFitted.w,logoFitted.h); }
+    addPdfImage(doc, logo, 22, 22, logoFitted.w, logoFitted.h); }
   
   
-  if (academy) doc.addImage(academy,'PNG',290-42,22,20,20);
+  if (academy) addPdfImage(doc, academy, 290-42, 22, 20, 20);
   
   // Add emblem to top center with proper aspect ratio
   if (emblem) {
@@ -4787,7 +4796,7 @@ document.getElementById("btn-certificate").addEventListener("click", async () =>
       const x = (297 - fitted.w) / 2;
       const y = 22;
       
-      doc.addImage(emblem, 'PNG', x, y, fitted.w, fitted.h);
+      addPdfImage(doc, emblem, x, y, fitted.w, fitted.h);
       console.log(`Emblem added successfully at position (${x}, ${y}) with size ${fitted.w}x${fitted.h}`);
     } catch (err) {
       console.error("Failed to add emblem:", err);
@@ -4848,7 +4857,7 @@ document.getElementById("btn-certificate").addEventListener("click", async () =>
       const fitted=fitWithin(dims.w,dims.h,130*0.8,50*0.8);
       const x=290-22-fitted.w; 
       const y=sigLineY-fitted.h+3; 
-      doc.addImage(sign,'PNG',x,y,fitted.w,fitted.h);
+      addPdfImage(doc, sign, x, y, fitted.w, fitted.h);
       console.log("Signature added successfully");
     } catch (err) {
       console.error("Failed to add signature:", err);
