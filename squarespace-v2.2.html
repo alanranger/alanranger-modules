@@ -2309,6 +2309,8 @@ const MAGIC_DEBOUNCE_MS = 60000;
 
 if (btnExitGhost) {
   btnExitGhost.addEventListener('click', function() {
+    const shouldExit = globalThis.confirm("Exit ghost mode and return to your own account?");
+    if (!shouldExit) return;
     exitGhostMode();
   });
 }
