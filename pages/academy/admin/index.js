@@ -5,6 +5,7 @@ export default function AdminDashboard() {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
         console.warn('[admin] Failed to sync net member growth total:', error.message);
       }
       setKpis(nextData);
+      setLastUpdatedAt(new Date().toISOString());
       addDebugLog('KPIs loaded successfully', { counts: data });
     } catch (error) {
       addDebugLog('Failed to fetch KPIs', { error: error.message });
@@ -95,6 +97,15 @@ export default function AdminDashboard() {
         <div className="ar-admin-loading">Loading dashboard...</div>
       </div>
     );
+  }
+
+  function formatLastUpdated(isoDate) {
+    if (!isoDate) return "Last Updated: --";
+    try {
+      return `Last Updated: ${new Date(isoDate).toLocaleString("en-GB")}`;
+    } catch {
+      return "Last Updated: --";
+    }
   }
 
   async function handleRefresh() {
@@ -169,7 +180,7 @@ export default function AdminDashboard() {
             <h1 className="ar-admin-title" style={{ margin: 0 }}>Admin Analytics Dashboard</h1>
             <p className="ar-admin-subtitle" style={{ margin: 0 }}>Academy activity and engagement metrics</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
             <button
               onClick={() => setShowDebugPanel(!showDebugPanel)}
               className="ar-admin-btn-secondary"
@@ -177,18 +188,23 @@ export default function AdminDashboard() {
             >
               {showDebugPanel ? '🔍 Hide Debug' : '🔍 Show Debug'}
             </button>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="ar-admin-btn"
-              style={{ 
-                minWidth: '140px',
-                opacity: refreshing ? 0.6 : 1,
-                cursor: refreshing ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {refreshing ? 'Refreshing...' : '🔄 Refresh Data'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="ar-admin-btn"
+                style={{ 
+                  minWidth: '140px',
+                  opacity: refreshing ? 0.6 : 1,
+                  cursor: refreshing ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {refreshing ? 'Refreshing...' : '🔄 Refresh Data'}
+              </button>
+              <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)' }}>
+                {formatLastUpdated(lastUpdatedAt)}
+              </div>
+            </div>
           </div>
         </div>
       </div>

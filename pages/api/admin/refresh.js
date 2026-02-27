@@ -18,6 +18,14 @@ function safeIso(d) {
   }
 }
 
+function getCronSecret(req) {
+  const authHeader = req.headers?.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  return req.headers?.["x-cron-secret"] || req.query?.secret || "";
+}
+
 export default async function handler(req, res) {
   // Log the request method for debugging
   console.log('[refresh-pages-api] Request received:', { 
@@ -28,7 +36,7 @@ export default async function handler(req, res) {
   
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   // Handle preflight
@@ -37,20 +45,35 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
   
-  // Only allow POST method
-  if (req.method !== 'POST') {
-    console.error('[refresh-pages-api] Method not allowed:', req.method);
-    const errorResponse = { 
-      error: `Method Not Allowed. Expected POST, got ${req.method}`,
+  const isPost = req.method === "POST";
+  const isCronGet = req.method === "GET";
+
+  // Allow:
+  // - POST for manual refresh button
+  // - GET for scheduled Vercel cron (requires secret)
+  if (!isPost && !isCronGet) {
+    console.error("[refresh-pages-api] Method not allowed:", req.method);
+    const errorResponse = {
+      error: `Method Not Allowed. Expected GET/POST, got ${req.method}`,
       received: req.method,
-      allowed: ['POST', 'OPTIONS'],
-      endpoint: 'pages/api/admin/refresh'
+      allowed: ["GET", "POST", "OPTIONS"],
+      endpoint: "pages/api/admin/refresh",
     };
-    console.error('[refresh-pages-api] Returning 405:', errorResponse);
+    console.error("[refresh-pages-api] Returning 405:", errorResponse);
     return res.status(405).json(errorResponse);
   }
+
+  if (isCronGet) {
+    const configuredSecret = process.env.CRON_SECRET || "";
+    const providedSecret = getCronSecret(req);
+    if (!configuredSecret || providedSecret !== configuredSecret) {
+      console.error("[refresh-pages-api] Unauthorized cron request");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.log("[refresh-pages-api] Authorized cron refresh request");
+  }
   
-  console.log('[refresh-pages-api] POST request validated, proceeding...');
+  console.log(`[refresh-pages-api] ${isPost ? "POST" : "GET cron"} request validated, proceeding...`);
   
   try {
     console.log('[refresh] Processing request...');
