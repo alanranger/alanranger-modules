@@ -4110,7 +4110,16 @@ Keeps all styling + elements. Access guard still runs on live site.
       opened = filteredOpenedForSave;
       
       const finalOpenedKeys = Object.keys(opened);
-      const totalOpened = finalOpenedKeys.length;
+      const uniqueOpenedModuleKeys = [];
+      const uniqueOpenedModuleSet = new Set();
+      finalOpenedKeys.forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey) && !uniqueOpenedModuleSet.has(normalizedKey)) {
+          uniqueOpenedModuleSet.add(normalizedKey);
+          uniqueOpenedModuleKeys.push(normalizedKey);
+        }
+      });
+      const totalOpened = uniqueOpenedModuleKeys.length;
 
       // Category totals
       const totals = {
@@ -4130,7 +4139,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         assignment: 0
       };
 
-      finalOpenedKeys.forEach(function(path){
+      uniqueOpenedModuleKeys.forEach(function(path){
         const item = opened[path];
         if (item && item.cat) {
           const cat = item.cat.toLowerCase();
@@ -4330,11 +4339,20 @@ Keeps all styling + elements. Access guard still runs on live site.
                   // Save back to Memberstack
                   await ms.updateMemberJSON({ json: memberJson });
                   
-                  // Update progress count
-                  var totalOpened = Object.keys(memberJson.arAcademy.modules.opened || {}).length;
+                  // Update progress count (modules only, unique normalized URLs)
+                  var openedMap = memberJson.arAcademy.modules.opened || {};
+                  var uniqueOpenedModuleCount = 0;
+                  var seenModuleUrls = new Set();
+                  Object.keys(openedMap).forEach(function(key) {
+                    var normalizedKey = normalizePath(key);
+                    if (DEFINITIVE_MODULE_URLS.includes(normalizedKey) && !seenModuleUrls.has(normalizedKey)) {
+                      seenModuleUrls.add(normalizedKey);
+                      uniqueOpenedModuleCount++;
+                    }
+                  });
                   var progressTitleEl = document.getElementById('ar-modules-progress-title');
                   if (progressTitleEl) {
-                    progressTitleEl.textContent = totalOpened + '/60 opened';
+                    progressTitleEl.textContent = uniqueOpenedModuleCount + '/60 opened';
                   }
                   
                   console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
