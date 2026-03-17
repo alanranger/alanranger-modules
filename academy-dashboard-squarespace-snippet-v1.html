@@ -4287,7 +4287,7 @@ Keeps all styling + elements. Access guard still runs on live site.
         // Add click handlers to track module opens (especially for PDFs)
         var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
         moduleCubes.forEach(function(cube) {
-          cube.addEventListener('click', function(e) {
+          cube.addEventListener('click', async function(e) {
             var cubeEl = this; // Capture cube element
             var moduleUrl = cubeEl.getAttribute('data-module-url');
             var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
@@ -4295,12 +4295,15 @@ Keeps all styling + elements. Access guard still runs on live site.
             var moduleTitle = cubeEl.getAttribute('title') || 'Module';
             
             if (!moduleUrl) return;
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
             
             // Normalize the URL
             var normalizedUrl = normalizePath(moduleUrl);
             
             // Check if already opened
             var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
+            var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
+            var persistPromise = Promise.resolve();
             
             if (!alreadyOpened) {
               // Mark as opened immediately (optimistic update)
@@ -4317,7 +4320,7 @@ Keeps all styling + elements. Access guard still runs on live site.
               cubeEl.classList.add('status-opened');
               
               // Save to Memberstack asynchronously
-              (async function() {
+              persistPromise = (async function() {
                 try {
                   // Get current member JSON
                   var jsonRes = await ms.getMemberJSON();
@@ -4365,6 +4368,22 @@ Keeps all styling + elements. Access guard still runs on live site.
                 }
               })();
             }
+
+            if (openInNewTab) {
+              window.open(moduleUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+
+            if (!alreadyOpened) {
+              try {
+                await Promise.race([
+                  persistPromise,
+                  new Promise(function(resolve) { setTimeout(resolve, 350); })
+                ]);
+              } catch (_) {}
+            }
+
+            window.location.href = moduleUrl;
           });
         });
       }
@@ -4500,16 +4519,19 @@ Keeps all styling + elements. Access guard still runs on live site.
         // Add click handlers to track practice pack opens (exactly like modules)
         var practicePackCubes = practicePacksMiniGridEl.querySelectorAll('.ar-practice-pack-cube');
         practicePackCubes.forEach(function(cube) {
-          cube.addEventListener('click', function(e) {
+          cube.addEventListener('click', async function(e) {
             var cubeEl = this;
             var packUrl = cubeEl.getAttribute('data-pack-url');
             var category = cubeEl.getAttribute('data-pack-category');
             var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
             
             if (!packUrl) return;
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
             
             var normalizedUrl = normalizePath(packUrl);
             var alreadyOpened = !!(opened[packUrl] || opened[normalizedUrl]);
+            var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
+            var persistPromise = Promise.resolve();
             
             if (!alreadyOpened) {
               var nowIso = new Date().toISOString();
@@ -4524,7 +4546,7 @@ Keeps all styling + elements. Access guard still runs on live site.
               cubeEl.classList.add('status-opened');
               
               // Save to Memberstack asynchronously
-              (async function() {
+              persistPromise = (async function() {
                 try {
                   var jsonRes = await ms.getMemberJSON();
                   var memberJson = normalizeMemberJson(jsonRes);
@@ -4587,6 +4609,22 @@ Keeps all styling + elements. Access guard still runs on live site.
                 }
               })();
             }
+
+            if (openInNewTab) {
+              window.open(packUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+
+            if (!alreadyOpened) {
+              try {
+                await Promise.race([
+                  persistPromise,
+                  new Promise(function(resolve) { setTimeout(resolve, 350); })
+                ]);
+              } catch (_) {}
+            }
+
+            window.location.href = packUrl;
           });
         });
       }
@@ -4720,16 +4758,19 @@ Keeps all styling + elements. Access guard still runs on live site.
           // Add click handlers to track checklist opens (open PDFs in new tab)
           var checklistCubes = checklistsMiniGridEl.querySelectorAll('.ar-checklist-cube');
           checklistCubes.forEach(function(cube) {
-            cube.addEventListener('click', function(e) {
+            cube.addEventListener('click', async function(e) {
               var cubeEl = this;
               var checklistUrl = cubeEl.getAttribute('data-checklist-url');
               var category = cubeEl.getAttribute('data-checklist-category');
               var checklistTitle = cubeEl.getAttribute('title') || 'Checklist';
               
               if (!checklistUrl) return;
+              if (e && typeof e.preventDefault === 'function') e.preventDefault();
               
               var normalizedUrl = normalizePath(checklistUrl);
               var alreadyOpened = !!(opened[checklistUrl] || opened[normalizedUrl]);
+              var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
+              var persistPromise = Promise.resolve();
               
               if (!alreadyOpened) {
                 var nowIso = new Date().toISOString();
@@ -4750,7 +4791,7 @@ Keeps all styling + elements. Access guard still runs on live site.
                 }
                 
                 // Save to Memberstack asynchronously
-                (async function() {
+                persistPromise = (async function() {
                   try {
                     var jsonRes = await ms.getMemberJSON();
                     var memberJson = normalizeMemberJson(jsonRes);
@@ -4798,7 +4839,22 @@ Keeps all styling + elements. Access guard still runs on live site.
                   }
                 })();
               }
-              // Note: target="_blank" on the <a> tag will open in new tab automatically
+
+              if (openInNewTab) {
+                window.open(checklistUrl, '_blank', 'noopener,noreferrer');
+                return;
+              }
+
+              if (!alreadyOpened) {
+                try {
+                  await Promise.race([
+                    persistPromise,
+                    new Promise(function(resolve) { setTimeout(resolve, 350); })
+                  ]);
+                } catch (_) {}
+              }
+
+              window.location.href = checklistUrl;
             });
           });
         }
