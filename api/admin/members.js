@@ -1257,7 +1257,20 @@ async function handleMembers(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const cachedResponse = getCachedMembersResponse(req);
+    const forGhostList = req.query.for_ghost === "true" || req.query.for_ghost === "1";
+
+    if (forGhostList) {
+      const { checkAdminAccess } = require("./_auth");
+      const { isAdmin, error: authError } = await checkAdminAccess(req);
+      if (!isAdmin) {
+        return res.status(403).json({
+          error: "Admin access required",
+          details: authError || "Not authorized"
+        });
+      }
+    }
+
+    const cachedResponse = forGhostList ? null : getCachedMembersResponse(req);
     if (cachedResponse) {
       return res.status(200).json(cachedResponse);
     }
@@ -1268,16 +1281,21 @@ async function handleMembers(req, res) {
     );
 
     // Parse query params
-    const page = Number.parseInt(req.query.page, 10) || 1;
-    const limit = Number.parseInt(req.query.limit, 10) || 50;
+    const fetchCap = forGhostList ? 2500 : 1000;
+    let page = Number.parseInt(req.query.page, 10) || 1;
+    let limit = Number.parseInt(req.query.limit, 10) || 50;
+    if (forGhostList) {
+      page = 1;
+      limit = fetchCap;
+    }
     const offset = (page - 1) * limit;
-    
-    const planFilter = req.query.plan; // 'trial', 'paid', 'annual', 'monthly'
-    const statusFilter = req.query.status; // 'active', 'trialing', 'canceled'
+
+    const planFilter = forGhostList ? null : req.query.plan; // 'trial', 'paid', 'annual', 'monthly'
+    const statusFilter = forGhostList ? "" : req.query.status; // 'active', 'trialing', 'canceled'
     const search = req.query.search; // name or email search
     const lastSeenFilter = req.query.last_seen; // '24h', '7d', '30d', 'never'
-    const activeNowFilter = req.query.active_now === 'true'; // filter to members with recent activity (last 30 min)
-    const tileFilter = req.query.filter; // custom tile cohort filter
+    const activeNowFilter = req.query.active_now === "true"; // filter to members with recent activity (last 30 min)
+    const tileFilter = forGhostList ? null : req.query.filter; // custom tile cohort filter
     const sortField = req.query.sort || 'updated_at'; // field to sort by
     const sortOrder = req.query.order || 'desc'; // 'asc' or 'desc'
 
@@ -1301,7 +1319,7 @@ async function handleMembers(req, res) {
     // Get total count first (before pagination)
     // Fetch ALL members (no pagination yet) - we'll sort and paginate after enrichment
     // Use a reasonable limit to prevent memory issues (e.g., 1000 members max)
-    const { data: members, error } = await query.order('updated_at', { ascending: false }).limit(1000);
+    const { data: members, error } = await query.order("updated_at", { ascending: false }).limit(fetchCap);
 
     if (error) {
       throw error;
@@ -1322,16 +1340,17 @@ async function handleMembers(req, res) {
 
     const hasTileFilter = Boolean(tileFilter);
 
-    // Filter out test accounts and members without valid plans (trial or annual)
-    // Default to ACTIVE/TRIALING unless status filter requests otherwise
-    const validMembers = filterValidMembers({
-      baseMembers,
-      isExpiredFilter,
-      statusFilter,
-      hasTileFilter,
-      isRevenueAllTimeFilter,
-      now
-    });
+    // Ghost list: every row in ms_members_cache (any plan status) for admin preview only
+    const validMembers = forGhostList
+      ? baseMembers || []
+      : filterValidMembers({
+          baseMembers,
+          isExpiredFilter,
+          statusFilter,
+          hasTileFilter,
+          isRevenueAllTimeFilter,
+          now
+        });
 
     // Enrich with engagement stats (last seen, modules opened, exams, bookmarks)
     let filteredValidMembers = await applyTileFilter({
@@ -1676,7 +1695,9 @@ async function handleMembers(req, res) {
       }
     };
 
-    setCachedMembersResponse(req, responsePayload);
+    if (!forGhostList) {
+      setCachedMembersResponse(req, responsePayload);
+    }
     return res.status(200).json(responsePayload);
 
   } catch (error) {

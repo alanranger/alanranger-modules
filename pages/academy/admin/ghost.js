@@ -95,7 +95,7 @@ export default function GhostLogin() {
     setLoading(true);
     try {
       // Fetch all members (we'll paginate in the UI)
-      const res = await fetch('/api/admin/members?limit=1000');
+      const res = await fetch("/api/admin/members?for_ghost=1&limit=2500");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const data = await res.json();
@@ -110,9 +110,14 @@ export default function GhostLogin() {
   }
 
   function handleGhostLogin(member) {
-    // Open dashboard in new tab with ghost parameter
-    const dashboardUrl = `https://www.alanranger.com/academy/dashboard?ghostEmail=${encodeURIComponent(member.email || '')}`;
-    window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
+    const params = new URLSearchParams();
+    if (member.member_id) {
+      params.set("ghost", member.member_id);
+    } else if (member.email) {
+      params.set("ghostEmail", member.email);
+    }
+    const dashboardUrl = `https://www.alanranger.com/academy/dashboard?${params.toString()}`;
+    window.open(dashboardUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -122,7 +127,9 @@ export default function GhostLogin() {
           👻 Ghost Login
         </h1>
         <p style={{ color: 'var(--ar-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-          View any member's dashboard exactly as they see it. Click on a member to open their dashboard in a new tab.
+          View any member&apos;s dashboard exactly as they see it — including canceled, expired, or trialing accounts
+          (same list as <code style={{ fontSize: '13px' }}>ms_members_cache</code>, up to 2500). Click a row or use{' '}
+          <strong>View Dashboard</strong> to open a new tab. Requires admin session.
         </p>
       </div>
 
