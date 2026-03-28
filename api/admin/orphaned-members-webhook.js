@@ -3,14 +3,8 @@
 // Designed to be called by Zapier every 2 hours (2-step Zap: Schedule → Webhook)
 // Handles both finding orphaned members AND sending emails (no Gmail step needed)
 
-const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Get Memberstack key from environment
 const MEMBERSTACK_SECRET_KEY = process.env.MEMBERSTACK_SECRET_KEY;

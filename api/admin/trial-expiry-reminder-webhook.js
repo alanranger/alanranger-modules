@@ -1,21 +1,35 @@
 // API endpoint to identify members with trials expiring soon and send reminder emails
 // This endpoint identifies members with trial plans expiring in X days and emails them automatically
 // Designed to be called by Zapier (2-step Zap: Schedule → Webhook)
-// Handles both finding expiring trials AND sending emails (no Gmail step needed)
 //
 // Query parameters:
 // - daysAhead: Number of days before expiry to send reminder (default: 7)
 //   Example: ?daysAhead=7 for 7-day reminder, ?daysAhead=1 for 24-hour reminder
+// - sendEmail: Set to false | 0 | no | off to only return JSON (no nodemailer). Zapier can send mail in a later step.
+// - testEmail: Send a single test (still respects sendEmail=false for dry-run preview)
+// - secret: Optional ORPHANED_WEBHOOK_SECRET for auth
+//
+// Upgrade link in emails: defaults to ACADEMY_UPGRADE_URL (Memberstack upgrade page).
+// Set TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true to restore per-member Stripe Checkout session URLs.
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    : null;
+
+if (!supabase) {
+  console.error(
+    "[trial-expiry-reminder] Supabase not configured: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+}
 
 // Get Memberstack key from environment
 const MEMBERSTACK_SECRET_KEY = process.env.MEMBERSTACK_SECRET_KEY;
@@ -32,13 +46,17 @@ const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_
 const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
 const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 
-// Academy upgrade URL - fallback if checkout generation fails
-const UPGRADE_URL_FALLBACK = process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/signup";
+// Memberstack upgrade page (same flow as dashboard /upgrade snippet)
+const MEMBERSTACK_UPGRADE_URL =
+  process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/upgrade";
+const UPGRADE_URL_FALLBACK = MEMBERSTACK_UPGRADE_URL;
 
 // Annual membership price ID from Memberstack
 const ANNUAL_MEMBERSHIP_PRICE_ID = "prc_annual-membership-jj7y0h89";
 
-// Stripe configuration
+// Stripe configuration (only used when TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true)
+const USE_STRIPE_CHECKOUT_IN_EMAIL =
+  String(process.env.TRIAL_REMINDER_USE_STRIPE_CHECKOUT || "").toLowerCase() === "true";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PRICE_ID = process.env.STRIPE_ANNUAL_PRICE_ID; // Stripe price ID for annual membership
 
@@ -74,6 +92,13 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
  */
 async function generateCheckoutUrl(memberId, memberEmail, memberName) {
   try {
+    if (!USE_STRIPE_CHECKOUT_IN_EMAIL) {
+      console.log(
+        `[trial-expiry-reminder] Using Memberstack upgrade URL (set TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true for Stripe sessions)`
+      );
+      return MEMBERSTACK_UPGRADE_URL;
+    }
+
     // Debug: Log Stripe configuration status
     console.log(`[trial-expiry-reminder] Stripe config check: stripeClient=${!!stripeClient}, STRIPE_PRICE_ID=${!!STRIPE_PRICE_ID}, priceId=${STRIPE_PRICE_ID || 'NOT SET'}`);
     
@@ -115,11 +140,16 @@ async function generateCheckoutUrl(memberId, memberEmail, memberName) {
   }
 }
 
-async function sendTrialExpiryReminder(member, daysUntilExpiry) {
-  if (!emailTransporter) {
-    console.warn("[trial-expiry-reminder] Email not configured - skipping email send");
-    return { sent: false, error: "Email not configured" };
-  }
+function shouldSendEmailFromRequest(req) {
+  const v = req.query.sendEmail;
+  if (v === undefined || v === null || String(v).trim() === "") return true;
+  const s = String(v).toLowerCase().trim();
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  return true;
+}
+
+async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
+  const sendEmail = !options || options.sendEmail !== false;
 
   // Format expiry date nicely
   const expiryDate = member.trial_expiry_date 
@@ -133,6 +163,15 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry) {
 
   // Generate personalized checkout URL for this member
   const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name);
+
+  if (!sendEmail) {
+    return { sent: false, skipped: true, upgrade_url: checkoutUrl };
+  }
+
+  if (!emailTransporter) {
+    console.warn("[trial-expiry-reminder] Email not configured - skipping email send");
+    return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl };
+  }
 
   // Determine email type based on days until/after expiry
   let emailSubject, emailBody;
@@ -325,6 +364,9 @@ This is an automated friendly reminder. Your trial expires on ${expiryDate} (${d
 }
 
 async function getMembersWithExpiringTrials(daysAhead) {
+  if (!supabase) {
+    throw new Error("Supabase client not configured");
+  }
   const expiringMembers = [];
   const now = new Date();
   const targetDate = new Date(now);
@@ -568,6 +610,16 @@ module.exports = async (req, res) => {
   }
 
   try {
+    if (!supabase) {
+      return res.status(500).json({
+        success: false,
+        error: "Supabase not configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const doSendEmail = shouldSendEmailFromRequest(req);
+
     // Get daysAhead from query parameter (default: 7)
     // Negative values are allowed for expired notifications (e.g., -1 for 1 day after expiry)
     const daysAhead = parseInt(req.query.daysAhead || "7", 10);
@@ -580,7 +632,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    console.log(`[trial-expiry-reminder] Request received at ${new Date().toISOString()} (daysAhead: ${daysAhead})`);
+    console.log(
+      `[trial-expiry-reminder] Request received at ${new Date().toISOString()} (daysAhead: ${daysAhead}, sendEmail: ${doSendEmail})`
+    );
 
     // Check if Memberstack key is configured
     if (!MEMBERSTACK_SECRET_KEY) {
@@ -628,27 +682,25 @@ module.exports = async (req, res) => {
         days_until_expiry: daysUntilExpiry
       };
       
-      // Generate checkout URL for test
-      const checkoutUrl = await generateCheckoutUrl(testMemberObj.member_id, testMemberObj.email, testMemberObj.name);
-      
-      // Send test email
-      const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry);
-      
+      const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry, {
+        sendEmail: doSendEmail
+      });
+
       return res.status(200).json({
         success: true,
         test_mode: true,
+        send_email: doSendEmail,
         timestamp: new Date().toISOString(),
         test_email: testEmail,
         member_id: testMemberObj.member_id,
         days_until_expiry: daysUntilExpiry,
-        email_sent: result.sent,
+        email_sent: !!(result.sent && !result.skipped),
+        email_skipped: !!result.skipped,
         email_error: result.error || null,
         message_id: result.messageId || null,
+        upgrade_url: result.upgrade_url || null,
         email_content_preview: {
-          subject: daysUntilExpiry === 1
-            ? "⚠️ Your Academy Trial Expires Tomorrow - Upgrade Now"
-            : `Your Academy Trial Expires in ${daysUntilExpiry === 1 ? '24 hours' : `${daysUntilExpiry} days`} - Upgrade to Continue Access`,
-          upgrade_url: checkoutUrl
+          upgrade_url: result.upgrade_url || null
         }
       });
     }
@@ -661,23 +713,29 @@ module.exports = async (req, res) => {
     let emailsFailed = 0;
 
     if (expiringMembers.length > 0) {
-      console.log(`[trial-expiry-reminder] Sending emails to ${expiringMembers.length} members with expiring trials...`);
+      console.log(
+        `[trial-expiry-reminder] ${doSendEmail ? "Sending emails" : "Skipping send (sendEmail=false); listing members only"} — ${expiringMembers.length} member(s)`
+      );
       
       for (const member of expiringMembers) {
         try {
-          const result = await sendTrialExpiryReminder(member, member.days_until_expiry);
+          const result = await sendTrialExpiryReminder(member, member.days_until_expiry, {
+            sendEmail: doSendEmail
+          });
           emailResults.push({
             email: member.email,
             name: member.name,
             trial_expiry_date: member.trial_expiry_date,
             days_until_expiry: member.days_until_expiry,
-            sent: result.sent,
+            sent: !!(result.sent && !result.skipped),
+            skipped: !!result.skipped,
+            upgrade_url: result.upgrade_url || null,
             error: result.error || null
           });
           
-          if (result.sent) {
+          if (result.sent && !result.skipped) {
             emailsSent++;
-          } else {
+          } else if (!result.skipped) {
             emailsFailed++;
           }
         } catch (emailError) {
@@ -700,6 +758,7 @@ module.exports = async (req, res) => {
       success: true,
       timestamp: new Date().toISOString(),
       days_ahead: daysAhead,
+      send_email: doSendEmail,
       expiring_trials_found: expiringMembers.length,
       emails_sent: emailsSent,
       emails_failed: emailsFailed,
