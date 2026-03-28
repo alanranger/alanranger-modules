@@ -17,8 +17,10 @@ const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Vercel docs in this repo use SUPABASE_URL (server-only). Client builds may use NEXT_PUBLIC_SUPABASE_URL.
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -27,7 +29,7 @@ const supabase =
 
 if (!supabase) {
   console.error(
-    "[trial-expiry-reminder] Supabase not configured: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+    "[trial-expiry-reminder] Supabase not configured: set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)"
   );
 }
 
@@ -613,7 +615,8 @@ module.exports = async (req, res) => {
     if (!supabase) {
       return res.status(500).json({
         success: false,
-        error: "Supabase not configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+        error:
+          "Supabase not configured: set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) in Vercel, then redeploy.",
         timestamp: new Date().toISOString()
       });
     }
