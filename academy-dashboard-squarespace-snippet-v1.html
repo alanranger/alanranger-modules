@@ -1,7 +1,16 @@
 <!--
-Academy Dashboard UI (v1.1) — Squarespace Snippet
+Academy Dashboard UI (v1.3.6) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
-Keeps all styling + elements. Access guard still runs on live site.
+v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
+v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
+v1.3.1: Center main dashboard in viewport space to the right of the fixed Members Guide (remove right-side dead gap).
+v1.3.2: Members Guide top aligns with main dashboard column (not only header), clamped below sticky header on scroll.
+v1.3.3: Help note above tile grid — hover to reveal topic and link.
+v1.3.4: Large CTA under help text → /academy/online-photography-course/
+v1.3.5: Course CTA — high-contrast green, chevrons, stronger shadow; help intro slightly larger.
+v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, row layout, JS ensureCourseCta fallback.
+      (If this script is present on other Academy pages e.g. /academy/upgrade, the old
+      behaviour redirected logged-out users to /academy/login — fixed.)
 -->
 
 <script>
@@ -78,6 +87,23 @@ Keeps all styling + elements. Access guard still runs on live site.
     padding: 0 12px; /* Reduced from 18px for less side padding */
     position: relative;
   }
+
+  /* Desktop: Members Guide fixed on the LEFT — main column centered in remaining viewport width */
+  @media (min-width: 1201px) {
+    html.ar-academy .ar-academy-dashboard__inner {
+      --arp-dash-gutter: 352px; /* 320px sidebar + gap */
+      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
+      max-width: 1400px;
+      margin-left: calc(
+        var(--arp-dash-gutter) +
+        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
+          2
+      );
+      margin-right: auto;
+      box-sizing: border-box;
+      padding: 0 12px;
+    }
+  }
   
   html.ar-academy .ar-academy-dashboard__main {
     width: 100%;
@@ -85,7 +111,7 @@ Keeps all styling + elements. Access guard still runs on live site.
   
   html.ar-academy .ar-academy-dashboard__sidebar {
     position: fixed;
-    right: 20px;
+    left: 20px;
     top: 82px; /* Default: Below the sticky Academy header (will be adjusted by JS) */
     width: 320px;
     z-index: 997; /* Below Academy header (998) but above dashboard content */
@@ -93,21 +119,20 @@ Keeps all styling + elements. Access guard still runs on live site.
     overflow-y: auto;
   }
   
-  @media (max-width: 1800px) {
-    html.ar-academy .ar-academy-dashboard__inner {
-      max-width: calc(100% - 380px); /* Account for sidebar (320px) + margins (60px) */
-      padding: 0 12px;
-    }
-  }
-  
-  @media (max-width: 1600px) {
+  @media (max-width: 1600px) and (min-width: 1201px) {
     html.ar-academy .ar-academy-dashboard__sidebar {
-      right: 10px;
+      left: 10px;
       width: 300px;
     }
-    
+
     html.ar-academy .ar-academy-dashboard__inner {
-      max-width: calc(100% - 360px); /* Account for sidebar (300px) + margins (60px) */
+      --arp-dash-gutter: 322px; /* 300px sidebar + gap */
+      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
+      margin-left: calc(
+        var(--arp-dash-gutter) +
+        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
+          2
+      );
     }
   }
   
@@ -116,16 +141,20 @@ Keeps all styling + elements. Access guard still runs on live site.
     display: flex;
       flex-direction: column;
       max-width: 100%; /* Full width when stacked */
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
       padding: 0 12px; /* Consistent padding */
     }
     
     html.ar-academy .ar-academy-dashboard__main {
       width: 100%;
-      order: 1; /* Main content first */
+      order: 1; /* Main content first on small screens */
     }
     
     html.ar-academy .ar-academy-dashboard__sidebar {
       position: relative;
+      left: auto;
       right: auto;
       top: auto;
       width: 100%;
@@ -133,7 +162,7 @@ Keeps all styling + elements. Access guard still runs on live site.
       max-height: none;
       margin-top: 32px;
       margin-bottom: 24px;
-      order: 2; /* Sidebar stacks below */
+      order: 2; /* Members Guide below tiles on small screens */
     }
   }
   
@@ -181,6 +210,81 @@ Keeps all styling + elements. Access guard still runs on live site.
     font-size: 14px;
     font-weight: 650;
     color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-academy-dashboard__tiles-help {
+    margin: 0 0 14px 0;
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--ar-border);
+    border-radius: 10px;
+    border-left: 3px solid var(--ar-brand);
+  }
+  @media (min-width: 701px) {
+    html.ar-academy .ar-academy-dashboard__tiles-help {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    html.ar-academy .ar-academy-dashboard__tiles-help-intro {
+      flex: 1 1 220px;
+      max-width: 28rem;
+    }
+  }
+  html.ar-academy .ar-academy-dashboard__tiles-help-intro {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.5;
+    color: var(--ar-text);
+  }
+  html.ar-academy .ar-academy-dashboard__course-cta {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    box-sizing: border-box;
+    gap: 10px;
+    min-height: 52px;
+    padding: 16px 22px;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: #ffffff !important;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+    background: linear-gradient(180deg, #34d399 0%, #16a34a 55%, #15803d 100%) !important;
+    border: 2px solid #4ade80 !important;
+    border-radius: 14px;
+    text-decoration: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+      0 6px 24px rgba(34, 197, 94, 0.55),
+      0 2px 8px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  html.ar-academy .ar-academy-dashboard__course-cta:hover,
+  html.ar-academy .ar-academy-dashboard__course-cta:focus-visible {
+    filter: brightness(1.08) saturate(1.05);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28) inset,
+      0 8px 32px rgba(34, 197, 94, 0.65),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+    outline: none;
+  }
+  @media (max-width: 700px) {
+    html.ar-academy .ar-academy-dashboard__course-cta {
+      align-self: stretch;
+      width: 100%;
+    }
   }
   
   /* Grid */
@@ -1136,14 +1240,31 @@ Keeps all styling + elements. Access guard still runs on live site.
         (<code>/config</code> or <code>?nochrome</code>)
       </div>
   
+      <div class="ar-academy-dashboard__tiles-help" role="region" aria-label="Dashboard tips">
+        <p class="ar-academy-dashboard__tiles-help-intro" role="note">
+          Hover your mouse pointer over any tile to reveal the topic and link.
+        </p>
+        <a
+          id="arp-academy-course-cta"
+          class="ar-academy-dashboard__course-cta"
+          href="https://www.alanranger.com/academy/online-photography-course/"
+        >&#8250;&#8250; Start the online photography course &#8250;&#8250;</a>
+      </div>
+  
       <div class="ar-academy-tiles">
         <div class="ar-tile ar-span-6" id="arp-modules-tile">
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
-          <div class="ar-tile__title">
-            <span class="ar-tile__icon">📚</span>
-            <span>Modules</span>
-            <span id="ar-modules-progress-title" class="ar-tile__progress"></span>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div class="ar-tile__title" style="margin-bottom:0;">
+              <span class="ar-tile__icon">📚</span>
+              <span>Modules</span>
+              <span id="ar-modules-progress-title" class="ar-tile__progress"></span>
             </div>
+            <a
+              href="https://www.alanranger.com/academy/online-photography-course"
+              style="display:inline-flex; align-items:center; justify-content:center; padding:6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none;"
+            >Go to online course page</a>
+          </div>
           <div class="ar-tile__desc">60 step-by-step modules</div>
           <!-- Module grid will be rendered here -->
           <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
@@ -1185,10 +1306,16 @@ Keeps all styling + elements. Access guard still runs on live site.
           </div>
           <div class="ar-tile-group__grid">
             <div id="arp-practice-packs-tile" class="ar-tile ar-span-4">
-              <div class="ar-tile__title">
-                <span class="ar-tile__icon">📦</span>
-                <span>Practice Packs</span>
-                <span id="ar-practice-packs-progress-title" class="ar-tile__progress"></span>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <div class="ar-tile__title" style="margin-bottom:0;">
+                  <span class="ar-tile__icon">📦</span>
+                  <span>Practice Packs</span>
+                  <span id="ar-practice-packs-progress-title" class="ar-tile__progress"></span>
+                </div>
+                <a
+                  href="https://www.alanranger.com/practice-pack-library"
+                  style="display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none;"
+                >Go to practice pack page</a>
               </div>
               <div class="ar-tile__desc">30 Assignment Practice Packs</div>
               <!-- Practice packs grid will be rendered here -->
@@ -1197,10 +1324,16 @@ Keeps all styling + elements. Access guard still runs on live site.
             </div>
   
             <div id="arp-checklists-tile" class="ar-tile ar-span-4">
-              <div class="ar-tile__title">
-                <span class="ar-tile__icon">✅</span>
-                <span>1-Page Field Checklists</span>
-                <span id="ar-checklists-progress-title" class="ar-tile__progress"></span>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <div class="ar-tile__title" style="margin-bottom:0;">
+                  <span class="ar-tile__icon">✅</span>
+                  <span>1-Page Field Checklists</span>
+                  <span id="ar-checklists-progress-title" class="ar-tile__progress"></span>
+                </div>
+                <a
+                  href="https://www.alanranger.com/35-photography-1-page-field-checklists"
+                  style="display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none;"
+                >Go to checklists page</a>
               </div>
               <div class="ar-tile__desc">35 One-page Field Checklists</div>
               <!-- Checklists grid will be rendered here -->
@@ -2993,8 +3126,36 @@ Keeps all styling + elements. Access guard still runs on live site.
       }
     }
   
+    function ensureAcademyCourseCta(){
+      var wrap = document.querySelector(".ar-academy-dashboard__tiles-help");
+      if (!wrap) return;
+      var url = "https://www.alanranger.com/academy/online-photography-course/";
+      var label = "\u203a\u203a Start the online photography course \u203a\u203a";
+      var el = document.getElementById("arp-academy-course-cta");
+      if (!el) {
+        var legacy = wrap.querySelector("a.ar-academy-dashboard__course-cta");
+        if (legacy) {
+          el = legacy;
+          el.id = "arp-academy-course-cta";
+        }
+      }
+      if (!el) {
+        el = document.createElement("a");
+        el.id = "arp-academy-course-cta";
+        el.className = "ar-academy-dashboard__course-cta";
+        wrap.appendChild(el);
+      }
+      if (!el.getAttribute("href") || String(el.getAttribute("href") || "").indexOf("online-photography-course") < 0) {
+        el.setAttribute("href", url);
+      }
+      var t = String(el.textContent || "").replace(/\s+/g, " ").trim();
+      if (!t || t.length < 15) el.textContent = label;
+      if (!el.classList.contains("ar-academy-dashboard__course-cta")) el.classList.add("ar-academy-dashboard__course-cta");
+    }
+
     function softFailShow(){
       // Show something in editor even if Memberstack isn't available
+      ensureAcademyCourseCta();
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.add("is-ready");
     }
@@ -3005,42 +3166,51 @@ Keeps all styling + elements. Access guard still runs on live site.
       try { globalThis.location.href = url; } catch(e) {}
     }
   
-    // Position Members Guide below Academy header (only on desktop)
+    // Position Members Guide: align top with main dashboard column, never under sticky header
     function positionMembersGuide() {
       var headerContainer = document.getElementById('ar-academy-header-container');
       var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
-      
-      if (!headerContainer || !sidebar) {
+      var mainEl = document.querySelector('.ar-academy-dashboard__main');
+
+      if (!sidebar) {
         return;
       }
-      
+
       // Check if we're on mobile/tablet (sidebar should be relative, not fixed)
       var isMobile = window.innerWidth <= 1200;
       var computedStyle = window.getComputedStyle(sidebar);
       var isFixed = computedStyle.position === 'fixed';
-      
+
       // Only position if sidebar is fixed (desktop view)
       if (isMobile || !isFixed) {
-        // On mobile, sidebar is relative - don't position it
         return;
       }
-      
-      // Get the actual bottom position of the Academy header relative to viewport
-      var headerRect = headerContainer.getBoundingClientRect();
-      var headerBottom = headerRect.bottom;
-      
-      // The header is sticky, so its bottom position relative to viewport tells us where to start
-      // If headerBottom is 0 or negative, header might not be visible yet, use default
-      var topPosition = headerBottom > 0 ? headerBottom : (headerRect.height || 80);
-      
-      // Add a small gap below the header
-      topPosition = topPosition + 2;
-      
-      // Ensure minimum position (in case calculation fails)
-      if (topPosition < 80) {
-        topPosition = 82; // Default to just below typical header height
+
+      var headerBottom = 82;
+      if (headerContainer) {
+        var headerRect = headerContainer.getBoundingClientRect();
+        var hb = headerRect.bottom;
+        headerBottom = hb > 0 ? hb + 2 : (headerRect.height || 80) + 2;
       }
-      
+
+      var mainTop = null;
+      if (mainEl) {
+        var mr = mainEl.getBoundingClientRect();
+        if (mr && typeof mr.top === 'number') {
+          mainTop = mr.top;
+        }
+      }
+
+      // Line up with the main tiles area when it sits below the header (e.g. page title in between)
+      var topPosition = headerBottom;
+      if (mainTop !== null && !isNaN(mainTop)) {
+        topPosition = Math.max(headerBottom, mainTop);
+      }
+
+      if (topPosition < 80) {
+        topPosition = 82;
+      }
+
       sidebar.style.top = topPosition + 'px';
       sidebar.style.maxHeight = 'calc(100vh - ' + (topPosition + 20) + 'px)';
     }
@@ -3076,6 +3246,11 @@ Keeps all styling + elements. Access guard still runs on live site.
     }
   
     ready(function(){
+      var arPath = (globalThis.location && globalThis.location.pathname)
+        ? String(globalThis.location.pathname).replace(/\/+$/, "") || "/"
+        : "/";
+      if (arPath !== "/academy/dashboard") return;
+
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.remove("is-ready");
       
@@ -3113,6 +3288,9 @@ Keeps all styling + elements. Access guard still runs on live site.
       setTimeout(positionMembersGuide, 200);
       setTimeout(positionMembersGuide, 500);
       setTimeout(positionMembersGuide, 1000);
+      ensureAcademyCourseCta();
+      setTimeout(ensureAcademyCourseCta, 250);
+      setTimeout(ensureAcademyCourseCta, 900);
       
       // Initialize accordion
       initMembersGuideAccordion();
@@ -3562,6 +3740,11 @@ Keeps all styling + elements. Access guard still runs on live site.
   // - Populates BOTH the full section lists and the mini tile lists
   // ===========================
   (function(){
+    var arPathBm = (globalThis.location && globalThis.location.pathname)
+      ? String(globalThis.location.pathname).replace(/\/+$/, "") || "/"
+      : "/";
+    if (arPathBm !== "/academy/dashboard") return;
+
     async function waitForMS(){
       for(let i=0;i<80;i++){
         if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === "function") return window.$memberstackDom;
