@@ -770,6 +770,171 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 14px;
   }
+  html.ar-academy .ar-resource-stack {
+    grid-column: span 4;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 100%;
+  }
+  html.ar-academy .ar-resource-stack .ar-tile {
+    margin: 0;
+  }
+  html.ar-academy .ar-resource-tile--compact {
+    min-height: 132px;
+  }
+  html.ar-academy .ar-resource-tile--asset-care {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 220px;
+  }
+  html.ar-academy .ar-asset-care-list {
+    margin: 10px 0 0 0;
+    padding-left: 18px;
+    color: var(--ar-text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  html.ar-academy .ar-asset-care-list li { margin: 3px 0; }
+  html.ar-academy .ar-asset-care-list a {
+    color: #f59e0b;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 2px;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-block;
+    border-radius: 6px;
+    padding: 1px 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  html.ar-academy .ar-asset-care-list a::after {
+    content: " \2197";
+    font-size: 11px;
+    font-weight: 900;
+    opacity: 0.95;
+  }
+  html.ar-academy .ar-asset-care-list a:hover,
+  html.ar-academy .ar-asset-care-list a:focus-visible {
+    color: #ffd08a;
+    background: rgba(245, 158, 11, 0.16);
+  }
+  html.ar-academy .ar-applied-library {
+    min-height: 0;
+  }
+  html.ar-academy .ar-applied-library__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  html.ar-academy .ar-applied-library__title {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-applied-library__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 158, 11, 0.55);
+    background: rgba(245, 158, 11, 0.14);
+    color: #ffd08a;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-applied-library__desc {
+    margin-bottom: 14px;
+  }
+  html.ar-academy .ar-applied-library__legend {
+    margin: 8px 0 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(148, 163, 184, 0.9);
+  }
+  html.ar-academy #ar-applied-learning-mini-grid {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 2;
+  }
+  html.ar-academy .ar-applied-learning-category-row {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  }
+  html.ar-academy .ar-applied-learning-category-row:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  html.ar-academy .ar-applied-learning-category-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.62);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  html.ar-academy .ar-applied-learning-count {
+    color: rgba(148, 163, 184, 0.9);
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-applied-learning-category-cubes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  html.ar-academy .ar-applied-learning-cube {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid transparent;
+    user-select: none;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    padding: 0;
+  }
+  html.ar-academy .ar-applied-learning-cube:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  html.ar-academy .ar-applied-learning-cube.status-coming-soon {
+    background: var(--ar-border);
+    color: var(--ar-text-muted);
+    border-color: var(--ar-border);
+  }
+  html.ar-academy .ar-applied-learning-cube[disabled] {
+    pointer-events: auto;
+  }
+  @media (max-width: 680px){
+    html.ar-academy .ar-applied-learning-category-label {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+  }
   
   /* Spans */
   html.ar-academy .ar-span-3 { grid-column: span 3; }
@@ -786,6 +951,8 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     html.ar-academy .ar-span-4,
     html.ar-academy .ar-span-6 { grid-column: span 12; }
     html.ar-academy .ar-tile-group__grid { grid-template-columns: 1fr; }
+    html.ar-academy .ar-resource-stack { grid-column: span 12; min-height: 0; }
+    html.ar-academy .ar-resource-tile--asset-care { min-height: 0; }
   }
   
   /* Editor-only banner + force visibility */
@@ -1341,11 +1508,90 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
               <div class="ar-tile__tip">Print one page per lesson and take it on location.</div>
             </div>
   
-            <a id="arp-ebook-tile" class="ar-tile ar-span-4" href="/academy/ebook">
-              <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
-              <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
-              <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
-            </a>
+            <div class="ar-resource-stack">
+              <a id="arp-ebook-tile" class="ar-tile ar-resource-tile--compact" href="/academy/ebook">
+                <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
+                <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
+                <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
+              </a>
+
+              <div id="arp-asset-care-tile" class="ar-tile ar-resource-tile--asset-care" aria-disabled="false">
+                <div class="ar-tile__title"><span class="ar-tile__icon">🧰</span>Caring for Your Assets</div>
+                <div class="ar-tile__desc">Protect and maintain your gear to avoid data loss and costly repairs.</div>
+                <ul class="ar-asset-care-list">
+                  <li><a data-asset-link="backup" href="https://www.alanranger.com/blog-on-photography/how-to-back-up-photos" target="_blank" rel="noopener noreferrer">Backing up photos</a></li>
+                  <li><a data-asset-link="sensor" href="https://www.alanranger.com/blog-on-photography/camera-sensor-cleaning-guide" target="_blank" rel="noopener noreferrer">Sensor cleaning basics</a></li>
+                  <li><a data-asset-link="care" href="https://www.alanranger.com/blog-on-photography/camera-care-guide" target="_blank" rel="noopener noreferrer">Camera maintenance &amp; care</a></li>
+                </ul>
+                <div class="ar-tile__tip">Build a simple routine to keep your files and equipment safe.</div>
+              </div>
+            </div>
+
+            <div class="ar-tile ar-span-12 ar-applied-library" id="arp-applied-learning-library-tile">
+              <div class="ar-applied-library__header">
+                <div class="ar-tile__title ar-applied-library__title">
+                  <span class="ar-tile__icon">🗂️</span>
+                  <span>Applied Learning Library</span>
+                </div>
+                <span class="ar-applied-library__badge">Coming Soon</span>
+              </div>
+              <div class="ar-tile__desc ar-applied-library__desc">Member-only practical guides, scenario-based learning and deeper-dive topic support.</div>
+              <div class="ar-applied-library__legend">Hover over each mini tile to view the title. All entries are coming soon.</div>
+
+              <div id="ar-applied-learning-mini-grid">
+                <div class="ar-applied-learning-category-row">
+                  <div class="ar-applied-learning-category-label">Portraits &amp; Headshots <span class="ar-applied-learning-count">Opened 0/5</span></div>
+                  <div class="ar-applied-learning-category-cubes">
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="LinkedIn Headshots — Coming Soon" disabled aria-disabled="true">01</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Corporate Headshots — Coming Soon" disabled aria-disabled="true">02</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Portrait Lighting — Coming Soon" disabled aria-disabled="true">03</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Better Portraits — Coming Soon" disabled aria-disabled="true">04</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Headshots at Home — Coming Soon" disabled aria-disabled="true">05</button>
+                  </div>
+                </div>
+
+                <div class="ar-applied-learning-category-row">
+                  <div class="ar-applied-learning-category-label">Product &amp; Commercial <span class="ar-applied-learning-count">Opened 0/7</span></div>
+                  <div class="ar-applied-learning-category-cubes">
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Product Ideas — Coming Soon" disabled aria-disabled="true">01</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="DIY Product — Coming Soon" disabled aria-disabled="true">02</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Jewellery — Coming Soon" disabled aria-disabled="true">03</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Lighting Setup — Coming Soon" disabled aria-disabled="true">04</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Pro Product — Coming Soon" disabled aria-disabled="true">05</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="iPhone Product — Coming Soon" disabled aria-disabled="true">06</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Artwork — Coming Soon" disabled aria-disabled="true">07</button>
+                  </div>
+                </div>
+
+                <div class="ar-applied-learning-category-row">
+                  <div class="ar-applied-learning-category-label">Property &amp; Interiors <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-cubes">
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Real Estate — Coming Soon" disabled aria-disabled="true">01</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Property Tips — Coming Soon" disabled aria-disabled="true">02</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Interiors — Coming Soon" disabled aria-disabled="true">03</button>
+                  </div>
+                </div>
+
+                <div class="ar-applied-learning-category-row">
+                  <div class="ar-applied-learning-category-label">Landscape &amp; Natural Light <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-cubes">
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Night Settings — Coming Soon" disabled aria-disabled="true">01</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Landscape Tips — Coming Soon" disabled aria-disabled="true">02</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Natural Light — Coming Soon" disabled aria-disabled="true">03</button>
+                  </div>
+                </div>
+
+                <div class="ar-applied-learning-category-row">
+                  <div class="ar-applied-learning-category-label">Close-Up &amp; Food <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-cubes">
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Macro — Coming Soon" disabled aria-disabled="true">01</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Food Tips — Coming Soon" disabled aria-disabled="true">02</button>
+                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Food Photos — Coming Soon" disabled aria-disabled="true">03</button>
+                  </div>
+                </div>
+              </div>
+              <div class="ar-tile__tip">New applied-learning guides will appear here as they are published.</div>
+            </div>
           </div>
         </div>
   
@@ -1403,6 +1649,26 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
             </button>
           </div>
           <div class="ar-tile__desc">Visualise and calculate exposure settings for your outdoor photography.</div>
+
+          <!-- Print Size Calculator -->
+          <div id="arp-print-size-tools" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#fff;">
+                <span style="font-size:18px;">🖨️</span>
+                <span>Print Size Calculator</span>
+              </div>
+              <button
+                type="button"
+                onclick="window.location.href='https://www.alanranger.com/blog-on-photography/photo-print-sizes-resize-photos';"
+                style="display:inline-flex; align-items:center; justify-content:center; padding:6px 14px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;"
+              >
+                Print Size Calculator
+              </button>
+            </div>
+            <div class="ar-tile__desc" style="margin-top: 6px;">
+              Check photo print dimensions, DPI, and sizing guidance before you export.
+            </div>
+          </div>
 
           <!-- Photography Style Quiz Section -->
           <div id="arp-photography-quiz-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);" onclick="event.stopPropagation();">
@@ -2870,43 +3136,55 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         });
     }
 
+    function setPaidTileState(tileEl, isTrial, liveHref) {
+      if (!tileEl) return;
+      tileEl.classList.toggle("is-disabled", isTrial);
+      if (isTrial) {
+        tileEl.removeAttribute("href");
+        tileEl.setAttribute("aria-disabled", "true");
+        return;
+      }
+      tileEl.setAttribute("href", liveHref);
+      tileEl.removeAttribute("aria-disabled");
+    }
+
+    function setNestedPaidLinks(containerEl, selector, isTrial) {
+      if (!containerEl) return;
+      containerEl.classList.toggle("is-disabled", isTrial);
+      var links = containerEl.querySelectorAll(selector);
+      if (isTrial) {
+        containerEl.setAttribute("aria-disabled", "true");
+      } else {
+        containerEl.removeAttribute("aria-disabled");
+      }
+      links.forEach(function(linkEl) {
+        if (isTrial) {
+          var href = linkEl.getAttribute("href");
+          if (href) linkEl.dataset.href = href;
+          linkEl.removeAttribute("href");
+          linkEl.setAttribute("aria-disabled", "true");
+          linkEl.setAttribute("tabindex", "-1");
+          return;
+        }
+        var storedHref = linkEl.dataset.href;
+        if (storedHref) linkEl.setAttribute("href", storedHref);
+        linkEl.removeAttribute("aria-disabled");
+        linkEl.removeAttribute("tabindex");
+      });
+    }
+
+    function setAppliedLibraryVisibility(tileEl, isTrial) {
+      if (!tileEl) return;
+      tileEl.style.display = isTrial ? "none" : "";
+      tileEl.setAttribute("aria-hidden", isTrial ? "true" : "false");
+    }
+
     function updatePaidResourceTiles(isTrial) {
-      var practicePacksTile = document.getElementById("arp-practice-packs-tile");
-      var ebookTile = document.getElementById("arp-ebook-tile");
-      var checklistsTile = document.getElementById("arp-checklists-tile");
-      
-      if (practicePacksTile) {
-        practicePacksTile.classList.toggle("is-disabled", isTrial);
-        if (isTrial) {
-          practicePacksTile.removeAttribute("href");
-          practicePacksTile.setAttribute("aria-disabled", "true");
-        } else {
-          practicePacksTile.setAttribute("href", "https://www.alanranger.com/academy/photography-practice-packs");
-          practicePacksTile.removeAttribute("aria-disabled");
-        }
-      }
-      
-      if (ebookTile) {
-        ebookTile.classList.toggle("is-disabled", isTrial);
-        if (isTrial) {
-          ebookTile.removeAttribute("href");
-          ebookTile.setAttribute("aria-disabled", "true");
-        } else {
-          ebookTile.setAttribute("href", "/academy/ebook");
-          ebookTile.removeAttribute("aria-disabled");
-        }
-      }
-      
-      if (checklistsTile) {
-        checklistsTile.classList.toggle("is-disabled", isTrial);
-        if (isTrial) {
-          checklistsTile.removeAttribute("href");
-          checklistsTile.setAttribute("aria-disabled", "true");
-        } else {
-          checklistsTile.setAttribute("href", "https://www.alanranger.com/academy/photography-checklists");
-          checklistsTile.removeAttribute("aria-disabled");
-        }
-      }
+      setPaidTileState(document.getElementById("arp-practice-packs-tile"), isTrial, "https://www.alanranger.com/academy/photography-practice-packs");
+      setPaidTileState(document.getElementById("arp-ebook-tile"), isTrial, "/academy/ebook");
+      setPaidTileState(document.getElementById("arp-checklists-tile"), isTrial, "https://www.alanranger.com/academy/photography-checklists");
+      setNestedPaidLinks(document.getElementById("arp-asset-care-tile"), 'a[data-asset-link]', isTrial);
+      setAppliedLibraryVisibility(document.getElementById("arp-applied-learning-library-tile"), isTrial);
     }
 
     function renderMemberStatus(member, ms){
