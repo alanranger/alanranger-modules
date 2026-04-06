@@ -16,7 +16,7 @@ async function assertDeleteAuthorized(req, res) {
   const expectedKey = process.env.AR_ANALYTICS_KEY;
   if (expectedKey && authKey === expectedKey) return true;
 
-  const { checkAdminAccess } = require("./_auth");
+  const { checkAdminAccess } = require("../_auth");
   const { isAdmin, error: authError } = await checkAdminAccess(req);
   if (!isAdmin) {
     res.status(403).json({
