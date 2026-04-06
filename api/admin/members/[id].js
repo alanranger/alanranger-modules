@@ -11,13 +11,18 @@ function getSupabase() {
   return createClient(url, key);
 }
 
-function assertAdmin(req, res) {
+async function assertDeleteAuthorized(req, res) {
   const authKey = req.headers["x-ar-analytics-key"] || req.query.key;
   const expectedKey = process.env.AR_ANALYTICS_KEY;
-  if (!expectedKey || authKey !== expectedKey) {
-    res.status(401).json({
+  if (expectedKey && authKey === expectedKey) return true;
+
+  const { checkAdminAccess } = require("./_auth");
+  const { isAdmin, error: authError } = await checkAdminAccess(req);
+  if (!isAdmin) {
+    res.status(403).json({
       error:
-        "Unauthorized — send header x-ar-analytics-key matching AR_ANALYTICS_KEY (same as sync-members).",
+        authError ||
+        "Admin access required. Use an admin Memberstack session on this app (see ADMIN_EMAILS), or x-ar-analytics-key for server jobs.",
     });
     return false;
   }
@@ -219,7 +224,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === "DELETE") {
-      if (!assertAdmin(req, res)) return;
+      if (!(await assertDeleteAuthorized(req, res))) return;
 
       const { data: member, error: memberError } = await supabase
         .from("ms_members_cache")

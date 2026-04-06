@@ -5,8 +5,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-const ADMIN_KEY_STORAGE = 'ar_academy_admin_analytics_key';
-
 export default function MemberDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -51,26 +49,18 @@ export default function MemberDetail() {
       return;
     }
 
-    let key =
-      typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(ADMIN_KEY_STORAGE) : null;
-    if (!key) {
-      key = window.prompt(
-        'Enter AR_ANALYTICS_KEY (same value as Vercel env — used for sync-members / admin APIs):'
-      );
-      if (!key) return;
-      sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
-    }
-
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/members/${id}`, {
         method: 'DELETE',
-        headers: { 'x-ar-analytics-key': key },
+        credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-        window.alert(data.error || 'Unauthorized. Check AR_ANALYTICS_KEY and try again.');
+      if (res.status === 401 || res.status === 403) {
+        window.alert(
+          data.error ||
+            'Admin access denied. Ensure you are listed in ADMIN_EMAILS (or Admin plan), or call this API with x-ar-analytics-key from a trusted server.'
+        );
         return;
       }
       if (!res.ok) {
