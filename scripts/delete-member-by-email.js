@@ -1,12 +1,22 @@
-// Script to delete a member from Supabase by email
+// Script to delete a member from Supabase by email (Academy project cache + related rows)
 // Usage: node scripts/delete-member-by-email.js <email>
-// Example: node scripts/delete-member-by-email.js oladapoblessing205@gmail.com
+// Loads .env.local then .env — requires SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
+
+require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: ".env" });
 
 const { createClient } = require("@supabase/supabase-js");
 
-// Hardcode credentials to avoid .env.local truncation issues
-const SUPABASE_URL = "https://dqrtcsvqsfgbqmnonkpt.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcnRjc3Zxc2ZnYnFtbm9ua3B0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5MDgyNSwiZXhwIjoyMDcyNTY2ODI1fQ.TZEPWKNMqPXWCC3WDh11Xf_yzaw_hogdrkSYZe3PY1U";
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "Missing SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL). Set them in .env.local."
+  );
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -26,24 +36,41 @@ async function deleteMemberByEmail(email) {
     }
 
     if (!members || members.length === 0) {
-      console.error(`❌ Member not found: ${email}`);
-      console.log(`\n💡 Searching for similar emails...\n`);
-      
-      // Try partial match search
-      const searchTerm = email.split("@")[0]; // Get part before @
+      console.warn(`❌ No row in ms_members_cache for: ${email}`);
+      console.log(`\n🧹 Cleaning orphan rows by email only (events, module results, cache)...\n`);
+
+      const { data: evDel } = await supabase
+        .from("academy_events")
+        .delete()
+        .ilike("email", email)
+        .select("id");
+      const { data: modDel } = await supabase
+        .from("module_results_ms")
+        .delete()
+        .ilike("email", email)
+        .select("id");
+      const { data: cacheDel } = await supabase
+        .from("ms_members_cache")
+        .delete()
+        .ilike("email", email)
+        .select("member_id");
+
+      console.log(
+        `   academy_events removed: ${evDel?.length || 0}, module_results_ms: ${modDel?.length || 0}, ms_members_cache: ${cacheDel?.length || 0}`
+      );
+      console.log(`\n💡 If trial_history / plan_events remain, they are keyed by old Memberstack ID — re-run after a cache row exists, or delete in SQL Editor by member_id.\n`);
+
+      // Try partial match search for typos
+      const searchTerm = email.split("@")[0];
       const { data: similarMembers } = await supabase
         .from("ms_members_cache")
         .select("member_id, email, name")
         .ilike("email", `%${searchTerm}%`)
         .limit(10);
-      
+
       if (similarMembers && similarMembers.length > 0) {
-        console.log(`Found ${similarMembers.length} similar email(s):`);
-        similarMembers.forEach(m => {
-          console.log(`   - ${m.email} (ID: ${m.member_id})`);
-        });
-      } else {
-        console.log("   No similar emails found.");
+        console.log(`Similar emails still in cache:`);
+        similarMembers.forEach((m) => console.log(`   - ${m.email} (ID: ${m.member_id})`));
       }
       return;
     }
@@ -83,6 +110,16 @@ async function deleteMemberByEmail(email) {
       .select("*", { count: "exact", head: true })
       .eq("memberstack_id", memberId);
 
+    const { count: trialHistoryCount } = await supabase
+      .from("academy_trial_history")
+      .select("*", { count: "exact", head: true })
+      .eq("member_id", memberId);
+
+    const { count: annualHistoryCount } = await supabase
+      .from("academy_annual_history")
+      .select("*", { count: "exact", head: true })
+      .eq("member_id", memberId);
+
     // Also check by email for legacy data
     const { count: moduleResultsByEmailCount } = await supabase
       .from("module_results_ms")
@@ -93,14 +130,18 @@ async function deleteMemberByEmail(email) {
     console.log(`   module_results_ms (by member_id): ${moduleResultsCount || 0} records`);
     console.log(`   module_results_ms (by email): ${moduleResultsByEmailCount || 0} records`);
     console.log(`   academy_plan_events: ${planEventsCount || 0} records`);
-    console.log(`   exam_member_links: ${examLinksCount || 0} records\n`);
+    console.log(`   exam_member_links: ${examLinksCount || 0} records`);
+    console.log(`   academy_trial_history: ${trialHistoryCount || 0} records`);
+    console.log(`   academy_annual_history: ${annualHistoryCount || 0} records\n`);
 
     const totalRecords =
       (eventsCount || 0) +
       (moduleResultsCount || 0) +
       (moduleResultsByEmailCount || 0) +
       (planEventsCount || 0) +
-      (examLinksCount || 0);
+      (examLinksCount || 0) +
+      (trialHistoryCount || 0) +
+      (annualHistoryCount || 0);
 
     if (totalRecords === 0) {
       console.log("ℹ️  No related records found.\n");
@@ -184,6 +225,32 @@ async function deleteMemberByEmail(email) {
       } else {
         console.log(`✅ Deleted ${examLinksCount} exam_member_links records`);
         deletedCount += examLinksCount;
+      }
+    }
+
+    if (trialHistoryCount > 0) {
+      const { error: thErr } = await supabase
+        .from("academy_trial_history")
+        .delete()
+        .eq("member_id", memberId);
+      if (thErr) {
+        console.error(`❌ Error deleting academy_trial_history:`, thErr);
+      } else {
+        console.log(`✅ Deleted ${trialHistoryCount} academy_trial_history records`);
+        deletedCount += trialHistoryCount;
+      }
+    }
+
+    if (annualHistoryCount > 0) {
+      const { error: ahErr } = await supabase
+        .from("academy_annual_history")
+        .delete()
+        .eq("member_id", memberId);
+      if (ahErr) {
+        console.error(`❌ Error deleting academy_annual_history:`, ahErr);
+      } else {
+        console.log(`✅ Deleted ${annualHistoryCount} academy_annual_history records`);
+        deletedCount += annualHistoryCount;
       }
     }
 

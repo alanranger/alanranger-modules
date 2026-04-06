@@ -5,12 +5,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+const ADMIN_KEY_STORAGE = 'ar_academy_admin_analytics_key';
+
 export default function MemberDetail() {
   const router = useRouter();
   const { id } = router.query;
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activityPage, setActivityPage] = useState(1);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -29,6 +32,58 @@ export default function MemberDetail() {
       console.error('Failed to fetch member:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function removeFromSupabase() {
+    if (!member || !id) return;
+    const ok = window.confirm(
+      'Remove this person from Supabase only?\n\n' +
+        'This deletes: member cache row, academy events, exam results, plan/trial/annual history rows for this Memberstack ID.\n\n' +
+        'It does NOT delete the Memberstack account or change Stripe. Do that in Memberstack/Stripe first if needed.\n\n' +
+        'Continue?'
+    );
+    if (!ok) return;
+
+    const typed = window.prompt(`Type this email exactly to confirm:\n${member.email || ''}`);
+    if (typed !== (member.email || '')) {
+      if (typed != null) window.alert('Email did not match. Nothing was deleted.');
+      return;
+    }
+
+    let key =
+      typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(ADMIN_KEY_STORAGE) : null;
+    if (!key) {
+      key = window.prompt(
+        'Enter AR_ANALYTICS_KEY (same value as Vercel env — used for sync-members / admin APIs):'
+      );
+      if (!key) return;
+      sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
+    }
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/members/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-ar-analytics-key': key },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+        window.alert(data.error || 'Unauthorized. Check AR_ANALYTICS_KEY and try again.');
+        return;
+      }
+      if (!res.ok) {
+        window.alert(data.error || `Request failed (${res.status})`);
+        return;
+      }
+      window.alert(data.message || 'Removed from Supabase.');
+      router.push('/academy/admin/members');
+    } catch (e) {
+      console.error(e);
+      window.alert(e.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -202,6 +257,42 @@ export default function MemberDetail() {
               )}
             </div>
           )}
+        </div>
+        <div
+          style={{
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid var(--ar-border)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '12px', color: 'var(--ar-text-muted)', maxWidth: '520px' }}>
+            <strong style={{ color: 'var(--ar-text)' }}>Supabase only:</strong> clearing cache and analytics
+            rows does not remove Memberstack login. Use Memberstack (and Stripe if applicable) to fully
+            close an account, then use this if you need a clean trial email or admin stats.
+          </p>
+          <button
+            type="button"
+            onClick={removeFromSupabase}
+            disabled={deleting}
+            style={{
+              padding: '10px 18px',
+              fontSize: '13px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+              background: 'rgba(239, 68, 68, 0.12)',
+              color: '#f87171',
+              cursor: deleting ? 'wait' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {deleting ? 'Removing…' : 'Remove from Supabase…'}
+          </button>
         </div>
       </div>
 
