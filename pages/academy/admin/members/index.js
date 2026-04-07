@@ -612,7 +612,7 @@ export default function MembersDirectory() {
             </div>
             
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1600px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
                     <th 
@@ -675,6 +675,18 @@ export default function MembersDirectory() {
                     >
                       Bookmarks {getSortIcon('bookmarks_count')}
                     </th>
+                    <th
+                      onClick={() => handleSort('applied_learning_opened_count')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Applied Opened {getSortIcon('applied_learning_opened_count')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('rps_opened_count')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      RPS Opened {getSortIcon('rps_opened_count')}
+                    </th>
                     <th 
                       onClick={() => handleSort('photography_style')}
                       style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
@@ -712,7 +724,7 @@ export default function MembersDirectory() {
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="15" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="17" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
@@ -763,6 +775,12 @@ export default function MembersDirectory() {
                           {member.exams_attempted > 0 ? `${member.exams_passed} / ${member.exams_attempted}` : '0 / 0'}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.bookmarks_count}</td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
+                          {member.applied_learning_opened_count || 0}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
+                          {member.rps_opened_count || 0}
+                        </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
                           {member.photography_style || '—'}
                         </td>

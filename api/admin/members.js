@@ -106,6 +106,17 @@ const normalizeNumber = (value) => {
   return Number.isNaN(num) ? null : num;
 };
 
+const countOpenedEntries = (openedData) => {
+  if (!openedData) return 0;
+  if (Array.isArray(openedData)) {
+    return openedData.filter(entry => Boolean(entry)).length;
+  }
+  if (typeof openedData === 'object') {
+    return Object.keys(openedData).filter(Boolean).length;
+  }
+  return 0;
+};
+
 const getStripeClient = () => {
   try {
     const stripePath = path.join(process.cwd(), 'lib', 'stripe');
@@ -1587,6 +1598,8 @@ async function handleMembers(req, res) {
       const arAcademy = json?.arAcademy || {};
       const modules = arAcademy?.modules || {};
       const opened = modules?.opened || {};
+      const appliedLearningOpened = arAcademy?.appliedLearning?.opened || {};
+      const rpsOpened = arAcademy?.rps?.opened || {};
       // Bookmarks are at root level: json.bookmarks, not json.arAcademy.bookmarks
       const bookmarks = json?.bookmarks || [];
       
@@ -1598,6 +1611,8 @@ async function handleMembers(req, res) {
       const modulesOpenedUnique = modulesFromJson > 0 ? modulesFromJson : (uniqueModulesMap[memberId]?.size || 0);
       const modulesOpenedTotal = totalOpensFromJson > 0 ? totalOpensFromJson : (moduleOpensMap[memberId] || 0);
       const bookmarksCount = Array.isArray(bookmarks) ? bookmarks.length : (bookmarksMap[memberId] || 0);
+      const appliedLearningOpenedCount = countOpenedEntries(appliedLearningOpened);
+      const rpsOpenedCount = countOpenedEntries(rpsOpened);
       
       // Get expiry date: for trials use expiry_date, for annual use current_period_end
       const expiryDate = plan.is_trial ? plan.expiry_date : (plan.current_period_end || plan.expiry_date);
@@ -1661,6 +1676,8 @@ async function handleMembers(req, res) {
         exams_attempted: (examStatsMap[memberId]?.attempts || 0) + (examStatsByEmailMap[member.email]?.attempts || 0),
         exams_passed: (examStatsMap[memberId]?.passed || 0) + (examStatsByEmailMap[member.email]?.passed || 0),
         bookmarks_count: bookmarksCount,
+        applied_learning_opened_count: appliedLearningOpenedCount,
+        rps_opened_count: rpsOpenedCount,
         photography_style: member.photography_style || null,
         hue_test_score: hueScoreMap[memberId] ?? null,
         currency,

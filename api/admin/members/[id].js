@@ -154,6 +154,15 @@ async function getMemberDetailPayload(supabase, memberId, query) {
   const raw = member.raw || {};
   const json = raw?.json || raw?.data?.json || raw;
   const bookmarksFromJson = json?.bookmarks || [];
+  const arAcademy = json?.arAcademy || {};
+  const appliedLearningOpened = arAcademy?.appliedLearning?.opened || {};
+  const rpsOpened = arAcademy?.rps?.opened || {};
+  const appliedLearningOpenedCount = Array.isArray(appliedLearningOpened)
+    ? appliedLearningOpened.filter(Boolean).length
+    : Object.keys(appliedLearningOpened || {}).filter(Boolean).length;
+  const rpsOpenedCount = Array.isArray(rpsOpened)
+    ? rpsOpened.filter(Boolean).length
+    : Object.keys(rpsOpened || {}).filter(Boolean).length;
   const bookmarks =
     Array.isArray(bookmarksFromJson) && bookmarksFromJson.length > 0
       ? bookmarksFromJson.map((path) => ({
@@ -195,6 +204,8 @@ async function getMemberDetailPayload(supabase, memberId, query) {
       most_opened_modules: mostOpenedModules,
       exams: examStatsResult,
       bookmarks_count: bookmarks.length,
+      applied_learning_opened_count: appliedLearningOpenedCount,
+      rps_opened_count: rpsOpenedCount,
       bookmarks: bookmarks,
     },
     recent_activity: recentActivity || [],

@@ -313,6 +313,16 @@ export default function MemberDetail() {
           <div className="ar-admin-kpi-value">{member.engagement?.bookmarks_count || 0}</div>
           <div className="ar-admin-kpi-period">Saved</div>
         </div>
+        <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+          <div className="ar-admin-kpi-label">Applied Learning</div>
+          <div className="ar-admin-kpi-value">{member.engagement?.applied_learning_opened_count || 0}</div>
+          <div className="ar-admin-kpi-period">Opened</div>
+        </div>
+        <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+          <div className="ar-admin-kpi-label">RPS Accreditation</div>
+          <div className="ar-admin-kpi-value">{member.engagement?.rps_opened_count || 0}</div>
+          <div className="ar-admin-kpi-period">Opened</div>
+        </div>
       </div>
 
       {/* Most Opened Modules */}
