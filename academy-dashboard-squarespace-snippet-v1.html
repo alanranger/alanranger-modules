@@ -312,6 +312,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     padding: 16px 16px 14px;
     overflow: hidden;
     min-height: 120px;
+    filter: brightness(1.1);
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   }
   
@@ -378,10 +379,19 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 
   /* Disabled tiles for trial members */
   html.ar-academy .ar-tile.is-disabled {
-    opacity: 0.4;
+    opacity: 0.82;
     cursor: not-allowed;
     pointer-events: none;
-    filter: grayscale(0.6);
+    filter: brightness(1.1) grayscale(0.2);
+  }
+  html.ar-academy .ar-tile.is-disabled .ar-tile__title,
+  html.ar-academy .ar-tile.is-disabled .ar-tile__desc {
+    color: rgba(226, 232, 240, 0.9);
+  }
+  html.ar-academy .ar-tile.is-disabled .ar-tile__kicker,
+  html.ar-academy .ar-tile.is-disabled .ar-tile__tip,
+  html.ar-academy .ar-tile.is-disabled .ar-tile__progress {
+    color: rgba(148, 163, 184, 0.9);
   }
   html.ar-academy .ar-tile.is-disabled:hover,
   html.ar-academy .ar-tile.is-disabled:focus-visible {
@@ -747,6 +757,38 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     border-radius: var(--ar-radius);
     padding: 14px;
   }
+  html.ar-academy .ar-tile-group--premium {
+    /* Strong premium wrapper around the whole paid resources block */
+    background:
+      linear-gradient(165deg, rgba(215, 190, 125, 0.12) 0%, rgba(198, 207, 220, 0.08) 45%, rgba(15, 20, 25, 0.30) 100%);
+    border: 2px solid rgba(215, 182, 96, 0.72);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 185, 0.24),
+      inset 0 0 0 1px rgba(198, 207, 220, 0.14),
+      0 14px 30px rgba(0, 0, 0, 0.30);
+  }
+  html.ar-academy .ar-tile-group--premium .ar-tile-group__label {
+    border-color: rgba(215, 182, 96, 0.78);
+    background: linear-gradient(180deg, rgba(42, 47, 63, 0.92), rgba(26, 31, 46, 0.90));
+    box-shadow: inset 0 1px 0 rgba(255, 236, 185, 0.20);
+  }
+  html.ar-academy .ar-tile-group--premium .ar-tile-group__label .pill-muted {
+    color: rgba(244, 224, 169, 0.92);
+  }
+  html.ar-academy .ar-tile-group--premium .ar-tile {
+    background: linear-gradient(180deg, rgba(205, 187, 143, 0.10), rgba(29, 35, 52, 0.97) 38%, rgba(26, 31, 46, 0.98) 100%);
+    border-color: rgba(170, 142, 74, 0.62);
+  }
+  html.ar-academy .ar-tile-group--premium .ar-tile:hover,
+  html.ar-academy .ar-tile-group--premium .ar-tile:focus-visible {
+    background: linear-gradient(180deg, rgba(225, 200, 145, 0.14), rgba(37, 44, 63, 0.98) 40%, rgba(30, 36, 54, 0.99) 100%);
+    border-color: rgba(232, 177, 75, 0.92);
+  }
+  html.ar-academy .ar-tile-group--premium .ar-tile.is-disabled:hover,
+  html.ar-academy .ar-tile-group--premium .ar-tile.is-disabled:focus-visible {
+    background: linear-gradient(180deg, rgba(205, 187, 143, 0.10), rgba(29, 35, 52, 0.97) 38%, rgba(26, 31, 46, 0.98) 100%);
+    border-color: rgba(170, 142, 74, 0.62);
+  }
   html.ar-academy .ar-tile-group__label {
     display: inline-flex;
     align-items: center;
@@ -860,39 +902,24 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     color: rgba(148, 163, 184, 0.9);
   }
   html.ar-academy #ar-applied-learning-mini-grid {
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 14px;
     margin-top: 12px;
     margin-bottom: 12px;
     position: relative;
     z-index: 2;
   }
   html.ar-academy .ar-applied-learning-category-row {
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  }
-  html.ar-academy .ar-applied-learning-category-row:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: 0;
+    margin: 0;
   }
   html.ar-academy .ar-applied-learning-category-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
     font-size: 11px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.62);
-    margin-bottom: 5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-  html.ar-academy .ar-applied-learning-count {
-    color: rgba(148, 163, 184, 0.9);
-    font-size: 10px;
-    font-weight: 700;
-    white-space: nowrap;
   }
   html.ar-academy .ar-applied-learning-category-cubes {
     display: flex;
@@ -900,39 +927,92 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     gap: 4px;
   }
   html.ar-academy .ar-applied-learning-cube {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    font-size: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    border: 1px solid transparent;
-    user-select: none;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    padding: 0;
-  }
-  html.ar-academy .ar-applied-learning-cube:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    font-style: normal;
   }
   html.ar-academy .ar-applied-learning-cube.status-coming-soon {
-    background: var(--ar-border);
-    color: var(--ar-text-muted);
-    border-color: var(--ar-border);
+    background: #fef3c7;
+    color: #7c4a03;
+    border-color: #f59e0b;
+    font-style: italic;
+    cursor: not-allowed;
+    opacity: 1;
   }
   html.ar-academy .ar-applied-learning-cube[disabled] {
     pointer-events: auto;
   }
+  html.ar-academy #arp-applied-learning-library-tile .ar-tile__tip {
+    display: none;
+  }
+  html.ar-academy .ar-rps-tile {
+    min-height: 0;
+  }
+  html.ar-academy .ar-rps-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  html.ar-academy .ar-rps-title {
+    margin-bottom: 0;
+  }
+  html.ar-academy .ar-rps-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 158, 11, 0.55);
+    background: rgba(245, 158, 11, 0.14);
+    color: #ffd08a;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-rps-mini-grid {
+    display: block;
+    margin-top: 12px;
+  }
+  html.ar-academy .ar-rps-row-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  html.ar-academy .ar-rps-cubes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  html.ar-academy .ar-rps-cube.status-coming-soon {
+    background: #fef3c7;
+    color: #7c4a03;
+    border-color: #f59e0b;
+    font-style: italic;
+    cursor: not-allowed;
+    opacity: 1;
+  }
+  html.ar-academy .ar-rps-cube[disabled] {
+    pointer-events: auto;
+  }
+  @media (max-width: 1160px){
+    html.ar-academy #ar-applied-learning-mini-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 980px){
+    html.ar-academy #ar-applied-learning-mini-grid {
+      grid-template-columns: 1fr;
+    }
+  }
   @media (max-width: 680px){
-    html.ar-academy .ar-applied-learning-category-label {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
+    html.ar-academy #ar-applied-learning-mini-grid {
+      gap: 8px;
     }
   }
   
@@ -940,16 +1020,22 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   html.ar-academy .ar-span-3 { grid-column: span 3; }
   html.ar-academy .ar-span-4 { grid-column: span 4; }
   html.ar-academy .ar-span-6 { grid-column: span 6; }
+  html.ar-academy .ar-span-8 { grid-column: span 8; }
+  html.ar-academy .ar-span-9 { grid-column: span 9; }
   html.ar-academy .ar-span-12 { grid-column: span 12; }
   @media (max-width: 980px){
     html.ar-academy .ar-span-3,
     html.ar-academy .ar-span-4 { grid-column: span 3; }
     html.ar-academy .ar-span-6 { grid-column: span 6; }
+    html.ar-academy .ar-span-8 { grid-column: span 6; }
+    html.ar-academy .ar-span-9 { grid-column: span 6; }
   }
   @media (max-width: 800px){
     html.ar-academy .ar-span-3,
     html.ar-academy .ar-span-4,
-    html.ar-academy .ar-span-6 { grid-column: span 12; }
+    html.ar-academy .ar-span-6,
+    html.ar-academy .ar-span-8,
+    html.ar-academy .ar-span-9 { grid-column: span 12; }
     html.ar-academy .ar-tile-group__grid { grid-template-columns: 1fr; }
     html.ar-academy .ar-resource-stack { grid-column: span 12; min-height: 0; }
     html.ar-academy .ar-resource-tile--asset-care { min-height: 0; }
@@ -1467,7 +1553,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         </div>
         <div id="ar-exams-drawer-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999;"></div>
   
-        <div class="ar-tile-group">
+        <div class="ar-tile-group ar-tile-group--premium">
           <div class="ar-tile-group__label">
             Paid Members Only <span class="pill-muted">— Resources</span>
           </div>
@@ -1527,70 +1613,98 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
               </div>
             </div>
 
-            <div class="ar-tile ar-span-12 ar-applied-library" id="arp-applied-learning-library-tile">
+            <div class="ar-tile ar-span-8 ar-applied-library" id="arp-applied-learning-library-tile">
               <div class="ar-applied-library__header">
                 <div class="ar-tile__title ar-applied-library__title">
                   <span class="ar-tile__icon">🗂️</span>
                   <span>Applied Learning Library</span>
+                  <span id="ar-applied-learning-progress-title" class="ar-tile__progress" data-total="21">0/21 opened</span>
                 </div>
                 <span class="ar-applied-library__badge">Coming Soon</span>
               </div>
               <div class="ar-tile__desc ar-applied-library__desc">Member-only practical guides, scenario-based learning and deeper-dive topic support.</div>
-              <div class="ar-applied-library__legend">Hover over each mini tile to view the title. All entries are coming soon.</div>
+              <div class="ar-applied-library__legend">Hover over each mini tile to view the title.</div>
 
               <div id="ar-applied-learning-mini-grid">
                 <div class="ar-applied-learning-category-row">
-                  <div class="ar-applied-learning-category-label">Portraits &amp; Headshots <span class="ar-applied-learning-count">Opened 0/5</span></div>
+                  <div class="ar-applied-learning-category-label">Portraits &amp; Headshots</div>
                   <div class="ar-applied-learning-category-cubes">
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="LinkedIn Headshots — Coming Soon" disabled aria-disabled="true">01</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Corporate Headshots — Coming Soon" disabled aria-disabled="true">02</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Portrait Lighting — Coming Soon" disabled aria-disabled="true">03</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Better Portraits — Coming Soon" disabled aria-disabled="true">04</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Headshots at Home — Coming Soon" disabled aria-disabled="true">05</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/professional-headshots-for-linkedin" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="portraits-linkedin-headshots" title="Professional Headshots for LinkedIn: Tips for 2026" aria-label="Professional Headshots for LinkedIn: Tips for 2026">01</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/corporate-headshot-photography" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="portraits-corporate-headshots" title="Corporate Headshot Photography Guide for UK Photographers" aria-label="Corporate Headshot Photography Guide for UK Photographers">02</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Portrait Lighting — Coming Soon" disabled aria-disabled="true">03</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/portrait-photography-tips" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="portraits-better-portraits" title="15 Essential Portrait Photography Tips for UK Photographers" aria-label="15 Essential Portrait Photography Tips for UK Photographers">04</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Headshots at Home — Coming Soon" disabled aria-disabled="true">05</button>
                   </div>
                 </div>
 
                 <div class="ar-applied-learning-category-row">
-                  <div class="ar-applied-learning-category-label">Product &amp; Commercial <span class="ar-applied-learning-count">Opened 0/7</span></div>
+                  <div class="ar-applied-learning-category-label">Product &amp; Commercial</div>
                   <div class="ar-applied-learning-category-cubes">
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Product Ideas — Coming Soon" disabled aria-disabled="true">01</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="DIY Product — Coming Soon" disabled aria-disabled="true">02</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Jewellery — Coming Soon" disabled aria-disabled="true">03</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Lighting Setup — Coming Soon" disabled aria-disabled="true">04</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Pro Product — Coming Soon" disabled aria-disabled="true">05</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="iPhone Product — Coming Soon" disabled aria-disabled="true">06</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Artwork — Coming Soon" disabled aria-disabled="true">07</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/product-photography-ideas" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-product-ideas" title="30 Fresh Product Photography Ideas to Elevate Your Brand" aria-label="30 Fresh Product Photography Ideas to Elevate Your Brand">01</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/diy-product-photography" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-diy-product-photography" title="DIY Product Photography: Shoot Professional Images at Home" aria-label="DIY Product Photography: Shoot Professional Images at Home">02</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/how-to-photograph-jewelry" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-jewellery" title="How to Photograph Jewelry: A Guide for UK Photographers" aria-label="How to Photograph Jewelry: A Guide for UK Photographers">03</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/product-photography-lighting" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-photography-lighting-setup" title="How to Master a Product Photography Lighting Setup in 2026" aria-label="How to Master a Product Photography Lighting Setup in 2026">04</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Pro Product — Coming Soon" disabled aria-disabled="true">05</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/how-to-take-product-photos-with-iphone" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-iphone-product-photos" title="How to Take Product Photos with iPhone - Essential UK Guide" aria-label="How to Take Product Photos with iPhone - Essential UK Guide">06</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/how-to-photograph-artwork" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="product-photograph-artwork" title="How to Photograph Artwork: Step-by-Step Guide for Beginners" aria-label="How to Photograph Artwork: Step-by-Step Guide for Beginners">07</a>
                   </div>
                 </div>
 
                 <div class="ar-applied-learning-category-row">
-                  <div class="ar-applied-learning-category-label">Property &amp; Interiors <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-label">Property &amp; Interiors</div>
                   <div class="ar-applied-learning-category-cubes">
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Real Estate — Coming Soon" disabled aria-disabled="true">01</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Property Tips — Coming Soon" disabled aria-disabled="true">02</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Interiors — Coming Soon" disabled aria-disabled="true">03</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/how-to-take-real-estate-photos" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="property-real-estate" title="How to Take Real Estate Photos: The Complete UK Guide" aria-label="How to Take Real Estate Photos: The Complete UK Guide">01</a>
+                    <a href="https://www.alanranger.com/blog-on-photography/real-estate-photography-tips" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="property-real-estate-photography-tips" title="Real Estate Photography Tips: 7 Strategies for Photographers" aria-label="Real Estate Photography Tips: 7 Strategies for Photographers">02</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Interiors — Coming Soon" disabled aria-disabled="true">03</button>
                   </div>
                 </div>
 
                 <div class="ar-applied-learning-category-row">
-                  <div class="ar-applied-learning-category-label">Landscape &amp; Natural Light <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-label">Landscape &amp; Natural Light</div>
                   <div class="ar-applied-learning-category-cubes">
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Night Settings — Coming Soon" disabled aria-disabled="true">01</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Landscape Tips — Coming Soon" disabled aria-disabled="true">02</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Natural Light — Coming Soon" disabled aria-disabled="true">03</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/night-photography-settings" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="landscape-night-settings" title="Night Photography Settings Guide for UK Photographers" aria-label="Night Photography Settings Guide for UK Photographers">01</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Landscape Tips — Coming Soon" disabled aria-disabled="true">02</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/natural-light-photography-tips" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="landscape-natural-light-photography-tips" title="Natural Light Photography Tips for Stunning UK Shots" aria-label="Natural Light Photography Tips for Stunning UK Shots">03</a>
                   </div>
                 </div>
 
                 <div class="ar-applied-learning-category-row">
-                  <div class="ar-applied-learning-category-label">Close-Up &amp; Food <span class="ar-applied-learning-count">Opened 0/3</span></div>
+                  <div class="ar-applied-learning-category-label">Close-Up &amp; Food</div>
                   <div class="ar-applied-learning-category-cubes">
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Macro — Coming Soon" disabled aria-disabled="true">01</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Food Tips — Coming Soon" disabled aria-disabled="true">02</button>
-                    <button type="button" class="ar-applied-learning-cube status-coming-soon" title="Food Photos — Coming Soon" disabled aria-disabled="true">03</button>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Macro — Coming Soon" disabled aria-disabled="true">01</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/food-photography-tips" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="closeup-food-tips" title="30 Essential Food Photography Tips for UK Photographers" aria-label="30 Essential Food Photography Tips for UK Photographers">02</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Food Photos — Coming Soon" disabled aria-disabled="true">03</button>
                   </div>
                 </div>
               </div>
-              <div class="ar-tile__tip">New applied-learning guides will appear here as they are published.</div>
+            </div>
+
+            <div class="ar-tile ar-span-4 ar-rps-tile" id="arp-rps-accreditation-tile">
+              <div class="ar-rps-head">
+                <div class="ar-tile__title ar-rps-title">
+                  <span class="ar-tile__icon">🏅</span>
+                  <span>Royal Photographic Society - Accreditation</span>
+                  <span id="ar-rps-progress-title" class="ar-tile__progress" data-total="10">0/10 opened</span>
+                </div>
+                <span class="ar-rps-badge">Coming Soon</span>
+              </div>
+              <div class="ar-tile__desc">RPS accreditation routes, mentoring options and panel resources for distinction progress.</div>
+
+              <div class="ar-rps-mini-grid">
+                <div class="ar-rps-row-label">RPS Resources</div>
+                <div class="ar-rps-cubes">
+                  <a href="https://www.alanranger.com/photography-news-blog/?tag=rps-panel" class="ar-module-cube ar-rps-cube status-not-opened" data-rps-link="successful-panels" title="Successful Panels">01</a>
+                  <a href="https://www.alanranger.com/rps-courses-mentoring-distinctions" class="ar-module-cube ar-rps-cube status-not-opened" data-rps-link="rps-mentoring-signup" title="How to sign up for RPS Mentoring">02</a>
+                  <a href="https://www.alanranger.com/photography-mentoring-online-assignments" class="ar-module-cube ar-rps-cube status-not-opened" data-rps-link="monthly-assignment-mentoring" title="Monthly Assignment Mentoring">03</a>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">04</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">05</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">06</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">07</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">08</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">09</button>
+                  <button type="button" class="ar-module-cube ar-rps-cube status-coming-soon" disabled aria-disabled="true">10</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1957,9 +2071,10 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     - Styled for your dark dashboard with orange/yellow accents.
     =========================== -->
 
-    <div id="academy-activity" style="margin-top:18px;color:#fff;font-family:sans-serif;padding:0 18px;">
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;max-width:1200px;margin:0 auto;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <div id="academy-activity" style="margin-top:18px;color:#fff;font-family:sans-serif;">
+      <div class="ar-academy-dashboard__inner">
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;max-width:none;margin:0;">
+          <div data-academy-activity-grid style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
           <!-- Left Column: Recent Activity -->
           <div>
             <h3 style="color:#E57200;margin:0 0 8px;font-weight:900;">Last 10 Pages Visited</h3>
@@ -1977,12 +2092,13 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
               <a href="#" id="clear-bookmarks" style="color:#9ca3af;text-decoration:none;font-size:13px;">Clear bookmarks</a>
             </div>
           </div>
+          </div>
         </div>
       </div>
     </div>
     <style>
       @media (max-width: 768px) {
-        #academy-activity > div > div {
+        #academy-activity [data-academy-activity-grid] {
           grid-template-columns: 1fr !important;
         }
       }
@@ -3175,8 +3291,282 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 
     function setAppliedLibraryVisibility(tileEl, isTrial) {
       if (!tileEl) return;
-      tileEl.style.display = isTrial ? "none" : "";
-      tileEl.setAttribute("aria-hidden", isTrial ? "true" : "false");
+      tileEl.style.display = "";
+      tileEl.classList.toggle("is-disabled", isTrial);
+      tileEl.setAttribute("aria-disabled", isTrial ? "true" : "false");
+      tileEl.removeAttribute("aria-hidden");
+    }
+
+    var APPLIED_LEARNING_OPENED_STORAGE_KEY = "ar_applied_learning_opened_v1";
+    var RPS_OPENED_STORAGE_KEY = "ar_rps_opened_v1";
+    var OPENED_PROGRESS_GUEST_SCOPE = "guest";
+    var openedProgressStorageScope = OPENED_PROGRESS_GUEST_SCOPE;
+    var openedProgressMs = null;
+    var openedProgressMemberId = "";
+    var openedProgressHydratedMemberId = "";
+    var appliedPersistTimer = 0;
+    var rpsPersistTimer = 0;
+    var appliedPersistInFlight = false;
+    var rpsPersistInFlight = false;
+
+    function setOpenedProgressStorageScope(member) {
+      try {
+        var memberId = member && (member.id || (member.data && member.data.id));
+        openedProgressStorageScope = memberId ? String(memberId) : OPENED_PROGRESS_GUEST_SCOPE;
+      } catch (err) {
+        openedProgressStorageScope = OPENED_PROGRESS_GUEST_SCOPE;
+      }
+    }
+
+    function getOpenedProgressStorageKey(baseKey) {
+      return baseKey + "__" + (openedProgressStorageScope || OPENED_PROGRESS_GUEST_SCOPE);
+    }
+
+    function setOpenedProgressMemberContext(member, ms) {
+      var memberId = "";
+      try {
+        memberId = member && (member.id || (member.data && member.data.id)) ? String(member.id || (member.data && member.data.id)) : "";
+      } catch (err) {
+        memberId = "";
+      }
+      openedProgressMemberId = memberId;
+      openedProgressMs = ms || null;
+      if (openedProgressHydratedMemberId && openedProgressHydratedMemberId !== memberId) {
+        openedProgressHydratedMemberId = "";
+      }
+    }
+
+    function normalizeOpenedMap(raw) {
+      if (!raw) return {};
+      if (Array.isArray(raw)) {
+        return raw.reduce(function(acc, key) {
+          if (typeof key === "string" && key) acc[key] = { at: new Date().toISOString() };
+          return acc;
+        }, {});
+      }
+      if (typeof raw === "object") return raw;
+      return {};
+    }
+
+    function getMemberJsonOpenedSet(memberJson, sectionKey) {
+      try {
+        var openedMap =
+          memberJson &&
+          memberJson.arAcademy &&
+          memberJson.arAcademy[sectionKey] &&
+          memberJson.arAcademy[sectionKey].opened;
+        var normalizedMap = normalizeOpenedMap(openedMap);
+        return new Set(Object.keys(normalizedMap));
+      } catch (err) {
+        return new Set();
+      }
+    }
+
+    function buildOpenedMapFromSet(openedSet, links, keyAttr) {
+      var linkMap = {};
+      links.forEach(function(linkEl) {
+        var key = linkEl.getAttribute(keyAttr) || "";
+        if (!key) return;
+        linkMap[key] = linkEl;
+      });
+      var openedMap = {};
+      openedSet.forEach(function(key) {
+        if (!key) return;
+        var linkEl = linkMap[key];
+        openedMap[key] = {
+          at: new Date().toISOString(),
+          title: linkEl ? (linkEl.getAttribute("title") || "") : "",
+          url: linkEl ? (linkEl.getAttribute("href") || "") : ""
+        };
+      });
+      return openedMap;
+    }
+
+    async function hydrateOpenedProgressFromMemberJson() {
+      try {
+        if (!openedProgressMs || typeof openedProgressMs.getMemberJSON !== "function") return;
+        if (!openedProgressMemberId) return;
+        if (openedProgressHydratedMemberId === openedProgressMemberId) return;
+        var jsonRes = await openedProgressMs.getMemberJSON();
+        var memberJson = normalizeMemberJson(jsonRes);
+        var appliedSet = getMemberJsonOpenedSet(memberJson, "appliedLearning");
+        var rpsSet = getMemberJsonOpenedSet(memberJson, "rps");
+        setAppliedLearningOpenedSet(appliedSet);
+        setRpsOpenedSet(rpsSet);
+        syncAppliedLearningProgress();
+        syncRpsProgress();
+        openedProgressHydratedMemberId = openedProgressMemberId;
+      } catch (err) {
+        return;
+      }
+    }
+
+    async function persistOpenedProgressToMemberJson(sectionKey, openedSet, selector, keyAttr) {
+      try {
+        if (!openedProgressMs || typeof openedProgressMs.getMemberJSON !== "function" || typeof openedProgressMs.updateMemberJSON !== "function") return;
+        if (!openedProgressMemberId) return;
+        var jsonRes = await openedProgressMs.getMemberJSON();
+        var memberJson = normalizeMemberJson(jsonRes);
+        if (!memberJson.arAcademy) memberJson.arAcademy = {};
+        if (!memberJson.arAcademy[sectionKey]) memberJson.arAcademy[sectionKey] = {};
+        var links = Array.from(document.querySelectorAll(selector));
+        memberJson.arAcademy[sectionKey].opened = buildOpenedMapFromSet(openedSet, links, keyAttr);
+        await openedProgressMs.updateMemberJSON({ json: memberJson });
+      } catch (err) {
+        return;
+      }
+    }
+
+    function scheduleAppliedLearningPersist() {
+      if (appliedPersistTimer) clearTimeout(appliedPersistTimer);
+      appliedPersistTimer = setTimeout(async function() {
+        if (appliedPersistInFlight) return;
+        appliedPersistInFlight = true;
+        try {
+          await persistOpenedProgressToMemberJson(
+            "appliedLearning",
+            getAppliedLearningOpenedSet(),
+            '#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]',
+            "data-applied-id"
+          );
+        } finally {
+          appliedPersistInFlight = false;
+        }
+      }, 250);
+    }
+
+    function scheduleRpsPersist() {
+      if (rpsPersistTimer) clearTimeout(rpsPersistTimer);
+      rpsPersistTimer = setTimeout(async function() {
+        if (rpsPersistInFlight) return;
+        rpsPersistInFlight = true;
+        try {
+          await persistOpenedProgressToMemberJson(
+            "rps",
+            getRpsOpenedSet(),
+            '#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]',
+            "data-rps-link"
+          );
+        } finally {
+          rpsPersistInFlight = false;
+        }
+      }, 250);
+    }
+
+    function getAppliedLearningOpenedSet() {
+      try {
+        var raw = globalThis.localStorage
+          ? globalThis.localStorage.getItem(getOpenedProgressStorageKey(APPLIED_LEARNING_OPENED_STORAGE_KEY))
+          : "";
+        if (!raw) return new Set();
+        var parsed = JSON.parse(raw);
+        return new Set(Array.isArray(parsed) ? parsed : []);
+      } catch (err) {
+        return new Set();
+      }
+    }
+
+    function setAppliedLearningOpenedSet(openedSet) {
+      try {
+        if (!globalThis.localStorage) return;
+        globalThis.localStorage.setItem(
+          getOpenedProgressStorageKey(APPLIED_LEARNING_OPENED_STORAGE_KEY),
+          JSON.stringify(Array.from(openedSet))
+        );
+      } catch (err) {
+        return;
+      }
+    }
+
+    function syncAppliedLearningProgress() {
+      var links = document.querySelectorAll('#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]');
+      var progressEl = document.getElementById("ar-applied-learning-progress-title");
+      var total = progressEl ? parseInt(progressEl.getAttribute("data-total") || "21", 10) : 21;
+      var openedSet = getAppliedLearningOpenedSet();
+      var openedCount = 0;
+      links.forEach(function(linkEl) {
+        var appliedId = linkEl.getAttribute("data-applied-id") || "";
+        var isOpened = appliedId ? openedSet.has(appliedId) : false;
+        linkEl.classList.toggle("status-opened", isOpened);
+        linkEl.classList.toggle("status-not-opened", !isOpened);
+        if (isOpened) openedCount += 1;
+      });
+      if (progressEl) progressEl.textContent = openedCount + "/" + total + " opened";
+    }
+
+    function wireAppliedLearningLinks() {
+      var links = document.querySelectorAll('#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]');
+      links.forEach(function(linkEl) {
+        if (linkEl.getAttribute("data-applied-wired") === "true") return;
+        linkEl.addEventListener("click", function() {
+          var appliedId = linkEl.getAttribute("data-applied-id") || "";
+          if (!appliedId) return;
+          var openedSet = getAppliedLearningOpenedSet();
+          openedSet.add(appliedId);
+          setAppliedLearningOpenedSet(openedSet);
+          syncAppliedLearningProgress();
+          scheduleAppliedLearningPersist();
+        });
+        linkEl.setAttribute("data-applied-wired", "true");
+      });
+    }
+
+    function getRpsOpenedSet() {
+      try {
+        var raw = globalThis.localStorage
+          ? globalThis.localStorage.getItem(getOpenedProgressStorageKey(RPS_OPENED_STORAGE_KEY))
+          : "";
+        if (!raw) return new Set();
+        var parsed = JSON.parse(raw);
+        return new Set(Array.isArray(parsed) ? parsed : []);
+      } catch (err) {
+        return new Set();
+      }
+    }
+
+    function setRpsOpenedSet(openedSet) {
+      try {
+        if (!globalThis.localStorage) return;
+        globalThis.localStorage.setItem(
+          getOpenedProgressStorageKey(RPS_OPENED_STORAGE_KEY),
+          JSON.stringify(Array.from(openedSet))
+        );
+      } catch (err) {
+        return;
+      }
+    }
+
+    function syncRpsProgress() {
+      var links = document.querySelectorAll('#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]');
+      var progressEl = document.getElementById("ar-rps-progress-title");
+      var total = progressEl ? parseInt(progressEl.getAttribute("data-total") || "10", 10) : 10;
+      var openedSet = getRpsOpenedSet();
+      var openedCount = 0;
+      links.forEach(function(linkEl) {
+        var key = linkEl.getAttribute("data-rps-link") || "";
+        var isOpened = key ? openedSet.has(key) : false;
+        linkEl.classList.toggle("status-opened", isOpened);
+        linkEl.classList.toggle("status-not-opened", !isOpened);
+        if (isOpened) openedCount += 1;
+      });
+      if (progressEl) progressEl.textContent = openedCount + "/" + total + " opened";
+    }
+
+    function wireRpsLinks() {
+      var links = document.querySelectorAll('#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]');
+      links.forEach(function(linkEl) {
+        if (linkEl.getAttribute("data-rps-wired") === "true") return;
+        linkEl.addEventListener("click", function() {
+          var key = linkEl.getAttribute("data-rps-link") || "";
+          if (!key) return;
+          var openedSet = getRpsOpenedSet();
+          openedSet.add(key);
+          setRpsOpenedSet(openedSet);
+          syncRpsProgress();
+          scheduleRpsPersist();
+        });
+        linkEl.setAttribute("data-rps-wired", "true");
+      });
     }
 
     function updatePaidResourceTiles(isTrial) {
@@ -3185,12 +3575,19 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       setPaidTileState(document.getElementById("arp-checklists-tile"), isTrial, "https://www.alanranger.com/academy/photography-checklists");
       setNestedPaidLinks(document.getElementById("arp-asset-care-tile"), 'a[data-asset-link]', isTrial);
       setAppliedLibraryVisibility(document.getElementById("arp-applied-learning-library-tile"), isTrial);
+      setNestedPaidLinks(document.getElementById("arp-rps-accreditation-tile"), 'a.ar-rps-cube[data-rps-link]', isTrial);
+      wireAppliedLearningLinks();
+      syncAppliedLearningProgress();
+      wireRpsLinks();
+      syncRpsProgress();
     }
 
     function renderMemberStatus(member, ms){
       var statusEl = document.getElementById("arp-ms-status");
       var manageBtn = document.getElementById("arp-ms-manage");
       var tileEl = document.getElementById("arp-ms-tile");
+      setOpenedProgressStorageScope(member);
+      setOpenedProgressMemberContext(member, ms);
       if (!statusEl) return;
   
       if (!member || !member.data) {
@@ -3225,6 +3622,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 
       // Disable paid resource tiles for trial members
       updatePaidResourceTiles(isTrial);
+      hydrateOpenedProgressFromMemberJson();
 
       // Update upgrade button visibility (only show for trial members, not annual)
       var upgradeBtn = document.getElementById("arp-upgrade-membership");
