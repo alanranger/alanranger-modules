@@ -3754,6 +3754,14 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       }, 250);
     }
 
+    function showPaidOnlyAccessMessage() {
+      try {
+        globalThis.alert("Paid membership only: upgrade to access this content.");
+      } catch (err) {
+        return;
+      }
+    }
+
     function getAppliedLearningOpenedSet() {
       try {
         var raw = globalThis.localStorage
@@ -3799,7 +3807,16 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       var links = document.querySelectorAll('#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]');
       links.forEach(function(linkEl) {
         if (linkEl.getAttribute("data-applied-wired") === "true") return;
-        linkEl.addEventListener("click", function() {
+        linkEl.addEventListener("click", function(event) {
+          var isDisabled = linkEl.getAttribute("aria-disabled") === "true" || !linkEl.getAttribute("href");
+          if (isDisabled) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            showPaidOnlyAccessMessage();
+            return;
+          }
           var appliedId = linkEl.getAttribute("data-applied-id") || "";
           if (!appliedId) return;
           var openedSet = getAppliedLearningOpenedSet();
@@ -3857,7 +3874,16 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       var links = document.querySelectorAll('#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]');
       links.forEach(function(linkEl) {
         if (linkEl.getAttribute("data-rps-wired") === "true") return;
-        linkEl.addEventListener("click", function() {
+        linkEl.addEventListener("click", function(event) {
+          var isDisabled = linkEl.getAttribute("aria-disabled") === "true" || !linkEl.getAttribute("href");
+          if (isDisabled) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            showPaidOnlyAccessMessage();
+            return;
+          }
           var key = linkEl.getAttribute("data-rps-link") || "";
           if (!key) return;
           var openedSet = getRpsOpenedSet();
