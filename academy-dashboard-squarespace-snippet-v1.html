@@ -406,6 +406,8 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     display: none;
   }
   /* Keep hover/title tooltips available for locked trial previews */
+  html.ar-academy #arp-practice-packs-tile.is-disabled,
+  html.ar-academy #arp-checklists-tile.is-disabled,
   html.ar-academy #arp-applied-learning-library-tile.is-disabled,
   html.ar-academy #arp-rps-accreditation-tile.is-disabled {
     pointer-events: auto;
@@ -1641,6 +1643,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
                   <span id="ar-practice-packs-progress-title" class="ar-tile__progress"></span>
                 </div>
                 <a
+                  data-paid-link="practice-packs-page"
                   href="https://www.alanranger.com/practice-pack-library"
                   style="display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none;"
                 >Go to practice pack page</a>
@@ -1659,6 +1662,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
                   <span id="ar-checklists-progress-title" class="ar-tile__progress"></span>
                 </div>
                 <a
+                  data-paid-link="checklists-page"
                   href="https://www.alanranger.com/35-photography-1-page-field-checklists"
                   style="display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; background-color: transparent; color: hsl(16, 88%, 54%); border: 1px solid hsl(16, 88%, 54%); border-radius:50px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none;"
                 >Go to checklists page</a>
@@ -3575,6 +3579,18 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         containerEl.removeAttribute("aria-disabled");
       }
       links.forEach(function(linkEl) {
+        if (linkEl.getAttribute("data-paid-lock-wired") !== "true") {
+          linkEl.addEventListener("click", function(event) {
+            var locked = linkEl.getAttribute("aria-disabled") === "true" || !linkEl.getAttribute("href");
+            if (!locked) return;
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            showPaidOnlyAccessMessage();
+          });
+          linkEl.setAttribute("data-paid-lock-wired", "true");
+        }
         if (isTrial) {
           var href = linkEl.getAttribute("href");
           if (href) linkEl.dataset.href = href;
@@ -3900,6 +3916,8 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       setPaidTileState(document.getElementById("arp-practice-packs-tile"), isTrial, "https://www.alanranger.com/academy/photography-practice-packs");
       setPaidTileState(document.getElementById("arp-ebook-tile"), isTrial, "/academy/ebook");
       setPaidTileState(document.getElementById("arp-checklists-tile"), isTrial, "https://www.alanranger.com/academy/photography-checklists");
+      setNestedPaidLinks(document.getElementById("arp-practice-packs-tile"), 'a[data-paid-link]', isTrial);
+      setNestedPaidLinks(document.getElementById("arp-checklists-tile"), 'a[data-paid-link]', isTrial);
       setNestedPaidLinks(document.getElementById("arp-asset-care-tile"), 'a[data-asset-link]', isTrial);
       setAppliedLibraryVisibility(document.getElementById("arp-applied-learning-library-tile"), isTrial);
       setNestedPaidLinks(document.getElementById("arp-applied-learning-library-tile"), 'a.ar-applied-learning-cube[data-applied-id]', isTrial);
@@ -5723,6 +5741,14 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         var practicePackCubes = practicePacksMiniGridEl.querySelectorAll('.ar-practice-pack-cube');
         practicePackCubes.forEach(function(cube) {
           cube.addEventListener('click', async function(e) {
+            var practiceTileEl = document.getElementById('arp-practice-packs-tile');
+            var practiceLocked = !!(practiceTileEl && (practiceTileEl.classList.contains('is-disabled') || practiceTileEl.getAttribute('aria-disabled') === 'true'));
+            if (practiceLocked) {
+              if (e && typeof e.preventDefault === 'function') e.preventDefault();
+              if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+              showPaidOnlyAccessMessage();
+              return;
+            }
             var cubeEl = this;
             var packUrl = cubeEl.getAttribute('data-pack-url');
             var category = cubeEl.getAttribute('data-pack-category');
@@ -5962,6 +5988,14 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           var checklistCubes = checklistsMiniGridEl.querySelectorAll('.ar-checklist-cube');
           checklistCubes.forEach(function(cube) {
             cube.addEventListener('click', async function(e) {
+              var checklistsTileEl = document.getElementById('arp-checklists-tile');
+              var checklistsLocked = !!(checklistsTileEl && (checklistsTileEl.classList.contains('is-disabled') || checklistsTileEl.getAttribute('aria-disabled') === 'true'));
+              if (checklistsLocked) {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                showPaidOnlyAccessMessage();
+                return;
+              }
               var cubeEl = this;
               var checklistUrl = cubeEl.getAttribute('data-checklist-url');
               var category = cubeEl.getAttribute('data-checklist-category');
