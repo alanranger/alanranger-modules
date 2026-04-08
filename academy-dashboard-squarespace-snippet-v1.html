@@ -529,6 +529,72 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   html.ar-academy #arp-ms-status .ms-value--accent{
     color: rgba(245,158,11,0.95);
   }
+  html.ar-academy #arp-ms-status .ms-row--stack{
+    display: block;
+    margin-top: 8px;
+  }
+  html.ar-academy #arp-ms-status .ms-countdown-wrap{
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.12), rgba(15, 20, 25, 0.08));
+  }
+  html.ar-academy #arp-ms-status .ms-countdown-label{
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.95);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 800;
+  }
+  html.ar-academy #arp-ms-status .ms-countdown-value{
+    margin-top: 4px;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 900;
+    color: #fde68a;
+    letter-spacing: 0.3px;
+  }
+  html.ar-academy #arp-ms-status .ms-countdown-meta{
+    margin-top: 5px;
+    font-size: 11px;
+    color: rgba(226, 232, 240, 0.88);
+  }
+  html.ar-academy #arp-ms-status .ms-login-list{
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 3px;
+  }
+  html.ar-academy #arp-ms-status .ms-login-list li{
+    color: rgba(226, 232, 240, 0.92);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  html.ar-academy #arp-ms-status .ms-muted{
+    color: rgba(148, 163, 184, 0.85);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  html.ar-academy #arp-ms-status .ms-quick-stats{
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  html.ar-academy #arp-ms-status .ms-chip{
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 20, 25, 0.24);
+    color: rgba(226, 232, 240, 0.92);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1px;
+  }
   html.ar-academy #arp-ms-manage{
     margin-top: 12px;
     display: inline-flex;
@@ -1618,7 +1684,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
                 <div class="ar-tile__title ar-applied-library__title">
                   <span class="ar-tile__icon">🗂️</span>
                   <span>Applied Learning Library</span>
-                  <span id="ar-applied-learning-progress-title" class="ar-tile__progress" data-total="21">0/21 opened</span>
+                  <span id="ar-applied-learning-progress-title" class="ar-tile__progress" data-total="22">0/22 opened</span>
                 </div>
                 <span class="ar-applied-library__badge">Coming Soon</span>
               </div>
@@ -1663,8 +1729,9 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
                   <div class="ar-applied-learning-category-label">Landscape &amp; Natural Light</div>
                   <div class="ar-applied-learning-category-cubes">
                     <a href="https://www.alanranger.com/blog-on-photography/night-photography-settings" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="landscape-night-settings" title="Night Photography Settings Guide for UK Photographers" aria-label="Night Photography Settings Guide for UK Photographers">01</a>
-                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: Landscape Tips — Coming Soon" disabled aria-disabled="true">02</button>
+                    <a href="https://www.alanranger.com/blog-on-photography/how-to-photograph-fireworks" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="landscape-photograph-fireworks" title="How to Photograph Fireworks: Camera Settings Guide" aria-label="How to Photograph Fireworks: Camera Settings Guide">02</a>
                     <a href="https://www.alanranger.com/blog-on-photography/natural-light-photography-tips" class="ar-module-cube ar-applied-learning-cube status-not-opened" data-applied-id="landscape-natural-light-photography-tips" title="Natural Light Photography Tips for Stunning UK Shots" aria-label="Natural Light Photography Tips for Stunning UK Shots">03</a>
+                    <button type="button" class="ar-module-cube ar-applied-learning-cube status-coming-soon" title="Applied Learning: How to photograph the Northern Lights (aurora borealis) — Coming Soon" disabled aria-disabled="true">04</button>
                   </div>
                 </div>
 
@@ -2764,6 +2831,203 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         severity: "warn"
       };
     }
+
+    var membershipCountdownTimerId = 0;
+
+    function clearMembershipCountdownTimer() {
+      if (membershipCountdownTimerId) {
+        clearInterval(membershipCountdownTimerId);
+        membershipCountdownTimerId = 0;
+      }
+    }
+
+    function getMembershipTargetDate(plan) {
+      if (!plan || typeof plan !== "object") return null;
+      var payment = plan.payment || {};
+      var isTrial = String(plan.status || "").toLowerCase() === "trialing" || plan.planId === TRIAL_PLAN_ID;
+      if (isTrial) {
+        return parseDate(
+          plan.trialEndsAt || plan.trial_end || plan.trialEnd ||
+          payment.trialEndsAt || payment.cancelAtDate || payment.cancel_at_date ||
+          plan.cancelAt || plan.cancel_at || plan.cancelAtDate
+        );
+      }
+      return parseDate(
+        plan.renewsAt || plan.renews_at || plan.nextBillingAt || plan.next_billing_date ||
+        plan.currentPeriodEnd || plan.current_period_end ||
+        payment.nextBillingDate || payment.next_billing_date ||
+        payment.currentPeriodEnd || payment.current_period_end
+      );
+    }
+
+    function formatLoginDateTime(dateValue) {
+      if (!dateValue) return "";
+      var d = parseDate(dateValue);
+      if (!d) return "";
+      try {
+        return d.toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch (e) {
+        return d.toISOString();
+      }
+    }
+
+    function dedupeLoginDates(values) {
+      var seen = {};
+      var out = [];
+      (values || []).forEach(function(item) {
+        if (!item) return;
+        var key = String(item);
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push(key);
+      });
+      return out;
+    }
+
+    function extractFallbackLoginsFromMemberData(memberData) {
+      var list = [];
+      if (!memberData || typeof memberData !== "object") return list;
+
+      // New API shape (preferred)
+      if (Array.isArray(memberData.last_logins) && memberData.last_logins.length) {
+        list = list.concat(memberData.last_logins);
+      }
+
+      // Backward compatible fields seen in production payloads
+      if (memberData.last_login) list.push(memberData.last_login);
+      if (memberData.updated_at) list.push(memberData.updated_at);
+      if (memberData.raw && typeof memberData.raw === "object") {
+        if (memberData.raw.lastLogin) list.push(memberData.raw.lastLogin);
+        if (memberData.raw.data && memberData.raw.data.lastLogin) {
+          list.push(memberData.raw.data.lastLogin);
+        }
+      }
+
+      return dedupeLoginDates(list).slice(0, 5);
+    }
+
+    function parseProgressPair(text) {
+      if (!text || typeof text !== "string") return null;
+      var match = text.match(/(\d+)\s*\/\s*(\d+)/);
+      if (!match) return null;
+      return { opened: Number.parseInt(match[1], 10), total: Number.parseInt(match[2], 10) };
+    }
+
+    function renderMembershipQuickStats(memberJson) {
+      var statsEl = document.getElementById("arp-ms-quick-stats");
+      if (!statsEl) return;
+      var chips = [];
+      var progressSources = [
+        { id: "ar-modules-progress-title", label: "Modules" },
+        { id: "ar-practice-packs-progress-title", label: "Practice" },
+        { id: "ar-checklists-progress-title", label: "Checklists" },
+        { id: "ar-applied-learning-progress-title", label: "Applied" },
+        { id: "ar-rps-progress-title", label: "RPS" }
+      ];
+      for (var i = 0; i < progressSources.length; i++) {
+        var source = progressSources[i];
+        var progressEl = document.getElementById(source.id);
+        var pair = parseProgressPair(progressEl ? progressEl.textContent : "");
+        if (!pair) continue;
+        chips.push('<span class="ms-chip">' + source.label + ' ' + pair.opened + '/' + pair.total + '</span>');
+      }
+
+      if (memberJson && typeof memberJson === "object") {
+        var bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks.length : 0;
+        if (bookmarks > 0) {
+          chips.push('<span class="ms-chip">Bookmarks ' + bookmarks + '</span>');
+        }
+      }
+
+      if (chips.length === 0) {
+        statsEl.innerHTML = '<span class="ms-muted">Learning stats will appear once dashboard progress loads.</span>';
+        return;
+      }
+      statsEl.innerHTML = chips.join("");
+    }
+
+    function startMembershipCountdown(targetDate, stateLabel) {
+      clearMembershipCountdownTimer();
+      var labelEl = document.getElementById("arp-ms-countdown-label");
+      var valueEl = document.getElementById("arp-ms-countdown-value");
+      var metaEl = document.getElementById("arp-ms-countdown-meta");
+      if (!labelEl || !valueEl || !metaEl) return;
+      if (!targetDate) {
+        labelEl.textContent = "Membership timeline";
+        valueEl.textContent = "—";
+        metaEl.textContent = "No renewal/expiry date available yet.";
+        return;
+      }
+
+      var countdownLabel = "Renewal in";
+      if (String(stateLabel || "").toLowerCase().indexOf("trial") !== -1) countdownLabel = "Trial ends in";
+      if (String(stateLabel || "").toLowerCase().indexOf("cancel") !== -1) countdownLabel = "Access ends in";
+      labelEl.textContent = countdownLabel;
+
+      var tick = function() {
+        var nowMs = Date.now();
+        var diffMs = targetDate.getTime() - nowMs;
+        var past = diffMs < 0;
+        var absMs = Math.abs(diffMs);
+        var days = Math.floor(absMs / 86400000);
+        var hours = Math.floor((absMs % 86400000) / 3600000);
+        valueEl.textContent = days + "d " + hours + "h";
+        metaEl.textContent = (past ? "Date passed: " : "Date: ") + fmtDate(targetDate);
+      };
+
+      tick();
+      membershipCountdownTimerId = setInterval(tick, 30000);
+    }
+
+    async function loadMembershipTileEnhancements(memberId, ms, academyPlan, stateLabel) {
+      startMembershipCountdown(getMembershipTargetDate(academyPlan), stateLabel);
+      if (!memberId) return;
+
+      var loginListEl = document.getElementById("arp-ms-login-list");
+      if (loginListEl) {
+        loginListEl.innerHTML = '<li class="ms-muted">Loading login history...</li>';
+      }
+
+      try {
+        var response = await fetch("https://alanranger-modules.vercel.app/api/academy/member-data?memberId=" + encodeURIComponent(memberId));
+        if (!response.ok) throw new Error("Failed to load member data");
+        var memberData = await response.json();
+        var logins = extractFallbackLoginsFromMemberData(memberData);
+        if (loginListEl) {
+          if (logins.length === 0) {
+            loginListEl.innerHTML = '<li class="ms-muted">No login data yet.</li>';
+          } else {
+            loginListEl.innerHTML = logins.map(function(item) {
+              return "<li>" + escapeHtml(formatLoginDateTime(item)) + "</li>";
+            }).join("");
+          }
+        }
+      } catch (err) {
+        if (loginListEl) {
+          loginListEl.innerHTML = '<li class="ms-muted">Unable to load login history right now.</li>';
+        }
+      }
+
+      try {
+        if (!ms || typeof ms.getMemberJSON !== "function") {
+          renderMembershipQuickStats(null);
+          return;
+        }
+        var jsonRes = await ms.getMemberJSON();
+        var memberJson = normalizeMemberJson(jsonRes);
+        renderMembershipQuickStats(memberJson);
+        setTimeout(function() { renderMembershipQuickStats(memberJson); }, 1500);
+        setTimeout(function() { renderMembershipQuickStats(memberJson); }, 3000);
+      } catch (err) {
+        renderMembershipQuickStats(null);
+      }
+    }
   
     // Store progress data globally for drawer
     window.examProgressData = null;
@@ -3481,7 +3745,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     function syncAppliedLearningProgress() {
       var links = document.querySelectorAll('#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]');
       var progressEl = document.getElementById("ar-applied-learning-progress-title");
-      var total = progressEl ? parseInt(progressEl.getAttribute("data-total") || "21", 10) : 21;
+      var total = progressEl ? parseInt(progressEl.getAttribute("data-total") || "22", 10) : 22;
       var openedSet = getAppliedLearningOpenedSet();
       var openedCount = 0;
       links.forEach(function(linkEl) {
@@ -3591,6 +3855,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       if (!statusEl) return;
   
       if (!member || !member.data) {
+        clearMembershipCountdownTimer();
         setText(statusEl, "Not logged in.");
         if (manageBtn) manageBtn.style.display = "none";
         if (tileEl) { tileEl.classList.remove("is-trial"); tileEl.classList.remove("is-annual"); }
@@ -3675,7 +3940,22 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         '<div class="ms-row"><span class="ms-label">Email:</span> <span class="ms-value">' + escapeHtml(email || "—") + '</span></div>' +
         '<div class="ms-row"><span class="ms-label">Member ID:</span> <span class="ms-value">' + escapeHtml(memberId || "—") + '</span></div>' +
         '<div class="ms-row"><span class="ms-label">Status:</span> <span class="ms-value ms-value--accent">' + escapeHtml(state.label) + '</span></div>' +
-        (state.dateLine ? '<div class="ms-row"><span class="ms-label">' + escapeHtml(dateLabel) + '</span> <span class="ms-value">' + escapeHtml(dateValue || "—") + '</span></div>' : '');
+        (state.dateLine ? '<div class="ms-row"><span class="ms-label">' + escapeHtml(dateLabel) + '</span> <span class="ms-value">' + escapeHtml(dateValue || "—") + '</span></div>' : '') +
+        '<div class="ms-countdown-wrap">' +
+          '<div id="arp-ms-countdown-label" class="ms-countdown-label">Renewal in</div>' +
+          '<div id="arp-ms-countdown-value" class="ms-countdown-value">—</div>' +
+          '<div id="arp-ms-countdown-meta" class="ms-countdown-meta">Loading timeline...</div>' +
+        '</div>' +
+        '<div class="ms-row ms-row--stack">' +
+          '<span class="ms-label">Last 5 logins:</span>' +
+          '<ul id="arp-ms-login-list" class="ms-login-list"><li class="ms-muted">Loading login history...</li></ul>' +
+        '</div>' +
+        '<div class="ms-row ms-row--stack">' +
+          '<span class="ms-label">Your learning stats:</span>' +
+          '<div id="arp-ms-quick-stats" class="ms-quick-stats"><span class="ms-muted">Loading learning stats...</span></div>' +
+        '</div>';
+
+      loadMembershipTileEnhancements(memberId, ms, academyPlan, state.label);
       
       // Load and display photography style quiz result
       if (memberId) {
