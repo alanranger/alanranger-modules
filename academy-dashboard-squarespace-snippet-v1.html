@@ -405,6 +405,11 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   html.ar-academy .ar-tile.is-disabled::before {
     display: none;
   }
+  /* Keep hover/title tooltips available for locked trial previews */
+  html.ar-academy #arp-applied-learning-library-tile.is-disabled,
+  html.ar-academy #arp-rps-accreditation-tile.is-disabled {
+    pointer-events: auto;
+  }
   
   /* Tile content */
   html.ar-academy .ar-tile__kicker {
@@ -791,6 +796,10 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   }
   /* Hide tip for checklists tile to prevent obscuring last row of checklist cubes */
   html.ar-academy #arp-checklists-tile .ar-tile__tip{
+    display: none;
+  }
+  /* Hide tip for membership tile so it doesn't cover action buttons */
+  html.ar-academy #arp-ms-tile .ar-tile__tip{
     display: none;
   }
   /* Lift tip in Tools tile so it doesn't cover CTA */
@@ -2919,6 +2928,22 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       return { opened: Number.parseInt(match[1], 10), total: Number.parseInt(match[2], 10) };
     }
 
+    function getExamSummaryForMembershipStats() {
+      var data = globalThis.examProgressData;
+      if (!data || typeof data !== "object" || !data.summary) return null;
+      var summary = data.summary;
+      var passed = Number.parseInt(summary.passedCount || 0, 10) || 0;
+      var failed = Number.parseInt(summary.failedCount || 0, 10) || 0;
+      var taken = passed + failed;
+      var attempts = Number.parseInt(summary.totalAttempts || 0, 10) || 0;
+      return {
+        passed: passed,
+        failed: failed,
+        taken: taken,
+        attempts: attempts
+      };
+    }
+
     function renderMembershipQuickStats(memberJson) {
       var statsEl = document.getElementById("arp-ms-quick-stats");
       if (!statsEl) return;
@@ -2938,11 +2963,22 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         chips.push('<span class="ms-chip">' + source.label + ' ' + pair.opened + '/' + pair.total + '</span>');
       }
 
+      var examSummary = getExamSummaryForMembershipStats();
+      if (examSummary) {
+        chips.push('<span class="ms-chip">Exams taken ' + examSummary.taken + '/15</span>');
+        chips.push('<span class="ms-chip">Passed ' + examSummary.passed + '</span>');
+        chips.push('<span class="ms-chip">Failed ' + examSummary.failed + '</span>');
+        chips.push('<span class="ms-chip">Attempts ' + examSummary.attempts + '</span>');
+      }
+
       if (memberJson && typeof memberJson === "object") {
         var bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks.length : 0;
-        if (bookmarks > 0) {
-          chips.push('<span class="ms-chip">Bookmarks ' + bookmarks + '</span>');
-        }
+        chips.push('<span class="ms-chip">Bookmarks ' + bookmarks + '</span>');
+
+        var history = Array.isArray(memberJson.history)
+          ? memberJson.history
+          : (memberJson.data && Array.isArray(memberJson.data.history) ? memberJson.data.history : []);
+        chips.push('<span class="ms-chip">Recent ' + history.length + '</span>');
       }
 
       if (chips.length === 0) {
@@ -3024,6 +3060,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         renderMembershipQuickStats(memberJson);
         setTimeout(function() { renderMembershipQuickStats(memberJson); }, 1500);
         setTimeout(function() { renderMembershipQuickStats(memberJson); }, 3000);
+        setTimeout(function() { renderMembershipQuickStats(memberJson); }, 5000);
       } catch (err) {
         renderMembershipQuickStats(null);
       }
@@ -3839,6 +3876,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       setPaidTileState(document.getElementById("arp-checklists-tile"), isTrial, "https://www.alanranger.com/academy/photography-checklists");
       setNestedPaidLinks(document.getElementById("arp-asset-care-tile"), 'a[data-asset-link]', isTrial);
       setAppliedLibraryVisibility(document.getElementById("arp-applied-learning-library-tile"), isTrial);
+      setNestedPaidLinks(document.getElementById("arp-applied-learning-library-tile"), 'a.ar-applied-learning-cube[data-applied-id]', isTrial);
       setNestedPaidLinks(document.getElementById("arp-rps-accreditation-tile"), 'a.ar-rps-cube[data-rps-link]', isTrial);
       wireAppliedLearningLinks();
       syncAppliedLearningProgress();
