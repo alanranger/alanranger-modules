@@ -4991,6 +4991,27 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         } catch(e) { /* no-op */ }
       }
 
+      // Test override: visiting the dashboard with ?ar-test-expired=1 forces the
+      // expired-trial locked mode regardless of Memberstack plan state. This is
+      // safe because the override only LOCKS the dashboard (it cannot grant
+      // access) and is URL-driven, so a plain refresh returns to normal.
+      var forceExpiredTest = (typeof location !== "undefined" &&
+        /[?&]ar-test-expired=1(?:&|$)/.test(String(location.search || "")));
+
+      function synthesizeExpiredStatus(){
+        return {
+          isExpiredTrial: true,
+          hasConverted: false,
+          trialStartedAt: null,
+          trialEndedAt: new Date(Date.now() - 86400000).toISOString(),
+          trialLengthDays: 14,
+          daysSinceExpiry: 1,
+          couponEligible: true,
+          couponCode: "SAVE20",
+          couponWindowDays: 7
+        };
+      }
+
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       waitForMemberstack(8000).then(function(ms){
         if (!ms) { safeRedirect(LOGIN_URL); return; }
@@ -5001,13 +5022,16 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           
           // Debug logging: log full member payload
           console.log("[MS] member payload", m);
+          if (forceExpiredTest) {
+            console.warn("[ar-test-expired] Forcing expired-trial locked mode via URL override");
+          }
           
           // planConnections = the key difference between "abandoned checkout" vs "expired"
           var pcs = (m && m.data && Array.isArray(m.data.planConnections)) ? m.data.planConnections : [];
           var hasAnyPlan = pcs.length > 0;
 
           // Member has active access — normal dashboard flow.
-          if (hasAccess(m)) {
+          if (hasAccess(m) && !forceExpiredTest) {
             if (dashboardEl) dashboardEl.classList.add("is-ready");
             renderMemberStatus(m, ms);
             handleUpgradeReturn(ms);
@@ -5025,10 +5049,19 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
               try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
               safeRedirect("/academy/login?trial=not-activated");
             };
-            if (!mId) { bounceAsUnactivated(); return; }
+            if (!mId && !forceExpiredTest) { bounceAsUnactivated(); return; }
+            if (!mId && forceExpiredTest) {
+              enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
+              handleUpgradeReturn(ms);
+              return;
+            }
             return fetchTrialStatus(mId).then(function(status){
-              if (status && status.isExpiredTrial) {
-                enterExpiredTrialMode(m, ms, status);
+              var finalStatus = status;
+              if (forceExpiredTest && (!finalStatus || !finalStatus.isExpiredTrial)) {
+                finalStatus = synthesizeExpiredStatus();
+              }
+              if (finalStatus && finalStatus.isExpiredTrial) {
+                enterExpiredTrialMode(m, ms, finalStatus);
                 handleUpgradeReturn(ms);
                 return;
               }
@@ -5036,6 +5069,11 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
               bounceAsUnactivated();
             }).catch(function(err){
               console.warn("[expired-trial] status check failed:", err && err.message);
+              if (forceExpiredTest) {
+                enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
+                handleUpgradeReturn(ms);
+                return;
+              }
               bounceAsUnactivated();
             });
           }
