@@ -21,7 +21,10 @@
  *   QA_API_BASE (defaults to https://alanranger-modules.vercel.app)
  */
 "use strict";
-require("dotenv").config({ path: require("node:path").join(__dirname, "..", ".env.local") });
+// override:true is important — Windows often has stale Supabase/Stripe
+// keys set as user env vars from other projects, which otherwise win
+// over .env.local and produce misleading "Invalid API key" errors.
+require("dotenv").config({ path: require("node:path").join(__dirname, "..", ".env.local"), override: true });
 const Stripe = require("stripe");
 
 const API_BASE = process.env.QA_API_BASE || "https://alanranger-modules.vercel.app";
