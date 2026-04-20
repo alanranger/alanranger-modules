@@ -1560,7 +1560,172 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     }
   }
   </style>
-  
+
+  <style>
+  /* ====================================================================
+     Expired-trial locked dashboard + upgrade modal (Trial Duration v2)
+     -------------------------------------------------------------------
+     When body has data-ar-academy-state="expired-trial":
+       - All tiles in .ar-academy-tiles are locked EXCEPT #arp-ms-tile
+       - The tips intro and editor banner are locked too
+       - #ar-upgrade-banner and #ar-upgrade-modal stay interactive
+     Trigger logic lives in JS (enterExpiredTrialMode) and is driven by the
+     /api/academy/trial-status endpoint, so we don't rely on Memberstack's
+     planConnections alone (which can be stripped on expiry).
+     ==================================================================== */
+  body[data-ar-academy-state="expired-trial"] .ar-academy-dashboard .ar-tile:not(#arp-ms-tile),
+  body[data-ar-academy-state="expired-trial"] .ar-academy-dashboard__tiles-help {
+    pointer-events: none !important;
+    opacity: 0.38 !important;
+    filter: grayscale(1);
+    user-select: none;
+    transition: opacity 0.25s ease, filter 0.25s ease;
+  }
+  body[data-ar-academy-state="expired-trial"] .ar-academy-dashboard .ar-tile:not(#arp-ms-tile) *,
+  body[data-ar-academy-state="expired-trial"] .ar-academy-dashboard__tiles-help * {
+    pointer-events: none !important;
+  }
+  body[data-ar-academy-state="expired-trial"] #arp-ms-tile {
+    outline: 2px solid #f59e0b;
+    outline-offset: 4px;
+    border-radius: 10px;
+  }
+  body[data-ar-academy-state="expired-trial"] #ar-upgrade-banner,
+  body[data-ar-academy-state="expired-trial"] #ar-upgrade-modal,
+  body[data-ar-academy-state="expired-trial"] .ar-expired-allow {
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  #ar-upgrade-banner {
+    display: none;
+    margin: 0 0 16px 0;
+    padding: 12px 18px;
+    background: linear-gradient(90deg,#b45309,#f59e0b);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+  }
+  body[data-ar-academy-state="expired-trial"] #ar-upgrade-banner { display: flex; }
+  #ar-upgrade-banner .ar-upgrade-banner__cta {
+    background: #fff;
+    color: #b45309;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  #ar-upgrade-banner .ar-upgrade-banner__cta:hover { background: #fef3c7; }
+
+  #ar-upgrade-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(4px);
+  }
+  #ar-upgrade-modal.is-open { display: flex; }
+  #ar-upgrade-modal .ar-upgrade-modal__card {
+    background: var(--ar-bg, #0f172a);
+    color: var(--ar-text, #e2e8f0);
+    max-width: 520px;
+    width: 100%;
+    border: 1px solid var(--ar-border, #334155);
+    border-radius: 14px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__close:hover { color: #fff; }
+  #ar-upgrade-modal h2 {
+    margin: 0 0 6px 0;
+    font-size: 22px;
+    color: #f59e0b;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__sub {
+    margin: 0 0 18px 0;
+    color: #cbd5e1;
+    font-size: 14px;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__price {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 12px 0;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__price del {
+    color: #94a3b8;
+    font-weight: 400;
+    font-size: 18px;
+    margin-right: 8px;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__coupon {
+    display: none;
+    padding: 4px 10px;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid #10b981;
+    color: #34d399;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin: 4px 0 12px 0;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__coupon.is-visible { display: inline-block; }
+  #ar-upgrade-modal ul {
+    padding-left: 20px;
+    margin: 12px 0 18px 0;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__cta {
+    width: 100%;
+    padding: 14px;
+    background: #f59e0b;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__cta:hover { background: #fbbf24; }
+  #ar-upgrade-modal .ar-upgrade-modal__cta[disabled] { opacity: 0.6; cursor: wait; }
+  #ar-upgrade-modal .ar-upgrade-modal__err {
+    margin-top: 10px;
+    color: #fca5a5;
+    font-size: 13px;
+    display: none;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__err.is-visible { display: block; }
+  </style>
+
   <div class="ar-academy-dashboard">
     <div class="ar-academy-dashboard__inner">
       <div class="ar-academy-dashboard__main">
@@ -2207,12 +2372,48 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     END: AR | DASHBOARD: DEBUG PANEL
     =========================== -->
   </div>
-  
+
+  <!-- ===========================
+  BEGIN: AR | DASHBOARD: EXPIRED-TRIAL UPGRADE
+  Shown only when body has data-ar-academy-state="expired-trial".
+  Sits OUTSIDE .ar-academy-dashboard so the lockdown CSS never dims it.
+  =========================== -->
+  <div id="ar-upgrade-banner" role="status" aria-live="polite">
+    <span id="ar-upgrade-banner-text">Your Academy trial has ended. Upgrade to keep your dashboard and all content.</span>
+    <button type="button" class="ar-upgrade-banner__cta" id="ar-upgrade-banner-cta">Upgrade now</button>
+  </div>
+
+  <div id="ar-upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="ar-upgrade-modal-title">
+    <div class="ar-upgrade-modal__card">
+      <button type="button" class="ar-upgrade-modal__close" id="ar-upgrade-modal-close" aria-label="Dismiss">&times;</button>
+      <h2 id="ar-upgrade-modal-title">Your trial has ended</h2>
+      <p class="ar-upgrade-modal__sub" id="ar-upgrade-modal-sub">Upgrade to Academy Annual to restore full dashboard access.</p>
+      <div class="ar-upgrade-modal__price" id="ar-upgrade-modal-price">&pound;79<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span></div>
+      <div class="ar-upgrade-modal__coupon" id="ar-upgrade-modal-coupon">SAVE20 grace discount auto-applied at checkout</div>
+      <ul>
+        <li>60 step-by-step modules + 35 field checklists</li>
+        <li>30 practice packs + 15 exams with certification</li>
+        <li>Personalised dashboard, bookmarks and progress tracking</li>
+        <li>Keep everything you've learned in your trial</li>
+      </ul>
+      <button type="button" class="ar-upgrade-modal__cta" id="ar-upgrade-modal-cta">Upgrade to Academy Annual</button>
+      <div class="ar-upgrade-modal__err" id="ar-upgrade-modal-err"></div>
+    </div>
+  </div>
+  <!-- ===========================
+  END: AR | DASHBOARD: EXPIRED-TRIAL UPGRADE
+  =========================== -->
+
   <script>
   (function(){
     var LOGIN_URL = "/academy/login";
     var DASHBOARD_URL = "/academy/dashboard";
-    var EXPIRED_URL = "/academy/trial-expired";
+    // Trial expiry no longer bounces to /academy/trial-expired — expired members
+    // now stay on the dashboard in locked mode with an upgrade modal (Trial Duration v2).
+    var API_BASE = "https://alanranger-modules.vercel.app";
+    var TRIAL_STATUS_ENDPOINT = API_BASE + "/api/academy/trial-status";
+    var UPGRADE_CHECKOUT_ENDPOINT = API_BASE + "/api/stripe/create-upgrade-checkout";
+    var UPGRADE_COUPON_WINDOW_DAYS = 7;
     var GHOST_CONTEXT_KEY = "ar_ghost_context_v1";
     function setGhostSessionContext(memberId, email) {
       try {
@@ -4641,6 +4842,155 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         return; // Exit early - ghost mode handles its own flow
       }
 
+      // ---------------------------------------------------------------
+      // Expired-trial locked dashboard helpers
+      // Called from the access guard below when Memberstack says the
+      // member has no active plan but Supabase confirms they had a trial.
+      // ---------------------------------------------------------------
+      function fetchTrialStatus(memberId) {
+        var url = TRIAL_STATUS_ENDPOINT + "?memberId=" + encodeURIComponent(memberId);
+        return fetch(url, { credentials: "omit" }).then(function(res){
+          if (!res.ok) throw new Error("trial-status HTTP " + res.status);
+          return res.json();
+        });
+      }
+
+      function formatUpgradeDate(iso){
+        try {
+          return new Date(iso).toLocaleDateString("en-GB", { year:"numeric", month:"long", day:"numeric" });
+        } catch { return null; }
+      }
+
+      function applyModalCoupon(status) {
+        var priceEl = document.getElementById("ar-upgrade-modal-price");
+        var couponEl = document.getElementById("ar-upgrade-modal-coupon");
+        if (!priceEl || !couponEl) return;
+        if (status && status.couponEligible) {
+          priceEl.innerHTML = '<del>&pound;79</del>&pound;63.20<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span>';
+          var win = status.couponWindowDays || UPGRADE_COUPON_WINDOW_DAYS;
+          couponEl.textContent = "SAVE20 grace discount auto-applied \u2014 available within " + win + " days of trial expiry";
+          couponEl.classList.add("is-visible");
+        } else {
+          priceEl.innerHTML = '&pound;79<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span>';
+          couponEl.classList.remove("is-visible");
+        }
+      }
+
+      function populateUpgradeModal(status) {
+        var subEl = document.getElementById("ar-upgrade-modal-sub");
+        var bannerText = document.getElementById("ar-upgrade-banner-text");
+        var endedStr = status && status.trialEndedAt ? formatUpgradeDate(status.trialEndedAt) : null;
+        if (subEl) {
+          subEl.textContent = endedStr
+            ? ("Your trial ended on " + endedStr + ". Upgrade to Academy Annual to restore full dashboard access.")
+            : "Upgrade to Academy Annual to restore full dashboard access.";
+        }
+        if (bannerText && endedStr) {
+          bannerText.textContent = "Your Academy trial ended on " + endedStr + ". Upgrade to restore full access.";
+        }
+        applyModalCoupon(status);
+      }
+
+      function openUpgradeModal(){
+        var modal = document.getElementById("ar-upgrade-modal");
+        if (modal) modal.classList.add("is-open");
+      }
+
+      function closeUpgradeModal(){
+        var modal = document.getElementById("ar-upgrade-modal");
+        if (modal) modal.classList.remove("is-open");
+      }
+
+      function showUpgradeError(msg) {
+        var errEl = document.getElementById("ar-upgrade-modal-err");
+        if (!errEl) return;
+        errEl.textContent = msg || "Sorry \u2014 couldn't start checkout. Please try again or email info@alanranger.com.";
+        errEl.classList.add("is-visible");
+      }
+
+      function clearUpgradeError() {
+        var errEl = document.getElementById("ar-upgrade-modal-err");
+        if (!errEl) return;
+        errEl.textContent = "";
+        errEl.classList.remove("is-visible");
+      }
+
+      function triggerUpgradeCheckout(payload) {
+        var btn = document.getElementById("ar-upgrade-modal-cta");
+        if (btn) { btn.disabled = true; btn.textContent = "Opening secure checkout\u2026"; }
+        clearUpgradeError();
+        return fetch(UPGRADE_CHECKOUT_ENDPOINT, {
+          method: "POST",
+          credentials: "omit",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(function(res){
+          return res.json().then(function(body){ return { ok: res.ok, body: body }; });
+        }).then(function(result){
+          if (!result.ok || !result.body || !result.body.url) {
+            var msg = (result.body && result.body.error) ? result.body.error : "Checkout failed";
+            throw new Error(msg);
+          }
+          window.location.href = result.body.url;
+        }).catch(function(err){
+          console.error("[upgrade-checkout] error:", err);
+          showUpgradeError(err && err.message);
+          if (btn) { btn.disabled = false; btn.textContent = "Upgrade to Academy Annual"; }
+        });
+      }
+
+      function collectMemberIdentity(member) {
+        var email = (typeof getMemberEmail === "function") ? (getMemberEmail(member) || "") : "";
+        var memberId = (member && (member.id || (member.data && member.data.id))) || "";
+        var cf = (member && member.data && member.data.customFields) || {};
+        var first = cf["first-name"] || cf.firstName || cf.first_name || "";
+        var last = cf["last-name"] || cf.lastName || cf.last_name || "";
+        var name = (first + " " + last).trim();
+        return { email: email, memberId: memberId, name: name };
+      }
+
+      function wireUpgradeUI(member) {
+        var id = collectMemberIdentity(member);
+        var bannerCta = document.getElementById("ar-upgrade-banner-cta");
+        var modalClose = document.getElementById("ar-upgrade-modal-close");
+        var modalCta = document.getElementById("ar-upgrade-modal-cta");
+        var modal = document.getElementById("ar-upgrade-modal");
+        if (bannerCta) bannerCta.onclick = openUpgradeModal;
+        if (modalClose) modalClose.onclick = closeUpgradeModal;
+        if (modal) modal.onclick = function(e){ if (e.target === modal) closeUpgradeModal(); };
+        if (modalCta) {
+          modalCta.onclick = function(){
+            triggerUpgradeCheckout({ memberId: id.memberId, email: id.email, name: id.name });
+          };
+        }
+      }
+
+      function enterExpiredTrialMode(member, ms, status) {
+        console.log("[expired-trial] entering locked dashboard mode", status);
+        document.body.setAttribute("data-ar-academy-state", "expired-trial");
+        if (dashboardEl) dashboardEl.classList.add("is-ready");
+        populateUpgradeModal(status);
+        wireUpgradeUI(member);
+        try { renderMemberStatus(member, ms); } catch(e) { console.warn("renderMemberStatus failed in expired mode", e); }
+        setTimeout(openUpgradeModal, 400);
+      }
+
+      function handleUpgradeReturn(ms) {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          if (params.get("upgraded") !== "1") return;
+          if (ms && typeof ms.getCurrentMember === "function") {
+            ms.getCurrentMember({ useCache: false }).catch(function(){});
+          }
+          var banner = document.getElementById("ar-upgrade-banner");
+          if (banner) {
+            banner.style.background = "linear-gradient(90deg,#047857,#10b981)";
+            banner.innerHTML = '<span>Welcome back! Your Academy Annual membership is activating \u2014 refresh the page in a few seconds if anything still looks locked.</span>';
+            banner.style.display = "flex";
+          }
+        } catch(e) { /* no-op */ }
+      }
+
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       waitForMemberstack(8000).then(function(ms){
         if (!ms) { safeRedirect(LOGIN_URL); return; }
@@ -4656,24 +5006,39 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           var pcs = (m && m.data && Array.isArray(m.data.planConnections)) ? m.data.planConnections : [];
           var hasAnyPlan = pcs.length > 0;
 
-          // 1) Logged in but NO plan at all (abandoned Stripe / never purchased)
-          // Send to login (NOT trial-expired) to break the loop.
-          if (!hasAnyPlan) {
-            // Optional but strongly recommended: clear the sticky session so you can log into a real paid account without incognito.
-            try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
-            safeRedirect("/academy/login?trial=not-activated");
-            return;
+          // Member has active access — normal dashboard flow.
+          if (hasAccess(m)) {
+            if (dashboardEl) dashboardEl.classList.add("is-ready");
+            renderMemberStatus(m, ms);
+            handleUpgradeReturn(ms);
+          } else {
+            // No active access. Two cases:
+            //   (a) Expired trial — Supabase academy_trial_history still has the trial row.
+            //       Keep them on the dashboard in LOCKED mode and show the upgrade modal.
+            //   (b) Never really a member (abandoned checkout / orphan account) — log out
+            //       and bounce to the login page with a helpful hint.
+            // Note: we no longer redirect to /academy/trial-expired. The locked dashboard
+            // preserves the member's authenticated session so Stripe Checkout + Memberstack
+            // plan attachment can work end-to-end.
+            var mId = (m && (m.id || (m.data && m.data.id))) || null;
+            var bounceAsUnactivated = function(){
+              try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
+              safeRedirect("/academy/login?trial=not-activated");
+            };
+            if (!mId) { bounceAsUnactivated(); return; }
+            return fetchTrialStatus(mId).then(function(status){
+              if (status && status.isExpiredTrial) {
+                enterExpiredTrialMode(m, ms, status);
+                handleUpgradeReturn(ms);
+                return;
+              }
+              if (!hasAnyPlan) { bounceAsUnactivated(); return; }
+              bounceAsUnactivated();
+            }).catch(function(err){
+              console.warn("[expired-trial] status check failed:", err && err.message);
+              bounceAsUnactivated();
+            });
           }
-
-          // 2) Has a plan connection but does not have access (e.g. trial expired)
-          // This is the *real* "trial expired" case.
-          if (!hasAccess(m)) {
-            safeRedirect(EXPIRED_URL); // "/academy/trial-expired"
-            return;
-          }
-          
-          if (dashboardEl) dashboardEl.classList.add("is-ready");
-          renderMemberStatus(m, ms);
           
           // Inactivity logout (30 minutes of no activity)
           (function initInactivityLogout(){
