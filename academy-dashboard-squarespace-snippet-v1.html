@@ -1665,6 +1665,8 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     line-height: 1;
   }
   #ar-upgrade-modal .ar-upgrade-modal__close:hover { color: #fff; }
+  /* Locked mode: expired-trial members cannot dismiss the modal. */
+  #ar-upgrade-modal[data-ar-locked="true"] .ar-upgrade-modal__close { display: none; }
   #ar-upgrade-modal h2 {
     margin: 0 0 6px 0;
     font-size: 22px;
@@ -5104,9 +5106,11 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       }
 
       function populateUpgradeModal(status) {
+        var headingEl = document.getElementById("ar-upgrade-modal-title");
         var subEl = document.getElementById("ar-upgrade-modal-sub");
         var bannerText = document.getElementById("ar-upgrade-banner-text");
         var endedStr = status && status.trialEndedAt ? formatUpgradeDate(status.trialEndedAt) : null;
+        if (headingEl) headingEl.textContent = "Don\u2019t lose everything you\u2019ve started";
         if (subEl) {
           subEl.textContent = endedStr
             ? ("Your trial ended on " + endedStr + ". Keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus unlock 12 months of new lessons, tools and personal guidance.")
@@ -5125,7 +5129,11 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 
       function closeUpgradeModal(){
         var modal = document.getElementById("ar-upgrade-modal");
-        if (modal) modal.classList.remove("is-open");
+        if (!modal) return;
+        // Expired trials set data-ar-locked so the modal can't be dismissed
+        // (no path off the dashboard except upgrading or logging out).
+        if (modal.getAttribute("data-ar-locked") === "true") return;
+        modal.classList.remove("is-open");
       }
 
       function showUpgradeError(msg) {
@@ -5196,10 +5204,62 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         console.log("[expired-trial] entering locked dashboard mode", status);
         document.body.setAttribute("data-ar-academy-state", "expired-trial");
         if (dashboardEl) dashboardEl.classList.add("is-ready");
+        var modal = document.getElementById("ar-upgrade-modal");
+        if (modal) modal.setAttribute("data-ar-locked", "true");
         populateUpgradeModal(status);
         wireUpgradeUI(member);
         try { renderMemberStatus(member, ms); } catch(e) { console.warn("renderMemberStatus failed in expired mode", e); }
         setTimeout(openUpgradeModal, 400);
+      }
+
+      // Active-trial members keep full dashboard access but get a one-per-
+      // session soft prompt to upgrade. The modal is fully dismissible (the
+      // x button works, backdrop click closes, data-ar-locked is cleared).
+      function populateUpgradeModalForActiveTrial(member) {
+        var headingEl = document.getElementById("ar-upgrade-modal-title");
+        var subEl = document.getElementById("ar-upgrade-modal-sub");
+        var trialEnd = (typeof getTrialEndsAt === "function") ? getTrialEndsAt(member) : null;
+        var daysLeft = null;
+        if (trialEnd) {
+          daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000));
+        }
+        var endedStr = trialEnd ? formatUpgradeDate(trialEnd.toISOString()) : null;
+        if (headingEl) headingEl.textContent = "Loving it so far? Lock in Academy Annual";
+        if (subEl) {
+          var tail = "Upgrade now and keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus unlock 12 months of new lessons, tools and personal guidance.";
+          if (daysLeft !== null && endedStr) {
+            var dayWord = daysLeft === 1 ? "day" : "days";
+            subEl.textContent = "You have " + daysLeft + " " + dayWord + " left of your free trial (ends " + endedStr + "). " + tail;
+          } else {
+            subEl.textContent = tail;
+          }
+        }
+        // Active trials don't get the SAVE20 grace discount — hide the pill
+        // and show the full £79 price so the offer stays honest.
+        applyModalCoupon({ couponEligible: false });
+      }
+
+      function shouldShowTrialPrompt() {
+        try {
+          if (sessionStorage.getItem("ar_trial_upgrade_shown_v1") === "1") return false;
+          sessionStorage.setItem("ar_trial_upgrade_shown_v1", "1");
+          return true;
+        } catch (e) { return true; }
+      }
+
+      function maybeShowActiveTrialPrompt(member) {
+        try {
+          if (typeof hasTrialAccess !== "function" || !hasTrialAccess(member)) return;
+          if (typeof hasAnnualAccess === "function" && hasAnnualAccess(member)) return;
+          if (!shouldShowTrialPrompt()) return;
+          var modal = document.getElementById("ar-upgrade-modal");
+          if (modal) modal.removeAttribute("data-ar-locked");
+          populateUpgradeModalForActiveTrial(member);
+          wireUpgradeUI(member);
+          setTimeout(openUpgradeModal, 600);
+        } catch (e) {
+          console.warn("[active-trial-prompt] failed:", e && e.message);
+        }
       }
 
       function handleUpgradeReturn(ms) {
@@ -5287,6 +5347,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
             if (dashboardEl) dashboardEl.classList.add("is-ready");
             renderMemberStatus(m, ms);
             handleUpgradeReturn(ms);
+            maybeShowActiveTrialPrompt(m);
           } else {
             // No active access. Two cases:
             //   (a) Expired trial — Supabase academy_trial_history still has the trial row.
