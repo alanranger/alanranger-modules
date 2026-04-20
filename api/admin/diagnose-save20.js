@@ -6,9 +6,11 @@
 // Usage:
 //   GET  /api/admin/diagnose-save20?secret=XXX
 //     -> reports what exists in Stripe for SAVE20 (coupon + promotion_code)
-//   POST /api/admin/diagnose-save20?secret=XXX&mode=ensure
+//   GET/POST /api/admin/diagnose-save20?secret=XXX&mode=ensure
 //     -> creates a £20-off (duration: once) coupon + SAVE20 promotion_code
-//        if either is missing. Idempotent: re-running is safe.
+//        if either is missing. Idempotent: re-running is safe. GET is allowed
+//        because the action is idempotent and CRON_SECRET-protected — makes it
+//        trivially clickable from the browser.
 //
 // Why both? Stripe Checkout can only auto-apply a discount via a
 // `promotion_code` id (the customer-facing code string lives on the
@@ -160,7 +162,7 @@ module.exports = async (req, res) => {
 
   try {
     const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-    const shouldEnsure = req.method === "POST" && req.query?.mode === "ensure";
+    const shouldEnsure = req.query?.mode === "ensure";
     const payload = shouldEnsure ? await runEnsure(stripe) : await runDiagnose(stripe);
     return res.status(200).json({
       success: true,
