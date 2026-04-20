@@ -233,6 +233,18 @@ export default function GhostLogin() {
         }}>
           Q&A
         </Link>
+        <Link href="/academy/admin/engagement" style={{
+          padding: '8px 16px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          borderRadius: '6px',
+          color: 'var(--ar-text-muted)',
+          textDecoration: 'none',
+          fontWeight: 500,
+          fontSize: '14px'
+        }}>
+          Engagement
+        </Link>
       </div>
 
       {loading ? (

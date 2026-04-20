@@ -3734,40 +3734,64 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       }
     }
 
-    function scheduleAppliedLearningPersist() {
-      if (appliedPersistTimer) clearTimeout(appliedPersistTimer);
-      appliedPersistTimer = setTimeout(async function() {
-        if (appliedPersistInFlight) return;
-        appliedPersistInFlight = true;
-        try {
-          await persistOpenedProgressToMemberJson(
-            "appliedLearning",
-            getAppliedLearningOpenedSet(),
-            '#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]',
-            "data-applied-id"
-          );
-        } finally {
-          appliedPersistInFlight = false;
-        }
-      }, 250);
+    /**
+     * Some tile clicks (Applied Learning, RPS) trigger navigation to external URLs,
+     * so a setTimeout-based persist is usually killed mid-flight by the browser.
+     * This helper preventDefaults on primary clicks, awaits the persist promise,
+     * then performs the navigation. Auxiliary clicks (middle-click, ctrl/cmd/shift
+     * click, target=_blank) are left untouched — the original page stays alive so
+     * the background persist completes normally.
+     */
+    function isAuxClick(event, linkEl) {
+      if (!event) return false;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return true;
+      if (event.button && event.button !== 0) return true;
+      var target = linkEl && linkEl.getAttribute("target");
+      return target === "_blank" || target === "_new";
     }
 
-    function scheduleRpsPersist() {
-      if (rpsPersistTimer) clearTimeout(rpsPersistTimer);
-      rpsPersistTimer = setTimeout(async function() {
-        if (rpsPersistInFlight) return;
-        rpsPersistInFlight = true;
-        try {
-          await persistOpenedProgressToMemberJson(
-            "rps",
-            getRpsOpenedSet(),
-            '#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]',
-            "data-rps-link"
-          );
-        } finally {
-          rpsPersistInFlight = false;
-        }
-      }, 250);
+    async function persistAppliedLearningNow() {
+      if (appliedPersistTimer) { clearTimeout(appliedPersistTimer); appliedPersistTimer = null; }
+      if (appliedPersistInFlight) return;
+      appliedPersistInFlight = true;
+      try {
+        await persistOpenedProgressToMemberJson(
+          "appliedLearning",
+          getAppliedLearningOpenedSet(),
+          '#ar-applied-learning-mini-grid a.ar-applied-learning-cube[data-applied-id]',
+          "data-applied-id"
+        );
+      } finally {
+        appliedPersistInFlight = false;
+      }
+    }
+
+    async function persistRpsNow() {
+      if (rpsPersistTimer) { clearTimeout(rpsPersistTimer); rpsPersistTimer = null; }
+      if (rpsPersistInFlight) return;
+      rpsPersistInFlight = true;
+      try {
+        await persistOpenedProgressToMemberJson(
+          "rps",
+          getRpsOpenedSet(),
+          '#arp-rps-accreditation-tile a.ar-rps-cube[data-rps-link]',
+          "data-rps-link"
+        );
+      } finally {
+        rpsPersistInFlight = false;
+      }
+    }
+
+    async function navigateAfterPersist(linkEl, persistFn) {
+      var href = linkEl.getAttribute("href") || "";
+      try {
+        var persistPromise = persistFn();
+        var timeout = new Promise(function(resolve) { setTimeout(resolve, 1500); });
+        await Promise.race([persistPromise, timeout]);
+      } catch (err) {
+        // Swallow: never block navigation on persistence errors.
+      }
+      if (href) globalThis.location.href = href;
     }
 
     function showPaidOnlyAccessMessage() {
@@ -3856,7 +3880,13 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           openedSet.add(appliedId);
           setAppliedLearningOpenedSet(openedSet);
           syncAppliedLearningProgress();
-          scheduleAppliedLearningPersist();
+          if (isAuxClick(event, linkEl)) {
+            // New tab / background open: page stays alive, fire-and-forget persist.
+            persistAppliedLearningNow();
+            return;
+          }
+          if (event) event.preventDefault();
+          navigateAfterPersist(linkEl, persistAppliedLearningNow);
         });
         linkEl.setAttribute("data-applied-wired", "true");
       });
@@ -3923,7 +3953,12 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           openedSet.add(key);
           setRpsOpenedSet(openedSet);
           syncRpsProgress();
-          scheduleRpsPersist();
+          if (isAuxClick(event, linkEl)) {
+            persistRpsNow();
+            return;
+          }
+          if (event) event.preventDefault();
+          navigateAfterPersist(linkEl, persistRpsNow);
         });
         linkEl.setAttribute("data-rps-wired", "true");
       });
