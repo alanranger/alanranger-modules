@@ -27,6 +27,14 @@ const DAY_MS = 86400000;
 const SUCCESS_PATH_DEFAULT = "https://www.alanranger.com/academy/dashboard?upgraded=1";
 const CANCEL_PATH_DEFAULT = "https://www.alanranger.com/academy/dashboard?upgrade=cancelled";
 
+// Memberstack plan + price identifiers that Memberstack's own webhook
+// matches against when Stripe fires subscription.created / invoice.paid.
+// Without these on the subscription metadata, Memberstack sees the
+// subscription but has no idea which plan to attach to the member, so
+// the upgrade silently fails to flip the member from trial → annual.
+const MEMBERSTACK_ANNUAL_PLAN_ID = "pln_academy-annual-membership-h57x0h8g";
+const MEMBERSTACK_ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+
 function setCors(res) {
   res.setHeader("Access-Control-Allow-Origin", "https://www.alanranger.com");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -131,12 +139,60 @@ function buildDiscountEntry(discount) {
   return null;
 }
 
-function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cancelUrl, discount }) {
+/**
+ * Find the member's existing Stripe customer so the upgrade charges/subscribes
+ * on the SAME Stripe customer that Memberstack already links to the member.
+ * Without this, Stripe Checkout creates a brand-new customer and Memberstack's
+ * auto-attach never fires (even with correct metadata), because Memberstack
+ * keys its member ↔ customer link off the Stripe customer id.
+ *
+ * Strategy (in order):
+ *   1) Stripe customers with metadata.msMemberId == memberId  (preferred)
+ *   2) Stripe customers with matching email
+ * Returns the customer id, or null if none found (Checkout will then fall
+ * back to creating a new customer keyed by email — legacy behaviour).
+ */
+async function findExistingCustomerId(stripe, memberId, email) {
+  try {
+    const byMeta = await stripe.customers.search({
+      query: `metadata['msMemberId']:'${memberId}'`,
+      limit: 3,
+    });
+    if (byMeta?.data?.[0]?.id) return byMeta.data[0].id;
+  } catch (err) {
+    console.warn("[create-upgrade-checkout] customer search by metadata failed:", err.message);
+  }
+  if (!email) return null;
+  try {
+    const byEmail = await stripe.customers.list({ email, limit: 3 });
+    if (byEmail?.data?.[0]?.id) return byEmail.data[0].id;
+  } catch (err) {
+    console.warn("[create-upgrade-checkout] customer list by email failed:", err.message);
+  }
+  return null;
+}
+
+function buildSubscriptionMetadata(memberId, name) {
+  const meta = {
+    msAppId: ACADEMY_APP_ID,
+    msMemberId: memberId,
+    // These two are the magic pair Memberstack's webhook matcher needs.
+    msPlanId: MEMBERSTACK_ANNUAL_PLAN_ID,
+    msPriceId: MEMBERSTACK_ANNUAL_PRICE_ID,
+    // Signals to Memberstack that this was initiated from a client-side /
+    // checkout-hosted flow (same semantics as their native upgrade path).
+    msViaClient: "true",
+    trigger: "expired_trial_upgrade",
+  };
+  if (name) meta.memberName = name;
+  return meta;
+}
+
+function buildCheckoutParams({ priceId, email, memberId, name, customerId, successUrl, cancelUrl, discount }) {
   const discountEntry = buildDiscountEntry(discount);
   const params = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    customer_email: email,
     client_reference_id: memberId,
     success_url: successUrl,
     cancel_url: cancelUrl,
@@ -148,14 +204,17 @@ function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cance
       source: "dashboard_upgrade_modal",
     },
     subscription_data: {
-      metadata: {
-        msAppId: ACADEMY_APP_ID,
-        msMemberId: memberId,
-        trigger: "expired_trial_upgrade",
-      },
+      metadata: buildSubscriptionMetadata(memberId, name),
     },
   };
-  if (name) params.subscription_data.metadata.memberName = name;
+  if (customerId) {
+    // Re-use existing customer so the subscription lands on the record
+    // Memberstack already tracks for this member.
+    params.customer = customerId;
+    params.customer_update = { name: "auto", address: "auto" };
+  } else {
+    params.customer_email = email;
+  }
   if (discountEntry) {
     params.discounts = [discountEntry];
   }
@@ -181,7 +240,10 @@ module.exports = async function handler(req, res) {
     const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
     const supabase = getSupabase();
 
-    const couponWindow = await resolveCouponWindow(supabase, memberId);
+    const [couponWindow, customerId] = await Promise.all([
+      resolveCouponWindow(supabase, memberId),
+      findExistingCustomerId(stripe, memberId, email),
+    ]);
     const discount = couponWindow ? await resolveStripeDiscount(stripe) : null;
 
     const successUrl = returnUrl || SUCCESS_PATH_DEFAULT;
@@ -191,6 +253,7 @@ module.exports = async function handler(req, res) {
         email,
         memberId,
         name,
+        customerId,
         successUrl,
         cancelUrl: CANCEL_PATH_DEFAULT,
         discount,
@@ -203,6 +266,7 @@ module.exports = async function handler(req, res) {
       couponCode: discount ? UPGRADE_COUPON_CODE : null,
       couponType: discount?.type || null,
       daysSinceExpiry: couponWindow?.daysSinceExpiry ?? null,
+      reusedExistingCustomer: Boolean(customerId),
     });
   } catch (err) {
     console.error("[create-upgrade-checkout] error:", err);

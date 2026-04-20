@@ -1643,8 +1643,10 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   #ar-upgrade-modal .ar-upgrade-modal__card {
     background: var(--ar-bg, #0f172a);
     color: var(--ar-text, #e2e8f0);
-    max-width: 520px;
+    max-width: 560px;
     width: 100%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     border: 1px solid var(--ar-border, #334155);
     border-radius: 14px;
     padding: 28px 24px;
@@ -1699,9 +1701,24 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   #ar-upgrade-modal .ar-upgrade-modal__coupon.is-visible { display: inline-block; }
   #ar-upgrade-modal ul {
     padding-left: 20px;
-    margin: 12px 0 18px 0;
-    line-height: 1.6;
-    font-size: 14px;
+    margin: 12px 0 14px 0;
+    line-height: 1.55;
+    font-size: 13.5px;
+  }
+  #ar-upgrade-modal ul.ar-upgrade-modal__features li {
+    margin-bottom: 7px;
+    color: #cbd5e1;
+  }
+  #ar-upgrade-modal ul.ar-upgrade-modal__features li strong {
+    color: #f1f5f9;
+    font-weight: 700;
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__reassure {
+    margin: 6px 0 14px 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.5;
+    font-style: italic;
   }
   #ar-upgrade-modal .ar-upgrade-modal__cta {
     width: 100%;
@@ -2386,16 +2403,22 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   <div id="ar-upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="ar-upgrade-modal-title">
     <div class="ar-upgrade-modal__card">
       <button type="button" class="ar-upgrade-modal__close" id="ar-upgrade-modal-close" aria-label="Dismiss">&times;</button>
-      <h2 id="ar-upgrade-modal-title">Your trial has ended</h2>
-      <p class="ar-upgrade-modal__sub" id="ar-upgrade-modal-sub">Upgrade to Academy Annual to restore full dashboard access.</p>
+      <h2 id="ar-upgrade-modal-title">Don&rsquo;t lose everything you&rsquo;ve started</h2>
+      <p class="ar-upgrade-modal__sub" id="ar-upgrade-modal-sub">Your trial has ended. Upgrade to Academy Annual to keep every module, bookmark and piece of progress &mdash; plus unlock 12 months of new lessons, tools and expert support.</p>
       <div class="ar-upgrade-modal__price" id="ar-upgrade-modal-price">&pound;79<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span></div>
       <div class="ar-upgrade-modal__coupon" id="ar-upgrade-modal-coupon">SAVE20 grace discount auto-applied at checkout</div>
-      <ul>
-        <li>60 step-by-step modules + 35 field checklists</li>
-        <li>30 practice packs + 15 exams with certification</li>
-        <li>Personalised dashboard, bookmarks and progress tracking</li>
-        <li>Keep everything you've learned in your trial</li>
+      <ul class="ar-upgrade-modal__features">
+        <li><strong>60 video modules</strong> covering camera craft, composition, genre and post-processing &mdash; from first shutter click to advanced technique</li>
+        <li><strong>35 one-page field checklists</strong> for every shoot situation &mdash; download to your phone and never miss a setting again</li>
+        <li><strong>30 practice packs + 15 exams</strong> with RPS-aligned assignments, examiner feedback and shareable certification</li>
+        <li><strong>741-page searchable eBook</strong> &mdash; every module in a printable PDF you keep for life</li>
+        <li><strong>Applied Learning Library</strong> &mdash; 22+ scenario-based guides across portraits, landscape, products, close-up and interiors (expanding monthly)</li>
+        <li><strong>Pro photographer toolkit</strong> &mdash; exposure calculator, print-size calculator, photography style quiz, colour IQ / hue test</li>
+        <li><strong>Robo-Ranger AI assistant + live Q&amp;A</strong> &mdash; ask Alan anything about technique, gear or your images, day or night</li>
+        <li><strong>RPS accreditation pathway</strong> &mdash; mentoring notes and panel-building support for LRPS distinction</li>
+        <li><strong>Keep everything from your trial</strong> &mdash; bookmarks, notes, quiz scores, exam attempts and progress carry over the moment you upgrade</li>
       </ul>
+      <p class="ar-upgrade-modal__reassure">Cancel any time in a single click. 12-month access. No hidden charges. Renewal reminded 7 days in advance.</p>
       <button type="button" class="ar-upgrade-modal__cta" id="ar-upgrade-modal-cta">Upgrade to Academy Annual</button>
       <div class="ar-upgrade-modal__err" id="ar-upgrade-modal-err"></div>
     </div>
