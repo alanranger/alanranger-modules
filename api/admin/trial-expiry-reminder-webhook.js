@@ -4,13 +4,26 @@
 //
 // Query parameters:
 // - daysAhead: Number of days before expiry to send reminder (default: 7)
-//   Example: ?daysAhead=7 for 7-day reminder, ?daysAhead=1 for 24-hour reminder
+//   Accepted values (matches the supported email templates):
+//     daysAhead=7   → 7-days-before mid-trial reminder
+//     daysAhead=1   → last-day-of-trial reminder
+//     daysAhead=-1  → 1-day-after-expiry with SAVE20 offer (6 days of grace remaining)
+//     daysAhead=-3  → 3-days-after-expiry with SAVE20 offer (4 days of grace remaining)
+//     daysAhead=-6  → last-day-of-SAVE20 reminder (1 day of grace remaining)
+//     daysAhead=-8+ → post-grace reminder (SAVE20 closed, full £79 price)
 // - sendEmail: Set to false | 0 | no | off to only return JSON (no nodemailer). Zapier can send mail in a later step.
 // - testEmail: Send a single test (still respects sendEmail=false for dry-run preview)
 // - secret: Optional ORPHANED_WEBHOOK_SECRET for auth
 //
-// Upgrade link in emails: defaults to ACADEMY_UPGRADE_URL (Memberstack upgrade page).
-// Set TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true to restore per-member Stripe Checkout session URLs.
+// All emails link members to https://www.alanranger.com/academy/dashboard, where
+// the locked-dashboard snippet detects the trial state (via /api/academy/trial-status)
+// and opens the upgrade modal with SAVE20 auto-applied when they are within the
+// 7-day grace window. Override with env var ACADEMY_UPGRADE_URL if needed.
+// TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true restores per-member Stripe Checkout URLs,
+// but this is not recommended — the dashboard modal now creates Stripe sessions
+// with the correct Memberstack metadata so the Memberstack plan auto-attaches
+// after payment. Stripe sessions built from this webhook lack that metadata
+// and will orphan the subscription on an unknown Stripe customer.
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
@@ -48,9 +61,13 @@ const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_
 const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
 const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 
-// Memberstack upgrade page (same flow as dashboard /upgrade snippet)
+// Every trial reminder email links to the Academy dashboard. The dashboard
+// snippet detects the trial state and opens the upgrade modal with SAVE20
+// auto-applied inside the grace window. Using a single URL keeps the
+// Memberstack session, Stripe customer id and Supabase trial row all
+// stitched together through the upgrade flow.
 const MEMBERSTACK_UPGRADE_URL =
-  process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/upgrade";
+  process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/dashboard";
 const UPGRADE_URL_FALLBACK = MEMBERSTACK_UPGRADE_URL;
 
 // Annual membership price ID from Memberstack
@@ -150,8 +167,217 @@ function shouldSendEmailFromRequest(req) {
   return true;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Email content
+// ─────────────────────────────────────────────────────────────────────────
+// Kept in this file so the trial reminder copy has a single source of truth
+// that mirrors the dashboard upgrade modal (see
+// academy-dashboard-squarespace-snippet-v1.html). If you edit wording here,
+// also update the modal comparison table so in-app and email stay aligned.
+
+const ACADEMY_ANNUAL_PRICE_GBP = 79;
+const SAVE20_DISCOUNT_GBP = 20;
+const SAVE20_PRICE_GBP = ACADEMY_ANNUAL_PRICE_GBP - SAVE20_DISCOUNT_GBP; // 59
+const SAVE20_GRACE_WINDOW_DAYS = 7;
+
+const FEATURE_BULLETS = [
+  "**60 training modules** — in-depth articles with practical examples, graphics and example images across settings, composition, gear, genres and post-processing",
+  "**35 one-page field checklists** — print-ready PDFs for every shoot scenario",
+  "**30 practice packs** — self-paced assignments built around Alan's frameworks and guidance",
+  "**15 exams with downloadable certificates** — individual pass certificates with score details, plus a master certificate once you complete them all",
+  "**741-page searchable eBook** — every module in a printable PDF, yours for life",
+  "**Applied Learning Library** — 22+ scenario-based guides across portraits, product, landscape, close-up and more (expanding monthly)",
+  "**Pro photographer toolkit** — exposure calculator, print size calculator, style quiz, Hue test",
+  "**Robo-Ranger AI assistant** — on-demand answers on technique, gear and Academy content",
+  "**Direct messaging & Q&A with Alan** — message Alan with questions and join the live Q&A sessions"
+];
+
+function renderFeatureList() {
+  return FEATURE_BULLETS.map((b) => "- " + b).join("\n");
+}
+
+// SAVE20 is only valid within SAVE20_GRACE_WINDOW_DAYS of trial end. This
+// mirrors /api/academy/trial-status + /api/stripe/create-upgrade-checkout so
+// the email, dashboard modal and Stripe Checkout always agree.
+function computeSave20State(daysUntilExpiry) {
+  if (daysUntilExpiry >= 0) return { eligible: false, daysLeft: 0 };
+  const daysSince = Math.abs(daysUntilExpiry);
+  const daysLeft = SAVE20_GRACE_WINDOW_DAYS - daysSince;
+  return { eligible: daysLeft > 0, daysLeft: Math.max(0, daysLeft) };
+}
+
+function buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
+  const subject = "Your Academy trial — a gentle heads-up";
+  const body = `
+Hi ${member.name || "there"},
+
+Just a friendly heads-up that your trial with the **Alan Ranger Photography Academy** will end on **${expiryDateStr}** (${daysUntilExpiry} days from now).
+
+If you'd like to carry on learning, you can upgrade to full annual membership at any time for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — less than a single coffee a week — and everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account.
+
+**A quick reminder of what's in your trial (and what annual membership keeps unlocked):**
+
+${renderFeatureList()}
+
+**Upgrade in one click**
+
+Log back in and you'll see a quick upgrade option on your Academy dashboard:
+
+${upgradeUrl}
+
+No pressure — your trial keeps running either way. Any questions, just reply to this email.
+
+Best regards,
+Alan Ranger
+Alan Ranger Photography Academy
+  `.trim();
+  return { subject, body };
+}
+
+function buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl) {
+  const subject = "Halfway through your Academy trial — 7 days to go";
+  const body = `
+Hi ${member.name || "there"},
+
+You're about halfway through your 14-day free trial of the **Alan Ranger Photography Academy** — **7 days to go**. Hopefully you're finding your way around and starting to build some momentum.
+
+A quick reminder of what's in your trial (and everything you can keep if you lock in an annual membership before it ends):
+
+${renderFeatureList()}
+
+**A few suggestions for your next 7 days**
+
+- Pick **one module** you haven't opened yet and read it end-to-end — the practical examples make far more sense than skimming
+- Download **one field checklist** for your next shoot — it's the fastest way to feel the value
+- Try **one practice pack** — small, self-contained, and designed so you actually finish it
+- Ask Alan something in **Q&A** or throw a question at **Robo-Ranger** while the trial is still running
+
+**Want to lock in annual access now?**
+
+If you already know you want to keep learning, you can upgrade to the full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — less than a single coffee a week — and everything you've already built stays on your account.
+
+Log back in and you'll see a quick upgrade option on your dashboard:
+
+${upgradeUrl}
+
+Your trial expires on **${expiryDateStr}**. No pressure — your trial keeps running either way.
+
+Best regards,
+Alan Ranger
+Alan Ranger Photography Academy
+  `.trim();
+  return { subject, body };
+}
+
+function buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl) {
+  const subject = "Last day of your Academy trial — keep everything you've started";
+  const body = `
+Hi ${member.name || "there"},
+
+Your 14-day free trial of the **Alan Ranger Photography Academy** ends **tomorrow (${expiryDateStr})**.
+
+If you've been finding your way around the training modules, practice packs and checklists, this is the moment to lock in your full annual membership — everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account, ready to pick up where you left off.
+
+**Upgrade today for £${ACADEMY_ANNUAL_PRICE_GBP}/year and keep full access to:**
+
+${renderFeatureList()}
+
+**Upgrade in one click**
+
+Log back in and you'll see the upgrade option on your Academy dashboard:
+
+${upgradeUrl}
+
+If you decide not to upgrade, your access to the training modules pauses tomorrow — but your account stays put and you can come back any time.
+
+Any questions, just reply to this email.
+
+Best regards,
+Alan Ranger
+Alan Ranger Photography Academy
+  `.trim();
+  return { subject, body };
+}
+
+function buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, daysLeftInGrace) {
+  const daysWord = daysLeftInGrace === 1 ? "day" : "days";
+  const daysLeftPhrase = `**${daysLeftInGrace} ${daysWord}** left`;
+  const subject = `Your Academy trial ended — SAVE20 is yours for ${daysLeftInGrace} more ${daysWord}`;
+  const body = `
+Hi ${member.name || "there"},
+
+Your 14-day free trial of the **Alan Ranger Photography Academy** ended on **${expiryDateStr}**, so access to the full library has now paused.
+
+If you'd like to carry on learning, you can upgrade to full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — and for the next ${daysLeftPhrase} you can use the code **SAVE20** to take **£${SAVE20_DISCOUNT_GBP} off your first year**, bringing it down to just **£${SAVE20_PRICE_GBP}**. That's less than a single coffee a week for the whole year.
+
+Everything you've already started — your module progress, quiz scores, bookmarks, practice-pack notes and recent activity — is still on your account, waiting to pick up where you left off.
+
+**Here's what full annual membership keeps unlocked:**
+
+${renderFeatureList()}
+
+**Upgrade in one click**
+
+Just log back into your Academy dashboard — the upgrade will pop up automatically with **SAVE20 already applied**. No codes to type in, no separate checkout page to find.
+
+${upgradeUrl}
+
+SAVE20 only runs for ${daysLeftPhrase} from today — after that the discount closes and annual membership returns to full price at £${ACADEMY_ANNUAL_PRICE_GBP}.
+
+Any questions, just reply to this email.
+
+Best regards,
+Alan Ranger
+Alan Ranger Photography Academy
+  `.trim();
+  return { subject, body };
+}
+
+function buildExpiredNoCouponEmail(member, expiryDateStr, upgradeUrl) {
+  const subject = "Your Academy trial has ended — come back any time";
+  const body = `
+Hi ${member.name || "there"},
+
+Your trial of the **Alan Ranger Photography Academy** ended on **${expiryDateStr}**, and the SAVE20 grace-period discount has now closed.
+
+If you'd still like to continue, annual membership is available at the standard rate of **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — and everything you built during your trial (progress, bookmarks, notes, quiz scores) is still on your account, ready to pick up where you left off.
+
+**What full annual membership keeps unlocked:**
+
+${renderFeatureList()}
+
+**Upgrade whenever you're ready**
+
+Log back into your Academy dashboard and you'll see a quick upgrade option:
+
+${upgradeUrl}
+
+Any questions, just reply to this email.
+
+Best regards,
+Alan Ranger
+Alan Ranger Photography Academy
+  `.trim();
+  return { subject, body };
+}
+
+function buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
+  const coupon = computeSave20State(daysUntilExpiry);
+  if (coupon.eligible) {
+    return buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, coupon.daysLeft);
+  }
+  return buildExpiredNoCouponEmail(member, expiryDateStr, upgradeUrl);
+}
+
+function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl) {
+  if (daysUntilExpiry < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
+  if (daysUntilExpiry === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl);
+  if (daysUntilExpiry === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl);
+  return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
+}
+
 async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
-  const sendEmail = !options || options.sendEmail !== false;
+  const sendEmail = options?.sendEmail !== false;
 
   // Format expiry date nicely
   const expiryDate = member.trial_expiry_date 
@@ -175,177 +401,12 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl };
   }
 
-  // Determine email type based on days until/after expiry
-  let emailSubject, emailBody;
-  
-  if (daysUntilExpiry < 0) {
-    // EXPIRED: 1 day after expiry
-    emailSubject = "⚠️ Your Academy Trial Has Expired - Restore Access Now";
-    emailBody = `
-Hi ${member.name || "there"},
-
-**Your trial with Alan Ranger Photography Academy has expired.**
-
-Your trial access ended on **${expiryDate}**, and you've now lost access to all Academy content, modules, and resources.
-
-**Don't worry - you can restore your access immediately!**
-
-Upgrade to an annual plan (£79/year) and you'll instantly regain full access to:
-
-**Academy Content:**
-✅ 5 groups of key (10 Min) modules to learn photography
-✅ 15 Key Camera Setting Modules
-✅ 10 Essential Gear and Accessory Guides
-✅ 10 Composition Guide Modules
-✅ 10 Photography Genre Topic Guides
-✅ 15 Practical Assignments
-✅ 30 Practice Packs to support the key modules
-✅ 35 1-Page Field Checklists
-✅ 15 Exam modules with certification to test your knowledge and development
-
-**Plus Academy Features:**
-✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
-✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
-✅ Modern login + better access control for a smoother experience across devices
-
-**Restore your access now:**
-${checkoutUrl}
-
-This is your last chance to continue your photography journey with us at the annual membership rate.
-
-If you have any questions or need help, please contact us.
-
-Best regards,
-Alan Ranger Photography Academy
-
----
-This is an automated notification. Your trial expired on ${expiryDate}.
-    `.trim();
-  } else if (daysUntilExpiry === 1) {
-    // FINAL REMINDER: 1 day before expiry
-    emailSubject = "⚠️ URGENT: Your Academy Trial Expires Tomorrow - Upgrade Now";
-    emailBody = `
-Hi ${member.name || "there"},
-
-**URGENT: Only 24 hours left!**
-
-Your trial with Alan Ranger Photography Academy will end **tomorrow (${expiryDate})**.
-
-**This is your final reminder** - if you don't upgrade today, you will lose access to:
-- All Academy modules and content
-- Exclusive photography tutorials and guides
-- Community support and resources
-- Everything you've been learning
-
-**Upgrade now for just £79/year and keep your access:**
-${checkoutUrl}
-
-**What you'll get:**
-✅ 5 groups of key (10 Min) modules to learn photography
-✅ 15 Key Camera Setting Modules
-✅ 10 Essential Gear and Accessory Guides
-✅ 10 Composition Guide Modules
-✅ 10 Photography Genre Topic Guides
-✅ 15 Practical Assignments
-✅ 30 Practice Packs to support the key modules
-✅ 35 1-Page Field Checklists
-✅ 15 Exam modules with certification to test your knowledge and development
-✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
-✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
-✅ Modern login + better access control for a smoother experience across devices
-
-**Don't wait - upgrade now before you lose access tomorrow!**
-
-If you have any questions or need help with the upgrade process, please contact us immediately.
-
-Best regards,
-Alan Ranger Photography Academy
-
----
-This is an automated final reminder. Your trial expires tomorrow (${expiryDate}).
-    `.trim();
-  } else if (daysUntilExpiry === 7) {
-    // HARDER REMINDER: 7 days before expiry
-    emailSubject = "⏰ Your Academy Trial Expires in 7 Days - Upgrade to Continue Access";
-    emailBody = `
-Hi ${member.name || "there"},
-
-**Your trial expires in 7 days**
-
-Your trial with Alan Ranger Photography Academy will end on **${expiryDate}**.
-
-**To continue enjoying full access to all Academy content, you'll need to upgrade to an annual plan.**
-
-**What happens if you don't upgrade?**
-- Your trial access will expire on ${expiryDate}
-- You'll lose access to all Academy modules, content, and resources
-- You'll need to sign up for an annual plan (£79) to regain access
-
-**Upgrade now for just £79/year and get:**
-✅ 5 groups of key (10 Min) modules to learn photography
-✅ 15 Key Camera Setting Modules
-✅ 10 Essential Gear and Accessory Guides
-✅ 10 Composition Guide Modules
-✅ 10 Photography Genre Topic Guides
-✅ 15 Practical Assignments
-✅ 30 Practice Packs to support the key modules
-✅ 35 1-Page Field Checklists
-✅ 15 Exam modules with certification to test your knowledge and development
-✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
-✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
-✅ Modern login + better access control for a smoother experience across devices
-
-**Upgrade your account now:**
-${checkoutUrl}
-
-Don't miss out on continuing your photography journey with us!
-
-If you have any questions or need help with the upgrade process, please contact us.
-
-Best regards,
-Alan Ranger Photography Academy
-
----
-This is an automated reminder. Your trial expires on ${expiryDate} (7 days remaining).
-    `.trim();
-  } else {
-    // SOFT REMINDER: 15 days before expiry (or other early reminders)
-    emailSubject = "📸 Friendly Reminder: Your Academy Trial Expires Soon";
-    emailBody = `
-Hi ${member.name || "there"},
-
-Just a friendly heads-up that your trial with Alan Ranger Photography Academy will end on **${expiryDate}** (${daysUntilExpiry} days from now).
-
-We hope you've been enjoying the Academy content so far! To continue your photography journey with full access to all modules, tutorials, and resources, you'll need to upgrade to an annual plan.
-
-**Upgrade now for just £79/year and get:**
-✅ 5 groups of key (10 Min) modules to learn photography
-✅ 15 Key Camera Setting Modules
-✅ 10 Essential Gear and Accessory Guides
-✅ 10 Composition Guide Modules
-✅ 10 Photography Genre Topic Guides
-✅ 15 Practical Assignments
-✅ 30 Practice Packs to support the key modules
-✅ 35 1-Page Field Checklists
-✅ 15 Exam modules with certification to test your knowledge and development
-✅ Personalised dashboard so you can pick up where you left off (modules opened, bookmarks, recent activity)
-✅ Exams + progress tracking included — module pass/fail, attempts, certificates, and clear progress visuals
-✅ Modern login + better access control for a smoother experience across devices
-
-**Upgrade your account:**
-${checkoutUrl}
-
-No pressure - just wanted to make sure you're aware so you don't miss out on continuing your learning journey with us!
-
-If you have any questions, please don't hesitate to contact us.
-
-Best regards,
-Alan Ranger Photography Academy
-
----
-This is an automated friendly reminder. Your trial expires on ${expiryDate} (${daysUntilExpiry} days remaining).
-    `.trim();
-  }
+  // Build email content from the shared template helpers so all four
+  // templates (soft/7-day/final-day/expired) stay aligned with the dashboard
+  // modal copy. See FEATURE_BULLETS and computeSave20State above.
+  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl);
+  const emailSubject = content.subject;
+  const emailBody = content.body;
 
   try {
     const info = await emailTransporter.sendMail({
