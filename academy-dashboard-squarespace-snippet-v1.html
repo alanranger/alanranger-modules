@@ -5212,6 +5212,33 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         }
       }
 
+      // Membership Status tile's timeline row is driven by Memberstack plan
+      // dates, which are blank for a CANCELED trial. Overwrite it with the
+      // real ended-at date from the trial-status response so the card shows
+      // useful context instead of "No renewal/expiry date available yet."
+      function populateExpiredTrialTimeline(status) {
+        if (!status) return;
+        var labelEl = document.getElementById("arp-ms-countdown-label");
+        var valueEl = document.getElementById("arp-ms-countdown-value");
+        var metaEl = document.getElementById("arp-ms-countdown-meta");
+        if (!labelEl || !valueEl || !metaEl) return;
+        var endedAt = status.trialEndedAt ? new Date(status.trialEndedAt) : null;
+        if (!endedAt || Number.isNaN(endedAt.getTime())) return;
+        var days = typeof status.daysSinceExpiry === "number" ? status.daysSinceExpiry : 0;
+        var windowDays = status.couponWindowDays || 7;
+        var daysLeftInGrace = status.couponEligible ? Math.max(0, windowDays - days) : 0;
+        labelEl.textContent = "Trial ended";
+        valueEl.textContent = fmtDate(endedAt);
+        if (daysLeftInGrace > 0) {
+          var dayWord = daysLeftInGrace === 1 ? "day" : "days";
+          metaEl.textContent = "Upgrade within " + daysLeftInGrace + " " + dayWord + " to keep your SAVE20 discount.";
+        } else if (status.couponEligible) {
+          metaEl.textContent = "Your SAVE20 discount is available today \u2014 upgrade now.";
+        } else {
+          metaEl.textContent = "SAVE20 grace window has ended \u2014 annual membership is \u00a379.";
+        }
+      }
+
       function enterExpiredTrialMode(member, ms, status) {
         console.log("[expired-trial] entering locked dashboard mode", status);
         document.body.setAttribute("data-ar-academy-state", "expired-trial");
@@ -5221,6 +5248,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         populateUpgradeModal(status);
         wireUpgradeUI(member);
         try { renderMemberStatus(member, ms); } catch(e) { console.warn("renderMemberStatus failed in expired mode", e); }
+        populateExpiredTrialTimeline(status);
         setTimeout(openUpgradeModal, 400);
       }
 
