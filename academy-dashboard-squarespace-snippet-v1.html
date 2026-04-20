@@ -5031,8 +5031,33 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       // expired-trial locked mode regardless of Memberstack plan state. This is
       // safe because the override only LOCKS the dashboard (it cannot grant
       // access) and is URL-driven, so a plain refresh returns to normal.
-      var forceExpiredTest = (typeof location !== "undefined" &&
-        /[?&]ar-test-expired=1(?:&|$)/.test(String(location.search || "")));
+      //
+      // Detection is intentionally permissive — we accept the flag anywhere in
+      // the query string or the hash (?ar-test-expired=1, &ar-test-expired=1,
+      // or even #ar-test-expired=1) so copy-paste of test URLs doesn't fail
+      // due to a missing leading '?'.
+      function detectForceExpiredTest(){
+        try {
+          var loc = (typeof window !== "undefined" && window.location) ? window.location : null;
+          if (!loc) return false;
+          var search = String(loc.search || "");
+          var hash = String(loc.hash || "");
+          var href = String(loc.href || "");
+          var probe = search + " " + hash + " " + href;
+          return /ar-test-expired\s*=\s*1/i.test(probe);
+        } catch (e) { return false; }
+      }
+      var forceExpiredTest = detectForceExpiredTest();
+      if (forceExpiredTest) {
+        // Set the locked-state data attribute IMMEDIATELY so the CSS lock
+        // kicks in even before Memberstack finishes loading. If the real
+        // access guard later determines the member is genuinely active, it
+        // would normally re-render — but because hasAccess+forceExpiredTest
+        // is handled in the guard below, the attribute stays set.
+        try { document.body.setAttribute("data-ar-academy-state", "expired-trial"); } catch(e) {}
+        console.warn("%c[ar-test-expired] TEST MODE: forcing expired-trial locked dashboard (URL flag active)",
+          "background:#b45309;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;");
+      }
 
       function synthesizeExpiredStatus(){
         return {
