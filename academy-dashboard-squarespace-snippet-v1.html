@@ -2889,8 +2889,23 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       return false;
     }
 
+    // An expired-trial member still has the trial planConnection in Memberstack
+    // but with status=CANCELED/EXPIRED and active=false. Those must NOT count as
+    // access, otherwise the dashboard renders in "normal" mode and the locked
+    // mode + upgrade modal never fire. Supabase's trial-status endpoint is the
+    // authoritative fallback for anyone we reject here.
+    function isActivePlanConnection(pc){
+      if (!pc) return false;
+      if (pc.active === false) return false;
+      var status = String(pc.status || "").toUpperCase();
+      if (status === "CANCELED" || status === "CANCELLED" || status === "EXPIRED" || status === "ENDED") return false;
+      return true;
+    }
+
     function hasTrialAccess(member){
-      return getPlanConnections(member).some(function(pc){ return pc && pc.planId === TRIAL_PLAN_ID; });
+      return getPlanConnections(member).some(function(pc){
+        return pc && pc.planId === TRIAL_PLAN_ID && isActivePlanConnection(pc);
+      });
     }
   
     function hasAnnualAccess(member){
@@ -2911,7 +2926,9 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     }
   
     function hasAnyNonTrialPlan(member){
-      return getPlanConnections(member).some(function(pc){ return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID; });
+      return getPlanConnections(member).some(function(pc){
+        return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID && isActivePlanConnection(pc);
+      });
     }
   
     function hasAccess(member){
