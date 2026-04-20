@@ -5,6 +5,7 @@
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
 const { createExampleQuestionsForMember } = require("../academy/qa/create-example-questions");
+const { getTrialConfig, trialLengthForStart } = require("../../lib/academyTrialConfig");
 
 function safeIso(d) {
   try {
@@ -43,6 +44,9 @@ module.exports = async (req, res) => {
     let membersFetched = 0;
     let membersUpserted = 0;
     let eventsUpserted = 0;
+
+    // Loaded once per refresh so we pick up DB config changes without redeploy.
+    const trialConfig = await getTrialConfig({ forceRefresh: true });
 
     let after = undefined;
     const limit = 100;
@@ -168,7 +172,8 @@ module.exports = async (req, res) => {
           new Date().toISOString();
         if (isTrial && !expiryDate) {
           const createdDate = new Date(memberCreatedAt);
-          const trialEndDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const trialLengthDays = trialLengthForStart(createdDate, trialConfig);
+          const trialEndDate = new Date(createdDate.getTime() + trialLengthDays * 24 * 60 * 60 * 1000);
           expiryDate = trialEndDate.toISOString();
         }
         

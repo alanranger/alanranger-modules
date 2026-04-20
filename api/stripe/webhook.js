@@ -5,6 +5,7 @@
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 const { ACADEMY_ANNUAL_PRICE_IDS } = require('../../lib/academyStripeConfig');
+const { getTrialConfig, trialLengthForStart, addDays: addDaysHelper } = require('../../lib/academyTrialConfig');
 
 // Academy app ID for filtering
 const ACADEMY_APP_ID = 'app_cmjlwl7re00440stg3ri2dud8';
@@ -61,13 +62,16 @@ async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt 
   if (isNaN(createdDate.getTime())) return;
 
   if (eventType === 'checkout.session.completed' && isTrialPriceId(msPriceId)) {
-    const trialEndAt = addDays(createdDate, 30).toISOString();
+    const trialConfig = await getTrialConfig();
+    const trialLengthDays = trialLengthForStart(createdDate, trialConfig);
+    const trialEndAt = addDaysHelper(createdDate, trialLengthDays).toISOString();
     await supabaseAdmin
       .from('academy_trial_history')
       .upsert({
         member_id: msMemberId,
         trial_start_at: createdAt,
         trial_end_at: trialEndAt,
+        trial_length_days: trialLengthDays,
         source: 'stripe_webhook'
       }, { onConflict: 'member_id,trial_start_at' });
   }

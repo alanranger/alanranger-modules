@@ -184,7 +184,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     emailBody = `
 Hi ${member.name || "there"},
 
-**Your 30-day trial with Alan Ranger Photography Academy has expired.**
+**Your trial with Alan Ranger Photography Academy has expired.**
 
 Your trial access ended on **${expiryDate}**, and you've now lost access to all Academy content, modules, and resources.
 
@@ -229,7 +229,7 @@ Hi ${member.name || "there"},
 
 **URGENT: Only 24 hours left!**
 
-Your 30-day trial with Alan Ranger Photography Academy will end **tomorrow (${expiryDate})**.
+Your trial with Alan Ranger Photography Academy will end **tomorrow (${expiryDate})**.
 
 **This is your final reminder** - if you don't upgrade today, you will lose access to:
 - All Academy modules and content
@@ -272,7 +272,7 @@ Hi ${member.name || "there"},
 
 **Your trial expires in 7 days**
 
-Your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDate}**.
+Your trial with Alan Ranger Photography Academy will end on **${expiryDate}**.
 
 **To continue enjoying full access to all Academy content, you'll need to upgrade to an annual plan.**
 
@@ -314,7 +314,7 @@ This is an automated reminder. Your trial expires on ${expiryDate} (7 days remai
     emailBody = `
 Hi ${member.name || "there"},
 
-Just a friendly heads-up that your 30-day trial with Alan Ranger Photography Academy will end on **${expiryDate}** (${daysUntilExpiry} days from now).
+Just a friendly heads-up that your trial with Alan Ranger Photography Academy will end on **${expiryDate}** (${daysUntilExpiry} days from now).
 
 We hope you've been enjoying the Academy content so far! To continue your photography journey with full access to all modules, tutorials, and resources, you'll need to upgrade to an annual plan.
 

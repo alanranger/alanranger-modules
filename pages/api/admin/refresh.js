@@ -8,6 +8,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
+const { getTrialConfig, trialLengthForStart } = require("../../../lib/academyTrialConfig");
 
 function safeIso(d) {
   try {
@@ -90,6 +91,9 @@ export default async function handler(req, res) {
     let newTrials = 0;
     let newAnnual = 0;
     let updatedMembers = 0;
+
+    // Loaded once per refresh so we pick up DB config changes without redeploy.
+    const trialConfig = await getTrialConfig({ forceRefresh: true });
 
     let after = undefined;
     const limit = 100;
@@ -209,9 +213,10 @@ export default async function handler(req, res) {
           existingMember?.created_at ||
           new Date().toISOString();
         if (isTrial && !expiryDate) {
-          // Calculate 30 days from member creation date
+          // Use the configured trial length (falls back to legacy for pre-cutover members).
           const createdDate = new Date(memberCreatedAt);
-          const trialEndDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const trialLengthDays = trialLengthForStart(createdDate, trialConfig);
+          const trialEndDate = new Date(createdDate.getTime() + trialLengthDays * 24 * 60 * 60 * 1000);
           expiryDate = trialEndDate.toISOString();
         }
         

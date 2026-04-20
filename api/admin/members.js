@@ -5,6 +5,7 @@
 const path = require('node:path');
 const { createClient } = require("@supabase/supabase-js");
 const { isAcademyInvoice } = require('../../lib/academyStripeConfig');
+const { getTrialConfig, trialLengthForStart } = require('../../lib/academyTrialConfig');
 
 const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
 const HISTORY_FILTER_KEYS = new Set([
@@ -354,7 +355,7 @@ const extractNameFromPayload = (payload) => {
   return null;
 };
 
-const buildPlanTimeline = (member) => {
+const buildPlanTimeline = (member, trialConfig) => {
   const plan = member.plan_summary || {};
   const isTrial = isTrialPlan(plan);
   const isAnnual = plan.plan_type === 'annual';
@@ -364,7 +365,8 @@ const buildPlanTimeline = (member) => {
   let trialEndAt = null;
   if (isTrial) {
     trialStartAt = parseDate(plan.trial_start_at) || parseDate(member.created_at);
-    trialEndAt = parseDate(plan.expiry_date) || (trialStartAt ? addDays(trialStartAt, 30) : null);
+    const fallbackDays = trialConfig ? trialLengthForStart(trialStartAt, trialConfig) : 30;
+    trialEndAt = parseDate(plan.expiry_date) || (trialStartAt ? addDays(trialStartAt, fallbackDays) : null);
   }
 
   let annualStartAt = null;
@@ -388,10 +390,10 @@ const buildPlanTimeline = (member) => {
 
 const filterByMemberIds = (members, ids) => members.filter(member => ids.has(member.member_id));
 
-const buildMemberPlanMap = (members) => {
+const buildMemberPlanMap = (members, trialConfig) => {
   const map = new Map();
   members.forEach(member => {
-    map.set(member.member_id, buildPlanTimeline(member));
+    map.set(member.member_id, buildPlanTimeline(member, trialConfig));
   });
   return map;
 };
@@ -935,13 +937,14 @@ const applyTileFilter = async ({
   start90d,
   next7d,
   next30d,
-  supabase
+  supabase,
+  trialConfig
 }) => {
   if (!tileFilter) return validMembers;
 
   const trialSets = buildTrialHistorySets(trialHistoryRows, start30d, now);
   const annualSets = buildAnnualHistorySets(annualHistoryRows, start30d);
-  const memberPlanMap = buildMemberPlanMap(validMembers);
+  const memberPlanMap = buildMemberPlanMap(validMembers, trialConfig);
 
   const handlers = {
     all_members_all_time: () => validMembers,
@@ -1316,6 +1319,7 @@ async function handleMembers(req, res) {
     const start90d = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     const next7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const next30d = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const trialConfig = await getTrialConfig();
 
     // Build query - by default, only show members with trial or annual plans
     // This excludes test accounts and members without valid plans
@@ -1375,7 +1379,8 @@ async function handleMembers(req, res) {
       start90d,
       next7d,
       next30d,
-      supabase
+      supabase,
+      trialConfig
     });
     let memberIds = filteredValidMembers.map(m => m.member_id);
     

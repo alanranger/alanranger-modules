@@ -3,6 +3,7 @@
 // Combines data from ms_members_cache, academy_events, and exam tables
 
 const { createClient } = require("@supabase/supabase-js");
+const { getTrialConfig, trialLengthForStart } = require("../../lib/academyTrialConfig");
 
 const buildOrigin = (req) => {
   if (process.env.VERCEL_URL) {
@@ -48,6 +49,7 @@ module.exports = async (req, res) => {
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
     const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
+    const trialConfig = await getTrialConfig();
 
     // 1. Total members (all-time from cache)
     // Get all members first, then filter to only count those with valid plans
@@ -387,8 +389,9 @@ module.exports = async (req, res) => {
           if (plan.expiry_date) {
             trialEndAt = new Date(plan.expiry_date);
           } else if (trialStartAt) {
-            // Default 30-day trial if no expiry_date
-            trialEndAt = new Date(trialStartAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+            // Trial length depends on whether the trial started before or after the cutover.
+            const fallbackDays = trialLengthForStart(trialStartAt, trialConfig);
+            trialEndAt = new Date(trialStartAt.getTime() + fallbackDays * 24 * 60 * 60 * 1000);
           }
         }
 
