@@ -2534,7 +2534,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       <h2 id="ar-upgrade-modal-title">Don&rsquo;t lose everything you&rsquo;ve started</h2>
       <p class="ar-upgrade-modal__sub" id="ar-upgrade-modal-sub">Your trial has ended. Upgrade to Academy Annual to keep every module, bookmark and piece of progress you&rsquo;ve already built &mdash; plus 12 months of full Academy access, tools and direct Q&amp;A with Alan.</p>
       <div class="ar-upgrade-modal__price" id="ar-upgrade-modal-price">&pound;79<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span></div>
-      <div class="ar-upgrade-modal__coupon" id="ar-upgrade-modal-coupon">SAVE20 grace discount auto-applied at checkout</div>
+      <div class="ar-upgrade-modal__coupon" id="ar-upgrade-modal-coupon">Discount auto-applied at checkout</div>
       <div class="ar-upgrade-modal__value-strip">
         <strong>60 modules &middot; 35 checklists &middot; 30 practice packs &middot; 15 exams &middot; 22+ scenario guides &middot; 741-page eBook &middot; Q&amp;A with Alan</strong> &mdash; all together for &pound;59 a year.
         <span class="ar-vs-pill">Less than &pound;5 a month</span>
@@ -5098,6 +5098,27 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         return "&pound;" + String(Math.round(n));
       }
 
+      function couponCopyForModal(status) {
+        var code = (status && status.couponCode) || "SAVE20";
+        var win = (status && status.couponWindowDays) || UPGRADE_COUPON_WINDOW_DAYS;
+        if (code === "REWIND20") {
+          var daysLeft = null;
+          if (status && status.couponExpiresAt) {
+            var expMs = new Date(status.couponExpiresAt).getTime();
+            if (!Number.isNaN(expMs)) {
+              daysLeft = Math.max(0, Math.ceil((expMs - Date.now()) / 86400000));
+            }
+          }
+          var dayWord = daysLeft === 1 ? "day" : "days";
+          var tail = daysLeft !== null
+            ? (" \u2014 " + daysLeft + " " + dayWord + " left on your win-back offer")
+            : (" \u2014 auto-applied at checkout for " + win + " days from email");
+          return "REWIND20: \u00a3" + UPGRADE_COUPON_DISCOUNT_GBP + " off your first year" + tail;
+        }
+        return "SAVE20: \u00a3" + UPGRADE_COUPON_DISCOUNT_GBP +
+          " off your first year \u2014 auto-applied at checkout within " + win + " days of trial expiry";
+      }
+
       function applyModalCoupon(status) {
         var priceEl = document.getElementById("ar-upgrade-modal-price");
         var couponEl = document.getElementById("ar-upgrade-modal-coupon");
@@ -5107,9 +5128,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         if (status && status.couponEligible) {
           var discounted = UPGRADE_BASE_PRICE_GBP - UPGRADE_COUPON_DISCOUNT_GBP;
           priceEl.innerHTML = '<del>' + baseStr + '</del>' + formatGbpWhole(discounted) + yearSuffix;
-          var win = status.couponWindowDays || UPGRADE_COUPON_WINDOW_DAYS;
-          couponEl.textContent = "SAVE20: \u00a3" + UPGRADE_COUPON_DISCOUNT_GBP +
-            " off your first year \u2014 auto-applied at checkout within " + win + " days of trial expiry";
+          couponEl.textContent = couponCopyForModal(status);
           couponEl.classList.add("is-visible");
         } else {
           priceEl.innerHTML = baseStr + yearSuffix;
@@ -5216,6 +5235,40 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       // dates, which are blank for a CANCELED trial. Overwrite it with the
       // real ended-at date from the trial-status response so the card shows
       // useful context instead of "No renewal/expiry date available yet."
+      function rewind20DaysLeft(status) {
+        if (!status || !status.couponExpiresAt) return 0;
+        var expMs = new Date(status.couponExpiresAt).getTime();
+        if (Number.isNaN(expMs)) return 0;
+        return Math.max(0, Math.ceil((expMs - Date.now()) / 86400000));
+      }
+
+      function save20DaysLeft(status) {
+        var days = typeof status.daysSinceExpiry === "number" ? status.daysSinceExpiry : 0;
+        var windowDays = status.couponWindowDays || 7;
+        return Math.max(0, windowDays - days);
+      }
+
+      function timelineMetaFor(status) {
+        var code = status.couponCode || "SAVE20";
+        if (code === "REWIND20" && status.couponEligible) {
+          var daysLeft = rewind20DaysLeft(status);
+          if (daysLeft > 0) {
+            var dw = daysLeft === 1 ? "day" : "days";
+            return "Your REWIND20 win-back offer expires in " + daysLeft + " " + dw + " \u2014 upgrade now to lock in \u00a320 off.";
+          }
+          return "Your REWIND20 win-back offer has just expired \u2014 annual membership is \u00a379.";
+        }
+        if (code === "SAVE20" && status.couponEligible) {
+          var daysLeftInGrace = save20DaysLeft(status);
+          if (daysLeftInGrace > 0) {
+            var gw = daysLeftInGrace === 1 ? "day" : "days";
+            return "Upgrade within " + daysLeftInGrace + " " + gw + " to keep your SAVE20 discount.";
+          }
+          return "Your SAVE20 discount is available today \u2014 upgrade now.";
+        }
+        return "Discount window has ended \u2014 annual membership is \u00a379.";
+      }
+
       function populateExpiredTrialTimeline(status) {
         if (!status) return;
         var labelEl = document.getElementById("arp-ms-countdown-label");
@@ -5224,19 +5277,9 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         if (!labelEl || !valueEl || !metaEl) return;
         var endedAt = status.trialEndedAt ? new Date(status.trialEndedAt) : null;
         if (!endedAt || Number.isNaN(endedAt.getTime())) return;
-        var days = typeof status.daysSinceExpiry === "number" ? status.daysSinceExpiry : 0;
-        var windowDays = status.couponWindowDays || 7;
-        var daysLeftInGrace = status.couponEligible ? Math.max(0, windowDays - days) : 0;
         labelEl.textContent = "Trial ended";
         valueEl.textContent = fmtDate(endedAt);
-        if (daysLeftInGrace > 0) {
-          var dayWord = daysLeftInGrace === 1 ? "day" : "days";
-          metaEl.textContent = "Upgrade within " + daysLeftInGrace + " " + dayWord + " to keep your SAVE20 discount.";
-        } else if (status.couponEligible) {
-          metaEl.textContent = "Your SAVE20 discount is available today \u2014 upgrade now.";
-        } else {
-          metaEl.textContent = "SAVE20 grace window has ended \u2014 annual membership is \u00a379.";
-        }
+        metaEl.textContent = timelineMetaFor(status);
       }
 
       function enterExpiredTrialMode(member, ms, status) {

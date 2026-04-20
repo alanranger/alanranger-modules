@@ -1,7 +1,20 @@
 // api/stripe/create-upgrade-checkout.js
 // Creates a Stripe Checkout Session so an expired-trial member can upgrade
-// straight from the locked dashboard. The SAVE20 promotion code is auto-applied
-// if the member is within UPGRADE_COUPON_WINDOW_DAYS of their trial end date.
+// straight from the locked dashboard. Two coupons can be auto-applied
+// depending on which window the member currently sits in:
+//
+//   SAVE20   — Applied if the member is within 7 days of their trial end.
+//              This is the "grace period" offer shown on the dashboard
+//              upgrade modal to freshly-expired trial members.
+//   REWIND20 — Applied if the member is OUTSIDE the SAVE20 window but has a
+//              live win-back (re-engagement) offer open (i.e. they received a
+//              REWIND20 email and are within the 7-day personal window
+//              stamped on academy_trial_history.reengagement_expires_at).
+//
+// SAVE20 takes precedence if both are somehow eligible — it's the better deal
+// trigger from a recency perspective. Both coupons are the same value (£20 off
+// first year), so the customer never pays more than £59 regardless of which
+// one fires.
 //
 // Request (POST, JSON body):
 //   { memberId: string, email: string, name?: string, returnUrl?: string }
@@ -19,10 +32,13 @@ const { createClient } = require("@supabase/supabase-js");
 const { ACADEMY_ANNUAL_PRICE_IDS } = require("../../lib/academyStripeConfig");
 
 const ACADEMY_APP_ID = "app_cmjlwl7re00440stg3ri2dud8";
-const UPGRADE_COUPON_CODE = "SAVE20";
-const UPGRADE_COUPON_ID = "save20-expired-trial-grace";
-const UPGRADE_COUPON_LEGACY_IDS = ["SAVE20", "save20"];
-const UPGRADE_COUPON_WINDOW_DAYS = 7;
+const SAVE20_CODE = "SAVE20";
+const SAVE20_COUPON_ID = "save20-expired-trial-grace";
+const SAVE20_LEGACY_IDS = ["SAVE20", "save20"];
+const SAVE20_WINDOW_DAYS = 7;
+const REWIND20_CODE = "REWIND20";
+const REWIND20_COUPON_ID = "rewind20-lapsed-trial-winback";
+const REWIND20_LEGACY_IDS = ["REWIND20", "rewind20"];
 const DAY_MS = 86400000;
 const SUCCESS_PATH_DEFAULT = "https://www.alanranger.com/academy/dashboard?upgraded=1";
 const CANCEL_PATH_DEFAULT = "https://www.alanranger.com/academy/dashboard?upgrade=cancelled";
@@ -58,10 +74,10 @@ function parseJsonBody(req) {
 }
 
 /**
- * Check the member's latest trial row and decide if the grace-period coupon
- * should be auto-applied. Returns null when ineligible.
+ * Check the member's latest trial row and decide if the SAVE20 grace-period
+ * coupon should be auto-applied. Returns null when ineligible.
  */
-async function resolveCouponWindow(supabase, memberId) {
+async function resolveSave20Window(supabase, memberId) {
   const { data } = await supabase
     .from("academy_trial_history")
     .select("trial_end_at, converted_at")
@@ -71,18 +87,36 @@ async function resolveCouponWindow(supabase, memberId) {
     .maybeSingle();
   if (!data || data.converted_at || !data.trial_end_at) return null;
   const endMs = new Date(data.trial_end_at).getTime();
-  if (isNaN(endMs)) return null;
+  if (Number.isNaN(endMs)) return null;
   const daysSinceExpiry = Math.floor((Date.now() - endMs) / DAY_MS);
-  if (daysSinceExpiry < 0 || daysSinceExpiry > UPGRADE_COUPON_WINDOW_DAYS) return null;
+  if (daysSinceExpiry < 0 || daysSinceExpiry > SAVE20_WINDOW_DAYS) return null;
   return { daysSinceExpiry };
 }
 
-async function lookupPromotionCode(stripe) {
-  const { data } = await stripe.promotionCodes.list({
-    code: UPGRADE_COUPON_CODE,
-    active: true,
-    limit: 1,
-  });
+/**
+ * Check the member's latest trial row and decide if the REWIND20 win-back
+ * coupon should be auto-applied. Eligible when the lapsed-trial reengagement
+ * webhook has sent this member an email and the personal 7-day window has
+ * not yet closed (and the member hasn't opted out / hasn't converted).
+ */
+async function resolveRewindWindow(supabase, memberId) {
+  const { data } = await supabase
+    .from("academy_trial_history")
+    .select("converted_at, reengagement_expires_at, reengagement_opted_out")
+    .eq("member_id", memberId)
+    .order("trial_start_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || data.converted_at || data.reengagement_opted_out) return null;
+  if (!data.reengagement_expires_at) return null;
+  const expMs = new Date(data.reengagement_expires_at).getTime();
+  if (Number.isNaN(expMs) || expMs <= Date.now()) return null;
+  const daysLeft = Math.ceil((expMs - Date.now()) / DAY_MS);
+  return { daysLeft };
+}
+
+async function lookupPromotionCode(stripe, code) {
+  const { data } = await stripe.promotionCodes.list({ code, active: true, limit: 1 });
   return data?.[0] || null;
 }
 
@@ -95,8 +129,7 @@ async function lookupCouponById(stripe, id) {
   }
 }
 
-async function lookupCouponFallback(stripe) {
-  const candidates = [UPGRADE_COUPON_ID, ...UPGRADE_COUPON_LEGACY_IDS];
+async function lookupCouponFallback(stripe, candidates) {
   for (const id of candidates) {
     const c = await lookupCouponById(stripe, id);
     if (c) return c;
@@ -105,29 +138,40 @@ async function lookupCouponFallback(stripe) {
 }
 
 /**
- * Resolve the discount to hard-apply at Checkout. Prefers a Stripe
- * promotion_code named SAVE20 (so the customer sees the familiar code on
- * the receipt). Falls back to the underlying coupon id if the promo code
- * isn't configured — this still pre-applies the discount in Checkout,
- * but the "Add promotion code" button won't show SAVE20 pre-filled.
- * Returns one of:
- *   { type: "promotion_code", id, code }   // preferred
- *   { type: "coupon",         id }          // fallback
- *   null                                     // nothing usable in Stripe
+ * Resolve a discount by promo code name. Prefers the active promotion_code
+ * in Stripe (so the customer sees the familiar code on the receipt). Falls
+ * back to the underlying coupon id if the promo code isn't configured.
  */
-async function resolveStripeDiscount(stripe) {
+async function resolveStripeDiscount(stripe, code, couponIds) {
   try {
-    const promo = await lookupPromotionCode(stripe);
+    const promo = await lookupPromotionCode(stripe, code);
     if (promo?.id) {
       return { type: "promotion_code", id: promo.id, code: promo.code };
     }
-    const coupon = await lookupCouponFallback(stripe);
+    const coupon = await lookupCouponFallback(stripe, couponIds);
     if (coupon?.id) {
-      console.warn("[create-upgrade-checkout] No active SAVE20 promotion_code in Stripe; falling back to coupon '" + coupon.id + "'. Create a promotion_code pointing at this coupon to allow customer-facing 'SAVE20' entry.");
+      console.warn(`[create-upgrade-checkout] No active ${code} promotion_code in Stripe; falling back to coupon '${coupon.id}'.`);
       return { type: "coupon", id: coupon.id };
     }
   } catch (err) {
-    console.warn("[create-upgrade-checkout] discount lookup failed:", err.message);
+    console.warn(`[create-upgrade-checkout] ${code} lookup failed:`, err.message);
+  }
+  return null;
+}
+
+/**
+ * Pick which active campaign (if any) applies to this member and resolve the
+ * matching Stripe discount. SAVE20 always wins a tie because it's the fresher,
+ * higher-intent window.
+ */
+async function resolveActiveDiscount(stripe, { save20Window, rewindWindow }) {
+  if (save20Window) {
+    const discount = await resolveStripeDiscount(stripe, SAVE20_CODE, [SAVE20_COUPON_ID, ...SAVE20_LEGACY_IDS]);
+    if (discount) return { code: SAVE20_CODE, source: "save20_grace", discount };
+  }
+  if (rewindWindow) {
+    const discount = await resolveStripeDiscount(stripe, REWIND20_CODE, [REWIND20_COUPON_ID, ...REWIND20_LEGACY_IDS]);
+    if (discount) return { code: REWIND20_CODE, source: "rewind20_winback", discount };
   }
   return null;
 }
@@ -240,11 +284,13 @@ module.exports = async function handler(req, res) {
     const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
     const supabase = getSupabase();
 
-    const [couponWindow, customerId] = await Promise.all([
-      resolveCouponWindow(supabase, memberId),
+    const [save20Window, rewindWindow, customerId] = await Promise.all([
+      resolveSave20Window(supabase, memberId),
+      resolveRewindWindow(supabase, memberId),
       findExistingCustomerId(stripe, memberId, email),
     ]);
-    const discount = couponWindow ? await resolveStripeDiscount(stripe) : null;
+    const active = await resolveActiveDiscount(stripe, { save20Window, rewindWindow });
+    const discount = active?.discount || null;
 
     const successUrl = returnUrl || SUCCESS_PATH_DEFAULT;
     const session = await stripe.checkout.sessions.create(
@@ -263,9 +309,11 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       url: session.url,
       couponApplied: Boolean(discount),
-      couponCode: discount ? UPGRADE_COUPON_CODE : null,
+      couponCode: active?.code || null,
+      couponSource: active?.source || null,
       couponType: discount?.type || null,
-      daysSinceExpiry: couponWindow?.daysSinceExpiry ?? null,
+      daysSinceExpiry: save20Window?.daysSinceExpiry ?? null,
+      rewindDaysLeft: rewindWindow?.daysLeft ?? null,
       reusedExistingCustomer: Boolean(customerId),
     });
   } catch (err) {

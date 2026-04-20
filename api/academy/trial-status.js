@@ -1,30 +1,42 @@
 // api/academy/trial-status.js
 // Tells the dashboard whether a logged-in member is an expired-trial user
-// and whether the SAVE20 grace-period coupon still applies.
+// and which (if any) discount coupon should be auto-applied at Checkout.
 //
 // This is the single source of truth for the "locked dashboard" mode:
 // Memberstack itself sometimes strips the expired trial plan connection
 // entirely, so we can't rely on planConnections alone. Instead we look at
 // academy_trial_history (populated by the Stripe webhook and admin refresh).
 //
+// Two coupons can be live at any time:
+//   SAVE20   — 7-day grace window from trial end. Fresh, high-intent.
+//   REWIND20 — 7-day personal window opened when the win-back reengagement
+//              webhook emails a lapsed member. Outside SAVE20 territory.
+//
+// SAVE20 takes precedence if both are somehow active; both yield the same
+// £20 discount so the customer never pays more than £59.
+//
 // Response shape:
 //   {
 //     memberId: string,
-//     isExpiredTrial: boolean,   // true if they had a trial and it has ended
-//     hasConverted: boolean,     // true if trial already converted to annual
+//     isExpiredTrial: boolean,
+//     hasConverted: boolean,
 //     trialStartedAt: ISO | null,
 //     trialEndedAt:   ISO | null,
 //     trialLengthDays: number | null,
 //     daysSinceExpiry: number | null,
-//     couponEligible: boolean,   // true when daysSinceExpiry is 0..7 inclusive
-//     couponCode: "SAVE20" | null,
-//     couponWindowDays: 7
+//     couponEligible: boolean,
+//     couponCode: "SAVE20" | "REWIND20" | null,
+//     couponSource: "save20_grace" | "rewind20_winback" | null,
+//     couponWindowDays: 7,
+//     couponExpiresAt: ISO | null,      // REWIND20 personal expiry timestamp
+//     reengagementOptedOut: boolean
 //   }
 
 const { createClient } = require("@supabase/supabase-js");
 
-const UPGRADE_COUPON_CODE = "SAVE20";
-const UPGRADE_COUPON_WINDOW_DAYS = 7;
+const SAVE20_CODE = "SAVE20";
+const REWIND20_CODE = "REWIND20";
+const COUPON_WINDOW_DAYS = 7;
 const DAY_MS = 86400000;
 
 function setCors(res) {
@@ -44,7 +56,9 @@ function getSupabase() {
 async function getLatestTrialRow(supabase, memberId) {
   const { data, error } = await supabase
     .from("academy_trial_history")
-    .select("trial_start_at, trial_end_at, trial_length_days, converted_at")
+    .select(
+      "trial_start_at, trial_end_at, trial_length_days, converted_at, reengagement_expires_at, reengagement_opted_out"
+    )
     .eq("member_id", memberId)
     .order("trial_start_at", { ascending: false })
     .limit(1)
@@ -53,8 +67,8 @@ async function getLatestTrialRow(supabase, memberId) {
   return data || null;
 }
 
-function describeStatus(latestTrial, nowMs) {
-  const empty = {
+function emptyStatus() {
+  return {
     isExpiredTrial: false,
     hasConverted: false,
     trialStartedAt: null,
@@ -63,36 +77,67 @@ function describeStatus(latestTrial, nowMs) {
     daysSinceExpiry: null,
     couponEligible: false,
     couponCode: null,
+    couponSource: null,
+    couponExpiresAt: null,
+    reengagementOptedOut: false,
   };
-  if (!latestTrial) return empty;
+}
+
+function pickActiveCoupon({ isExpired, daysSinceExpiry, reengagementExpiresAt, hasConverted, optedOut, nowMs }) {
+  if (hasConverted) return { code: null, source: null, expiresAt: null };
+  if (isExpired && daysSinceExpiry !== null && daysSinceExpiry <= COUPON_WINDOW_DAYS) {
+    return { code: SAVE20_CODE, source: "save20_grace", expiresAt: null };
+  }
+  if (!optedOut && reengagementExpiresAt) {
+    const expMs = new Date(reengagementExpiresAt).getTime();
+    if (!Number.isNaN(expMs) && expMs > nowMs) {
+      return { code: REWIND20_CODE, source: "rewind20_winback", expiresAt: reengagementExpiresAt };
+    }
+  }
+  return { code: null, source: null, expiresAt: null };
+}
+
+function describeStatus(latestTrial, nowMs) {
+  if (!latestTrial) return emptyStatus();
 
   const trialEndedAt = latestTrial.trial_end_at || null;
   const trialStartedAt = latestTrial.trial_start_at || null;
   const hasConverted = Boolean(latestTrial.converted_at);
+  const optedOut = Boolean(latestTrial.reengagement_opted_out);
+  const reengagementExpiresAt = latestTrial.reengagement_expires_at || null;
+  const base = {
+    ...emptyStatus(),
+    trialStartedAt,
+    trialLengthDays: latestTrial.trial_length_days || null,
+    hasConverted,
+    reengagementOptedOut: optedOut,
+  };
 
-  if (!trialEndedAt) {
-    return { ...empty, trialStartedAt, trialLengthDays: latestTrial.trial_length_days || null };
-  }
+  if (!trialEndedAt) return base;
 
   const endMs = new Date(trialEndedAt).getTime();
-  if (isNaN(endMs)) {
-    return { ...empty, trialStartedAt, trialLengthDays: latestTrial.trial_length_days || null };
-  }
+  if (Number.isNaN(endMs)) return base;
 
   const isExpired = !hasConverted && endMs <= nowMs;
   const daysSinceExpiry = isExpired ? Math.floor((nowMs - endMs) / DAY_MS) : null;
-  const couponEligible =
-    isExpired && daysSinceExpiry !== null && daysSinceExpiry <= UPGRADE_COUPON_WINDOW_DAYS;
+  const coupon = pickActiveCoupon({
+    isExpired,
+    daysSinceExpiry,
+    reengagementExpiresAt,
+    hasConverted,
+    optedOut,
+    nowMs,
+  });
 
   return {
+    ...base,
     isExpiredTrial: isExpired,
-    hasConverted,
-    trialStartedAt,
     trialEndedAt,
-    trialLengthDays: latestTrial.trial_length_days || null,
     daysSinceExpiry,
-    couponEligible,
-    couponCode: couponEligible ? UPGRADE_COUPON_CODE : null,
+    couponEligible: Boolean(coupon.code),
+    couponCode: coupon.code,
+    couponSource: coupon.source,
+    couponExpiresAt: coupon.expiresAt,
   };
 }
 
@@ -111,7 +156,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       memberId,
       ...status,
-      couponWindowDays: UPGRADE_COUPON_WINDOW_DAYS,
+      couponWindowDays: COUPON_WINDOW_DAYS,
     });
   } catch (err) {
     console.error("[trial-status] error:", err);
