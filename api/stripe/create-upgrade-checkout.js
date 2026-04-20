@@ -20,6 +20,8 @@ const { ACADEMY_ANNUAL_PRICE_IDS } = require("../../lib/academyStripeConfig");
 
 const ACADEMY_APP_ID = "app_cmjlwl7re00440stg3ri2dud8";
 const UPGRADE_COUPON_CODE = "SAVE20";
+const UPGRADE_COUPON_ID = "save20-expired-trial-grace";
+const UPGRADE_COUPON_LEGACY_IDS = ["SAVE20", "save20"];
 const UPGRADE_COUPON_WINDOW_DAYS = 7;
 const DAY_MS = 86400000;
 const SUCCESS_PATH_DEFAULT = "https://www.alanranger.com/academy/dashboard?upgraded=1";
@@ -67,25 +69,70 @@ async function resolveCouponWindow(supabase, memberId) {
   return { daysSinceExpiry };
 }
 
-/**
- * Look up the Stripe promotion_code id for SAVE20 (so Checkout can hard-apply
- * the discount rather than relying on the user to type it).
- */
-async function resolveStripePromoCodeId(stripe) {
+async function lookupPromotionCode(stripe) {
+  const { data } = await stripe.promotionCodes.list({
+    code: UPGRADE_COUPON_CODE,
+    active: true,
+    limit: 1,
+  });
+  return data?.[0] || null;
+}
+
+async function lookupCouponById(stripe, id) {
   try {
-    const { data } = await stripe.promotionCodes.list({
-      code: UPGRADE_COUPON_CODE,
-      active: true,
-      limit: 1,
-    });
-    return data?.[0]?.id || null;
-  } catch (err) {
-    console.warn("[create-upgrade-checkout] promo lookup failed:", err.message);
+    const c = await stripe.coupons.retrieve(id);
+    return c?.valid ? c : null;
+  } catch {
     return null;
   }
 }
 
-function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cancelUrl, promoCodeId }) {
+async function lookupCouponFallback(stripe) {
+  const candidates = [UPGRADE_COUPON_ID, ...UPGRADE_COUPON_LEGACY_IDS];
+  for (const id of candidates) {
+    const c = await lookupCouponById(stripe, id);
+    if (c) return c;
+  }
+  return null;
+}
+
+/**
+ * Resolve the discount to hard-apply at Checkout. Prefers a Stripe
+ * promotion_code named SAVE20 (so the customer sees the familiar code on
+ * the receipt). Falls back to the underlying coupon id if the promo code
+ * isn't configured — this still pre-applies the discount in Checkout,
+ * but the "Add promotion code" button won't show SAVE20 pre-filled.
+ * Returns one of:
+ *   { type: "promotion_code", id, code }   // preferred
+ *   { type: "coupon",         id }          // fallback
+ *   null                                     // nothing usable in Stripe
+ */
+async function resolveStripeDiscount(stripe) {
+  try {
+    const promo = await lookupPromotionCode(stripe);
+    if (promo?.id) {
+      return { type: "promotion_code", id: promo.id, code: promo.code };
+    }
+    const coupon = await lookupCouponFallback(stripe);
+    if (coupon?.id) {
+      console.warn("[create-upgrade-checkout] No active SAVE20 promotion_code in Stripe; falling back to coupon '" + coupon.id + "'. Create a promotion_code pointing at this coupon to allow customer-facing 'SAVE20' entry.");
+      return { type: "coupon", id: coupon.id };
+    }
+  } catch (err) {
+    console.warn("[create-upgrade-checkout] discount lookup failed:", err.message);
+  }
+  return null;
+}
+
+function buildDiscountEntry(discount) {
+  if (!discount) return null;
+  if (discount.type === "promotion_code") return { promotion_code: discount.id };
+  if (discount.type === "coupon") return { coupon: discount.id };
+  return null;
+}
+
+function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cancelUrl, discount }) {
+  const discountEntry = buildDiscountEntry(discount);
   const params = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
@@ -93,7 +140,7 @@ function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cance
     client_reference_id: memberId,
     success_url: successUrl,
     cancel_url: cancelUrl,
-    allow_promotion_codes: promoCodeId ? undefined : true,
+    allow_promotion_codes: discountEntry ? undefined : true,
     metadata: {
       msAppId: ACADEMY_APP_ID,
       msMemberId: memberId,
@@ -109,8 +156,8 @@ function buildCheckoutParams({ priceId, email, memberId, name, successUrl, cance
     },
   };
   if (name) params.subscription_data.metadata.memberName = name;
-  if (promoCodeId) {
-    params.discounts = [{ promotion_code: promoCodeId }];
+  if (discountEntry) {
+    params.discounts = [discountEntry];
   }
   return params;
 }
@@ -135,7 +182,7 @@ module.exports = async function handler(req, res) {
     const supabase = getSupabase();
 
     const couponWindow = await resolveCouponWindow(supabase, memberId);
-    const promoCodeId = couponWindow ? await resolveStripePromoCodeId(stripe) : null;
+    const discount = couponWindow ? await resolveStripeDiscount(stripe) : null;
 
     const successUrl = returnUrl || SUCCESS_PATH_DEFAULT;
     const session = await stripe.checkout.sessions.create(
@@ -146,14 +193,15 @@ module.exports = async function handler(req, res) {
         name,
         successUrl,
         cancelUrl: CANCEL_PATH_DEFAULT,
-        promoCodeId,
+        discount,
       })
     );
 
     return res.status(200).json({
       url: session.url,
-      couponApplied: Boolean(promoCodeId),
-      couponCode: promoCodeId ? UPGRADE_COUPON_CODE : null,
+      couponApplied: Boolean(discount),
+      couponCode: discount ? UPGRADE_COUPON_CODE : null,
+      couponType: discount?.type || null,
       daysSinceExpiry: couponWindow?.daysSinceExpiry ?? null,
     });
   } catch (err) {

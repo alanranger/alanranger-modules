@@ -4861,17 +4861,30 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         } catch { return null; }
       }
 
+      // Pricing constants for the upgrade modal. SAVE20 is a £20-off flat
+      // discount applied to the first year (Stripe coupon duration: once).
+      var UPGRADE_BASE_PRICE_GBP = 79;
+      var UPGRADE_COUPON_DISCOUNT_GBP = 20;
+
+      function formatGbpWhole(n) {
+        return "&pound;" + String(Math.round(n));
+      }
+
       function applyModalCoupon(status) {
         var priceEl = document.getElementById("ar-upgrade-modal-price");
         var couponEl = document.getElementById("ar-upgrade-modal-coupon");
         if (!priceEl || !couponEl) return;
+        var baseStr = formatGbpWhole(UPGRADE_BASE_PRICE_GBP);
+        var yearSuffix = '<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span>';
         if (status && status.couponEligible) {
-          priceEl.innerHTML = '<del>&pound;79</del>&pound;63.20<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span>';
+          var discounted = UPGRADE_BASE_PRICE_GBP - UPGRADE_COUPON_DISCOUNT_GBP;
+          priceEl.innerHTML = '<del>' + baseStr + '</del>' + formatGbpWhole(discounted) + yearSuffix;
           var win = status.couponWindowDays || UPGRADE_COUPON_WINDOW_DAYS;
-          couponEl.textContent = "SAVE20 grace discount auto-applied \u2014 available within " + win + " days of trial expiry";
+          couponEl.textContent = "SAVE20: \u00a3" + UPGRADE_COUPON_DISCOUNT_GBP +
+            " off your first year \u2014 auto-applied at checkout within " + win + " days of trial expiry";
           couponEl.classList.add("is-visible");
         } else {
-          priceEl.innerHTML = '&pound;79<span style="font-size:14px;color:#94a3b8;font-weight:500;">/year</span>';
+          priceEl.innerHTML = baseStr + yearSuffix;
           couponEl.classList.remove("is-visible");
         }
       }
