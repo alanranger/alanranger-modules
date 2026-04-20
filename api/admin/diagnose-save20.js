@@ -115,8 +115,9 @@ async function ensurePromotionCode(stripe, couponId) {
   }
   const created = await stripe.promotionCodes.create({
     code: CODE,
-    coupon: couponId,
     active: true,
+    // Stripe SDK v20+ requires the nested promotion object rather than a top-level coupon param.
+    promotion: { type: "coupon", coupon: couponId },
   });
   return { promo: created, created: true };
 }
