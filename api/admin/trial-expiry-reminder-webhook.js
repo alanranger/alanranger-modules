@@ -417,6 +417,7 @@ Your trial expires on **${expiryDateStr}**. Whenever you're ready — and any qu
 Best regards,
 Alan Ranger
 Alan Ranger Photography Academy
+https://www.alanranger.com/online-photography-course
   `.trim();
   return { subject, body };
 }
