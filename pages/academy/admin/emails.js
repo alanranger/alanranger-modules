@@ -247,11 +247,26 @@ function computeDiffDays(row, nowMs) {
   return (endMs - nowMs) / DAY_MS;
 }
 
-function isEligibleForTrialReminder(diffDays, stageKey) {
-  if (stageKey === 'day-minus-7') return diffDays >= 6 && diffDays <= 8;
-  if (stageKey === 'day-minus-1') return diffDays >= 0 && diffDays <= 2;
-  if (stageKey === 'day-plus-7') return diffDays <= -6 && diffDays >= -8;
-  return false;
+const TRIAL_DAYS_AHEAD = {
+  'day-minus-7': 7,
+  'day-minus-1': 1,
+  'day-plus-7': -7,
+};
+
+function utcDateKey(ms) {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+}
+
+function isEligibleForTrialReminder(row, stageKey, nowMs) {
+  const daysAhead = TRIAL_DAYS_AHEAD[stageKey];
+  if (daysAhead === undefined) return false;
+  const endMs = new Date(row.trial_end_at).getTime();
+  if (!Number.isFinite(endMs)) return false;
+  // Match the cron webhook: trial_end_at falls on the same UTC calendar day
+  // as (now + daysAhead). Day -1 fired today targets everyone whose trial
+  // ends anywhere tomorrow; Day -7 targets +7d; Day +7 targets -7d.
+  return utcDateKey(endMs) === utcDateKey(nowMs + daysAhead * DAY_MS);
 }
 
 function isEligibleForRewind(row, diffDays, attempt) {
@@ -263,11 +278,13 @@ function isEligibleForRewind(row, diffDays, attempt) {
 
 function isRowEligibleForStage(row, stageKey, nowMs) {
   if (!row || row.converted_at) return false;
-  const diffDays = computeDiffDays(row, nowMs);
-  if (diffDays === null) return false;
   const rewindAttempt = REWIND_ATTEMPT_BY_STAGE[stageKey];
-  if (rewindAttempt) return isEligibleForRewind(row, diffDays, rewindAttempt);
-  return isEligibleForTrialReminder(diffDays, stageKey);
+  if (rewindAttempt) {
+    const diffDays = computeDiffDays(row, nowMs);
+    if (diffDays === null) return false;
+    return isEligibleForRewind(row, diffDays, rewindAttempt);
+  }
+  return isEligibleForTrialReminder(row, stageKey, nowMs);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

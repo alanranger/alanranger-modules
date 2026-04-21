@@ -76,18 +76,21 @@ function nextLondon9AMIso(nowMs) {
 
 async function countTrialReminderEligible(daysAhead, nowMs) {
   if (!supabase) return 0;
-  // Target a ±12h window around now + daysAhead. This matches how the cron
-  // job fires once per day at 09:00 London and processes everyone whose
-  // trial_end_at lands on "today".
-  const targetMs = nowMs + daysAhead * DAY_MS;
-  const low = new Date(targetMs - 12 * HOUR_MS).toISOString();
-  const high = new Date(targetMs + 12 * HOUR_MS).toISOString();
+  // Mirror the production webhook: qualifying trial_end_at falls on the same
+  // UTC calendar day as (now + daysAhead). So Day -1 run at 09:00 today targets
+  // anyone whose trial ends at any time tomorrow, Day -7 targets exactly +7d,
+  // and Day +7 targets exactly 7 calendar days ago.
+  const target = new Date(nowMs + daysAhead * DAY_MS);
+  const startOfDay = new Date(Date.UTC(
+    target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate(), 0, 0, 0, 0
+  ));
+  const endOfDay = new Date(startOfDay.getTime() + DAY_MS - 1);
   const { count, error } = await supabase
     .from("academy_trial_history")
     .select("member_id", { count: "exact", head: true })
     .is("converted_at", null)
-    .gte("trial_end_at", low)
-    .lte("trial_end_at", high);
+    .gte("trial_end_at", startOfDay.toISOString())
+    .lte("trial_end_at", endOfDay.toISOString());
   if (error) {
     console.warn(`[emails-stats] trial count ${daysAhead}d failed:`, error.message);
     return 0;
