@@ -6,3 +6,7 @@ node_modules/
 .next
 .vercel
 .env*.local
+
+# Office lock files (~$foo.xlsx) that Excel creates while files are open
+~$*
+.git-commit-msg.tmp

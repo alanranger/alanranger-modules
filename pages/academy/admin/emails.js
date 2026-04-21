@@ -1,6 +1,101 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+// Inline stage config rather than fetching it — the admin UI knows every
+// webhook URL and param set up-front, and there's nothing to gain from a
+// server round-trip. Keep this in sync with lib/emailStages.js (which the
+// webhooks themselves do NOT consume; it's only the admin tab's map).
+
+const TRIAL_WEBHOOK = '/api/admin/trial-expiry-reminder-webhook';
+const REWIND_WEBHOOK = '/api/admin/lapsed-trial-reengagement-webhook';
+
+const STAGES = [
+  {
+    key: 'day-minus-7',
+    displayName: 'Day -7 · Mid-trial reminder',
+    sentBy: 'trial-expiry-reminder-webhook',
+    schedule: {
+      cadence: 'daily',
+      timeOfDay: '09:00 Europe/London',
+      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
+    },
+    description:
+      'Halfway through the 14-day trial. Activity block, 5-step plan, full feature list, personal signed dashboard link.',
+    webhook: TRIAL_WEBHOOK,
+    params: { daysAhead: 7, forceDaysUntilExpiry: 7 },
+  },
+  {
+    key: 'day-minus-1',
+    displayName: 'Day -1 · Final-day reminder',
+    sentBy: 'trial-expiry-reminder-webhook',
+    schedule: {
+      cadence: 'daily',
+      timeOfDay: '09:00 Europe/London',
+      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
+    },
+    description:
+      'Last day of the free trial. Activity block, three quick wins, members-only resources, full feature list, personal signed dashboard link. No discount.',
+    webhook: TRIAL_WEBHOOK,
+    params: { daysAhead: 1, forceDaysUntilExpiry: 1 },
+  },
+  {
+    key: 'day-plus-7',
+    displayName: 'Day +7 · SAVE20 offer',
+    sentBy: 'trial-expiry-reminder-webhook',
+    schedule: {
+      cadence: 'daily',
+      timeOfDay: '09:00 Europe/London',
+      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
+    },
+    description:
+      '7 days after trial expiry. SAVE20 code (£79 → £59). Activity block, quick wins, members-only resources. Offer valid 7 days from send (Day +7 → Day +13).',
+    webhook: TRIAL_WEBHOOK,
+    params: { daysAhead: -7, forceDaysUntilExpiry: -7 },
+  },
+  {
+    key: 'day-plus-20',
+    displayName: 'Day +20 · REWIND20 attempt 1',
+    sentBy: 'lapsed-trial-reengagement-webhook',
+    schedule: {
+      cadence: 'weekly (Zapier)',
+      timeOfDay: '—',
+      mechanism: 'Currently scheduled by Zapier. Gated server-side: 3-send cap + min days + min gap.',
+    },
+    description:
+      'First REWIND20 outreach. Activity block, three quick wins, members-only, feature list, REWIND20 code (£79 → £59), personal signed link with 7-day window.',
+    webhook: REWIND_WEBHOOK,
+    params: {},
+  },
+  {
+    key: 'day-plus-30',
+    displayName: 'Day +30 · REWIND20 attempt 2',
+    sentBy: 'lapsed-trial-reengagement-webhook',
+    schedule: {
+      cadence: 'weekly (Zapier)',
+      timeOfDay: '—',
+      mechanism: 'Fires 10+ days after attempt 1 if still not converted.',
+    },
+    description:
+      'Second REWIND20 outreach (subject line escalates). Same body as attempt 1.',
+    webhook: REWIND_WEBHOOK,
+    params: {},
+  },
+  {
+    key: 'day-plus-60',
+    displayName: 'Day +60 · REWIND20 final attempt',
+    sentBy: 'lapsed-trial-reengagement-webhook',
+    schedule: {
+      cadence: 'weekly (Zapier)',
+      timeOfDay: '—',
+      mechanism: 'Fires 30+ days after attempt 2. Final send; max 3 attempts per member.',
+    },
+    description:
+      'Third and final REWIND20 outreach (subject line: "Final offer"). Same body.',
+    webhook: REWIND_WEBHOOK,
+    params: {},
+  },
+];
+
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
   { href: '/academy/admin/members', label: 'Members' },
@@ -40,13 +135,18 @@ function NavTabs({ active }) {
   );
 }
 
-// ─── data loaders (kept tiny; complexity under 15 per function) ──────────
+function markdownToHtml(body) {
+  if (!body) return '';
+  return String(body)
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+}
 
-async function loadStages() {
-  const res = await fetch('/api/admin/email-stages');
-  if (!res.ok) throw new Error(`stages HTTP ${res.status}`);
-  const data = await res.json();
-  return data.stages || [];
+function extractPreview(webhookData) {
+  if (webhookData?.preview?.subject) return webhookData.preview;
+  if (webhookData?.result?.preview?.subject) return webhookData.result.preview;
+  if (webhookData?.email_content_preview?.subject) return webhookData.email_content_preview;
+  return null;
 }
 
 async function loadMembers() {
@@ -56,27 +156,48 @@ async function loadMembers() {
   return Array.isArray(data.members) ? data.members : [];
 }
 
-async function fetchPreview(stageKey, email) {
-  const qs = new URLSearchParams({ key: stageKey, email });
-  const res = await fetch(`/api/admin/email-stages?${qs.toString()}`);
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(data?.error || `preview HTTP ${res.status}`);
-  }
-  return data;
+function buildWebhookUrl(stage, email, sendEmail) {
+  const qs = new URLSearchParams({
+    ...Object.fromEntries(
+      Object.entries(stage.params).map(([k, v]) => [k, String(v)])
+    ),
+    testEmail: email,
+    sendEmail: sendEmail ? 'true' : 'false',
+  });
+  return `${stage.webhook}?${qs.toString()}`;
 }
 
-async function fireTestSend(stageKey, email) {
-  const qs = new URLSearchParams({ key: stageKey, email });
-  const res = await fetch(`/api/admin/email-stages?${qs.toString()}`, { method: 'POST' });
+async function fetchPreview(stage, email) {
+  const res = await fetch(buildWebhookUrl(stage, email, false));
   const data = await res.json();
-  if (!res.ok || !data?.success) {
+  if (!res.ok || data?.success === false) {
+    throw new Error(data?.error || `preview HTTP ${res.status}`);
+  }
+  const preview = extractPreview(data);
+  if (!preview) {
+    // Build a synthetic preview so REWIND20 stages (where the webhook body
+    // only returns a skipped dry-run without preview in some legacy shapes)
+    // still render usefully.
+    return {
+      subject: '(preview unavailable — webhook did not return rendered copy)',
+      body: JSON.stringify(data, null, 2),
+      html: `<pre>${JSON.stringify(data, null, 2)}</pre>`,
+    };
+  }
+  if (!preview.html && preview.body) {
+    preview.html = markdownToHtml(preview.body);
+  }
+  return preview;
+}
+
+async function fireTestSend(stage, email) {
+  const res = await fetch(buildWebhookUrl(stage, email, true));
+  const data = await res.json();
+  if (!res.ok || data?.success === false) {
     throw new Error(data?.error || data?.result?.error || `test-send HTTP ${res.status}`);
   }
   return data;
 }
-
-// ─── presentational pieces ───────────────────────────────────────────────
 
 function ScheduleLine({ schedule }) {
   if (!schedule) return null;
@@ -91,15 +212,20 @@ function ScheduleLine({ schedule }) {
 
 function StageCard({ stage, selected, onSelect }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onSelect(stage)}
       style={{
+        textAlign: 'left',
         padding: '14px 16px',
+        width: '100%',
         background: selected ? 'var(--ar-card)' : 'transparent',
         border: `1px solid ${selected ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)'}`,
         borderRadius: 8,
         cursor: 'pointer',
         marginBottom: 10,
+        color: 'inherit',
+        font: 'inherit',
       }}
     >
       <div style={{ fontWeight: 600, fontSize: 15 }}>{stage.displayName}</div>
@@ -108,17 +234,18 @@ function StageCard({ stage, selected, onSelect }) {
       </div>
       <div style={{ fontSize: 13, marginTop: 8 }}>{stage.description}</div>
       <ScheduleLine schedule={stage.schedule} />
-    </div>
+    </button>
   );
 }
 
 function MemberPicker({ members, value, onChange }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
+      <label htmlFor="ar-email-member-picker" style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
         Preview / test against member:
       </label>
       <select
+        id="ar-email-member-picker"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{
@@ -187,6 +314,7 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
 
       <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
         <button
+          type="button"
           onClick={onTestSend}
           disabled={testState?.loading}
           style={{
@@ -212,10 +340,7 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
   );
 }
 
-// ─── main page ────────────────────────────────────────────────────────────
-
 export default function EmailsAdmin() {
-  const [stages, setStages] = useState([]);
   const [members, setMembers] = useState([]);
   const [selectedStage, setSelectedStage] = useState(null);
   const [memberEmail, setMemberEmail] = useState('');
@@ -224,11 +349,8 @@ export default function EmailsAdmin() {
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
-    Promise.all([loadStages(), loadMembers()])
-      .then(([s, m]) => {
-        setStages(s);
-        setMembers(m);
-      })
+    loadMembers()
+      .then(setMembers)
       .catch((err) => setLoadError(err.message));
   }, []);
 
@@ -238,8 +360,8 @@ export default function EmailsAdmin() {
       return;
     }
     setPreview({ loading: true });
-    fetchPreview(selectedStage.key, memberEmail)
-      .then((data) => setPreview({ data: data.preview }))
+    fetchPreview(selectedStage, memberEmail)
+      .then((data) => setPreview({ data }))
       .catch((err) => setPreview({ error: err.message }));
   }, [selectedStage?.key, memberEmail]);
 
@@ -247,7 +369,7 @@ export default function EmailsAdmin() {
     if (!selectedStage || !memberEmail) return;
     setTestState({ loading: true });
     try {
-      await fireTestSend(selectedStage.key, memberEmail);
+      await fireTestSend(selectedStage, memberEmail);
       setTestState({ success: true });
     } catch (err) {
       setTestState({ error: err.message });
@@ -261,14 +383,14 @@ export default function EmailsAdmin() {
 
       {loadError ? (
         <div style={{ padding: 12, color: 'var(--ar-danger, #d33)' }}>
-          Failed to load: {loadError}
+          Failed to load members list: {loadError}
         </div>
       ) : null}
 
       <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--ar-text-muted)' }}>
-        Phase 1 (view-only). Every stage shows the real rendered email against any
-        member you pick. Test-send BCCs <code>info@alanranger.com</code>. Editing copy/timing
-        arrives in Phase 2.
+        Phase 1 (view-only). Each stage shows the real rendered email against any
+        member you pick. Test-sends BCC <code>info@alanranger.com</code>. Editing copy
+        and timing arrives in Phase 2.
       </div>
 
       <MemberPicker members={members} value={memberEmail} onChange={(v) => {
@@ -279,9 +401,9 @@ export default function EmailsAdmin() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24 }}>
         <div>
           <div style={{ fontSize: 13, color: 'var(--ar-text-muted)', marginBottom: 10 }}>
-            {stages.length} stage{stages.length === 1 ? '' : 's'} configured
+            {STAGES.length} stages configured
           </div>
-          {stages.map((s) => (
+          {STAGES.map((s) => (
             <StageCard
               key={s.key}
               stage={s}
