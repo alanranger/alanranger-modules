@@ -242,6 +242,37 @@ const SAVE20_GRACE_WINDOW_DAYS = 7;
 // Fetch a lightweight activity summary for a single member, used to render
 // the "Your Academy activity so far" block in the Day -7 reminder email.
 // One pull of recent events + one exam-table query; ~100ms typical.
+// The login tracker fires 2-3 events per real sign-in (page-load hooks on the
+// dashboard, header, and guard snippet all record it). Raw counts massively
+// overstate the user's real engagement, so we collapse events that sit within
+// the same 30-minute window into a single "session".
+function countDistinctLoginSessions(loginEvents) {
+  if (!loginEvents || loginEvents.length === 0) return 0;
+  const WINDOW_MS = 30 * 60 * 1000;
+  const ascending = [...loginEvents].sort(
+    (a, b) => new Date(a.created_at) - new Date(b.created_at)
+  );
+  let sessions = 0;
+  let lastTs = 0;
+  for (const ev of ascending) {
+    const ts = new Date(ev.created_at).getTime();
+    if (!lastTs || ts - lastTs > WINDOW_MS) sessions += 1;
+    lastTs = ts;
+  }
+  return sessions;
+}
+
+// The 60 Academy "training modules" live under /blog-on-photography/, while
+// practice-pack PDFs live under /s/*.pdf and everything else is
+// miscellaneous. Split these so the email can tell a trialist "X of 60
+// modules opened" and "Y of 30 practice packs used" accurately.
+function classifyModulePath(path) {
+  if (!path) return "other";
+  if (path.startsWith("/blog-on-photography/")) return "module";
+  if (path.startsWith("/s/") && path.toLowerCase().endsWith(".pdf")) return "practice_pack";
+  return "other";
+}
+
 async function fetchMemberActivity(memberId) {
   if (!supabase || !memberId) return null;
   try {
@@ -253,7 +284,7 @@ async function fetchMemberActivity(memberId) {
         .eq("member_id", memberId)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
-        .limit(500),
+        .limit(1000),
       supabase
         .from("module_results_ms")
         .select("module_id, created_at")
@@ -264,19 +295,27 @@ async function fetchMemberActivity(memberId) {
     const exams = examsResp?.data || [];
     const logins = events.filter((e) => e.event_type === "login");
     const moduleOpens = events.filter((e) => e.event_type === "module_open");
+
     const uniqueModules = new Map();
+    const uniquePracticePacks = new Map();
     for (const ev of moduleOpens) {
       const key = ev.title || ev.path;
-      if (key && !uniqueModules.has(key)) uniqueModules.set(key, ev);
+      if (!key) continue;
+      const kind = classifyModulePath(ev.path);
+      if (kind === "module" && !uniqueModules.has(key)) uniqueModules.set(key, ev);
+      else if (kind === "practice_pack" && !uniquePracticePacks.has(key)) uniquePracticePacks.set(key, ev);
     }
+
     const uniqueExamIds = new Set(
       exams.map((e) => e.module_id).filter(Boolean)
     );
     return {
       last_login_at: logins[0]?.created_at || null,
-      login_count: logins.length,
+      login_count: countDistinctLoginSessions(logins),
       modules_opened_count: uniqueModules.size,
       modules_opened_list: Array.from(uniqueModules.keys()).slice(0, 5),
+      practice_packs_count: uniquePracticePacks.size,
+      practice_packs_list: Array.from(uniquePracticePacks.keys()).slice(0, 3),
       exams_attempted_count: uniqueExamIds.size,
     };
   } catch (err) {
@@ -291,40 +330,55 @@ async function fetchMemberActivity(memberId) {
 // under the opening paragraph. Returns an empty string when we have no
 // activity data, so the email still reads cleanly in edge cases (e.g. brand
 // new member with zero events logged yet, or Supabase transiently slow).
+function formatLastLoginLine(activity) {
+  if (!activity.last_login_at) return null;
+  const when = new Date(activity.last_login_at).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return `- Last signed in: **${when}**`;
+}
+
+function formatLoginCountLine(activity) {
+  if (!activity.login_count || activity.login_count <= 0) return null;
+  const noun = activity.login_count === 1 ? "sign-in" : "sign-ins";
+  return `- ${activity.login_count} ${noun} during your trial so far`;
+}
+
+function formatModulesLine(activity) {
+  if (!activity.modules_opened_count || activity.modules_opened_count <= 0) {
+    return "- No training modules opened yet — plenty of room to explore";
+  }
+  const list = activity.modules_opened_list || [];
+  const preview = list.slice(0, 3).join(", ");
+  const more = list.length > 3 ? "…" : "";
+  const tail = preview ? ` (${preview}${more})` : "";
+  return `- **${activity.modules_opened_count} of 60 modules** opened so far${tail}`;
+}
+
+function formatPracticePacksLine(activity) {
+  const count = activity.practice_packs_count;
+  if (typeof count !== "number" || count <= 0) return null;
+  return `- **${count} of 30 practice packs** used so far`;
+}
+
+function formatExamsLine(activity) {
+  if (activity.exams_attempted_count > 0) {
+    return `- **${activity.exams_attempted_count} of 15 exams** attempted so far`;
+  }
+  return "- No exams attempted yet — each one is short and comes with its own certificate";
+}
+
 function formatActivityBlock(activity) {
   if (!activity) return "";
-  const lines = [];
-  if (activity.last_login_at) {
-    const d = new Date(activity.last_login_at);
-    const when = d.toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
-    lines.push(`- Last signed in: **${when}**`);
-  }
-  if (activity.login_count > 0) {
-    const noun = activity.login_count === 1 ? "sign-in" : "sign-ins";
-    lines.push(`- ${activity.login_count} ${noun} during your trial so far`);
-  }
-  if (activity.modules_opened_count > 0) {
-    const preview = activity.modules_opened_list
-      .slice(0, 3)
-      .join(", ");
-    const more = activity.modules_opened_list.length > 3 ? "…" : "";
-    lines.push(
-      `- **${activity.modules_opened_count} of 60 modules** opened so far${preview ? ` (${preview}${more})` : ""}`
-    );
-  } else {
-    lines.push("- No training modules opened yet — plenty of room to explore");
-  }
-  if (activity.exams_attempted_count > 0) {
-    lines.push(
-      `- **${activity.exams_attempted_count} of 15 exams** attempted so far`
-    );
-  } else {
-    lines.push("- No exams attempted yet — each one is short and comes with its own certificate");
-  }
+  const lines = [
+    formatLastLoginLine(activity),
+    formatLoginCountLine(activity),
+    formatModulesLine(activity),
+    formatPracticePacksLine(activity),
+    formatExamsLine(activity),
+  ].filter(Boolean);
   if (!lines.length) return "";
   return `\n**Your Academy activity so far**\n\n${lines.join("\n")}\n`;
 }
