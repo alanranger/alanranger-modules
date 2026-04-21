@@ -1,0 +1,107 @@
+<!--
+  ================================================================
+  AR | Academy Login — REWIND20 deep-link email prefill
+  ================================================================
+  Purpose:
+    When a lapsed-trial member clicks the personal link inside the
+    REWIND20 win-back email, the dashboard (academy-dashboard-
+    squarespace-snippet-v1.html) stashes their email address and
+    redirects them here if their Memberstack session has expired:
+
+      /academy/login?ar_rewind_email=<urlencoded email>
+
+    This snippet watches the page for the Memberstack login form,
+    pre-fills the email input, and briefly flashes the field so
+    the member can confirm and just type their password.
+
+  Install:
+    Squarespace → Edit /academy/login page → Settings → Advanced →
+    Page Header Code Injection → paste this entire block.
+
+  Safe to leave installed forever: it's a no-op on any visit that
+  doesn't carry ?ar_rewind_email=, and it never submits the form.
+  ================================================================
+-->
+<script>
+(function(){
+  "use strict";
+
+  function readRewindEmail() {
+    try {
+      var params = new URLSearchParams(String(window.location.search || ""));
+      var raw = params.get("ar_rewind_email");
+      if (!raw) return null;
+      var trimmed = String(raw).trim();
+      if (!trimmed || trimmed.indexOf("@") < 0) return null;
+      return trimmed;
+    } catch (e) { return null; }
+  }
+
+  function findEmailInput(root) {
+    var scope = root || document;
+    var selectors = [
+      'form[data-ms-form="login"] input[data-ms-member="email"]',
+      'form[data-ms-form="login"] input[type="email"]',
+      'input[data-ms-member="email"]',
+      'input[name="email"][type="email"]',
+      'input[type="email"]'
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var el = scope.querySelector(selectors[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function applyValue(input, email) {
+    if (!input || input.value === email) return false;
+    input.value = email;
+    try {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (e) { /* older browsers: value is still set */ }
+    input.setAttribute("data-ar-rewind-prefilled", "1");
+    try { input.style.transition = "box-shadow 600ms ease"; } catch (e) {}
+    input.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.35)";
+    setTimeout(function(){
+      try { input.style.boxShadow = ""; } catch (e) {}
+    }, 1200);
+    return true;
+  }
+
+  function focusPasswordAfterPrefill(root) {
+    var scope = root || document;
+    var pw = scope.querySelector('form[data-ms-form="login"] input[type="password"]')
+          || scope.querySelector('input[type="password"]');
+    if (pw && typeof pw.focus === "function") {
+      try { pw.focus({ preventScroll: false }); } catch (e) { pw.focus(); }
+    }
+  }
+
+  var email = readRewindEmail();
+  if (!email) return;
+
+  function attempt() {
+    var input = findEmailInput();
+    if (input && applyValue(input, email)) {
+      focusPasswordAfterPrefill();
+      return true;
+    }
+    return false;
+  }
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    if (attempt()) return;
+  } else {
+    document.addEventListener("DOMContentLoaded", attempt, { once: true });
+  }
+
+  // Memberstack forms often hydrate after DOMContentLoaded; watch for up to
+  // 12 seconds, then give up quietly so the page isn't churned on forever.
+  var observer = new MutationObserver(function(){
+    if (attempt()) { observer.disconnect(); }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(function(){ try { observer.disconnect(); } catch (e) {} }, 12000);
+})();
+</script>

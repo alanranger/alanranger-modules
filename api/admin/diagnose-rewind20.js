@@ -22,7 +22,7 @@ const Stripe = require("stripe");
 
 const CODE = "REWIND20";
 const COUPON_ID = "rewind20-lapsed-trial-winback";
-const COUPON_NAME = "REWIND20 — Lapsed Trial Win-Back (Year 1)";
+const COUPON_NAME = "REWIND20 — Lapsed Trial Win-Back"; // Stripe name max 40 chars
 const AMOUNT_OFF_MINOR_UNITS = 2000; // £20.00
 const CURRENCY = "gbp";
 

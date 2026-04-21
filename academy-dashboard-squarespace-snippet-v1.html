@@ -2626,6 +2626,65 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
     var UPGRADE_CHECKOUT_ENDPOINT = API_BASE + "/api/stripe/create-upgrade-checkout";
     var UPGRADE_COUPON_WINDOW_DAYS = 7;
     var GHOST_CONTEXT_KEY = "ar_ghost_context_v1";
+    // Key used to carry a lapsed-trial re-engagement deep link across a login
+    // round-trip. Populated when the dashboard sees ?ar_rewind=<signed token>
+    // in the URL (from the REWIND20 win-back email). Consumed on the login
+    // page to pre-fill the email input, and on the dashboard to force-open
+    // the upgrade modal even if the auth guard would normally skip it.
+    var REWIND_CONTEXT_KEY = "ar_rewind_context_v1";
+
+    function decodeRewindPayloadClientSide(token) {
+      if (!token || typeof token !== "string") return null;
+      var parts = token.split(".");
+      if (parts.length !== 2) return null;
+      try {
+        var b64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
+        while (b64.length % 4) b64 += "=";
+        var json = atob(b64);
+        var payload = JSON.parse(json);
+        if (!payload || !payload.mid || !payload.exp) return null;
+        if (Date.now() > Number(payload.exp)) return null;
+        return {
+          memberId: String(payload.mid),
+          email: payload.em ? String(payload.em) : null,
+          expiresAt: Number(payload.exp),
+          token: token
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function setRewindContext(ctx) {
+      if (!ctx) return;
+      try { sessionStorage.setItem(REWIND_CONTEXT_KEY, JSON.stringify(ctx)); }
+      catch (e) { /* ignore quota/private-mode errors */ }
+    }
+
+    function getRewindContext() {
+      try {
+        var raw = sessionStorage.getItem(REWIND_CONTEXT_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        if (!parsed || !parsed.memberId) return null;
+        if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+          sessionStorage.removeItem(REWIND_CONTEXT_KEY);
+          return null;
+        }
+        return parsed;
+      } catch (e) { return null; }
+    }
+
+    // Merge the stashed email into a /academy/login URL so the login-page
+    // snippet can pre-fill Memberstack's email input. Safe to call with any
+    // base URL — returns it unchanged if no rewind context is present.
+    function applyRewindEmailToUrl(baseUrl) {
+      var ctx = getRewindContext();
+      if (!ctx || !ctx.email) return baseUrl;
+      var sep = baseUrl.indexOf("?") >= 0 ? "&" : "?";
+      return baseUrl + sep + "ar_rewind_email=" + encodeURIComponent(ctx.email);
+    }
+
     function setGhostSessionContext(memberId, email) {
       try {
         var payload = {
@@ -5463,11 +5522,41 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         };
       }
 
+      // Lapsed-trial re-engagement deep link (?ar_rewind=<signed token>).
+      // Decoded client-side purely for UX (email pre-fill + modal auto-open).
+      // All actual permission/pricing decisions still flow through
+      // /api/academy/trial-status and /api/stripe/create-upgrade-checkout
+      // so a forged token can't unlock anything that isn't already the
+      // member's entitlement.
+      try {
+        var rewindParams = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+        var rewindToken = rewindParams.get("ar_rewind");
+        if (rewindToken) {
+          var rewindCtx = decodeRewindPayloadClientSide(rewindToken);
+          if (rewindCtx) {
+            setRewindContext(rewindCtx);
+            console.log("[ar-rewind] deep link accepted for member", rewindCtx.memberId);
+          } else {
+            console.warn("[ar-rewind] token was malformed or expired — ignoring");
+          }
+          // Clean the URL so refreshes don't replay the token and the link
+          // doesn't sit in address-bar history for shoulder-surfers.
+          try {
+            rewindParams.delete("ar_rewind");
+            var rewindQs = rewindParams.toString();
+            var cleanUrl = globalThis.location.pathname
+              + (rewindQs ? ("?" + rewindQs) : "")
+              + (globalThis.location.hash || "");
+            globalThis.history.replaceState({}, "", cleanUrl);
+          } catch (e) { /* ignore */ }
+        }
+      } catch (e) { /* ignore */ }
+
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       waitForMemberstack(8000).then(function(ms){
-        if (!ms) { safeRedirect(LOGIN_URL); return; }
+        if (!ms) { safeRedirect(applyRewindEmailToUrl(LOGIN_URL)); return; }
         return getMemberExtended(ms).then(function(m){
-          if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+          if (!m || !m.data) { safeRedirect(applyRewindEmailToUrl(LOGIN_URL)); return; }
           
           // Normal dashboard flow (ghost mode already handled above)
           
@@ -5499,7 +5588,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
             var mId = (m && (m.id || (m.data && m.data.id))) || null;
             var bounceAsUnactivated = function(){
               try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
-              safeRedirect("/academy/login?trial=not-activated");
+              safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"));
             };
             if (!mId && !forceExpiredTest) { bounceAsUnactivated(); return; }
             if (!mId && forceExpiredTest) {

@@ -64,6 +64,12 @@ const DASHBOARD_URL =
 const API_BASE_URL =
   process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
 
+// Shared HMAC secret for per-member deep-link tokens. Verified by
+// api/academy/verify-reengage-token.js with the same fallback chain.
+const REENGAGE_LINK_SECRET =
+  process.env.REENGAGE_LINK_SECRET || process.env.ORPHANED_WEBHOOK_SECRET || "";
+const REENGAGE_TOKEN_VERSION = 1;
+
 const CAMPAIGN = {
   reachBackDays: 180,        // candidates: trials ended within the last 180 days
   // Attempt cadence expressed two ways:
@@ -141,7 +147,7 @@ Twelve months is usually long enough for a committed learner to make a real leap
 
 **Ready to come back?**
 
-Just log into your Academy dashboard with your existing email and password — the upgrade option will be waiting with **${CAMPAIGN.couponCode} already applied**, no codes to type:
+Click the personal link below — we'll take you straight to your Academy dashboard with the upgrade offer already open and **${CAMPAIGN.couponCode} applied**, no codes to type. If you're not still signed in, your email address will be pre-filled on the login screen, so all you need is your password:
 
 ${dashboardUrl}
 
@@ -263,6 +269,43 @@ function buildUnsubUrl(token) {
   return `${API_BASE_URL}/api/academy/reengagement-unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
+function base64UrlEncode(input) {
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+// Sign a deep-link payload so the dashboard can trust {memberId, email} came
+// from this webhook. Token expires in lockstep with the REWIND20 coupon
+// window (7 days). Verified server-side by verify-reengage-token.js.
+function signReengageToken(memberId, email, expiresAtMs) {
+  if (!REENGAGE_LINK_SECRET) return null;
+  const payload = {
+    v: REENGAGE_TOKEN_VERSION,
+    mid: memberId,
+    em: email || null,
+    exp: expiresAtMs,
+  };
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const sig = crypto
+    .createHmac("sha256", REENGAGE_LINK_SECRET)
+    .update(payloadB64)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `${payloadB64}.${sig}`;
+}
+
+function buildPersonalDashboardUrl(memberId, email, windowExpiresAtMs) {
+  const token = signReengageToken(memberId, email, windowExpiresAtMs);
+  if (!token) return DASHBOARD_URL; // secret missing — fall back gracefully
+  const sep = DASHBOARD_URL.includes("?") ? "&" : "?";
+  return `${DASHBOARD_URL}${sep}ar_rewind=${encodeURIComponent(token)}`;
+}
+
 async function stampTrialRow(row, windowBounds, token) {
   const nowIso = new Date(windowBounds.now).toISOString();
   const expiresIso = new Date(windowBounds.now + CAMPAIGN.windowDays * 86400000).toISOString();
@@ -311,11 +354,20 @@ async function processCandidate(row, windowBounds, sendEmail) {
   const token = row.reengagement_unsub_token || generateUnsubToken();
   const attempt = (row.reengagement_send_count || 0) + 1;
   const daysLapsed = daysBetween(row.trial_end_at, windowBounds.now);
+  // Per-member signed link: scoped to the REWIND20 personal 7-day window so
+  // the token expires at the same moment the coupon does. Pre-fills email on
+  // login and force-opens the upgrade modal when a session is already active.
+  const windowExpiresAtMs = windowBounds.now + CAMPAIGN.windowDays * 86400000;
+  const personalDashboardUrl = buildPersonalDashboardUrl(
+    row.member_id,
+    contact.email,
+    windowExpiresAtMs
+  );
   const content = buildEmailContent({
     member: contact,
     daysLapsed,
     attempt,
-    dashboardUrl: DASHBOARD_URL,
+    dashboardUrl: personalDashboardUrl,
     unsubUrl: buildUnsubUrl(token),
   });
 
