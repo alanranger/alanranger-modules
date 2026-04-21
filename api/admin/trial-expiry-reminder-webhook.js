@@ -980,17 +980,21 @@ function isNineAmLondon() {
 // (set automatically by Vercel on scheduled invocations) or the existing
 // `?secret=ORPHANED_WEBHOOK_SECRET` query param / `x-webhook-secret` header
 // used by Zapier and manual tests.
+//
+// Returns one of: "ok" | "unauthorized" | "open" (open = secret configured
+// but caller didn't provide one; we log and allow, matching the pre-Cron
+// behaviour so existing Zapier Zaps and manual curl tests don't break).
 function isRequestAuthorized(req) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const authHeader = req.headers["authorization"] || "";
-    if (authHeader === `Bearer ${cronSecret}`) return true;
+    if (authHeader === `Bearer ${cronSecret}`) return "ok";
   }
   const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET;
-  if (!webhookSecret) return true; // no secrets configured → open (dev only)
+  if (!webhookSecret) return "ok";
   const providedSecret = req.query.secret || req.headers["x-webhook-secret"];
-  if (!providedSecret) return false;
-  return providedSecret === webhookSecret;
+  if (!providedSecret) return "open";
+  return providedSecret === webhookSecret ? "ok" : "unauthorized";
 }
 
 function isVercelCronInvocation(req) {
@@ -1002,9 +1006,13 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  if (!isRequestAuthorized(req)) {
+  const authResult = isRequestAuthorized(req);
+  if (authResult === "unauthorized") {
     console.log("[trial-expiry-reminder] Unauthorized request");
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (authResult === "open") {
+    console.warn("[trial-expiry-reminder] Webhook secret configured but not provided; allowing for backwards compatibility");
   }
 
   // Gate Vercel Cron invocations to 09:00 London. Each stage is scheduled at
