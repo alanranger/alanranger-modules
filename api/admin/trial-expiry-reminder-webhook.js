@@ -785,18 +785,32 @@ module.exports = async (req, res) => {
       const planSummary = testMember.plan_summary || {};
       const expiryDateStr = planSummary.expiry_date;
       const now = new Date();
-      const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if not found
-      const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-      
-      // Create test member object
+      const realExpiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if not found
+      const realDaysUntilExpiry = Math.ceil((realExpiryDate - now) / (1000 * 60 * 60 * 24));
+
+      // Allow the caller to preview any stage's email by overriding the days
+      // count, e.g. `forceDaysUntilExpiry=7` for the mid-trial reminder or
+      // `forceDaysUntilExpiry=-3` for the SAVE20 day-3 email. When set, we
+      // also synthesise a matching expiry_date so the email body reads
+      // correctly. Without the override the real plan data is used.
+      const forceRaw = req.query.forceDaysUntilExpiry;
+      const forced = forceRaw !== undefined && forceRaw !== null && String(forceRaw).trim() !== ""
+        ? parseInt(forceRaw, 10)
+        : null;
+      const useForced = forced !== null && !Number.isNaN(forced);
+      const daysUntilExpiry = useForced ? forced : realDaysUntilExpiry;
+      const effectiveExpiryDate = useForced
+        ? new Date(now.getTime() + forced * 24 * 60 * 60 * 1000)
+        : realExpiryDate;
+
       const testMemberObj = {
         member_id: testMember.member_id,
         email: testMember.email,
         name: testMember.name || "Test User",
-        trial_expiry_date: expiryDateStr || expiryDate.toISOString(),
+        trial_expiry_date: (useForced ? effectiveExpiryDate.toISOString() : expiryDateStr) || effectiveExpiryDate.toISOString(),
         days_until_expiry: daysUntilExpiry
       };
-      
+
       const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry, {
         sendEmail: doSendEmail
       });
