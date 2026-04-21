@@ -156,13 +156,6 @@ function markdownToHtml(body) {
 // Data fetching (no third-party hooks; plain fetch)
 // ─────────────────────────────────────────────────────────────────────────
 
-async function loadMembers() {
-  const res = await fetch('/api/admin/members?limit=500');
-  if (!res.ok) throw new Error(`members HTTP ${res.status}`);
-  const data = await res.json();
-  return Array.isArray(data.members) ? data.members : [];
-}
-
 async function loadStats() {
   const res = await fetch('/api/admin/emails-stats');
   if (!res.ok) throw new Error(`stats HTTP ${res.status}`);
@@ -619,11 +612,16 @@ export default function EmailsAdmin() {
 
   const nowMs = useMemo(() => Date.now(), [tableData.generatedAt]);
 
+  // Picker is sourced from the same trial-only table rows (minus converted
+  // members) so paid annual subscribers never appear in the dropdown — they
+  // aren't in any email cohort and testing trial emails against them is nonsense.
   useEffect(() => {
-    loadMembers()
-      .then(setMembers)
-      .catch((err) => setLoadErrors((e) => ({ ...e, members: err.message })));
-  }, []);
+    const pickerMembers = (tableData.rows || [])
+      .filter((r) => !r.converted_at && !!r.email)
+      .map((r) => ({ member_id: r.member_id, email: r.email, name: r.name }))
+      .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+    setMembers(pickerMembers);
+  }, [tableData.rows]);
 
   useEffect(() => {
     loadStats()
