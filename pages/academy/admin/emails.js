@@ -174,6 +174,16 @@ async function loadTableRows(days = 90) {
   };
 }
 
+async function loadTemplates() {
+  const res = await fetch('/api/admin/emails-templates');
+  if (!res.ok) throw new Error(`templates HTTP ${res.status}`);
+  const data = await res.json();
+  return {
+    stages: Array.isArray(data.stages) ? data.stages : [],
+    mergeTags: Array.isArray(data.merge_tags) ? data.merge_tags : [],
+  };
+}
+
 function buildWebhookUrl(stage, email, sendEmail) {
   const qs = new URLSearchParams({
     ...Object.fromEntries(
@@ -599,10 +609,136 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
 // Main page
 // ─────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────
+// Templates section (Phase 2: read-only viewer)
+// ─────────────────────────────────────────────────────────────────────────
+
+const SCHEDULE_DOW_LABELS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+
+function formatScheduleSummary(schedule) {
+  if (!schedule) return 'No schedule row';
+  const days = Array.isArray(schedule.send_days) ? schedule.send_days : [];
+  const daysPart = days.length === 7
+    ? 'daily'
+    : days.map((d) => SCHEDULE_DOW_LABELS[d] || d).join('/');
+  const parts = [
+    schedule.enabled ? 'Enabled' : 'Disabled',
+    `offset ${schedule.days_offset > 0 ? '+' : ''}${schedule.days_offset}d`,
+    `${String(schedule.send_hour_london).padStart(2, '0')}:00 London`,
+    daysPart,
+  ];
+  return parts.join(' · ');
+}
+
+function TemplateStatusBadge({ isOverridden }) {
+  const bg = isOverridden ? '#fef3c7' : '#e5e7eb';
+  const color = isOverridden ? '#92400e' : '#374151';
+  const text = isOverridden ? 'Overridden' : 'Default';
+  return (
+    <span style={{
+      background: bg, color, fontSize: 11, padding: '2px 8px',
+      borderRadius: 4, fontWeight: 600, letterSpacing: 0.3,
+    }}>{text}</span>
+  );
+}
+
+function TemplateCard({ stage, expanded, onToggle }) {
+  const subject = stage.effective_subject || '(no subject)';
+  const body = stage.effective_body_md || '(no body)';
+  return (
+    <div style={{
+      border: '1px solid var(--ar-border, #ddd)', borderRadius: 6,
+      marginBottom: 12, background: 'var(--ar-surface, #fff)',
+    }}>
+      <button type="button" onClick={onToggle} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        width: '100%', padding: '12px 16px', background: 'transparent',
+        border: 'none', cursor: 'pointer', textAlign: 'left',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+          <span style={{ fontWeight: 600 }}>{stage.label}</span>
+          <TemplateStatusBadge isOverridden={stage.is_overridden} />
+          <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
+            {formatScheduleSummary(stage.schedule)}
+          </span>
+        </div>
+        <span style={{ fontSize: 14, color: 'var(--ar-text-muted)' }}>
+          {expanded ? '−' : '+'}
+        </span>
+      </button>
+      {expanded ? <TemplateBody subject={subject} body={body} stage={stage} /> : null}
+    </div>
+  );
+}
+
+function TemplateBody({ subject, body, stage }) {
+  return (
+    <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--ar-border, #eee)' }}>
+      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+        <strong>Subject:</strong>
+      </div>
+      <div style={{
+        padding: 8, background: 'var(--ar-surface-alt, #f9fafb)',
+        borderRadius: 4, fontSize: 13, marginTop: 4, fontFamily: 'monospace',
+      }}>{subject}</div>
+      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+        <strong>Body (markdown-lite with {'{{merge_tags}}'}):</strong>
+      </div>
+      <pre style={{
+        padding: 12, background: 'var(--ar-surface-alt, #f9fafb)',
+        borderRadius: 4, fontSize: 12, marginTop: 4, whiteSpace: 'pre-wrap',
+        fontFamily: 'monospace', maxHeight: 400, overflow: 'auto',
+        border: '1px solid var(--ar-border, #eee)',
+      }}>{body}</pre>
+      {stage.template_updated_at ? (
+        <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8 }}>
+          Last edited {formatDateTimeShort(stage.template_updated_at)}
+          {stage.template_updated_by ? ` by ${stage.template_updated_by}` : ''}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TemplatesSection({ templates, mergeTags, loadError }) {
+  const [expanded, setExpanded] = useState({});
+  if (loadError) {
+    return (
+      <div style={{ padding: 16, color: 'var(--ar-danger, #d33)', fontSize: 13 }}>
+        Templates failed to load: {loadError}
+      </div>
+    );
+  }
+  if (!templates.length) {
+    return <div style={{ padding: 16, fontSize: 13 }}>Loading templates…</div>;
+  }
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 12 }}>
+        Read-only view of the 6 email templates. Content below is what the webhook will
+        render (DB override if set, otherwise the built-in default). Editing comes next.
+        Supported merge tags: {mergeTags.map((t) => t.tag).join(', ')}.
+      </div>
+      {templates.map((stage) => (
+        <TemplateCard
+          key={stage.stage_key}
+          stage={stage}
+          expanded={Boolean(expanded[stage.stage_key])}
+          onToggle={() => setExpanded((prev) => ({
+            ...prev, [stage.stage_key]: !prev[stage.stage_key],
+          }))}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function EmailsAdmin() {
   const [members, setMembers] = useState([]);
   const [stats, setStats] = useState([]);
   const [tableData, setTableData] = useState({ rows: [], attributionWindowDays: 14 });
+  const [templates, setTemplates] = useState([]);
+  const [mergeTags, setMergeTags] = useState([]);
   const [loadErrors, setLoadErrors] = useState({});
 
   const [filterStageKey, setFilterStageKey] = useState(null);
@@ -633,6 +769,15 @@ export default function EmailsAdmin() {
     loadTableRows(90)
       .then(setTableData)
       .catch((err) => setLoadErrors((e) => ({ ...e, table: err.message })));
+  }, []);
+
+  useEffect(() => {
+    loadTemplates()
+      .then(({ stages, mergeTags: tags }) => {
+        setTemplates(stages);
+        setMergeTags(tags);
+      })
+      .catch((err) => setLoadErrors((e) => ({ ...e, templates: err.message })));
   }, []);
 
   const selectedStage = filterStageKey ? STAGE_BY_KEY[filterStageKey] : null;
@@ -769,6 +914,20 @@ export default function EmailsAdmin() {
               setTestState(null);
             }
           }}
+        />
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
+          <h2 style={{ fontSize: 18, margin: 0 }}>Templates</h2>
+          <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
+            {templates.length} stage{templates.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <TemplatesSection
+          templates={templates}
+          mergeTags={mergeTags}
+          loadError={loadErrors.templates}
         />
       </div>
     </div>
