@@ -37,18 +37,40 @@
     } catch (e) { return null; }
   }
 
+  // Only match the Memberstack login modal — never the newsletter signup
+  // form that also lives on this page. Priority list of specific-first
+  // selectors; the wider fallbacks require a dialog/modal ancestor so we
+  // can't accidentally write into a mailing-list form.
+  function isInsideMemberstackModal(el) {
+    if (!el) return false;
+    if (typeof el.closest !== "function") return false;
+    return !!(
+      el.closest('form[data-ms-form="login"]') ||
+      el.closest('[data-ms-modal]') ||
+      el.closest('[data-ms-content]') ||
+      el.closest('[role="dialog"]') ||
+      el.closest('[aria-modal="true"]') ||
+      el.closest('dialog')
+    );
+  }
+
   function findEmailInput(root) {
     var scope = root || document;
-    var selectors = [
+    var specific = [
       'form[data-ms-form="login"] input[data-ms-member="email"]',
       'form[data-ms-form="login"] input[type="email"]',
-      'input[data-ms-member="email"]',
-      'input[name="email"][type="email"]',
-      'input[type="email"]'
+      'input[data-ms-member="email"]'
     ];
-    for (var i = 0; i < selectors.length; i++) {
-      var el = scope.querySelector(selectors[i]);
+    for (var i = 0; i < specific.length; i++) {
+      var el = scope.querySelector(specific[i]);
       if (el) return el;
+    }
+    // Generic fallback: pick the first email input that lives inside a
+    // dialog / modal context. This catches Memberstack 2.0 deployments
+    // whose form doesn't carry data-ms-* attributes on the input itself.
+    var candidates = scope.querySelectorAll('input[type="email"], input[name="email"]');
+    for (var j = 0; j < candidates.length; j++) {
+      if (isInsideMemberstackModal(candidates[j])) return candidates[j];
     }
     return null;
   }
@@ -69,10 +91,20 @@
     return true;
   }
 
-  function focusPasswordAfterPrefill(root) {
-    var scope = root || document;
-    var pw = scope.querySelector('form[data-ms-form="login"] input[type="password"]')
-          || scope.querySelector('input[type="password"]');
+  function focusPasswordAfterPrefill(emailInput) {
+    // Walk up from the email input to find the nearest form / dialog, then
+    // grab the password field inside it. Guarantees we focus the Memberstack
+    // modal's password box rather than any unrelated one on the page.
+    var scope = null;
+    if (emailInput && typeof emailInput.closest === "function") {
+      scope = emailInput.closest('form[data-ms-form="login"]')
+           || emailInput.closest('form')
+           || emailInput.closest('[role="dialog"]')
+           || emailInput.closest('[aria-modal="true"]')
+           || emailInput.closest('dialog');
+    }
+    var pw = (scope && scope.querySelector('input[type="password"]'))
+          || document.querySelector('form[data-ms-form="login"] input[type="password"]');
     if (pw && typeof pw.focus === "function") {
       try { pw.focus({ preventScroll: false }); } catch (e) { pw.focus(); }
     }
@@ -84,7 +116,7 @@
   function attempt() {
     var input = findEmailInput();
     if (input && applyValue(input, email)) {
-      focusPasswordAfterPrefill();
+      focusPasswordAfterPrefill(input);
       return true;
     }
     return false;
