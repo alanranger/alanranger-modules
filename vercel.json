@@ -16,6 +16,30 @@
     {
       "path": "/api/admin/refresh",
       "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=7&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=7&sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=1&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=1&sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=-7&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=-7&sendEmail=true",
+      "schedule": "0 9 * * *"
     }
   ]
 }

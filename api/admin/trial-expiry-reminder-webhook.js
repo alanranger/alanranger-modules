@@ -1,24 +1,33 @@
 // API endpoint to identify members with trials expiring soon and send reminder emails
 // This endpoint identifies members with trial plans expiring in X days and emails them automatically
-// Designed to be called by Zapier (2-step Zap: Schedule → Webhook)
+// Designed to be called by Vercel Cron (native scheduling) or Zapier (legacy).
 //
 // Query parameters:
 // - daysAhead: Number of days before expiry to send reminder (default: 7)
 //   Accepted values (matches the supported email templates):
-//     daysAhead=7   → 7-days-before mid-trial reminder
-//     daysAhead=1   → last-day-of-trial reminder
-//     daysAhead=-1  → 1-day-after-expiry with SAVE20 offer (6 days of grace remaining)
-//     daysAhead=-3  → 3-days-after-expiry with SAVE20 offer (4 days of grace remaining)
-//     daysAhead=-6  → last-day-of-SAVE20 reminder (1 day of grace remaining)
-//     daysAhead=-8+ → post-grace reminder (SAVE20 closed, full £79 price)
-// - sendEmail: Set to false | 0 | no | off to only return JSON (no nodemailer). Zapier can send mail in a later step.
+//     daysAhead=7   → Day -7 mid-trial reminder
+//     daysAhead=1   → Day -1 final-day reminder
+//     daysAhead=-7  → Day +7 SAVE20 email (offer valid Day +7 to Day +14)
+//   Note: the Day +20/+30/+60 REWIND20 follow-ups live in a separate webhook
+//   (api/admin/lapsed-trial-reengagement-webhook.js), NOT here.
+// - sendEmail: Set to false | 0 | no | off to only return JSON (dry-run preview).
 // - testEmail: Send a single test (still respects sendEmail=false for dry-run preview)
-// - secret: Optional ORPHANED_WEBHOOK_SECRET for auth
+// - forceDaysUntilExpiry: Override the computed days-until-expiry for test sends.
+// - secret: ORPHANED_WEBHOOK_SECRET (query param) for manual invocations.
+//
+// Vercel Cron invocations authenticate automatically via the `authorization:
+// Bearer <CRON_SECRET>` header — Vercel sets `CRON_SECRET` and injects the
+// header on each scheduled run, so no query param is needed in vercel.json.
+//
+// Because a single global UTC schedule can't hit "09:00 London" year-round
+// (BST shifts it by an hour), each stage is scheduled twice a day — 08:00 UTC
+// and 09:00 UTC — and the handler below runs only when the current London hour
+// equals 9. This keeps BST and GMT sends both locked to 09:00 London.
 //
 // All emails link members to https://www.alanranger.com/academy/dashboard, where
 // the locked-dashboard snippet detects the trial state (via /api/academy/trial-status)
 // and opens the upgrade modal with SAVE20 auto-applied when they are within the
-// 7-day grace window. Override with env var ACADEMY_UPGRADE_URL if needed.
+// Day +7 → Day +14 window. Override with env var ACADEMY_UPGRADE_URL if needed.
 // TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true restores per-member Stripe Checkout URLs,
 // but this is not recommended — the dashboard modal now creates Stripe sessions
 // with the correct Memberstack metadata so the Memberstack plan auto-attaches
@@ -237,7 +246,13 @@ function shouldSendEmailFromRequest(req) {
 const ACADEMY_ANNUAL_PRICE_GBP = 79;
 const SAVE20_DISCOUNT_GBP = 20;
 const SAVE20_PRICE_GBP = ACADEMY_ANNUAL_PRICE_GBP - SAVE20_DISCOUNT_GBP; // 59
-const SAVE20_GRACE_WINDOW_DAYS = 7;
+// SAVE20 goes out at Day +7 and stays live for 7 days. Anyone past Day +14
+// rolls into the REWIND20 follow-up sequence (separate webhook) or the
+// post-grace template below at full £79 price.
+const SAVE20_OFFER_START_DAY_AFTER_EXPIRY = 7;
+const SAVE20_OFFER_END_DAY_AFTER_EXPIRY = 14;
+const SAVE20_WINDOW_LENGTH_DAYS =
+  SAVE20_OFFER_END_DAY_AFTER_EXPIRY - SAVE20_OFFER_START_DAY_AFTER_EXPIRY;
 
 // Fetch a lightweight activity summary for a single member, used to render
 // the "Your Academy activity so far" block in the Day -7 reminder email.
@@ -399,14 +414,22 @@ function renderFeatureList() {
   return FEATURE_BULLETS.map((b) => "- " + b).join("\n");
 }
 
-// SAVE20 is only valid within SAVE20_GRACE_WINDOW_DAYS of trial end. This
-// mirrors /api/academy/trial-status + /api/stripe/create-upgrade-checkout so
-// the email, dashboard modal and Stripe Checkout always agree.
+// SAVE20 is only valid from Day +7 to Day +14 after trial end. This mirrors
+// /api/academy/trial-status + /api/stripe/create-upgrade-checkout so the
+// email, dashboard modal and Stripe Checkout always agree. `daysLeft` is
+// the number of days remaining in the offer (inclusive of today), used
+// purely for email copy ("SAVE20 is yours for N more day(s)").
 function computeSave20State(daysUntilExpiry) {
   if (daysUntilExpiry >= 0) return { eligible: false, daysLeft: 0 };
   const daysSince = Math.abs(daysUntilExpiry);
-  const daysLeft = SAVE20_GRACE_WINDOW_DAYS - daysSince;
-  return { eligible: daysLeft > 0, daysLeft: Math.max(0, daysLeft) };
+  if (daysSince < SAVE20_OFFER_START_DAY_AFTER_EXPIRY) {
+    return { eligible: false, daysLeft: 0 };
+  }
+  if (daysSince > SAVE20_OFFER_END_DAY_AFTER_EXPIRY) {
+    return { eligible: false, daysLeft: 0 };
+  }
+  const daysLeft = SAVE20_OFFER_END_DAY_AFTER_EXPIRY - daysSince + 1;
+  return { eligible: true, daysLeft };
 }
 
 function buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
@@ -543,26 +566,49 @@ https://www.alanranger.com/online-photography-course
   return { subject, body };
 }
 
-function buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, daysLeftInGrace) {
+// "Suggested re-entry actions" for the Day +7 SAVE20 email. Mirrors the
+// Day -1 quick-wins block but tuned for members who've just lost access,
+// giving them the fastest path back to "I'm using this again".
+const SAVE20_QUICK_WINS = [
+  "**Jump back into the module you last opened** — pick up where you left off, no hunting required.",
+  "**Download one field checklist** — the one-page PDFs are yours to take on your next shoot.",
+  "**Take the first 10-minute exam** — short, focused, with a pass certificate to show for it."
+];
+
+function renderSave20QuickWins() {
+  return SAVE20_QUICK_WINS.map((step, i) => `${i + 1}. ${step}`).join("\n");
+}
+
+function buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, daysLeftInGrace, activity) {
   const daysWord = daysLeftInGrace === 1 ? "day" : "days";
   const daysLeftPhrase = `**${daysLeftInGrace} ${daysWord}** left`;
   const subject = `Your Academy trial ended — SAVE20 is yours for ${daysLeftInGrace} more ${daysWord}`;
+  const firstName = (member.name || "").split(" ")[0] || "there";
+  const activityBlock = formatActivityBlock(activity);
   const body = `
-Hi ${member.name || "there"},
+Hi ${firstName},
 
-Your 14-day free trial of the **Alan Ranger Photography Academy** ended on **${expiryDateStr}**, so access to the full library has now paused.
+Your 14-day free trial of the **Alan Ranger Photography Academy** ended on **${expiryDateStr}**, so full access has now paused — but your account is still here with everything you'd built on it.
+${activityBlock}
+**Here's an offer to pick up where you left off**
 
-If you'd like to carry on learning, you can upgrade to full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — and for the next ${daysLeftPhrase} you can use the code **SAVE20** to take **£${SAVE20_DISCOUNT_GBP} off your first year**, bringing it down to just **£${SAVE20_PRICE_GBP}**. That's less than a single coffee a week for the whole year.
+Upgrade to full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year**, and for the next ${daysLeftPhrase} the code **SAVE20** takes **£${SAVE20_DISCOUNT_GBP} off your first year** — bringing it down to just **£${SAVE20_PRICE_GBP}**. That's less than a single coffee a week for the whole year.
 
-Everything you've already started — your module progress, quiz scores, bookmarks, practice-pack notes and recent activity — is still on your account, waiting to pick up where you left off.
+**Three quick wins the moment you're back in**
 
-**Here's what full annual membership keeps unlocked:**
+${renderSave20QuickWins()}
+
+**Members-only resources you keep for the full year**
+
+${renderMembersOnlyList()}
+
+**And everything else in the Academy unlocks again:**
 
 ${renderFeatureList()}
 
 **Upgrade in one click**
 
-Just log back into your Academy dashboard — the upgrade will pop up automatically with **SAVE20 already applied**. No codes to type in, no separate checkout page to find.
+Click the personal link below and we'll take you straight to your Academy dashboard, with **SAVE20 already applied** in the upgrade modal. No codes to type in, no separate checkout page. If your session has expired, your email address will be pre-filled on the login screen, so all you need is your password.
 
 ${upgradeUrl}
 
@@ -573,6 +619,7 @@ Any questions, just reply to this email.
 Best regards,
 Alan Ranger
 Alan Ranger Photography Academy
+https://www.alanranger.com/online-photography-course
   `.trim();
   return { subject, body };
 }
@@ -605,10 +652,10 @@ Alan Ranger Photography Academy
   return { subject, body };
 }
 
-function buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
+function buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry, activity) {
   const coupon = computeSave20State(daysUntilExpiry);
   if (coupon.eligible) {
-    return buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, coupon.daysLeft);
+    return buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, coupon.daysLeft, activity);
   }
   return buildExpiredNoCouponEmail(member, expiryDateStr, upgradeUrl);
 }
@@ -628,7 +675,7 @@ function selectTemplateStage(templateDaysAhead, daysUntilExpiry) {
 
 function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, templateDaysAhead) {
   const stage = selectTemplateStage(templateDaysAhead, daysUntilExpiry);
-  if (stage < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, stage);
+  if (stage < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, stage, activity);
   if (stage === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   if (stage === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, stage);
@@ -917,23 +964,66 @@ async function getMembersWithExpiringTrials(daysAhead) {
   }
 }
 
+// Returns true when "now" falls in the 09:00 hour in Europe/London,
+// regardless of BST/GMT. Used to gate Vercel Cron invocations that fire at
+// both 08:00 and 09:00 UTC so that exactly one of the two actually sends.
+function isNineAmLondon() {
+  const hourStr = new Date().toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    hour: "numeric",
+    hour12: false,
+  });
+  return Number.parseInt(hourStr, 10) === 9;
+}
+
+// Accept either the new Vercel Cron `authorization: Bearer CRON_SECRET` header
+// (set automatically by Vercel on scheduled invocations) or the existing
+// `?secret=ORPHANED_WEBHOOK_SECRET` query param / `x-webhook-secret` header
+// used by Zapier and manual tests.
+function isRequestAuthorized(req) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers["authorization"] || "";
+    if (authHeader === `Bearer ${cronSecret}`) return true;
+  }
+  const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET;
+  if (!webhookSecret) return true; // no secrets configured → open (dev only)
+  const providedSecret = req.query.secret || req.headers["x-webhook-secret"];
+  if (!providedSecret) return false;
+  return providedSecret === webhookSecret;
+}
+
+function isVercelCronInvocation(req) {
+  return !!req.headers["x-vercel-cron"];
+}
+
 module.exports = async (req, res) => {
-  // Allow GET and POST requests
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // Optional: Add a secret token for security
-  const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET; // Reuse same secret
-  const providedSecret = req.query.secret || req.headers["x-webhook-secret"];
-
-  if (webhookSecret && providedSecret && providedSecret !== webhookSecret) {
-    console.log("[trial-expiry-reminder] Invalid webhook secret provided");
+  if (!isRequestAuthorized(req)) {
+    console.log("[trial-expiry-reminder] Unauthorized request");
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
-  if (webhookSecret && !providedSecret) {
-    console.warn("[trial-expiry-reminder] Webhook secret configured but not provided in request");
+
+  // Gate Vercel Cron invocations to 09:00 London. Each stage is scheduled at
+  // both 08:00 and 09:00 UTC in vercel.json — exactly one of the two matches
+  // 09:00 London depending on BST/GMT, the other returns a no-op 200.
+  if (isVercelCronInvocation(req) && !isNineAmLondon()) {
+    const londonHour = new Date().toLocaleString("en-GB", {
+      timeZone: "Europe/London",
+      hour: "numeric",
+      hour12: false,
+    });
+    console.log(`[trial-expiry-reminder] Cron invocation skipped — London hour is ${londonHour}, not 9`);
+    return res.status(200).json({
+      success: true,
+      skipped: true,
+      reason: "outside_london_nine_am_window",
+      london_hour: Number.parseInt(londonHour, 10),
+      timestamp: new Date().toISOString()
+    });
   }
 
   try {
