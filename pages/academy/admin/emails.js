@@ -805,9 +805,10 @@ function buildPreviewHtml(bodyMd) {
   const rendered = renderTemplateClient(bodyMd || '', TEMPLATE_PREVIEW_VARS);
   const htmlBody = markdownLiteToSafeHtml(rendered);
   return `<!doctype html><html><head><meta charset="utf-8"><style>
+    html, body { background: #e5e7eb; }
     body { font: 14px/1.55 -apple-system, Segoe UI, Roboto, sans-serif;
-           color: #1f2937; padding: 16px; margin: 0; }
-    strong { color: #111827; }
+           color: #111827; padding: 16px; margin: 0; }
+    strong { color: #000000; }
   </style></head><body>${htmlBody}</body></html>`;
 }
 
@@ -877,7 +878,7 @@ function TemplateEditor({ stage, onCancel, onSaved }) {
           sandbox=""
           style={{
             border: `1px solid ${TPL_PALETTE.cardBorder}`, borderRadius: 4,
-            background: '#fff', width: '100%', height: '100%',
+            background: '#e5e7eb', width: '100%', height: '100%',
           }}
         />
       </div>
