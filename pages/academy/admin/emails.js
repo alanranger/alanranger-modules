@@ -674,21 +674,21 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
 
 const SCHEDULE_DOW_LABELS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 
-// The admin page runs on a dark theme but the Templates section renders
-// email content (which is always sent as a light-theme HTML document). To
-// avoid inheriting page-level light-on-dark text onto light card backgrounds,
-// every element inside a TemplateCard uses explicit colours from this palette.
+// Template cards use a dark code-editor aesthetic that matches the admin
+// page's dark theme. Only the preview iframe stays white, because it is
+// rendering a representation of the actual email (which will be delivered
+// as a light-theme HTML document in the recipient's mail client).
 const TPL_PALETTE = Object.freeze({
-  cardBg: '#ffffff',
-  cardText: '#111827',
-  cardBorder: '#d1d5db',
-  subtleBg: '#f9fafb',
-  subtleBorder: '#e5e7eb',
-  labelMuted: '#4b5563',
-  metaMuted: '#6b7280',
-  primary: '#2563eb',
+  cardBg: '#1f2937',
+  cardText: '#f9fafb',
+  cardBorder: '#4b5563',
+  subtleBg: '#111827',
+  subtleBorder: '#374151',
+  labelMuted: '#e5e7eb',
+  metaMuted: '#9ca3af',
+  primary: '#3b82f6',
   primaryText: '#ffffff',
-  danger: '#b91c1c',
+  danger: '#fca5a5',
 });
 
 function formatScheduleSummary(schedule) {
