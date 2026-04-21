@@ -29,6 +29,7 @@ const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
+const crypto = require("crypto");
 
 // Vercel docs in this repo use SUPABASE_URL (server-only). Client builds may use NEXT_PUBLIC_SUPABASE_URL.
 const SUPABASE_URL =
@@ -69,6 +70,54 @@ const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 const MEMBERSTACK_UPGRADE_URL =
   process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/dashboard";
 const UPGRADE_URL_FALLBACK = MEMBERSTACK_UPGRADE_URL;
+
+// Shared HMAC secret for per-member deep-link tokens. Same fallback chain as
+// the REWIND20 webhook so both sets of emails use identical link signing.
+// Verified server-side by api/academy/verify-reengage-token.js.
+const REENGAGE_LINK_SECRET =
+  process.env.REENGAGE_LINK_SECRET || process.env.ORPHANED_WEBHOOK_SECRET || "";
+const REENGAGE_TOKEN_VERSION = 1;
+// Tokens in trial-expiry-reminder emails exist purely to auto-fill the login
+// form (and re-open the upgrade modal if the member is already signed in).
+// Coupon eligibility is still decided server-side via /api/academy/trial-status,
+// so a 30-day validity window is plenty across all reminder stages.
+const REENGAGE_TOKEN_TTL_DAYS = 30;
+
+function base64UrlEncode(input) {
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function signReengageToken(memberId, email, expiresAtMs) {
+  if (!REENGAGE_LINK_SECRET) return null;
+  const payload = {
+    v: REENGAGE_TOKEN_VERSION,
+    mid: memberId,
+    em: email || null,
+    exp: expiresAtMs,
+  };
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const sig = crypto
+    .createHmac("sha256", REENGAGE_LINK_SECRET)
+    .update(payloadB64)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `${payloadB64}.${sig}`;
+}
+
+function buildPersonalDashboardUrl(memberId, memberEmail) {
+  if (!memberId) return MEMBERSTACK_UPGRADE_URL;
+  const expiresAtMs = Date.now() + REENGAGE_TOKEN_TTL_DAYS * 86400000;
+  const token = signReengageToken(memberId, memberEmail, expiresAtMs);
+  if (!token) return MEMBERSTACK_UPGRADE_URL; // secret missing → fall back cleanly
+  const sep = MEMBERSTACK_UPGRADE_URL.includes("?") ? "&" : "?";
+  return `${MEMBERSTACK_UPGRADE_URL}${sep}ar_rewind=${encodeURIComponent(token)}`;
+}
 
 // Annual membership price ID from Memberstack
 const ANNUAL_MEMBERSHIP_PRICE_ID = "prc_annual-membership-jj7y0h89";
@@ -112,10 +161,12 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
 async function generateCheckoutUrl(memberId, memberEmail, memberName) {
   try {
     if (!USE_STRIPE_CHECKOUT_IN_EMAIL) {
-      console.log(
-        `[trial-expiry-reminder] Using Memberstack upgrade URL (set TRIAL_REMINDER_USE_STRIPE_CHECKOUT=true for Stripe sessions)`
-      );
-      return MEMBERSTACK_UPGRADE_URL;
+      // Signed per-member deep-link: opens the member's dashboard directly
+      // (auto-popping the upgrade modal if the trial has lapsed) and pre-fills
+      // their email on the login screen if the Memberstack session expired.
+      // Same mechanism already used by the REWIND20 lapsed-trial webhook, so
+      // every Academy email delivers the same one-click upgrade experience.
+      return buildPersonalDashboardUrl(memberId, memberEmail);
     }
 
     // Debug: Log Stripe configuration status
@@ -235,7 +286,7 @@ Alan Ranger Photography Academy
 }
 
 function buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl) {
-  const subject = "Halfway through your Academy trial — 7 days to go";
+  const subject = "You're Halfway Through Your Free Trial — 7 Days Left";
   const body = `
 Hi ${member.name || "there"},
 
@@ -254,13 +305,13 @@ ${renderFeatureList()}
 
 **Want to lock in annual access now?**
 
-If you already know you want to keep learning, you can upgrade to the full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — less than a single coffee a week — and everything you've already built stays on your account.
+If you already know you want to keep learning, you can upgrade to the full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — that's less than a single coffee a week — and everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account.
 
-Log back in and you'll see a quick upgrade option on your dashboard:
+Click the personal link below — we'll take you straight to your Academy dashboard. If you're not still signed in, your email address will be pre-filled on the login screen, so all you need is your password:
 
 ${upgradeUrl}
 
-Your trial expires on **${expiryDateStr}**. No pressure — your trial keeps running either way.
+Your trial expires on **${expiryDateStr}**. No pressure — your trial keeps running either way. Any questions, just reply to this email.
 
 Best regards,
 Alan Ranger
