@@ -597,10 +597,25 @@ function parseLimit(req) {
   return Math.min(raw, CAMPAIGN.defaultLimit);
 }
 
+// Accept either the Vercel Cron `authorization: Bearer CRON_SECRET` header
+// (auto-set by Vercel on scheduled invocations), the existing
+// `?secret=ORPHANED_WEBHOOK_SECRET` param / `x-webhook-secret` header, or
+// warn-and-allow when no secret is provided (backward compat for manual
+// tests and legacy Zaps). Matches trial-expiry-reminder-webhook so both
+// campaigns behave identically.
 function authorize(req) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers["authorization"] || "";
+    if (authHeader === `Bearer ${cronSecret}`) return { ok: true };
+  }
   const secret = process.env.ORPHANED_WEBHOOK_SECRET;
   if (!secret) return { ok: true };
   const provided = req.query?.secret || req.headers["x-webhook-secret"];
+  if (!provided) {
+    console.log("[lapsed-trial-reengagement] auth=open (no secret provided; allowing for backwards compatibility)");
+    return { ok: true };
+  }
   if (provided !== secret) return { ok: false, status: 401, error: "Unauthorized" };
   return { ok: true };
 }
