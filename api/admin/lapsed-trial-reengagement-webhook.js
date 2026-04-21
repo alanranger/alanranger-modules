@@ -99,6 +99,171 @@ const CAMPAIGN = {
 const TIME_BUDGET_MS = 55000;
 
 // ─────────────────────────────────────────────────────────────────────────
+// Activity fetching (mirrors trial-expiry-reminder-webhook.js)
+// ─────────────────────────────────────────────────────────────────────────
+// These helpers are duplicated between the two webhooks on purpose — each
+// webhook is a self-contained Vercel function, and extracting to a shared
+// module would couple their deploy lifecycles. If you edit one, edit the
+// other to match.
+
+function countDistinctLoginSessions(loginEvents) {
+  if (!loginEvents || loginEvents.length === 0) return 0;
+  const WINDOW_MS = 30 * 60 * 1000;
+  const ascending = [...loginEvents].sort(
+    (a, b) => new Date(a.created_at) - new Date(b.created_at)
+  );
+  let sessions = 0;
+  let lastTs = 0;
+  for (const ev of ascending) {
+    const ts = new Date(ev.created_at).getTime();
+    if (!lastTs || ts - lastTs > WINDOW_MS) sessions += 1;
+    lastTs = ts;
+  }
+  return sessions;
+}
+
+function classifyModulePath(path) {
+  if (!path) return "other";
+  if (path.startsWith("/blog-on-photography/")) return "module";
+  if (path.startsWith("/s/") && path.toLowerCase().endsWith(".pdf")) return "practice_pack";
+  return "other";
+}
+
+async function fetchMemberActivity(memberId) {
+  if (!supabase || !memberId) return null;
+  try {
+    const since = new Date(Date.now() - 365 * 86400000).toISOString();
+    const [eventsResp, examsResp] = await Promise.all([
+      supabase
+        .from("academy_events")
+        .select("event_type, path, title, created_at")
+        .eq("member_id", memberId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("module_results_ms")
+        .select("module_id, created_at")
+        .eq("memberstack_id", memberId)
+        .limit(100),
+    ]);
+    const events = eventsResp?.data || [];
+    const exams = examsResp?.data || [];
+    const logins = events.filter((e) => e.event_type === "login");
+    const moduleOpens = events.filter((e) => e.event_type === "module_open");
+
+    const uniqueModules = new Map();
+    const uniquePracticePacks = new Map();
+    for (const ev of moduleOpens) {
+      const key = ev.title || ev.path;
+      if (!key) continue;
+      const kind = classifyModulePath(ev.path);
+      if (kind === "module" && !uniqueModules.has(key)) uniqueModules.set(key, ev);
+      else if (kind === "practice_pack" && !uniquePracticePacks.has(key)) uniquePracticePacks.set(key, ev);
+    }
+
+    const uniqueExamIds = new Set(
+      exams.map((e) => e.module_id).filter(Boolean)
+    );
+    return {
+      last_login_at: logins[0]?.created_at || null,
+      login_count: countDistinctLoginSessions(logins),
+      modules_opened_count: uniqueModules.size,
+      modules_opened_list: Array.from(uniqueModules.keys()).slice(0, 5),
+      practice_packs_count: uniquePracticePacks.size,
+      practice_packs_list: Array.from(uniquePracticePacks.keys()).slice(0, 3),
+      exams_attempted_count: uniqueExamIds.size,
+    };
+  } catch (err) {
+    console.warn(`[lapsed-trial-reengagement] activity lookup failed for ${memberId}: ${err.message}`);
+    return null;
+  }
+}
+
+function formatLastLoginLine(activity) {
+  if (!activity.last_login_at) return null;
+  const when = new Date(activity.last_login_at).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return `- Last signed in during your trial: **${when}**`;
+}
+
+function formatLoginCountLine(activity) {
+  if (!activity.login_count || activity.login_count <= 0) return null;
+  const noun = activity.login_count === 1 ? "sign-in" : "sign-ins";
+  return `- ${activity.login_count} ${noun} during your trial`;
+}
+
+function formatModulesLine(activity) {
+  if (!activity.modules_opened_count || activity.modules_opened_count <= 0) return null;
+  const list = activity.modules_opened_list || [];
+  const preview = list.slice(0, 3).join(", ");
+  const more = list.length > 3 ? "…" : "";
+  const tail = preview ? ` (${preview}${more})` : "";
+  return `- **${activity.modules_opened_count} of 60 modules** explored${tail}`;
+}
+
+function formatPracticePacksLine(activity) {
+  const count = activity.practice_packs_count;
+  if (typeof count !== "number" || count <= 0) return null;
+  return `- **${count} of 30 practice packs** downloaded`;
+}
+
+function formatExamsLine(activity) {
+  const count = activity.exams_attempted_count || 0;
+  if (count <= 0) return null;
+  return `- **${count} of 15 exams** attempted`;
+}
+
+function formatActivityBlock(activity) {
+  if (!activity) return "";
+  const lines = [
+    formatLastLoginLine(activity),
+    formatLoginCountLine(activity),
+    formatModulesLine(activity),
+    formatPracticePacksLine(activity),
+    formatExamsLine(activity),
+  ].filter(Boolean);
+  if (!lines.length) return "";
+  return `\n**What you built during your trial (still saved to your account)**\n\n${lines.join("\n")}\n`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Members-only list + quick wins
+// ─────────────────────────────────────────────────────────────────────────
+
+const MEMBERS_ONLY_BULLETS = [
+  "**30 Assignment Practice Packs** — step-by-step field exercises built around Alan's frameworks",
+  "**35 One-page Field Checklists** — print-ready PDFs for every shoot scenario",
+  "**741-page Searchable eBook** — every module in one printable PDF, yours for life",
+  "**Caring for Your Assets guides** — backup routines, sensor cleaning, camera maintenance",
+  "**Applied Learning Library** — 22+ scenario-based guides (portraits, product, property, landscape, close-up & food) — expanding monthly",
+  "**Royal Photographic Society Accreditation pathway** — 10-module route towards a formal qualification"
+];
+
+const MEMBERS_ONLY_FUTURE_LINE =
+  "**All new modules, new exams and new features** released each month — included for the life of your membership, at no extra cost";
+
+function renderMembersOnlyList() {
+  return [...MEMBERS_ONLY_BULLETS, MEMBERS_ONLY_FUTURE_LINE]
+    .map((b) => "- " + b)
+    .join("\n");
+}
+
+const REWIND_QUICK_WINS = [
+  "**Jump back into the module you last opened** — we'll take you right back to where you stopped.",
+  "**Download one field checklist** — the one-page PDFs are yours to keep and take on every shoot.",
+  "**Take one 10-minute exam** — short, focused, with a pass certificate you keep whether you upgrade or not."
+];
+
+function renderRewindQuickWins() {
+  return REWIND_QUICK_WINS.map((step, i) => `${i + 1}. ${step}`).join("\n");
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Email content
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -126,16 +291,25 @@ function buildSubject(attempt) {
   return "Final offer — £20 off your Academy annual membership (7 days only)";
 }
 
-function buildReengagementBody({ memberName, dashboardUrl, unsubUrl, daysLapsed }) {
+function buildReengagementBody({ memberName, dashboardUrl, unsubUrl, daysLapsed, activity }) {
   const greeting = memberName ? `Hi ${memberName.split(" ")[0]},` : "Hi there,";
+  const activityBlock = formatActivityBlock(activity);
   return `
 ${greeting}
 
 It's been around ${daysLapsed} days since your **Alan Ranger Photography Academy** trial ended — and you didn't end up joining. That's completely fine; people pick up free trials all the time and life gets in the way.
-
+${activityBlock}
 But I wanted to reach out with one honest reason to give the Academy another look: **it has grown a lot since your trial**, and for the next **7 days only** I'd like to offer you **£${CAMPAIGN.discountGbp} off your first year** of annual membership with the code **${CAMPAIGN.couponCode}** — £${CAMPAIGN.annualPriceGbp} down to **£${CAMPAIGN.discountedPriceGbp}** for a full 12 months.
 
-**What's included — and what's new since your trial:**
+**Three quick wins the moment you're back in**
+
+${renderRewindQuickWins()}
+
+**Members-only resources you keep for the full year**
+
+${renderMembersOnlyList()}
+
+**And everything else in the Academy unlocks again:**
 
 ${renderFeatureList()}
 
@@ -158,6 +332,7 @@ Any questions — technical, creative, or "is this right for me at all?" — jus
 Best regards,
 Alan Ranger
 Alan Ranger Photography Academy
+https://www.alanranger.com/online-photography-course
 
 ---
 If you'd prefer not to receive any more re-engagement emails from the Academy, you can unsubscribe in one click:
@@ -171,13 +346,14 @@ function htmlFromMarkdown(body) {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 }
 
-function buildEmailContent({ member, daysLapsed, attempt, dashboardUrl, unsubUrl }) {
+function buildEmailContent({ member, daysLapsed, attempt, dashboardUrl, unsubUrl, activity }) {
   const subject = buildSubject(attempt);
   const body = buildReengagementBody({
     memberName: member.name || null,
     dashboardUrl,
     unsubUrl,
     daysLapsed,
+    activity,
   });
   return { subject, body, html: htmlFromMarkdown(body) };
 }
@@ -363,12 +539,17 @@ async function processCandidate(row, windowBounds, sendEmail) {
     contact.email,
     windowExpiresAtMs
   );
+  // Pull activity in parallel-ish with the rest of the pipeline — one DB
+  // round-trip per candidate, but mostly cache-warm since the same member
+  // only gets emailed at most 3 times over 60+ days.
+  const activity = await fetchMemberActivity(row.member_id);
   const content = buildEmailContent({
     member: contact,
     daysLapsed,
     attempt,
     dashboardUrl: personalDashboardUrl,
     unsubUrl: buildUnsubUrl(token),
+    activity,
   });
 
   if (!sendEmail) {
