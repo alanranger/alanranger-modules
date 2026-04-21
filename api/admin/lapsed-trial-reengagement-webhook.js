@@ -27,6 +27,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -568,7 +569,31 @@ async function processCandidate(row, windowBounds, sendEmail) {
   }
 
   const result = await deliverEmail({ member: contact, content });
-  if (result.sent) await stampTrialRow(row, windowBounds, token);
+  const stageKey = stageKeyForRewind(attempt);
+  if (result.sent) {
+    await stampTrialRow(row, windowBounds, token);
+    if (stageKey) {
+      await logEmailEvent(supabase, {
+        member_id: row.member_id,
+        email: contact.email,
+        stage_key: stageKey,
+        status: "sent",
+        messageId: result.messageId,
+        subject: content.subject,
+        dryRun: false,
+      });
+    }
+  } else if (stageKey) {
+    await logEmailEvent(supabase, {
+      member_id: row.member_id,
+      email: contact.email,
+      stage_key: stageKey,
+      status: "failed",
+      error: result.error,
+      subject: content.subject,
+      dryRun: false,
+    });
+  }
   return {
     member_id: row.member_id,
     email: contact.email,
@@ -578,6 +603,7 @@ async function processCandidate(row, windowBounds, sendEmail) {
     sent: result.sent,
     messageId: result.messageId || null,
     error: result.error || null,
+    stage_key: stageKey,
   };
 }
 

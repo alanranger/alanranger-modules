@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 // Inline stage config rather than fetching it — the admin UI knows every
-// webhook URL and param set up-front, and there's nothing to gain from a
-// server round-trip. Keep this in sync with lib/emailStages.js (which the
-// webhooks themselves do NOT consume; it's only the admin tab's map).
+// webhook URL and param set up-front. Keep in sync with lib/emailStages.js
+// (which the webhooks themselves do NOT consume; it's only the admin map).
 
 const TRIAL_WEBHOOK = '/api/admin/trial-expiry-reminder-webhook';
 const REWIND_WEBHOOK = '/api/admin/lapsed-trial-reengagement-webhook';
@@ -12,6 +11,7 @@ const REWIND_WEBHOOK = '/api/admin/lapsed-trial-reengagement-webhook';
 const STAGES = [
   {
     key: 'day-minus-7',
+    shortLabel: 'Day -7',
     displayName: 'Day -7 · Mid-trial reminder',
     sentBy: 'trial-expiry-reminder-webhook',
     schedule: {
@@ -26,6 +26,7 @@ const STAGES = [
   },
   {
     key: 'day-minus-1',
+    shortLabel: 'Day -1',
     displayName: 'Day -1 · Final-day reminder',
     sentBy: 'trial-expiry-reminder-webhook',
     schedule: {
@@ -34,12 +35,13 @@ const STAGES = [
       mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
     },
     description:
-      'Last day of the free trial. Activity block, three quick wins, members-only resources, full feature list, personal signed dashboard link. No discount.',
+      'Last day of the free trial. Activity block, quick wins, members-only resources, full feature list. No discount.',
     webhook: TRIAL_WEBHOOK,
     params: { daysAhead: 1, forceDaysUntilExpiry: 1 },
   },
   {
     key: 'day-plus-7',
+    shortLabel: 'Day +7',
     displayName: 'Day +7 · SAVE20 offer',
     sentBy: 'trial-expiry-reminder-webhook',
     schedule: {
@@ -48,26 +50,28 @@ const STAGES = [
       mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
     },
     description:
-      '7 days after trial expiry. SAVE20 code (£79 → £59). Activity block, quick wins, members-only resources. Offer valid 7 days from send (Day +7 → Day +13).',
+      '7 days after trial expiry. SAVE20 code (£79 → £59). Offer valid Day +7 → Day +13.',
     webhook: TRIAL_WEBHOOK,
     params: { daysAhead: -7, forceDaysUntilExpiry: -7 },
   },
   {
     key: 'day-plus-20',
+    shortLabel: 'Day +20',
     displayName: 'Day +20 · REWIND20 attempt 1',
     sentBy: 'lapsed-trial-reengagement-webhook',
     schedule: {
       cadence: 'weekly (Zapier)',
       timeOfDay: '—',
-      mechanism: 'Currently scheduled by Zapier. Gated server-side: 3-send cap + min days + min gap.',
+      mechanism: 'Zapier schedule. Gated server-side: 3-send cap + min days + min gap.',
     },
     description:
-      'First REWIND20 outreach. Activity block, three quick wins, members-only, feature list, REWIND20 code (£79 → £59), personal signed link with 7-day window.',
+      'First REWIND20 outreach. Activity block, quick wins, members-only, feature list, REWIND20 code.',
     webhook: REWIND_WEBHOOK,
     params: {},
   },
   {
     key: 'day-plus-30',
+    shortLabel: 'Day +30',
     displayName: 'Day +30 · REWIND20 attempt 2',
     sentBy: 'lapsed-trial-reengagement-webhook',
     schedule: {
@@ -75,26 +79,28 @@ const STAGES = [
       timeOfDay: '—',
       mechanism: 'Fires 10+ days after attempt 1 if still not converted.',
     },
-    description:
-      'Second REWIND20 outreach (subject line escalates). Same body as attempt 1.',
+    description: 'Second REWIND20 outreach (subject escalates). Same body as attempt 1.',
     webhook: REWIND_WEBHOOK,
     params: {},
   },
   {
     key: 'day-plus-60',
+    shortLabel: 'Day +60',
     displayName: 'Day +60 · REWIND20 final attempt',
     sentBy: 'lapsed-trial-reengagement-webhook',
     schedule: {
       cadence: 'weekly (Zapier)',
       timeOfDay: '—',
-      mechanism: 'Fires 30+ days after attempt 2. Final send; max 3 attempts per member.',
+      mechanism: 'Fires 30+ days after attempt 2. Max 3 attempts per member.',
     },
-    description:
-      'Third and final REWIND20 outreach (subject line: "Final offer"). Same body.',
+    description: 'Third and final REWIND20 outreach ("Final offer").',
     webhook: REWIND_WEBHOOK,
     params: {},
   },
 ];
+
+const STAGE_KEYS = STAGES.map((s) => s.key);
+const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
 
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
@@ -107,32 +113,36 @@ const TABS = [
   { href: '/academy/admin/emails', label: 'Emails' },
 ];
 
-function NavTabs({ active }) {
-  return (
-    <div style={{
-      display: 'flex', gap: '8px', marginBottom: '24px',
-      borderBottom: '1px solid var(--ar-border)', paddingBottom: '12px',
-      flexWrap: 'wrap',
-    }}>
-      {TABS.map(tab => {
-        const isActive = tab.href === active;
-        return (
-          <Link key={tab.href} href={tab.href} style={{
-            padding: '8px 16px',
-            background: isActive ? 'var(--ar-card)' : 'transparent',
-            border: isActive ? '1px solid var(--ar-border)' : '1px solid transparent',
-            borderRadius: '6px',
-            color: isActive ? 'var(--ar-text)' : 'var(--ar-text-muted)',
-            textDecoration: 'none',
-            fontWeight: isActive ? 600 : 500,
-            fontSize: '14px',
-          }}>
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
+// ─────────────────────────────────────────────────────────────────────────
+// Small formatters
+// ─────────────────────────────────────────────────────────────────────────
+
+function formatDateShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+}
+
+function formatDateTimeShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/London',
+  });
+}
+
+function formatRelative(iso, nowMs) {
+  if (!iso) return '—';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '—';
+  const diff = t - nowMs;
+  const hours = Math.round(diff / 3600000);
+  if (hours < 1) return 'within the hour';
+  if (hours < 24) return `in ${hours}h`;
+  return `in ${Math.round(hours / 24)}d`;
 }
 
 function markdownToHtml(body) {
@@ -142,18 +152,33 @@ function markdownToHtml(body) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 
-function extractPreview(webhookData) {
-  if (webhookData?.preview?.subject) return webhookData.preview;
-  if (webhookData?.result?.preview?.subject) return webhookData.result.preview;
-  if (webhookData?.email_content_preview?.subject) return webhookData.email_content_preview;
-  return null;
-}
+// ─────────────────────────────────────────────────────────────────────────
+// Data fetching (no third-party hooks; plain fetch)
+// ─────────────────────────────────────────────────────────────────────────
 
 async function loadMembers() {
   const res = await fetch('/api/admin/members?limit=500');
   if (!res.ok) throw new Error(`members HTTP ${res.status}`);
   const data = await res.json();
   return Array.isArray(data.members) ? data.members : [];
+}
+
+async function loadStats() {
+  const res = await fetch('/api/admin/emails-stats');
+  if (!res.ok) throw new Error(`stats HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data.stages) ? data.stages : [];
+}
+
+async function loadTableRows(days = 90) {
+  const res = await fetch(`/api/admin/emails-members?days=${days}&limit=500`);
+  if (!res.ok) throw new Error(`members-table HTTP ${res.status}`);
+  const data = await res.json();
+  return {
+    rows: Array.isArray(data.rows) ? data.rows : [],
+    attributionWindowDays: data.attribution_window_days || 14,
+    generatedAt: data.generated_at,
+  };
 }
 
 function buildWebhookUrl(stage, email, sendEmail) {
@@ -167,6 +192,13 @@ function buildWebhookUrl(stage, email, sendEmail) {
   return `${stage.webhook}?${qs.toString()}`;
 }
 
+function extractPreview(webhookData) {
+  if (webhookData?.preview?.subject) return webhookData.preview;
+  if (webhookData?.result?.preview?.subject) return webhookData.result.preview;
+  if (webhookData?.email_content_preview?.subject) return webhookData.email_content_preview;
+  return null;
+}
+
 async function fetchPreview(stage, email) {
   const res = await fetch(buildWebhookUrl(stage, email, false));
   const data = await res.json();
@@ -175,9 +207,6 @@ async function fetchPreview(stage, email) {
   }
   const preview = extractPreview(data);
   if (!preview) {
-    // Build a synthetic preview so REWIND20 stages (where the webhook body
-    // only returns a skipped dry-run without preview in some legacy shapes)
-    // still render usefully.
     return {
       subject: '(preview unavailable — webhook did not return rendered copy)',
       body: JSON.stringify(data, null, 2),
@@ -199,44 +228,264 @@ async function fireTestSend(stage, email) {
   return data;
 }
 
-function ScheduleLine({ schedule }) {
-  if (!schedule) return null;
+// ─────────────────────────────────────────────────────────────────────────
+// Client-side eligibility check (keeps UI filter logic matched to webhooks)
+// ─────────────────────────────────────────────────────────────────────────
+
+const DAY_MS = 86400000;
+
+const REWIND_ATTEMPT_BY_STAGE = {
+  'day-plus-20': 1,
+  'day-plus-30': 2,
+  'day-plus-60': 3,
+};
+
+function computeDiffDays(row, nowMs) {
+  if (!row?.trial_end_at) return null;
+  const endMs = new Date(row.trial_end_at).getTime();
+  if (!Number.isFinite(endMs)) return null;
+  return (endMs - nowMs) / DAY_MS;
+}
+
+function isEligibleForTrialReminder(diffDays, stageKey) {
+  if (stageKey === 'day-minus-7') return diffDays >= 6 && diffDays <= 8;
+  if (stageKey === 'day-minus-1') return diffDays >= 0 && diffDays <= 2;
+  if (stageKey === 'day-plus-7') return diffDays <= -6 && diffDays >= -8;
+  return false;
+}
+
+function isEligibleForRewind(row, diffDays, attempt) {
+  if (row.reengagement_opted_out) return false;
+  const lapsedDays = -diffDays;
+  if (lapsedDays < 20 || lapsedDays > 180) return false;
+  return (row.reengagement_send_count || 0) === attempt - 1;
+}
+
+function isRowEligibleForStage(row, stageKey, nowMs) {
+  if (!row || row.converted_at) return false;
+  const diffDays = computeDiffDays(row, nowMs);
+  if (diffDays === null) return false;
+  const rewindAttempt = REWIND_ATTEMPT_BY_STAGE[stageKey];
+  if (rewindAttempt) return isEligibleForRewind(row, diffDays, rewindAttempt);
+  return isEligibleForTrialReminder(diffDays, stageKey);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Components
+// ─────────────────────────────────────────────────────────────────────────
+
+function NavTabs({ active }) {
   return (
-    <div style={{ fontSize: 13, color: 'var(--ar-text-muted)', marginTop: 4 }}>
-      <strong>Schedule:</strong> {schedule.cadence} · {schedule.timeOfDay}
-      <br />
-      <span style={{ fontSize: 12 }}>{schedule.mechanism}</span>
+    <div style={{
+      display: 'flex', gap: 8, marginBottom: 24,
+      borderBottom: '1px solid var(--ar-border)', paddingBottom: 12, flexWrap: 'wrap',
+    }}>
+      {TABS.map((tab) => {
+        const isActive = tab.href === active;
+        return (
+          <Link key={tab.href} href={tab.href} style={{
+            padding: '8px 16px',
+            background: isActive ? 'var(--ar-card)' : 'transparent',
+            border: isActive ? '1px solid var(--ar-border)' : '1px solid transparent',
+            borderRadius: 6,
+            color: isActive ? 'var(--ar-text)' : 'var(--ar-text-muted)',
+            textDecoration: 'none',
+            fontWeight: isActive ? 600 : 500,
+            fontSize: 14,
+          }}>
+            {tab.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-function StageCard({ stage, selected, onSelect }) {
+function StageTile({ stage, stats, active, onClick, nowMs }) {
+  const eligible = stats?.eligible_today ?? '—';
+  const sent24 = stats?.sent_last_24h ?? 0;
+  const nextSendAt = stats?.next_send_at;
+  const nextLabel = nextSendAt
+    ? `${formatDateTimeShort(nextSendAt)} · ${formatRelative(nextSendAt, nowMs)}`
+    : 'Zapier (weekly)';
+  const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
   return (
     <button
       type="button"
-      onClick={() => onSelect(stage)}
+      onClick={() => onClick(stage.key)}
       style={{
         textAlign: 'left',
-        padding: '14px 16px',
-        width: '100%',
-        background: selected ? 'var(--ar-card)' : 'transparent',
-        border: `1px solid ${selected ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)'}`,
+        padding: '14px 14px 12px',
+        background: 'var(--ar-card)',
+        border: `1px solid ${borderColor}`,
         borderRadius: 8,
         cursor: 'pointer',
-        marginBottom: 10,
         color: 'inherit',
         font: 'inherit',
+        minWidth: 0,
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 15 }}>{stage.displayName}</div>
-      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
-        Sent by <code>{stage.sentBy}</code>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
+        {stage.shortLabel.toUpperCase()}
       </div>
-      <div style={{ fontSize: 13, marginTop: 8 }}>{stage.description}</div>
-      <ScheduleLine schedule={stage.schedule} />
+      <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>
+        {eligible}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
+        eligible today · {sent24} sent 24h
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
+        Next: {nextLabel}
+      </div>
     </button>
   );
 }
+
+function StageTilesRow({ stats, activeKey, onTileClick, nowMs }) {
+  const byKey = useMemo(() => {
+    const m = {};
+    (stats || []).forEach((s) => { m[s.key] = s; });
+    return m;
+  }, [stats]);
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gap: 12, marginBottom: 20,
+    }}>
+      {STAGES.map((s) => (
+        <StageTile
+          key={s.key}
+          stage={s}
+          stats={byKey[s.key]}
+          active={activeKey === s.key}
+          onClick={onTileClick}
+          nowMs={nowMs}
+        />
+      ))}
+    </div>
+  );
+}
+
+const SEND_BADGE_COLORS = {
+  sent: 'var(--ar-success, #0a0)',
+  failed: 'var(--ar-danger, #d33)',
+};
+
+function StageSendBadge({ ev }) {
+  if (!ev) return <span style={{ color: 'var(--ar-text-muted)' }}>—</span>;
+  const color = SEND_BADGE_COLORS[ev.status] || 'var(--ar-text-muted)';
+  return (
+    <span title={`${ev.status}: ${ev.sent_at}`} style={{ color, fontSize: 12 }}>
+      {formatDateShort(ev.sent_at)}
+    </span>
+  );
+}
+
+function ConversionCell({ row }) {
+  if (row.converted_at) {
+    const label = row.converted_within_window
+      ? `Yes · via ${STAGE_BY_KEY[row.conversion_attributed_stage]?.shortLabel || row.conversion_attributed_stage}`
+      : 'Yes · organic';
+    const color = row.converted_within_window
+      ? 'var(--ar-success, #0a0)'
+      : 'var(--ar-text-muted)';
+    return (
+      <span style={{ color, fontSize: 12, fontWeight: row.converted_within_window ? 600 : 400 }}>
+        {label}
+      </span>
+    );
+  }
+  if (row.reengagement_opted_out) {
+    return <span style={{ color: 'var(--ar-danger, #d33)', fontSize: 12 }}>Unsubbed</span>;
+  }
+  return <span style={{ color: 'var(--ar-text-muted)', fontSize: 12 }}>No</span>;
+}
+
+function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) {
+  if (!rows) return null;
+  if (rows.length === 0) {
+    return (
+      <div style={{ padding: 16, color: 'var(--ar-text-muted)', fontSize: 14 }}>
+        No members match the current filter.
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      border: '1px solid var(--ar-border)', borderRadius: 8,
+      overflow: 'auto', maxHeight: 600, background: 'var(--ar-card)',
+    }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead style={{ position: 'sticky', top: 0, background: 'var(--ar-card)', zIndex: 1 }}>
+          <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
+            <th style={thStyle}>Member</th>
+            <th style={thStyle}>Trial end</th>
+            {STAGES.map((s) => (
+              <th
+                key={s.key}
+                style={{
+                  ...thStyle,
+                  color: filterStage === s.key ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+                }}
+              >
+                {s.shortLabel}
+              </th>
+            ))}
+            <th style={thStyle} title={`Attribution window: ${attributionWindowDays} days`}>
+              Converted?
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.member_id}
+              onClick={() => onRowClick?.(row)}
+              style={{
+                borderBottom: '1px solid var(--ar-border)',
+                cursor: onRowClick ? 'pointer' : 'default',
+              }}
+            >
+              <td style={tdStyle}>
+                <div style={{ fontWeight: 600 }}>{row.name || '—'}</div>
+                <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>{row.email}</div>
+              </td>
+              <td style={tdStyle}>{formatDateShort(row.trial_end_at)}</td>
+              {STAGES.map((s) => (
+                <td
+                  key={s.key}
+                  style={{
+                    ...tdStyle,
+                    background: filterStage === s.key ? 'rgba(74,127,255,0.08)' : 'transparent',
+                  }}
+                >
+                  <StageSendBadge ev={row.sends?.[s.key]} />
+                </td>
+              ))}
+              <td style={tdStyle}><ConversionCell row={row} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const thStyle = {
+  padding: '10px 12px',
+  textAlign: 'left',
+  fontWeight: 600,
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: 0.3,
+  color: 'var(--ar-text-muted)',
+};
+
+const tdStyle = {
+  padding: '10px 12px',
+  verticalAlign: 'top',
+};
 
 function MemberPicker({ members, value, onChange }) {
   return (
@@ -269,14 +518,14 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
   if (!stage) {
     return (
       <div style={{ padding: 24, color: 'var(--ar-text-muted)', fontSize: 14 }}>
-        Select a stage on the left to preview its email.
+        Click a stage tile above, then pick a member to render its email.
       </div>
     );
   }
   if (!memberEmail) {
     return (
       <div style={{ padding: 24, color: 'var(--ar-text-muted)', fontSize: 14 }}>
-        Pick a member above to render this email against their real activity data.
+        Pick a member to render this email against their real activity data.
       </div>
     );
   }
@@ -299,20 +548,16 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
         border: '1px solid var(--ar-border)', borderRadius: 6, marginBottom: 12,
       }}>
         <div style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>Subject</div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>
-          {preview.data.subject}
-        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{preview.data.subject}</div>
       </div>
-
       <div style={{
         padding: 16, background: 'var(--ar-card)',
         border: '1px solid var(--ar-border)', borderRadius: 6,
-        maxHeight: 600, overflow: 'auto', fontSize: 14, lineHeight: 1.55,
+        maxHeight: 500, overflow: 'auto', fontSize: 14, lineHeight: 1.55,
       }}>
         <div dangerouslySetInnerHTML={{ __html: preview.data.html || '' }} />
       </div>
-
-      <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={onTestSend}
@@ -340,19 +585,42 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────────────
+
 export default function EmailsAdmin() {
   const [members, setMembers] = useState([]);
-  const [selectedStage, setSelectedStage] = useState(null);
+  const [stats, setStats] = useState([]);
+  const [tableData, setTableData] = useState({ rows: [], attributionWindowDays: 14 });
+  const [loadErrors, setLoadErrors] = useState({});
+
+  const [filterStageKey, setFilterStageKey] = useState(null);
   const [memberEmail, setMemberEmail] = useState('');
   const [preview, setPreview] = useState(null);
   const [testState, setTestState] = useState(null);
-  const [loadError, setLoadError] = useState(null);
+
+  const nowMs = useMemo(() => Date.now(), [tableData.generatedAt]);
 
   useEffect(() => {
     loadMembers()
       .then(setMembers)
-      .catch((err) => setLoadError(err.message));
+      .catch((err) => setLoadErrors((e) => ({ ...e, members: err.message })));
   }, []);
+
+  useEffect(() => {
+    loadStats()
+      .then(setStats)
+      .catch((err) => setLoadErrors((e) => ({ ...e, stats: err.message })));
+  }, []);
+
+  useEffect(() => {
+    loadTableRows(90)
+      .then(setTableData)
+      .catch((err) => setLoadErrors((e) => ({ ...e, table: err.message })));
+  }, []);
+
+  const selectedStage = filterStageKey ? STAGE_BY_KEY[filterStageKey] : null;
 
   useEffect(() => {
     if (!selectedStage || !memberEmail) {
@@ -365,6 +633,13 @@ export default function EmailsAdmin() {
       .catch((err) => setPreview({ error: err.message }));
   }, [selectedStage?.key, memberEmail]);
 
+  const filteredRows = useMemo(() => {
+    if (!filterStageKey) return tableData.rows;
+    return tableData.rows.filter(
+      (r) => isRowEligibleForStage(r, filterStageKey, nowMs) || !!r.sends?.[filterStageKey]
+    );
+  }, [tableData.rows, filterStageKey, nowMs]);
+
   async function handleTestSend() {
     if (!selectedStage || !memberEmail) return;
     setTestState({ loading: true });
@@ -376,46 +651,78 @@ export default function EmailsAdmin() {
     }
   }
 
+  const anyError = Object.entries(loadErrors).map(([k, v]) => `${k}: ${v}`).join(' · ');
+
   return (
     <div className="ar-admin-container" style={{ padding: 24 }}>
       <h1 style={{ marginBottom: 16 }}>Email Campaigns</h1>
       <NavTabs active="/academy/admin/emails" />
 
-      {loadError ? (
-        <div style={{ padding: 12, color: 'var(--ar-danger, #d33)' }}>
-          Failed to load members list: {loadError}
+      {anyError ? (
+        <div style={{ padding: 12, color: 'var(--ar-danger, #d33)', fontSize: 13, marginBottom: 12 }}>
+          {anyError}
         </div>
       ) : null}
 
-      <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--ar-text-muted)' }}>
-        Phase 1 (view-only). Each stage shows the real rendered email against any
-        member you pick. Test-sends BCC <code>info@alanranger.com</code>. Editing copy
-        and timing arrives in Phase 2.
+      <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--ar-text-muted)' }}>
+        Click any tile to filter the members table to that stage. Row-level sends are
+        logged to <code>academy_email_events</code>. REWIND20 attempt-1 history was backfilled
+        from <code>academy_trial_history.reengagement_sent_at</code>. Trial reminders (Day -7/-1/+7)
+        before {formatDateShort(new Date().toISOString())} were not logged and will appear blank.
+        Conversion attribution = trial converted within 14 days of the last send.
       </div>
 
-      <MemberPicker members={members} value={memberEmail} onChange={(v) => {
-        setMemberEmail(v);
-        setTestState(null);
-      }} />
+      <StageTilesRow
+        stats={stats}
+        activeKey={filterStageKey}
+        onTileClick={(key) => {
+          setFilterStageKey((prev) => (prev === key ? null : key));
+          setTestState(null);
+        }}
+        nowMs={nowMs}
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24 }}>
-        <div>
-          <div style={{ fontSize: 13, color: 'var(--ar-text-muted)', marginBottom: 10 }}>
-            {STAGES.length} stages configured
-          </div>
-          {STAGES.map((s) => (
-            <StageCard
-              key={s.key}
-              stage={s}
-              selected={selectedStage?.key === s.key}
-              onSelect={(stage) => {
-                setSelectedStage(stage);
-                setTestState(null);
-              }}
-            />
-          ))}
+      {filterStageKey ? (
+        <div style={{ marginBottom: 16, fontSize: 13 }}>
+          <strong>{STAGE_BY_KEY[filterStageKey].displayName}</strong>
+          {' · '}
+          <button type="button" onClick={() => setFilterStageKey(null)} style={{
+            background: 'transparent', border: '1px solid var(--ar-border)',
+            borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer',
+            color: 'var(--ar-text)',
+          }}>
+            Clear filter
+          </button>
         </div>
+      ) : null}
 
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: 20,
+        marginBottom: 24,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            Preview this stage’s email
+          </div>
+          <MemberPicker
+            members={members}
+            value={memberEmail}
+            onChange={(v) => { setMemberEmail(v); setTestState(null); }}
+          />
+          {selectedStage ? (
+            <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', lineHeight: 1.5 }}>
+              <div><strong>Sent by:</strong> <code>{selectedStage.sentBy}</code></div>
+              <div style={{ marginTop: 4 }}>
+                <strong>Schedule:</strong> {selectedStage.schedule.cadence} · {selectedStage.schedule.timeOfDay}
+              </div>
+              <div style={{ marginTop: 4 }}>{selectedStage.description}</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
+              Click a tile above to see its description and preview.
+            </div>
+          )}
+        </div>
         <div>
           <PreviewPanel
             preview={preview}
@@ -425,6 +732,29 @@ export default function EmailsAdmin() {
             testState={testState}
           />
         </div>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
+          <h2 style={{ fontSize: 18, margin: 0 }}>
+            Members (last 90 days of trials)
+          </h2>
+          <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
+            {filteredRows.length} row{filteredRows.length === 1 ? '' : 's'}
+            {filterStageKey ? ` · filtered by ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
+          </span>
+        </div>
+        <MembersTable
+          rows={filteredRows}
+          filterStage={filterStageKey}
+          attributionWindowDays={tableData.attributionWindowDays}
+          onRowClick={(row) => {
+            if (row.email) {
+              setMemberEmail(row.email);
+              setTestState(null);
+            }
+          }}
+        />
       </div>
     </div>
   );

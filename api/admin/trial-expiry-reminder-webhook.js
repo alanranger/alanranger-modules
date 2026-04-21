@@ -39,6 +39,7 @@ const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 const crypto = require("crypto");
+const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEvents");
 
 // Vercel docs in this repo use SUPABASE_URL (server-only). Client builds may use NEXT_PUBLIC_SUPABASE_URL.
 const SUPABASE_URL =
@@ -721,13 +722,22 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     html: content.body.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
   };
 
+  // Resolve stage_key once, shared by the success + failure log paths below.
+  // Matches selectTemplateStage(): prefer explicit templateDaysAhead, else
+  // fall back to the member's computed daysUntilExpiry. Non-canonical stages
+  // (e.g. daysUntilExpiry=3) return null and are silently skipped by the log.
+  const effectiveDays = Number.isFinite(templateDaysAhead)
+    ? templateDaysAhead
+    : daysUntilExpiry;
+  const stageKey = stageKeyForTrialReminder(effectiveDays);
+
   if (!sendEmail) {
-    return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity, preview };
+    return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity, preview, stage_key: stageKey };
   }
 
   if (!emailTransporter) {
     console.warn("[trial-expiry-reminder] Email not configured - skipping email send");
-    return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl, preview };
+    return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl, preview, stage_key: stageKey };
   }
 
   const emailSubject = content.subject;
@@ -744,10 +754,32 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     });
 
     console.log(`[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`);
-    return { sent: true, messageId: info.messageId };
+    if (stageKey && member.member_id) {
+      await logEmailEvent(supabase, {
+        member_id: member.member_id,
+        email: member.email,
+        stage_key: stageKey,
+        status: "sent",
+        messageId: info.messageId,
+        subject: emailSubject,
+        dryRun: false,
+      });
+    }
+    return { sent: true, messageId: info.messageId, stage_key: stageKey };
   } catch (error) {
     console.error(`[trial-expiry-reminder] Error sending email to ${member.email}:`, error.message);
-    return { sent: false, error: error.message };
+    if (stageKey && member.member_id) {
+      await logEmailEvent(supabase, {
+        member_id: member.member_id,
+        email: member.email,
+        stage_key: stageKey,
+        status: "failed",
+        error: error.message,
+        subject: emailSubject,
+        dryRun: false,
+      });
+    }
+    return { sent: false, error: error.message, stage_key: stageKey };
   }
 }
 
