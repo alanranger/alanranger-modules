@@ -246,13 +246,16 @@ function shouldSendEmailFromRequest(req) {
 const ACADEMY_ANNUAL_PRICE_GBP = 79;
 const SAVE20_DISCOUNT_GBP = 20;
 const SAVE20_PRICE_GBP = ACADEMY_ANNUAL_PRICE_GBP - SAVE20_DISCOUNT_GBP; // 59
-// SAVE20 goes out at Day +7 and stays live for 7 days. Anyone past Day +14
-// rolls into the REWIND20 follow-up sequence (separate webhook) or the
-// post-grace template below at full £79 price.
+// SAVE20 goes out at Day +7 and stays live for 7 days inclusive — so the
+// offer closes at the end of Day +13, not Day +14. This gives the email
+// subject a clean "SAVE20 is yours for 7 more days" on send day, counting
+// down 1 per day to "1 more day" on the final send window. Anyone past
+// Day +13 rolls into the REWIND20 follow-up sequence (separate webhook)
+// or the post-grace template below at full £79 price.
 const SAVE20_OFFER_START_DAY_AFTER_EXPIRY = 7;
-const SAVE20_OFFER_END_DAY_AFTER_EXPIRY = 14;
+const SAVE20_OFFER_END_DAY_AFTER_EXPIRY = 13;
 const SAVE20_WINDOW_LENGTH_DAYS =
-  SAVE20_OFFER_END_DAY_AFTER_EXPIRY - SAVE20_OFFER_START_DAY_AFTER_EXPIRY;
+  SAVE20_OFFER_END_DAY_AFTER_EXPIRY - SAVE20_OFFER_START_DAY_AFTER_EXPIRY + 1;
 
 // Fetch a lightweight activity summary for a single member, used to render
 // the "Your Academy activity so far" block in the Day -7 reminder email.
@@ -581,7 +584,10 @@ function renderSave20QuickWins() {
 
 function buildExpiredWithCouponEmail(member, expiryDateStr, upgradeUrl, daysLeftInGrace, activity) {
   const daysWord = daysLeftInGrace === 1 ? "day" : "days";
-  const daysLeftPhrase = `**${daysLeftInGrace} ${daysWord}** left`;
+  // Body-friendly phrase used inline in sentences like "for the next 7 days
+  // the code SAVE20 takes…". No trailing "left" — that reads awkwardly when
+  // slotted into prose (e.g. "for the next 7 days left the code" → wrong).
+  const daysLeftPhrase = `**${daysLeftInGrace} ${daysWord}**`;
   const subject = `Your Academy trial ended — SAVE20 is yours for ${daysLeftInGrace} more ${daysWord}`;
   const firstName = (member.name || "").split(" ")[0] || "there";
   const activityBlock = formatActivityBlock(activity);
@@ -1012,7 +1018,13 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
   if (authResult === "open") {
-    console.warn("[trial-expiry-reminder] Webhook secret configured but not provided; allowing for backwards compatibility");
+    // Informational only. The Vercel Cron invocations authenticate via the
+    // `authorization: Bearer ${CRON_SECRET}` header (set automatically by
+    // Vercel), so production cron runs never hit this branch. This log fires
+    // only for manual curl tests or legacy Zapier calls without ?secret=,
+    // which is why it's demoted from warn → log and tagged `auth=open` so
+    // it's easy to grep when auditing logs.
+    console.log("[trial-expiry-reminder] auth=open (no secret provided; allowing for backwards compatibility)");
   }
 
   // Gate Vercel Cron invocations to 09:00 London. Each stage is scheduled at
