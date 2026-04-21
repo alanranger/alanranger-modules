@@ -709,19 +709,27 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   // to an empty block so the email still looks clean.
   const activity = await fetchMemberActivity(member.member_id);
 
+  // Build email content from the shared template helpers so all four
+  // templates (soft/7-day/final-day/expired) stay aligned with the dashboard
+  // modal copy. See FEATURE_BULLETS and computeSave20State above. We do this
+  // BEFORE the dry-run return so the /academy/admin/emails tab can render a
+  // full preview without actually sending.
+  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity, templateDaysAhead);
+  const preview = {
+    subject: content.subject,
+    body: content.body,
+    html: content.body.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+  };
+
   if (!sendEmail) {
-    return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity };
+    return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity, preview };
   }
 
   if (!emailTransporter) {
     console.warn("[trial-expiry-reminder] Email not configured - skipping email send");
-    return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl };
+    return { sent: false, error: "Email not configured", upgrade_url: checkoutUrl, preview };
   }
 
-  // Build email content from the shared template helpers so all four
-  // templates (soft/7-day/final-day/expired) stay aligned with the dashboard
-  // modal copy. See FEATURE_BULLETS and computeSave20State above.
-  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity, templateDaysAhead);
   const emailSubject = content.subject;
   const emailBody = content.body;
 

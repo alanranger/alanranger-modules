@@ -10,6 +10,7 @@ const TABS = [
   { href: '/academy/admin/ghost', label: 'Ghost' },
   { href: '/academy/admin/qa', label: 'Q&A' },
   { href: '/academy/admin/engagement', label: 'Engagement' },
+  { href: '/academy/admin/emails', label: 'Emails' },
 ];
 
 function NavTabs({ active }) {

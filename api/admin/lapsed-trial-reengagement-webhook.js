@@ -561,6 +561,7 @@ async function processCandidate(row, windowBounds, sendEmail) {
       name: contact.name,
       attempt,
       days_lapsed: daysLapsed,
+      preview: content,
       dashboard_url: personalDashboardUrl,
       unsub_url: buildUnsubUrl(token),
     };

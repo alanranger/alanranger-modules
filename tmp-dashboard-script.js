@@ -1,0 +1,3672 @@
+
+  (function(){
+    var LOGIN_URL = "/academy/login";
+    var DASHBOARD_URL = "/academy/dashboard";
+    var EXPIRED_URL = "/academy/trial-expired";
+  
+    var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+    // Keep the old annual price id for legacy members, but also support the new annual-with-trial price id.
+    var ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+    var ANNUAL_WITH_TRIAL_PRICE_ID = "prc_annual-membership-with-30-day-trial-881h0iui";
+    
+    // === Upgrade Membership constants ===
+    var UPGRADE_ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+    
+    // === Upgrade button handler ===
+    function getMemberstackDom() {
+      return globalThis.$memberstackDom || window.$memberstackDom || window.memberstackDom || null;
+    }
+    
+    function dashboardUrl() {
+      // Keep it stable regardless of query params
+      return (globalThis.location ? globalThis.location.origin : "") + "/academy/dashboard";
+    }
+    
+    async function handleUpgradeMembership(e) {
+      // CRITICAL: Prevent default and stop propagation to avoid triggering portal
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      var btn = document.getElementById("arp-upgrade-membership");
+      if (!btn) return;
+      
+      btn.disabled = true;
+      var originalText = btn.textContent;
+      btn.textContent = "Opening checkout...";
+      
+      var ms = getMemberstackDom();
+      if (!ms || typeof ms.purchasePlansWithCheckout !== "function") {
+        console.error("[Upgrade] Memberstack DOM not ready or purchasePlansWithCheckout unavailable");
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert("Upgrade is temporarily unavailable. Please refresh and try again.");
+        return;
+      }
+      
+      try {
+        var result = await ms.purchasePlansWithCheckout({
+          priceId: UPGRADE_ANNUAL_PRICE_ID,
+          successUrl: dashboardUrl() + "?upgrade=success",
+          cancelUrl: dashboardUrl() + "?upgrade=cancel"
+        });
+        
+        var url = result && result.data && result.data.url;
+        if (!url) {
+          throw new Error("No checkout URL returned from Memberstack.");
+        }
+        
+        // IMPORTANT: same-tab navigation so the user sees checkout
+        globalThis.location.assign(url);
+      } catch (err) {
+        console.error("[Upgrade] Failed to open checkout:", err);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert("Could not open checkout. Please try again.");
+      }
+    }
+  
+    function inSquarespaceEditor(){
+      var loc = globalThis.location || {};
+      var href = String(loc.href || "");
+      var path = String(loc.pathname || "");
+      var search = String(loc.search || "");
+
+      function isEditorPath(p){
+        return p.startsWith("/config") || p.startsWith("/backend");
+      }
+
+      function hasNoChrome(){
+        return search.includes("nochrome") || href.includes("nochrome");
+      }
+
+      function inIFrame(){
+        try { return !!(globalThis.top && globalThis.top !== globalThis.self); }
+        catch (error_) { return false; }
+      }
+
+      function topLooksLikeEditor(){
+        try{
+          var topLoc = globalThis.top && globalThis.top.location ? globalThis.top.location : {};
+          var topHref = String(topLoc.href || "");
+          var topPath = String(topLoc.pathname || "");
+          if (isEditorPath(topPath)) return true;
+          if (topHref.includes("nochrome")) return true;
+          return (topHref.includes("squarespace.com") && topHref.includes("/config"));
+        } catch (error_) {
+          // Cross-origin iframe: treat as NOT editor (keep protection on live-site embeds)
+          return false;
+        }
+      }
+
+      if (isEditorPath(path)) return true;
+      if (hasNoChrome()) return true;
+      if (!inIFrame()) return false;
+      return topLooksLikeEditor();
+    }
+  
+    function unwrapMember(res){
+      if (!res) return null;
+      if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+      if (res.email || res.planConnections) return { id: res.id || null, data: res };
+      if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+      return res;
+    }
+
+    function mergeMissingFields(target, source){
+      if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+      for (var k in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+        if (target[k] == null) target[k] = source[k];
+      }
+    }
+
+    function getMemberExtended(ms){
+      return ms.getCurrentMember().then(function(res){
+        var m = unwrapMember(res);
+        if (!m || !m.data) return m;
+        if (typeof ms.getMemberJSON !== "function") return m;
+        return ms.getMemberJSON().then(function(json){
+          var mj = unwrapMember(json);
+          if (!mj) return m;
+          if (!m.id && mj.id) m.id = mj.id;
+          if (!m.data) m.data = {};
+          // Merge both shapes:
+          // - mj.data (common)
+          // - mj (some wrappers return the raw member object directly)
+          if (mj.data) mergeMissingFields(m.data, mj.data);
+          mergeMissingFields(m.data, mj);
+          return m;
+        }).catch(function(){
+          return m;
+        });
+      });
+    }
+
+    function pickFirstString(arr){
+      for (var i = 0; i < arr.length; i++) {
+        var v = arr[i];
+        if (typeof v === "string" && v.trim()) return v.trim();
+      }
+      return "";
+    }
+
+    function getMemberEmail(member){
+      var d = member && member.data ? member.data : {};
+      return pickFirstString([
+        d.email,
+        d.emailAddress,
+        d.email_address,
+        d.loginEmail,
+        d.memberEmail,
+        member && member.email,
+        d.auth && d.auth.email,
+        d.member && d.member.auth && d.member.auth.email,
+        d.user && d.user.auth && d.user.auth.email,
+        d.authentication && d.authentication.email,
+        d.user && d.user.email,
+        d.customer && d.customer.email
+      ]);
+    }
+  
+    function safeDate(v){
+      if (!v) return null;
+      // Memberstack sometimes returns epoch seconds (e.g. 1769726078)
+      if (typeof v === "number" && v > 0 && v < 100000000000) v = v * 1000;
+      var d = (v instanceof Date) ? v : new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  
+    function daysBetween(now, future){
+      var ms = future.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(ms / (1000*60*60*24)));
+    }
+
+    function formatDate(d){
+      try{
+        return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      } catch(e){
+        return d.toDateString();
+      }
+    }
+  
+    function ready(fn){
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+      else fn();
+    }
+  
+    function waitForMemberstack(maxMs){
+      maxMs = typeof maxMs === "number" ? maxMs : 8000;
+      return new Promise(function(resolve){
+        var start = Date.now();
+        (function tick(){
+          if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.getCurrentMember === "function") {
+            resolve(globalThis.$memberstackDom);
+            return;
+          }
+          if ((Date.now() - start) > maxMs) { resolve(null); return; }
+          setTimeout(tick, 100);
+        })();
+      });
+    }
+  
+    function getPlanConnections(member){
+      var pcs = member && member.data && Array.isArray(member.data.planConnections) ? member.data.planConnections : [];
+      return pcs.filter(Boolean);
+    }
+  
+    function hasTrialingSubscription(member){
+      var pcs = getPlanConnections(member);
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.status === "TRIALING") return true;
+        if (pc.payment && pc.payment.status === "TRIALING") return true;
+      }
+      return false;
+    }
+
+    function hasTrialAccess(member){
+      return getPlanConnections(member).some(function(pc){ return pc && pc.planId === TRIAL_PLAN_ID; });
+    }
+  
+    function hasAnnualAccess(member){
+      var data = member && member.data ? member.data : null;
+      if (!data) return false;
+      for (var k in data) {
+        if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+        var v = data[k];
+        if (!Array.isArray(v)) continue;
+        for (var i = 0; i < v.length; i++) {
+          var item = v[i];
+          if (!item || typeof item !== "object") continue;
+          if (item.priceId === ANNUAL_PRICE_ID) return true;
+          if (item.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) return true;
+        }
+      }
+      return false;
+    }
+  
+    function hasAnyNonTrialPlan(member){
+      return getPlanConnections(member).some(function(pc){ return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID; });
+    }
+  
+    function hasAccess(member){
+      if (!member || !member.data) return false;
+      if (hasTrialAccess(member)) return true;
+      if (hasAnnualAccess(member)) return true;
+      if (hasAnyNonTrialPlan(member)) return true;
+      return false;
+    }
+  
+    function getTrialEndsAt(member){
+      var pcs = getPlanConnections(member);
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.planId !== TRIAL_PLAN_ID) continue;
+        var d =
+          safeDate(pc.trialEndsAt) ||
+          safeDate(pc.endsAt) ||
+          safeDate(pc.currentPeriodEnd) ||
+          safeDate(pc.renewsAt) ||
+          safeDate(pc.expiresAt);
+        if (d) return d;
+      }
+      var created =
+        safeDate(member.createdAt) ||
+        safeDate(member.data && (member.data.createdAt || member.data.created_at));
+      if (created) return new Date(created.getTime() + (30 * 24 * 60 * 60 * 1000));
+      return null;
+    }
+  
+    function firstDateInObject(obj, keys){
+      if (!obj || typeof obj !== "object") return null;
+      for (var i = 0; i < keys.length; i++) {
+        var d = safeDate(obj[keys[i]]);
+        if (d) return d;
+      }
+      return null;
+    }
+  
+    function dateFromArray(arr, keys, onlyAnnual){
+      if (!Array.isArray(arr)) return null;
+      for (var i = 0; i < arr.length; i++) {
+        var item = arr[i];
+        if (!item || typeof item !== "object") continue;
+        if (onlyAnnual) {
+          if (item.priceId !== ANNUAL_PRICE_ID && item.priceId !== ANNUAL_WITH_TRIAL_PRICE_ID) continue;
+        }
+        // Memberstack often nests billing dates under payment
+        var d =
+          firstDateInObject(item, keys) ||
+          firstDateInObject(item.payment, keys);
+        if (d) return d;
+      }
+      return null;
+    }
+  
+    function scanDataArraysForRenewal(data, keys){
+      var any = null;
+      var entries = Object.entries(data);
+      for (var i = 0; i < entries.length; i++) {
+        var arr = entries[i][1];
+        if (!Array.isArray(arr)) continue;
+  
+        var preferred = dateFromArray(arr, keys, true);
+        if (preferred) return preferred;
+  
+        if (!any) {
+          var maybe = dateFromArray(arr, keys, false);
+          if (maybe) any = maybe;
+        }
+      }
+      return any;
+    }
+  
+    function scanDataObjectsForRenewal(data, keys){
+      var entries = Object.entries(data);
+      for (var i = 0; i < entries.length; i++) {
+        var v = entries[i][1];
+        if (!v || typeof v !== "object") continue;
+        if (Array.isArray(v)) continue;
+        var d = firstDateInObject(v, keys);
+        if (d) return d;
+      }
+      return null;
+    }
+
+    function getAnnualRenewsAt(member){
+      var data = member && member.data ? member.data : null;
+      if (!data) return null;
+      var keys = [
+        "currentPeriodEnd", "current_period_end",
+        "renewsAt", "renews_at",
+        "nextBillDate", "next_bill_date",
+        "nextBillingDate", "next_billing_date"
+      ];
+  
+      var direct = firstDateInObject(data, keys);
+      if (direct) return direct;
+  
+      var obj = scanDataObjectsForRenewal(data, keys);
+      if (obj) return obj;
+      return scanDataArraysForRenewal(data, keys);
+    }
+  
+    function setText(el, text){
+      if (el) el.textContent = text;
+    }
+  
+    function wirePortal(ms){
+      var manageBtn = document.getElementById("arp-ms-manage");
+      var tile = document.getElementById("arp-ms-tile");
+  
+      function openPortalInNewTab(e){
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        // Open a same-origin helper tab. That tab will launch the portal and keep this dashboard tab open.
+        try{
+          var url = DASHBOARD_URL + (DASHBOARD_URL.indexOf("?") === -1 ? "?" : "&") + "arpPortal=1";
+          globalThis.open(url, "_blank");
+        } catch(err){
+          // Fallback: if popups blocked, attempt the normal portal launch in this tab.
+          if (ms && typeof ms.launchStripeCustomerPortal === "function") ms.launchStripeCustomerPortal();
+        }
+      }
+  
+      // Only wire custom portal handler if button doesn't have data-ms-action (Memberstack will handle it)
+      // For checkout buttons, we don't need the portal handler
+      if (manageBtn) {
+        var hasMsAction = manageBtn.getAttribute("data-ms-action");
+        if (!hasMsAction) {
+          manageBtn.onclick = openPortalInNewTab;
+        }
+      }
+      // Tile click should still work for portal mode
+      if (tile) {
+        tile.onclick = function(e) {
+          // Don't handle clicks on quiz section, quiz button, or retake button
+          var quizSection = document.getElementById("arp-photography-quiz-section");
+          var quizButton = document.getElementById("arp-photography-quiz-button");
+          var retakeButton = document.getElementById("arp-photography-retake-quiz-button");
+          if (quizSection && quizSection.contains(e.target)) return;
+          if (quizButton && (e.target === quizButton || quizButton.contains(e.target))) return;
+          if (retakeButton && (e.target === retakeButton || retakeButton.contains(e.target))) return;
+          
+          // Only handle if the button is in portal mode
+          if (manageBtn && manageBtn.getAttribute("data-ms-action") === "customer-portal") {
+            openPortalInNewTab(e);
+    }
+        };
+      }
+    }
+  
+  
+    function escapeHtml(s){
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    // Helper functions for membership state derivation
+    function parseDate(d) {
+      if (!d) return null;
+      // Memberstack sometimes returns epoch seconds (e.g. 1769726078)
+      if (typeof d === "number" && d > 0 && d < 100000000000) d = d * 1000;
+      var x = d instanceof Date ? d : new Date(d);
+      return x && !isNaN(x.getTime()) ? x : null;
+    }
+
+    function fmtDate(d) {
+      if (!d) return "";
+      try {
+        return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      } catch(e) {
+        return d.toDateString();
+      }
+    }
+
+    function daysUntil(d) {
+      if (!d) return null;
+      var ms = d.getTime() - Date.now();
+      var days = Math.ceil(ms / 86400000);
+      // Return absolute value to handle past dates gracefully
+      return Math.abs(days);
+    }
+  
+    function getAcademyPlanConnection(member) {
+      var pcs = getPlanConnections(member);
+      if (pcs.length === 0) return null;
+      
+      // First, check for trial plan ID (ONETIME trial plans)
+      for (var i = 0; i < pcs.length; i++) {
+        var pc = pcs[i] || {};
+        if (pc.planId === TRIAL_PLAN_ID) {
+          return pc;
+        }
+      }
+      
+      // Second, try to find a plan with matching price IDs (most reliable)
+      for (var j = 0; j < pcs.length; j++) {
+        var pc2 = pcs[j] || {};
+        var payment = pc2.payment || {};
+        if (payment.priceId === ANNUAL_PRICE_ID || payment.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) {
+          return pc2;
+        }
+      }
+      
+      // Third, check planId for academy/annual keywords
+      for (var k = 0; k < pcs.length; k++) {
+        var pc3 = pcs[k] || {};
+        var planId = String(pc3.planId || "").toLowerCase();
+        if (planId.indexOf("academy") !== -1 || planId.indexOf("annual") !== -1) {
+          return pc3;
+        }
+      }
+      
+      // Fallback: return first active/trialing plan, or first plan if none match
+      for (var l = 0; l < pcs.length; l++) {
+        var pc4 = pcs[l] || {};
+        var status = String(pc4.status || "").toLowerCase();
+        if (status === "active" || status === "trialing") {
+          return pc4;
+        }
+      }
+      
+      return pcs[0] || null;
+    }
+
+    function deriveMembershipState(p) {
+      if (!p || typeof p !== "object") {
+        return {
+          label: "No active membership",
+          dateLine: "",
+          ctaText: "Join",
+          ctaMode: "checkout",
+          severity: "warn"
+        };
+      }
+
+      // p.status is the key driver: trialing | active | past_due | canceled | unpaid | incomplete | paused ...
+      var status = String(p.status || "").toLowerCase();
+
+      // Extract dates from various possible field names
+      var payment = p.payment || {};
+      var trialEnd = parseDate(p.trialEndsAt || p.trial_end || p.trialEnd || 
+                               payment.trialEndsAt || payment.cancelAtDate || payment.cancel_at_date);
+      var renewAt = parseDate(p.renewsAt || p.renews_at || p.nextBillingAt || p.next_billing_date || 
+                             p.currentPeriodEnd || p.current_period_end || 
+                             payment.nextBillingDate || payment.next_billing_date || 
+                             payment.currentPeriodEnd || payment.current_period_end);
+      var cancelAt = parseDate(p.cancelAt || p.cancel_at || p.cancelAtDate || 
+                               payment.cancelAt || payment.cancelAtDate);
+      var periodEnd = parseDate(p.currentPeriodEnd || p.current_period_end || 
+                                payment.currentPeriodEnd || payment.current_period_end || renewAt);
+
+      var cancelAtPeriodEnd = !!(p.cancelAtPeriodEnd !== undefined ? p.cancelAtPeriodEnd : 
+                                (p.cancel_at_period_end !== undefined ? p.cancel_at_period_end : false));
+
+      // Debug: log the plan object being processed
+      console.log("[MS] plan connection object", p);
+      console.log("[MS] derived state", { status: status, trialEnd: trialEnd, renewAt: renewAt, cancelAt: cancelAt, cancelAtPeriodEnd: cancelAtPeriodEnd });
+
+      // Check if this is a trial plan (by planId) - handles ONETIME trial plans with ACTIVE status
+      var isTrialPlan = p.planId === TRIAL_PLAN_ID;
+      
+      // Trial - check by status OR by planId
+      if (status === "trialing" || isTrialPlan) {
+        // For ONETIME trial plans, use cancelAtDate from payment object
+        var d = trialEnd || cancelAt || renewAt;
+        return {
+          label: "Trial member",
+          dateLine: d ? ("Trial ends: " + fmtDate(d) + " (" + daysUntil(d) + " days)") : "",
+          ctaText: "Manage subscription",
+          ctaMode: "portal",
+          severity: "warn"
+        };
+      }
+
+      // Past due / payment failed
+      if (status === "past_due" || status === "unpaid") {
+        return {
+          label: "Payment failed",
+          dateLine: "",
+          ctaText: "Update payment method",
+          ctaMode: "portal",
+          severity: "bad"
+        };
+      }
+
+      // Active (but might be set to cancel at period end)
+      if (status === "active") {
+        if (cancelAtPeriodEnd) {
+          var d = cancelAt || periodEnd || renewAt;
+          return {
+            label: d ? ("Cancels on " + fmtDate(d)) : "Cancelling",
+            dateLine: "",
+            ctaText: "Manage subscription",
+            ctaMode: "portal",
+            severity: "warn"
+          };
+        }
+
+        var d = renewAt || periodEnd;
+        return {
+          label: "Annual member",
+          dateLine: d ? ("Next renewal: " + fmtDate(d) + " (" + daysUntil(d) + " days)") : "",
+          ctaText: "Manage subscription",
+          ctaMode: "portal",
+          severity: "ok"
+        };
+      }
+
+      // Canceled/Ended
+      if (status === "canceled" || status === "incomplete_expired") {
+        // If still within access window, treat as "Cancels on …"
+        if (periodEnd && periodEnd.getTime() > Date.now()) {
+          return {
+            label: "Cancels on " + fmtDate(periodEnd),
+            dateLine: "",
+            ctaText: "Manage subscription",
+            ctaMode: "portal",
+            severity: "warn"
+          };
+        }
+
+        return {
+          label: "Ended",
+          dateLine: "",
+          ctaText: "Rejoin",
+          ctaMode: "checkout",
+          severity: "bad"
+        };
+      }
+
+      // Fallback (no paid plan found etc.)
+      return {
+        label: "No active membership",
+        dateLine: "",
+        ctaText: "Join",
+        ctaMode: "checkout",
+        severity: "warn"
+      };
+    }
+  
+    // Store progress data globally for drawer
+    window.examProgressData = null;
+    
+    function formatDate(dateString) {
+      if (!dateString) return 'Never';
+      try {
+        var d = new Date(dateString);
+        return d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch(e) {
+        return dateString;
+      }
+    }
+    
+    // Make openExamDrawer globally accessible
+    window.openExamDrawer = function() {
+      var drawer = document.getElementById('ar-exams-drawer');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (!drawer || !overlay || !window.examProgressData) return;
+      
+      var data = window.examProgressData;
+      var summary = data.summary;
+      var modules = data.modules;
+      
+      // Build drawer content
+      var content = '<div style="margin-bottom:24px; padding:16px; background:var(--ar-panel); border-radius:8px; border:1px solid var(--ar-border);">';
+      if (summary.name) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Name</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + escapeHtml(summary.name) + '</div>';
+      }
+      if (summary.email) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Email</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + escapeHtml(summary.email) + '</div>';
+      }
+      content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-top:16px; margin-bottom:8px;">Progress</div>';
+      content += '<div style="color:var(--ar-text); font-size:18px; font-weight:600; margin-bottom:16px;">' + summary.passedCount + '/15 modules passed</div>';
+      content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Total Attempts</div>';
+      content += '<div style="color:var(--ar-text); font-size:14px; margin-bottom:16px;">' + summary.totalAttempts + '</div>';
+      if (summary.lastExamAt) {
+        content += '<div style="color:var(--ar-text-muted); font-size:13px; margin-bottom:8px;">Last Exam</div>';
+        content += '<div style="color:var(--ar-text); font-size:14px;">' + formatDate(summary.lastExamAt) + '</div>';
+      }
+      content += '</div>';
+      
+      // Passed modules
+      var passedModules = modules.filter(function(m) { return m.status === 'passed'; });
+      if (passedModules.length > 0) {
+        content += '<div style="margin-bottom:24px;"><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Passed Modules (' + passedModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-direction:column; gap:8px;">';
+        passedModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:12px; background:var(--ar-panel); border-radius:6px; border:1px solid #10b981; cursor:pointer; transition:all 0.15s ease;" onmouseover="this.style.background=\'rgba(16,185,129,0.1)\'; this.style.transform=\'translateX(4px)\';" onmouseout="this.style.background=\'var(--ar-panel)\'; this.style.transform=\'translateX(0)\';">';
+          content += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
+          content += '<span style="color:var(--ar-text); font-weight:600;">' + escapeHtml(module.name) + '</span>';
+          content += '<span style="color:#10b981; font-size:13px; font-weight:600;">' + module.bestScore + '%</span>';
+          content += '</div>';
+          content += '<div style="color:var(--ar-text-muted); font-size:12px;">' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '') + ' • Passed: ' + formatDate(module.firstPassedAt) + '</div>';
+          content += '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      // Failed modules
+      var failedModules = modules.filter(function(m) { return m.status === 'failed'; });
+      if (failedModules.length > 0) {
+        content += '<div style="margin-bottom:24px;"><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Failed Modules (' + failedModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-direction:column; gap:8px;">';
+        failedModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:12px; background:var(--ar-panel); border-radius:6px; border:1px solid #ef4444; cursor:pointer; transition:all 0.15s ease;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'; this.style.transform=\'translateX(4px)\';" onmouseout="this.style.background=\'var(--ar-panel)\'; this.style.transform=\'translateX(0)\';">';
+          content += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
+          content += '<span style="color:var(--ar-text); font-weight:600;">' + escapeHtml(module.name) + '</span>';
+          content += '<span style="color:#ef4444; font-size:13px; font-weight:600;">Best: ' + module.bestScore + '%</span>';
+          content += '</div>';
+          content += '<div style="color:var(--ar-text-muted); font-size:12px;">' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '') + ' • Last: ' + formatDate(module.lastAttemptAt) + '</div>';
+          content += '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      // Remaining modules
+      var remainingModules = modules.filter(function(m) { return m.status === 'not_taken'; });
+      if (remainingModules.length > 0) {
+        content += '<div><h3 style="color:var(--ar-text); font-size:16px; font-weight:600; margin-bottom:12px;">Remaining Modules (' + remainingModules.length + ')</h3>';
+        content += '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+        remainingModules.forEach(function(module) {
+          content += '<div class="ar-exam-module-chip" data-module-id="' + escapeHtml(module.moduleId) + '" style="padding:8px 12px; background:var(--ar-panel); border-radius:6px; border:1px solid var(--ar-border); color:var(--ar-text-muted); font-size:13px; cursor:pointer; transition:all 0.15s ease;">' + escapeHtml(module.name) + '</div>';
+        });
+        content += '</div></div>';
+      }
+      
+      document.getElementById('ar-exams-drawer-content').innerHTML = content;
+      
+      // Wire up module chip clicks (all modules in drawer are clickable)
+      var chips = document.querySelectorAll('.ar-exam-module-chip');
+      chips.forEach(function(chip) {
+        chip.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var moduleId = this.getAttribute('data-module-id');
+          if (moduleId) {
+            // Close drawer before navigating
+            closeExamDrawer();
+            // Navigate to exam page with module parameter
+            window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+          }
+        });
+      });
+      
+      drawer.style.display = 'block';
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    };
+    
+    function closeExamDrawer() {
+      var drawer = document.getElementById('ar-exams-drawer');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (drawer) drawer.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    
+    // Wire up drawer close buttons
+    ready(function() {
+      var closeBtn = document.getElementById('ar-exams-drawer-close');
+      var overlay = document.getElementById('ar-exams-drawer-overlay');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeExamDrawer();
+        });
+      }
+      if (overlay) {
+        overlay.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeExamDrawer();
+        });
+      }
+    });
+
+    function loadExamProgress(member) {
+      var progressEl = document.getElementById("ar-exams-progress");
+      var progressTitleEl = document.getElementById("ar-exams-progress-title");
+      var miniGridEl = document.getElementById("ar-exams-mini-grid");
+      
+      if (!progressEl || !progressTitleEl) {
+        console.warn("[Dashboard] Exam progress element not found");
+        return;
+      }
+      
+      // Try multiple ways to get member ID (compatible with older browsers)
+      var memberId = null;
+      if (member) {
+        memberId = member.id || (member.data && member.data.id) || null;
+      }
+      
+      if (!memberId) {
+        console.warn("[Dashboard] No member ID found. Member object:", member);
+        progressEl.textContent = "Resume an exam or download your latest results.";
+        progressTitleEl.textContent = "";
+        if (miniGridEl) miniGridEl.style.display = 'none';
+        var detailsBtn = document.getElementById('ar-exams-details-btn');
+        if (detailsBtn) detailsBtn.style.display = 'none';
+        return;
+      }
+      
+      console.log("[Dashboard] loadExamProgress called with member ID:", memberId);
+      
+      // Show loading state
+      progressEl.textContent = "Loading exam progress...";
+      progressTitleEl.textContent = "Loading...";
+      if (miniGridEl) miniGridEl.style.display = 'none';
+      var detailsBtn = document.getElementById('ar-exams-details-btn');
+      if (detailsBtn) detailsBtn.style.display = 'none';
+      
+      var apiBase = "https://alanranger-modules.vercel.app";
+      
+      // Fetch progress from new endpoint (all modules in one call)
+      var url = apiBase + "/api/exams/progress";
+      var headers = {
+        "Content-Type": "application/json",
+        "X-Memberstack-Id": memberId
+      };
+      
+      fetch(url, {
+        method: "GET",
+        headers: headers,
+        credentials: "include"
+      })
+      .then(function(r) {
+        if (!r.ok) {
+          console.error("[Dashboard] Progress API failed:", r.status);
+          throw new Error("Failed to fetch progress");
+        }
+        return r.json();
+      })
+      .then(function(data) {
+        console.log("[Dashboard] Progress data received:", data);
+        
+        // Store globally for drawer
+        window.examProgressData = data;
+        
+        var summary = data.summary;
+        var modules = data.modules;
+        var passed = summary.passedCount;
+        var failed = summary.failedCount;
+        var total = 15;
+        var percent = Math.round((passed / total) * 100);
+        
+        // Update title progress
+        if (passed > 0 || failed > 0) {
+          var progressText = passed + "/" + total + " passed (" + percent + "%)";
+          progressTitleEl.textContent = progressText;
+        } else {
+          progressTitleEl.textContent = "";
+        }
+        
+        // Update tip area
+        if (passed > 0 || failed > 0) {
+          var tipText = passed + "/" + total + " modules passed";
+          if (failed > 0) {
+            tipText += " • " + failed + " failed";
+          }
+          var remaining = total - passed - failed;
+          if (remaining > 0) {
+            tipText += " • " + remaining + " not started";
+          }
+          progressEl.textContent = tipText;
+        } else {
+          progressEl.textContent = "Resume an exam or download your latest results.";
+        }
+        
+        // Update details badges (keep existing behavior)
+        var detailsEl = document.getElementById("ar-exams-details");
+        if (detailsEl && (passed > 0 || failed > 0)) {
+          var detailsHtml = "";
+          if (passed > 0) {
+            detailsHtml += '<div class="ar-tile__details-item passed">✓ ' + passed + ' passed</div>';
+          }
+          if (failed > 0) {
+            detailsHtml += '<div class="ar-tile__details-item failed">✕ ' + failed + ' failed</div>';
+          }
+          var remaining = total - passed - failed;
+          if (remaining > 0) {
+            detailsHtml += '<div class="ar-tile__details-item not-attempted">○ ' + remaining + ' not started</div>';
+          }
+          detailsEl.innerHTML = detailsHtml;
+        }
+        
+        // Render mini grid
+        if (miniGridEl) {
+          var gridHtml = '';
+          
+          // Render existing 15 exams
+          modules.forEach(function(module) {
+            var statusClass = 'status-' + module.status;
+            
+            // Build tooltip text based on status and module info
+            var tooltipText = module.name || 'Module ' + module.label;
+            if (module.status === 'passed' && module.bestScore) {
+              tooltipText += ' - Passed (' + module.bestScore + '%)';
+            } else if (module.status === 'failed' && module.bestScore) {
+              tooltipText += ' - Failed (Best: ' + module.bestScore + '%)';
+              if (module.attempts > 0) {
+                tooltipText += ' - ' + module.attempts + ' attempt' + (module.attempts !== 1 ? 's' : '');
+              }
+            } else if (module.status === 'not_taken') {
+              tooltipText += ' - Not started';
+            }
+            
+            var safeTooltip = (typeof escapeHtml === 'function') ? escapeHtml(tooltipText) : tooltipText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            gridHtml += '<div class="ar-exam-module-pill ' + statusClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || '') + '" data-module-attempts="' + (module.attempts || 0) + '" title="' + safeTooltip + '">' + module.label + '</div>';
+          });
+          
+          // Add "Coming soon" subtitle - force new line with flex-basis, no left margin/padding
+          gridHtml += '<div class="ar-exam-coming-soon-label" style="flex-basis: 100%; width: 100%; margin: 12px 0 8px 0; padding: 0; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Coming soon</div>';
+          
+          // Add 20 placeholder cubes (exams 16-35) - render EXACTLY like existing tiles above
+          // First row: 16-25 (10 cubes)
+          for (var i = 16; i <= 25; i++) {
+            var label = String(i).padStart(2, '0');
+            // Use EXACT same structure as existing tiles - just different status class
+            gridHtml += '<div class="ar-exam-module-pill status-coming-soon" title="Coming soon" data-placeholder="true">' + label + '</div>';
+          }
+          
+          // Force line break for second row - invisible spacer
+          gridHtml += '<div style="flex-basis: 100%; width: 0; height: 0; margin: 0; padding: 0; border: 0;"></div>';
+          
+          // Second row: 26-35 (10 cubes) - render EXACTLY like existing tiles
+          for (var i = 26; i <= 35; i++) {
+            var label = String(i).padStart(2, '0');
+            // Use EXACT same structure as existing tiles - just different status class
+            gridHtml += '<div class="ar-exam-module-pill status-coming-soon" title="Coming soon" data-placeholder="true">' + label + '</div>';
+          }
+          
+          miniGridEl.innerHTML = gridHtml;
+          miniGridEl.style.display = 'flex';
+          
+          // Add click handlers to exam pills to navigate to exam page (skip placeholders)
+          var examPills = miniGridEl.querySelectorAll('.ar-exam-module-pill:not(.status-coming-soon)');
+          examPills.forEach(function(pill) {
+            pill.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var moduleId = this.getAttribute('data-module-id');
+              if (moduleId) {
+                window.location.href = '/academy/photography-exams-certification?module=' + encodeURIComponent(moduleId);
+              }
+            });
+          });
+          
+          // Show Details button
+          var detailsBtn = document.getElementById('ar-exams-details-btn');
+          if (detailsBtn) {
+            detailsBtn.style.display = 'block';
+          }
+        }
+      })
+      .catch(function(err) {
+        console.error("[Dashboard] Error fetching progress:", err);
+        progressEl.textContent = "Resume an exam or download your latest results.";
+        progressTitleEl.textContent = "";
+        if (miniGridEl) miniGridEl.style.display = 'none';
+        var detailsBtn = document.getElementById('ar-exams-details-btn');
+        if (detailsBtn) detailsBtn.style.display = 'none';
+      });
+    }
+
+    function loadQAQuestionCounts(member, ms) {
+      var askedEl = document.getElementById("qa-asked-count");
+      var answeredEl = document.getElementById("qa-answered-count");
+      var outstandingEl = document.getElementById("qa-outstanding-count");
+      
+      if (!askedEl || !answeredEl || !outstandingEl) {
+        console.warn("[Dashboard] Q&A count elements not found");
+        return;
+      }
+      
+      // Get member ID
+      var memberId = null;
+      if (member) {
+        memberId = member.id || (member.data && member.data.id) || null;
+      }
+      
+      if (!memberId) {
+        console.warn("[Dashboard] No member ID for Q&A counts");
+        askedEl.textContent = "—";
+        answeredEl.textContent = "—";
+        outstandingEl.textContent = "—";
+        return;
+      }
+      
+      var apiBase = "https://alanranger-modules.vercel.app";
+      var url = apiBase + "/api/academy-qa-questions-count";
+      var headers = {
+        "Content-Type": "application/json",
+        "X-Memberstack-Id": memberId
+      };
+      
+      fetch(url, {
+        method: "GET",
+        headers: headers,
+        credentials: "include"
+      })
+      .then(function(r) {
+        if (!r.ok) {
+          console.error("[Dashboard] Q&A counts API failed:", r.status);
+          throw new Error("Failed to fetch Q&A counts");
+        }
+        return r.json();
+      })
+      .then(function(data) {
+        console.log("[Dashboard] Q&A counts received:", data);
+        askedEl.textContent = data.asked || 0;
+        answeredEl.textContent = data.answered || 0;
+        outstandingEl.textContent = data.outstanding || 0;
+      })
+      .catch(function(err) {
+        console.error("[Dashboard] Error loading Q&A counts:", err);
+        askedEl.textContent = "—";
+        answeredEl.textContent = "—";
+        outstandingEl.textContent = "—";
+      });
+    }
+
+    function interpretHueScore(score) {
+      if (score <= 450) return "Excellent";
+      if (score <= 900) return "Good";
+      if (score <= 1500) return "Average";
+      return "Needs improvement";
+    }
+
+    function loadHueTestLatest(member) {
+      var scoreEl = document.getElementById("ar-hue-test-score");
+      var dateEl = document.getElementById("ar-hue-test-date");
+      if (!scoreEl || !dateEl) return;
+
+      var memberId = member && (member.id || (member.data && member.data.id));
+      if (!memberId) {
+        scoreEl.textContent = "—";
+        dateEl.textContent = "Sign in to save your score.";
+        return;
+      }
+
+      scoreEl.textContent = "Loading...";
+      dateEl.textContent = "";
+
+      fetch("/api/hue-test/latest?member_id=" + encodeURIComponent(memberId))
+        .then(function(r) {
+          if (!r.ok) throw new Error("Failed to load hue test result");
+          return r.json();
+        })
+        .then(function(payload) {
+          if (!payload || !payload.data) {
+            scoreEl.textContent = "—";
+            dateEl.textContent = "No saved score yet.";
+            return;
+          }
+          var score = payload.data.total_score;
+          scoreEl.textContent = score;
+          var tag = interpretHueScore(score);
+          var savedAt = payload.data.created_at ? formatDate(payload.data.created_at) : "";
+          dateEl.textContent = tag + (savedAt ? " • " + savedAt : "");
+        })
+        .catch(function(err) {
+          console.error("[Dashboard] Hue test fetch error:", err);
+          scoreEl.textContent = "—";
+          dateEl.textContent = "Unable to load score.";
+        });
+    }
+
+    function updatePaidResourceTiles(isTrial) {
+      var practicePacksTile = document.getElementById("arp-practice-packs-tile");
+      var ebookTile = document.getElementById("arp-ebook-tile");
+      var checklistsTile = document.getElementById("arp-checklists-tile");
+      
+      if (practicePacksTile) {
+        practicePacksTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          practicePacksTile.removeAttribute("href");
+          practicePacksTile.setAttribute("aria-disabled", "true");
+        } else {
+          practicePacksTile.setAttribute("href", "https://www.alanranger.com/academy/photography-practice-packs");
+          practicePacksTile.removeAttribute("aria-disabled");
+        }
+      }
+      
+      if (ebookTile) {
+        ebookTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          ebookTile.removeAttribute("href");
+          ebookTile.setAttribute("aria-disabled", "true");
+        } else {
+          ebookTile.setAttribute("href", "/academy/ebook");
+          ebookTile.removeAttribute("aria-disabled");
+        }
+      }
+      
+      if (checklistsTile) {
+        checklistsTile.classList.toggle("is-disabled", isTrial);
+        if (isTrial) {
+          checklistsTile.removeAttribute("href");
+          checklistsTile.setAttribute("aria-disabled", "true");
+        } else {
+          checklistsTile.setAttribute("href", "https://www.alanranger.com/academy/photography-checklists");
+          checklistsTile.removeAttribute("aria-disabled");
+        }
+      }
+    }
+
+    function renderMemberStatus(member, ms){
+      var statusEl = document.getElementById("arp-ms-status");
+      var manageBtn = document.getElementById("arp-ms-manage");
+      var tileEl = document.getElementById("arp-ms-tile");
+      if (!statusEl) return;
+  
+      if (!member || !member.data) {
+        setText(statusEl, "Not logged in.");
+        if (manageBtn) manageBtn.style.display = "none";
+        if (tileEl) { tileEl.classList.remove("is-trial"); tileEl.classList.remove("is-annual"); }
+        return;
+      }
+  
+      var email = getMemberEmail(member) || "";
+      var memberId = member.id || member.data.id || "";
+  
+      // Get first and last name from customFields
+      var customFields = member.data.customFields || {};
+      var firstName = customFields["first-name"] || customFields.firstName || customFields.first_name || "";
+      var lastName = customFields["last-name"] || customFields.lastName || customFields.last_name || "";
+      var fullName = (firstName && lastName) ? (firstName + " " + lastName) : (firstName || lastName || "");
+
+      // Get the Academy plan connection
+      var academyPlan = getAcademyPlanConnection(member);
+      
+      // Derive membership state from the plan
+      var state = deriveMembershipState(academyPlan);
+      
+      // Update tile classes based on state
+      var isTrial = state.label === "Trial member";
+      var isAnnual = state.label === "Annual member";
+      if (tileEl) {
+        tileEl.classList.toggle("is-trial", isTrial);
+        tileEl.classList.toggle("is-annual", isAnnual);
+      }
+
+      // Disable paid resource tiles for trial members
+      updatePaidResourceTiles(isTrial);
+
+      // Update upgrade button visibility (only show for trial members, not annual)
+      var upgradeBtn = document.getElementById("arp-upgrade-membership");
+      if (upgradeBtn) {
+        upgradeBtn.style.display = (isTrial && !isAnnual) ? "inline-flex" : "none";
+        // Wire up click handler (only once) - use capture phase to prevent bubbling
+        if (!upgradeBtn.hasAttribute("data-upgrade-wired")) {
+          upgradeBtn.addEventListener("click", handleUpgradeMembership, true);
+          upgradeBtn.setAttribute("data-upgrade-wired", "true");
+        }
+        // Ensure button has no href or portal attributes
+        upgradeBtn.removeAttribute("href");
+        upgradeBtn.removeAttribute("data-ms-action");
+        upgradeBtn.removeAttribute("data-ms-modal");
+      }
+
+      // Update CTA button
+      if (manageBtn) {
+        manageBtn.style.display = "";
+        manageBtn.textContent = state.ctaText;
+        
+        // Wire up CTA based on mode
+        if (state.ctaMode === "portal") {
+          // Use existing portal wiring (already set up in wirePortal)
+          manageBtn.setAttribute("data-ms-action", "customer-portal");
+          manageBtn.removeAttribute("href");
+        } else if (state.ctaMode === "checkout") {
+          // Use checkout flow - add price ID based on state
+          manageBtn.removeAttribute("data-ms-action");
+          if (state.ctaText === "Upgrade now" || state.ctaText === "Rejoin" || state.ctaText === "Join") {
+            // Use the annual with trial price for upgrades/joins
+            manageBtn.setAttribute("data-ms-modal", "signup");
+            manageBtn.setAttribute("data-ms-price:add", ANNUAL_WITH_TRIAL_PRICE_ID);
+          } else {
+            // Fallback: just open signup modal
+            manageBtn.setAttribute("data-ms-modal", "signup");
+          }
+        } else {
+          // none mode - hide button
+          manageBtn.style.display = "none";
+        }
+      }
+  
+      // Render status rows
+      var dateLabel = state.dateLine ? state.dateLine.split(":")[0] + ":" : "";
+      var dateValue = state.dateLine ? state.dateLine.split(":").slice(1).join(":").trim() : "";
+      
+      statusEl.innerHTML =
+        (fullName ? '<div class="ms-row"><span class="ms-label">Name:</span> <span class="ms-value">' + escapeHtml(fullName) + '</span></div>' : '') +
+        '<div class="ms-row"><span class="ms-label">Email:</span> <span class="ms-value">' + escapeHtml(email || "—") + '</span></div>' +
+        '<div class="ms-row"><span class="ms-label">Member ID:</span> <span class="ms-value">' + escapeHtml(memberId || "—") + '</span></div>' +
+        '<div class="ms-row"><span class="ms-label">Status:</span> <span class="ms-value ms-value--accent">' + escapeHtml(state.label) + '</span></div>' +
+        (state.dateLine ? '<div class="ms-row"><span class="ms-label">' + escapeHtml(dateLabel) + '</span> <span class="ms-value">' + escapeHtml(dateValue || "—") + '</span></div>' : '');
+      
+      // Load and display photography style quiz result
+      if (memberId) {
+        loadPhotographyStyle(memberId);
+      }
+    }
+
+    // Function to load and display photography style quiz result
+    async function loadPhotographyStyle(memberId) {
+      var quizResultEl = document.getElementById("arp-photography-quiz-result");
+      var quizButtonContainer = document.getElementById("arp-photography-quiz-button-container");
+      var quizButton = document.getElementById("arp-photography-quiz-button");
+      var styleNameEl = document.getElementById("arp-photography-style-name");
+      
+      if (!quizResultEl || !quizButtonContainer || !quizButton || !styleNameEl) return;
+      
+      try {
+        // Fetch member data including photography style
+        var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
+        if (!response.ok) {
+          throw new Error('Failed to fetch member data');
+        }
+        var memberData = await response.json();
+        
+        if (memberData && memberData.photography_style) {
+          // Show result, hide button
+          var percentage = memberData.photography_style_percentage || '';
+          var styleText = percentage ? 'You are ' + percentage + '% ' + memberData.photography_style + '.' : memberData.photography_style;
+          styleNameEl.textContent = styleText;
+          quizResultEl.style.display = 'block';
+          quizButtonContainer.style.display = 'none';
+          
+          // Display other interests if available
+          var otherInterestsEl = document.getElementById('arp-photography-other-interests');
+          var otherInterestsListEl = document.getElementById('arp-photography-other-interests-list');
+          if (memberData.photography_style_other_interests && otherInterestsEl && otherInterestsListEl) {
+            // Parse the comma-separated string (e.g., "Street Photographer: 33%, Landscape Photographer: 17%")
+            var otherInterests = memberData.photography_style_other_interests.split(',').map(function(item) {
+              return item.trim();
+            }).filter(function(item) {
+              return item && item.includes(':') && parseInt(item.split(':')[1]) > 0;
+            });
+            
+            if (otherInterests.length > 0) {
+              otherInterestsListEl.innerHTML = otherInterests.map(function(item) {
+                return '<div style="margin-bottom: 4px;">' + escapeHtml(item) + '</div>';
+              }).join('');
+              otherInterestsEl.style.display = 'block';
+            } else {
+              otherInterestsEl.style.display = 'none';
+            }
+          } else if (otherInterestsEl) {
+            otherInterestsEl.style.display = 'none';
+          }
+          
+          // Wire up retake quiz button
+          var retakeButton = document.getElementById('arp-photography-retake-quiz-button');
+          if (retakeButton && !retakeButton.hasAttribute('data-retake-wired')) {
+            retakeButton.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+              window.open(quizUrl, '_blank', 'noopener,noreferrer');
+            }, true);
+            retakeButton.setAttribute('data-retake-wired', 'true');
+          }
+        } else {
+          // Show button, hide result
+          var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+          quizButton.setAttribute('data-quiz-url', quizUrl);
+          quizResultEl.style.display = 'none';
+          quizButtonContainer.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading photography style:', error);
+        // On error, show button as fallback
+        var quizUrl = 'https://www.alanranger.com/which-photography-style-is-right-for-you?memberId=' + encodeURIComponent(memberId);
+        quizButton.setAttribute('data-quiz-url', quizUrl);
+        quizResultEl.style.display = 'none';
+        quizButtonContainer.style.display = 'block';
+      }
+      
+      // Wire up quiz button click handler (only once)
+      if (quizButton && !quizButton.hasAttribute('data-quiz-wired')) {
+        quizButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          var url = quizButton.getAttribute('data-quiz-url');
+          if (url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+        }, true); // Use capture phase to intercept early
+        quizButton.setAttribute('data-quiz-wired', 'true');
+      }
+    }
+
+    function getConnectedProviderSet(member){
+      var set = {};
+      var providers = member && member.data && member.data.auth && Array.isArray(member.data.auth.providers)
+        ? member.data.auth.providers
+        : [];
+      for (var i = 0; i < providers.length; i++) {
+        var p = providers[i];
+        var name = p && typeof p.provider === "string" ? p.provider.toLowerCase() : "";
+        if (name) set[name] = true;
+      }
+      return set;
+    }
+
+    function renderProviderState(member){
+      var root = document.getElementById("arp-social-tile");
+      if (!root) return;
+      var connected = getConnectedProviderSet(member);
+      var buttons = root.querySelectorAll("[data-ms-auth-provider]");
+      for (var i = 0; i < buttons.length; i++) {
+        var btn = buttons[i];
+        var prov = String(btn.getAttribute("data-ms-auth-provider") || "").toLowerCase();
+        var isConnected = !!connected[prov];
+        btn.classList.toggle("is-connected", isConnected);
+        var stateEl = btn.querySelector(".ms-provider-state");
+        if (stateEl) stateEl.textContent = isConnected ? "Connected" : "";
+      }
+    }
+  
+    function softFailShow(){
+      // Show something in editor even if Memberstack isn't available
+      var dashboardEl = document.querySelector(".ar-academy-dashboard");
+      if (dashboardEl) dashboardEl.classList.add("is-ready");
+    }
+  
+    function safeRedirect(url){
+      // Never redirect in editor
+      if (inSquarespaceEditor()) return;
+      try { globalThis.location.href = url; } catch(e) {}
+    }
+  
+    // Position Members Guide below Academy header (only on desktop)
+    function positionMembersGuide() {
+      var headerContainer = document.getElementById('ar-academy-header-container');
+      var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
+      
+      if (!headerContainer || !sidebar) {
+        return;
+      }
+      
+      // Check if we're on mobile/tablet (sidebar should be relative, not fixed)
+      var isMobile = window.innerWidth <= 1200;
+      var computedStyle = window.getComputedStyle(sidebar);
+      var isFixed = computedStyle.position === 'fixed';
+      
+      // Only position if sidebar is fixed (desktop view)
+      if (isMobile || !isFixed) {
+        // On mobile, sidebar is relative - don't position it
+        return;
+      }
+      
+      // Get the actual bottom position of the Academy header relative to viewport
+      var headerRect = headerContainer.getBoundingClientRect();
+      var headerBottom = headerRect.bottom;
+      
+      // The header is sticky, so its bottom position relative to viewport tells us where to start
+      // If headerBottom is 0 or negative, header might not be visible yet, use default
+      var topPosition = headerBottom > 0 ? headerBottom : (headerRect.height || 80);
+      
+      // Add a small gap below the header
+      topPosition = topPosition + 2;
+      
+      // Ensure minimum position (in case calculation fails)
+      if (topPosition < 80) {
+        topPosition = 82; // Default to just below typical header height
+      }
+      
+      sidebar.style.top = topPosition + 'px';
+      sidebar.style.maxHeight = 'calc(100vh - ' + (topPosition + 20) + 'px)';
+    }
+    
+    // Initialize Members Guide Accordion
+    function initMembersGuideAccordion() {
+      var accordionButtons = document.querySelectorAll('.ar-members-guide__button');
+      accordionButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          var isExpanded = this.getAttribute('aria-expanded') === 'true';
+          var content = this.nextElementSibling;
+          
+          // Close all other items (optional - remove if you want multiple open)
+          // accordionButtons.forEach(function(btn) {
+          //   if (btn !== button) {
+          //     btn.setAttribute('aria-expanded', 'false');
+          //     btn.nextElementSibling.style.maxHeight = '0';
+          //     btn.nextElementSibling.style.padding = '0 16px';
+          //   }
+          // });
+          
+          // Toggle current item
+          this.setAttribute('aria-expanded', !isExpanded);
+          if (!isExpanded) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            content.style.padding = '0 16px 16px 16px';
+          } else {
+            content.style.maxHeight = '0';
+            content.style.padding = '0 16px';
+          }
+        });
+      });
+    }
+  
+    ready(function(){
+      var dashboardEl = document.querySelector(".ar-academy-dashboard");
+      if (dashboardEl) dashboardEl.classList.remove("is-ready");
+      
+      // Position Members Guide below header
+      // Wait for header to be fully rendered
+      function initMembersGuidePosition() {
+        var headerContainer = document.getElementById('ar-academy-header-container');
+        if (headerContainer) {
+          positionMembersGuide();
+        } else {
+          // Retry if header not ready yet
+          setTimeout(initMembersGuidePosition, 50);
+        }
+      }
+      
+      initMembersGuidePosition();
+      
+      // Re-position on window resize and scroll (header might be sticky)
+      // Use debounced resize handler
+      var resizeTimeout;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(positionMembersGuide, 100);
+      });
+      
+      // Only reposition on scroll if on desktop (sidebar is fixed)
+      window.addEventListener('scroll', function() {
+        var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
+        if (sidebar && window.getComputedStyle(sidebar).position === 'fixed') {
+          positionMembersGuide();
+        }
+      });
+      
+      // Also re-position after delays to ensure header is fully rendered
+      setTimeout(positionMembersGuide, 200);
+      setTimeout(positionMembersGuide, 500);
+      setTimeout(positionMembersGuide, 1000);
+      
+      // Initialize accordion
+      initMembersGuideAccordion();
+  
+      var isEditor = inSquarespaceEditor();
+      var banner = document.getElementById("ar-academy-editor-banner");
+      if (isEditor) {
+        if (banner) banner.style.display = "block";
+        softFailShow();
+        return; // DO NOT run access guard in editor
+      }
+  
+      // Portal helper tab: if opened with ?arpPortal=1, launch portal and stop.
+      try{
+        var params = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+        if (params.get("arpPortal") === "1") {
+          waitForMemberstack(8000).then(function(ms){
+            if (!ms || typeof ms.getCurrentMember !== "function") { safeRedirect(LOGIN_URL); return; }
+            getMemberExtended(ms).then(function(m){
+              if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+              if (typeof ms.launchStripeCustomerPortal !== "function") return;
+              ms.launchStripeCustomerPortal();
+              if (dashboardEl) dashboardEl.classList.add("is-ready");
+            }).catch(function(){
+              safeRedirect(LOGIN_URL);
+            });
+            // Best-effort cleanup if portal opens in a new window instead of navigating this tab.
+            setTimeout(function(){
+              try{
+                params.delete("arpPortal");
+                var clean = globalThis.location.pathname + (params.toString() ? ("?" + params.toString()) : "") + (globalThis.location.hash || "");
+                globalThis.history.replaceState({}, "", clean);
+              } catch(e) {}
+            }, 600);
+          });
+          return;
+        }
+      } catch(e) { /* ignore */ }
+
+      // Ghost login/preview mode: Check for ?ghost=memberId OR ?ghostEmail=email parameter
+      var ghostMemberId = null;
+      var ghostEmail = null;
+      try {
+        var urlParams = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
+        ghostMemberId = urlParams.get("ghost");
+        ghostEmail = urlParams.get("ghostEmail");
+      } catch(e) { /* ignore */ }
+
+      // If ghost mode is requested, handle it BEFORE normal authentication
+      // This allows admins to ghost login even if they're not logged into Memberstack on Squarespace
+      if (ghostMemberId || ghostEmail) {
+        // Build API URL with appropriate parameter
+        var apiUrl = 'https://alanranger-modules.vercel.app/api/admin/ghost-login?';
+        if (ghostMemberId) {
+          apiUrl += 'memberId=' + encodeURIComponent(ghostMemberId);
+        } else {
+          apiUrl += 'email=' + encodeURIComponent(ghostEmail);
+        }
+        
+        // Show ghost mode banner
+        var ghostBanner = document.createElement('div');
+        ghostBanner.id = 'ar-ghost-mode-banner';
+        ghostBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#E57200;color:#fff;padding:12px;text-align:center;font-weight:700;font-size:14px;z-index:10000;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        var bannerText = ghostMemberId ? ('member ' + escapeHtml(ghostMemberId)) : ('email ' + escapeHtml(ghostEmail));
+        ghostBanner.innerHTML = '👻 GHOST MODE: Loading dashboard as ' + bannerText + '...';
+        document.body.appendChild(ghostBanner);
+        
+        // Get current admin member ID from Memberstack to pass as header
+        // This is needed because cross-origin cookies might not be sent
+        waitForMemberstack(8000).then(function(ms){
+          if (!ms) {
+            console.error("[Ghost Login] Memberstack not available");
+            var bannerEl = document.getElementById('ar-ghost-mode-banner');
+            if (bannerEl) {
+              bannerEl.style.background = '#ef4444';
+              bannerEl.innerHTML = '❌ Ghost Login Failed: Memberstack not available | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+            }
+            return;
+          }
+          
+          // Get current member to pass their ID as header for admin verification
+          ms.getCurrentMember().then(function(adminMember){
+            var adminMemberId = null;
+            if (adminMember && adminMember.id) {
+              adminMemberId = adminMember.id;
+            } else if (adminMember && adminMember.data && adminMember.data.id) {
+              adminMemberId = adminMember.data.id;
+            }
+            
+            console.log("[Ghost Login] Admin member ID:", adminMemberId);
+            
+            // Fetch ghost member data (API will check admin access using header)
+            var fetchOptions = {
+              method: 'GET',
+              credentials: 'include'
+            };
+            
+            // Add admin member ID as header if available
+            if (adminMemberId) {
+              fetchOptions.headers = {
+                'X-Memberstack-Id': adminMemberId
+              };
+            }
+            
+            fetch(apiUrl, fetchOptions)
+              .then(function(response) {
+                if (!response.ok) {
+                  if (response.status === 403) {
+                    throw new Error('Admin access required. Please log in as an admin first.');
+                  } else if (response.status === 404) {
+                    throw new Error('Member not found');
+                  }
+                  throw new Error('Failed to fetch ghost member data: HTTP ' + response.status);
+                }
+                return response.json();
+              })
+              .then(function(ghostData) {
+                console.log("[Ghost Login] Ghost member data:", ghostData);
+
+                // Remove loading banner and show success banner
+                var bannerEl = document.getElementById('ar-ghost-mode-banner');
+                if (bannerEl) {
+                  var actualMemberId = ghostData.member?.id || ghostMemberId;
+                  var actualEmail = ghostData.member?.auth?.email || ghostData.member?.email || ghostEmail;
+                  var bannerText = ghostEmail
+                    ? (escapeHtml(actualEmail) + ' (ID: ' + escapeHtml(actualMemberId) + ')')
+                    : escapeHtml(actualMemberId);
+                  bannerEl.innerHTML = '👻 GHOST MODE: Viewing dashboard as ' + bannerText + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit Ghost Mode</a>';
+                }
+
+                // Replace member data with ghost member data
+                var ghostMember = ghostData.member || {};
+                var ghostMemberJson = ghostData.memberJson || {};
+
+                // Use the actual member ID from the response (in case we searched by email)
+                var actualGhostMemberId = ghostMember.id || ghostMemberId;
+
+                // Create a mock member object that matches the expected structure
+                var mockMember = {
+                  id: actualGhostMemberId,
+                  data: {
+                    id: actualGhostMemberId,
+                    email: ghostMember.auth?.email || ghostMember.email || ghostEmail || '',
+                    customFields: ghostMember.customFields || {},
+                    planConnections: ghostMember.planConnections || [],
+                    auth: ghostMember.auth || {}
+                  }
+                };
+
+                // Wait for Memberstack to be available, then override getMemberJSON
+                waitForMemberstack(8000).then(function(ms){
+                  if (!ms) {
+                    console.error("[Ghost Login] Memberstack not available");
+                    return;
+                  }
+
+                  // Override getMemberJSON to return ghost member's JSON
+                  if (typeof ms.getMemberJSON === 'function') {
+                    var originalGetMemberJSON = ms.getMemberJSON;
+                    ms.getMemberJSON = function() {
+                      return Promise.resolve(ghostMemberJson);
+                    };
+                  }
+
+                  // Override getCurrentMember to return ghost member
+                  if (typeof ms.getCurrentMember === 'function') {
+                    var originalGetCurrentMember = ms.getCurrentMember;
+                    ms.getCurrentMember = function() {
+                      return Promise.resolve(mockMember);
+                    };
+                  }
+
+                  // Show dashboard with ghost member data
+                  if (dashboardEl) dashboardEl.classList.add("is-ready");
+                  renderMemberStatus(mockMember, ms);
+                  loadExamProgress(mockMember);
+                  loadQAQuestionCounts(mockMember, ms);
+                  renderProviderState(mockMember);
+                  wirePortal(ms);
+
+                  // Load module progress with ghost member JSON
+                  if (typeof run === 'function') {
+                    setTimeout(function() {
+                      run().catch(function(err) {
+                        console.error("[Ghost Login] Error in run():", err);
+                      });
+                    }, 500);
+                  } else {
+                    console.warn("[Ghost Login] run() function not found, module progress may not load");
+                  }
+                });
+              })
+              .catch(function(error) {
+                console.error("[Ghost Login] Error:", error);
+                var bannerEl = document.getElementById('ar-ghost-mode-banner');
+                if (bannerEl) {
+                  bannerEl.style.background = '#ef4444';
+                  bannerEl.innerHTML = '❌ Ghost Login Failed: ' + escapeHtml(error.message) + ' | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+                }
+
+                // If it's an admin access error, redirect to login after 3 seconds
+                if (error.message.includes('Admin access required')) {
+                  setTimeout(function() {
+                    safeRedirect(LOGIN_URL + '?error=admin-login-required');
+                  }, 3000);
+                } else {
+                  // For other errors, remove ghost parameters and reload after 3 seconds
+                  setTimeout(function() {
+                    try {
+                      var newParams = new URLSearchParams(urlParams);
+                      newParams.delete("ghost");
+                      newParams.delete("ghostEmail");
+                      globalThis.location.href = globalThis.location.pathname + (newParams.toString() ? ("?" + newParams.toString()) : "");
+                    } catch(e) {
+                      globalThis.location.href = globalThis.location.pathname;
+                    }
+                  }, 3000);
+                }
+              });
+            }).catch(function(err) {
+              console.error("[Ghost Login] Error getting admin member:", err);
+              var bannerEl = document.getElementById('ar-ghost-mode-banner');
+              if (bannerEl) {
+                bannerEl.style.background = '#ef4444';
+                bannerEl.innerHTML = '❌ Ghost Login Failed: Could not verify admin access | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+              }
+            });
+          }).catch(function(err) {
+            console.error("[Ghost Login] Error waiting for Memberstack:", err);
+            var bannerEl = document.getElementById('ar-ghost-mode-banner');
+            if (bannerEl) {
+              bannerEl.style.background = '#ef4444';
+              bannerEl.innerHTML = '❌ Ghost Login Failed: Memberstack error | <a href="' + globalThis.location.pathname + '" style="color:#fff;text-decoration:underline;margin-left:8px;">Exit</a>';
+            }
+          });
+        
+        return; // Exit early - ghost mode handles its own flow
+      }
+
+      // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
+      waitForMemberstack(8000).then(function(ms){
+        if (!ms) { safeRedirect(LOGIN_URL); return; }
+        return getMemberExtended(ms).then(function(m){
+          if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+          
+          // Normal dashboard flow (ghost mode already handled above)
+          
+          // Debug logging: log full member payload
+          console.log("[MS] member payload", m);
+          
+          // planConnections = the key difference between "abandoned checkout" vs "expired"
+          var pcs = (m && m.data && Array.isArray(m.data.planConnections)) ? m.data.planConnections : [];
+          var hasAnyPlan = pcs.length > 0;
+
+          // 1) Logged in but NO plan at all (abandoned Stripe / never purchased)
+          // Send to login (NOT trial-expired) to break the loop.
+          if (!hasAnyPlan) {
+            // Optional but strongly recommended: clear the sticky session so you can log into a real paid account without incognito.
+            try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
+            safeRedirect("/academy/login?trial=not-activated");
+            return;
+          }
+
+          // 2) Has a plan connection but does not have access (e.g. trial expired)
+          // This is the *real* "trial expired" case.
+          if (!hasAccess(m)) {
+            safeRedirect(EXPIRED_URL); // "/academy/trial-expired"
+            return;
+          }
+          
+          if (dashboardEl) dashboardEl.classList.add("is-ready");
+          renderMemberStatus(m, ms);
+          
+          // Inactivity logout (30 minutes of no activity)
+          (function initInactivityLogout(){
+            var INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+            var timeoutId = null;
+            var isLoggedOut = false;
+
+            function doLogout() {
+              if (isLoggedOut) return;
+              isLoggedOut = true;
+              try {
+                if (ms && typeof ms.logout === "function") {
+                  ms.logout();
+                }
+              } catch (e) { /* no-op */ }
+              safeRedirect("/academy/login?reason=timeout");
+            }
+
+            function resetTimer() {
+              if (isLoggedOut) return;
+              if (timeoutId) clearTimeout(timeoutId);
+              timeoutId = setTimeout(doLogout, INACTIVITY_LIMIT_MS);
+            }
+
+            // Activity events to reset timer
+            var activityEvents = [
+              "mousemove",
+              "mousedown",
+              "keydown",
+              "scroll",
+              "touchstart",
+              "touchmove"
+            ];
+
+            activityEvents.forEach(function(evt) {
+              document.addEventListener(evt, resetTimer, { passive: true });
+            });
+
+            document.addEventListener("visibilitychange", function() {
+              if (!document.hidden) resetTimer();
+            });
+            window.addEventListener("focus", resetTimer);
+
+            // Start timer immediately after login
+            resetTimer();
+          })();
+
+          // Load exam progress - log member object for debugging
+          console.log("[Dashboard] Calling loadExamProgress");
+          console.log("[Dashboard] Member object:", m);
+          console.log("[Dashboard] Member ID:", m ? (m.id || (m.data && m.data.id)) : 'null');
+          loadExamProgress(m);
+          
+          // Load Q&A question counts
+          loadQAQuestionCounts(m, ms);
+          
+          // Load latest Hue Test result
+          loadHueTestLatest(m);
+          
+          // Make refresh function available globally
+          window.refreshExamProgress = function() {
+            console.log("[Dashboard] Manual refresh triggered");
+            loadExamProgress(m);
+          };
+          
+          // Show refresh button
+          var refreshBtn = document.getElementById("ar-exams-refresh");
+          if (refreshBtn) {
+            refreshBtn.style.display = "block";
+            // Add hover effect
+            refreshBtn.addEventListener('mouseenter', function() {
+              this.style.background = 'rgba(148,163,184,0.25)';
+              this.style.borderColor = 'rgba(148,163,184,0.5)';
+            });
+            refreshBtn.addEventListener('mouseleave', function() {
+              this.style.background = 'rgba(148,163,184,0.15)';
+              this.style.borderColor = 'rgba(148,163,184,0.3)';
+            });
+          }
+          
+          // Auto-refresh every 30 seconds
+          var autoRefreshInterval = setInterval(function() {
+            if (m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Auto-refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          }, 30000);
+          
+          // Also refresh when page becomes visible (user switches back to tab)
+          document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Page visible - refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          });
+          
+          // CRITICAL: Refresh when page loads (in case user navigated back from exam page)
+          // Use a small delay to ensure page is fully loaded
+          setTimeout(function() {
+            if (m && (m.id || (m.data && m.data.id))) {
+              console.log("[Dashboard] Page load refresh - refreshing exam progress...");
+              loadExamProgress(m);
+            }
+          }, 1000);
+          
+          renderProviderState(m);
+          wirePortal(ms);
+          
+          // Handle upgrade success/cancel URL parameters
+          var urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has("upgrade")) {
+            var upgradeStatus = urlParams.get("upgrade");
+            if (upgradeStatus === "success") {
+              // Refresh member data to show updated status
+              setTimeout(function() {
+                if (ms && typeof ms.getCurrentMember === "function") {
+                  ms.getCurrentMember().then(function(updatedMember) {
+                    if (updatedMember) {
+                      renderMemberStatus(updatedMember, ms);
+                    }
+                  }).catch(function(err) {
+                    console.error("Error refreshing member after upgrade:", err);
+                  });
+                }
+                // Clean up URL
+                var newUrl = window.location.pathname;
+                window.history.replaceState({}, "", newUrl);
+              }, 500);
+            } else if (upgradeStatus === "cancel") {
+              // Clean up URL
+              var newUrl = window.location.pathname;
+              window.history.replaceState({}, "", newUrl);
+            }
+          }
+        }).catch(function(){
+          safeRedirect(LOGIN_URL);
+        });
+      });
+  
+      // Logout button (attribute + JS fallback)
+      var btn = document.getElementById("arp-logout-btn");
+      if (btn) {
+        btn.addEventListener("click", function(){
+          if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.logout === "function") {
+            try { globalThis.$memberstackDom.logout(); } catch (e) { /* no-op */ }
+          }
+          setTimeout(function(){ safeRedirect(LOGIN_URL); }, 600);
+        });
+      }
+    });
+  })();
+
+  // ===========================
+  // AR | DASHBOARD: RECENT ACTIVITY + BOOKMARKS (DISPLAY)
+  // Fixes:
+  // - Runs even if script loads AFTER window.load (Squarespace Code Blocks can do that)
+  // - Handles Memberstack JSON shapes: {data:{...}} OR {data:{json:{...}}}
+  // - Populates BOTH the full section lists and the mini tile lists
+  // ===========================
+  (function(){
+    async function waitForMS(){
+      for(let i=0;i<80;i++){
+        if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === "function") return window.$memberstackDom;
+        await new Promise(r=>setTimeout(r,150));
+      }
+      return null;
+    }
+
+    function fmt(ts){
+      try{
+        const d = new Date(ts);
+        return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+      }catch(e){ return ''; }
+    }
+
+    function esc(s){
+      return String(s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function itemLi(item, compact){
+      const safeTitle = esc(item.title || 'Page');
+      const safeUrl = item.url || '#';
+      // Try multiple date field names
+      const dateValue = item.date || item.timestamp || item.created_at || item.createdAt || item.visitedAt || item.visited_at || '';
+      
+      if (compact) {
+        // Compact view: just show date in parentheses
+        const date = dateValue ? fmt(dateValue) : '';
+        const dateHtml = date ? `<span style="color:#9ca3af;font-size:11px;margin-left:4px;">(${date})</span>` : ``;
+        return `<li style="margin:0 0 8px; line-height:1.25;">
+          • <a href="${safeUrl}" style="color:#fff;text-decoration:none;">${safeTitle}</a>
+          ${dateHtml}
+        </li>`;
+      } else {
+        // Full view: show date and time
+        let dateHtml = '';
+        if (dateValue) {
+          try {
+            const visitDate = new Date(dateValue);
+            const dateStr = visitDate.toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric'});
+            const timeStr = visitDate.toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit'});
+            dateHtml = `<span style="color:#aaaaaa;font-size:12px;margin-left:12px;display:block;">Visited at ${timeStr} — ${dateStr}</span>`;
+          } catch(e) {
+            const date = fmt(dateValue);
+            if (date) dateHtml = `<span style="color:#9ca3af;font-size:12px;"> — ${date}</span>`;
+          }
+        }
+        return `<li style="margin-bottom:10px;line-height:1.4;">
+          <a href="${safeUrl}" style="color:#fff;text-decoration:none;display:block;font-weight:500;">
+            • ${safeTitle}
+          </a>
+          ${dateHtml}
+        </li>`;
+      }
+    }
+
+    function emptyLi(msg){
+      return `<li style="color:#9ca3af; line-height:1.25;">${esc(msg)}</li>`;
+    }
+
+    function normalizeMemberJson(jsonRes){
+      const raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+      // Some shapes are { data: { json: {...} } }
+      if (raw && raw.json && typeof raw.json === "object") return raw.json;
+      return raw || {};
+    }
+
+    async function renderModuleProgress(msInstance){
+      // Re-fetch fresh Memberstack JSON each time to get latest opened modules
+      // msInstance is the Memberstack instance, or null to fetch it
+      let ms = msInstance;
+      if (!ms) {
+        ms = await waitForMS();
+        if (!ms) return;
+      }
+      
+      // Definitive list of all 60 module URLs
+      // Only URLs in this list will be counted as modules
+      const DEFINITIVE_MODULE_URLS = [
+        // Camera (15 modules) - 1-15
+        '/blog-on-photography/what-is-exposure-in-photography',
+        '/blog-on-photography/what-is-aperture-in-photography',
+        '/blog-on-photography/what-is-shutter-speed',
+        '/blog-on-photography/what-is-iso-in-photography',
+        '/blog-on-photography/what-is-manual-exposure-in-photography',
+        '/blog-on-photography/what-is-metering-in-photography',
+        '/blog-on-photography/exposure-bracketing-a-guide-for-photographers',
+        '/blog-on-photography/what-is-focus-in-photography',
+        '/blog-on-photography/what-is-depth-of-field',
+        '/blog-on-photography/what-is-dynamic-range-in-photography',
+        '/blog-on-photography/what-is-white-balance-in-photography',
+        '/blog-on-photography/what-are-camera-drive-modes',
+        '/blog-on-photography/jpeg-vs-raw-the-key-differences',
+        '/blog-on-photography/full-frame-vs-cropped-sensor',
+        '/blog-on-photography/what-is-focal-length-in-photography',
+        // Gear (10 modules) - 16-25
+        '/blog-on-photography/tripod-for-cameras-essential-guide',
+        '/blog-on-photography/are-camera-uv-filters-worth-it',
+        '/blog-on-photography/10-basic-camera-settings-for-camera',
+        '/blog-on-photography/camera-sensor-cleaning-guide',
+        '/blog-on-photography/best-camera-bags-for-different-trips',
+        '/blog-on-photography/what-do-camera-lens-filters-do',
+        '/blog-on-photography/camera-lenses-hire-or-buy',
+        '/blog-on-photography/are-mirrorless-cameras-better-than-dslrs',
+        '/blog-on-photography/photo-editing-software',
+        '/blog-on-photography/7-essential-camera-accessories',
+        // Composition (10 modules) - 26-35
+        '/blog-on-photography/mastering-photography-composition-rules',
+        '/blog-on-photography/what-is-framing-in-photography',
+        '/blog-on-photography/the-art-of-storytelling-photography',
+        '/blog-on-photography/what-are-leading-lines-in-photography',
+        '/blog-on-photography/what-is-negative-space-in-photography',
+        '/blog-on-photography/what-is-contrast-in-photography',
+        '/blog-on-photography/finding-your-compositional-balance',
+        '/blog-on-photography/photography-is-an-art-of-observation',
+        '/blog-on-photography/how-to-improve-your-photography-composition',
+        '/blog-on-photography/how-to-find-your-photography-style',
+        // Genre (10 modules) - 36-45
+        '/blog-on-photography/art-of-macro-photography',
+        '/blog-on-photography/mastering-landscape-photography-tips-and-techniques',
+        '/blog-on-photography/product-photography-setup',
+        '/blog-on-photography/what-is-minimalist-photography',
+        '/blog-on-photography/what-is-still-life-photography',
+        '/blog-on-photography/how-to-take-long-exposure-photos',
+        '/blog-on-photography/architecture-photography-guide',
+        '/blog-on-photography/what-is-portrait-photography',
+        '/blog-on-photography/black-and-white-photography-for-beginners',
+        '/blog-on-photography/street-photography-tips',
+        // Assignments (15 modules) - 46-60
+        '/s/Photography-Practice-Assignment-depth-of-field.pdf',
+        '/s/Photography-Practice-Assignment-Movement-hp37.pdf',
+        '/s/Photography-Practice-Assignment-Triptych.pdf',
+        '/s/Photography-Practice-Assignment-MINIMALISM.pdf',
+        '/s/Photography-Practice-Assignment-Dice-Roll.pdf',
+        '/s/Photography-Practice-Assignment-PORTRAITS.pdf',
+        '/s/Photography-Practice-Assignment-LANDSCAPES.pdf',
+        '/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf',
+        '/s/Still-life-photography-assignment.pdf',
+        '/s/Street-photography-assignment.pdf',
+        '/blogs/mastering-abstract-photography',
+        '/s/Black-and-white-photography-assignment.pdf',
+        '/s/Architecture-photography-assignment.pdf',
+        '/s/Shadows-photography-Assignment.pdf',
+        '/s/THE-SEASONS-photography-Assignment.pdf'
+      ];
+      
+      // Complete mapping of all 45 modules to their categories
+      const MODULE_CATEGORY_MAP = {
+        // Camera (15)
+        '/blog-on-photography/what-is-exposure-in-photography': 'camera',
+        '/blog-on-photography/what-is-aperture-in-photography': 'camera',
+        '/blog-on-photography/what-is-shutter-speed': 'camera',
+        '/blog-on-photography/what-is-iso-in-photography': 'camera',
+        '/blog-on-photography/what-is-manual-exposure-in-photography': 'camera',
+        '/blog-on-photography/what-is-metering-in-photography': 'camera',
+        '/blog-on-photography/exposure-bracketing-a-guide-for-photographers': 'camera',
+        '/blog-on-photography/what-is-focus-in-photography': 'camera',
+        '/blog-on-photography/what-is-depth-of-field': 'camera',
+        '/blog-on-photography/what-is-dynamic-range-in-photography': 'camera',
+        '/blog-on-photography/what-is-white-balance-in-photography': 'camera',
+        '/blog-on-photography/what-are-camera-drive-modes': 'camera',
+        '/blog-on-photography/jpeg-vs-raw-the-key-differences': 'camera',
+        '/blog-on-photography/full-frame-vs-cropped-sensor': 'camera',
+        '/blog-on-photography/what-is-focal-length-in-photography': 'camera',
+        // Gear (10)
+        '/blog-on-photography/tripod-for-cameras-essential-guide': 'gear',
+        '/blog-on-photography/are-camera-uv-filters-worth-it': 'gear',
+        '/blog-on-photography/10-basic-camera-settings-for-camera': 'gear',
+        '/blog-on-photography/camera-sensor-cleaning-guide': 'gear',
+        '/blog-on-photography/best-camera-bags-for-different-trips': 'gear',
+        '/blog-on-photography/what-do-camera-lens-filters-do': 'gear',
+        '/blog-on-photography/camera-lenses-hire-or-buy': 'gear',
+        '/blog-on-photography/are-mirrorless-cameras-better-than-dslrs': 'gear',
+        '/blog-on-photography/photo-editing-software': 'gear',
+        '/blog-on-photography/7-essential-camera-accessories': 'gear',
+        // Composition (10)
+        '/blog-on-photography/mastering-photography-composition-rules': 'composition',
+        '/blog-on-photography/what-is-framing-in-photography': 'composition',
+        '/blog-on-photography/the-art-of-storytelling-photography': 'composition',
+        '/blog-on-photography/what-are-leading-lines-in-photography': 'composition',
+        '/blog-on-photography/what-is-negative-space-in-photography': 'composition',
+        '/blog-on-photography/what-is-contrast-in-photography': 'composition',
+        '/blog-on-photography/finding-your-compositional-balance': 'composition',
+        '/blog-on-photography/photography-is-an-art-of-observation': 'composition',
+        '/blog-on-photography/how-to-improve-your-photography-composition': 'composition',
+        '/blog-on-photography/how-to-find-your-photography-style': 'composition',
+        // Genre (10)
+        '/blog-on-photography/art-of-macro-photography': 'genre',
+        '/blog-on-photography/mastering-landscape-photography-tips-and-techniques': 'genre',
+        '/blog-on-photography/product-photography-setup': 'genre',
+        '/blog-on-photography/what-is-minimalist-photography': 'genre',
+        '/blog-on-photography/what-is-still-life-photography': 'genre',
+        '/blog-on-photography/how-to-take-long-exposure-photos': 'genre',
+        '/blog-on-photography/architecture-photography-guide': 'genre',
+        '/blog-on-photography/what-is-portrait-photography': 'genre',
+        '/blog-on-photography/black-and-white-photography-for-beginners': 'genre',
+        '/blog-on-photography/street-photography-tips': 'genre',
+        // Assignments (15)
+        '/s/Photography-Practice-Assignment-depth-of-field.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-Movement-hp37.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-Triptych.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-MINIMALISM.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-Dice-Roll.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-PORTRAITS.pdf': 'assignment',
+        '/s/Photography-Practice-Assignment-LANDSCAPES.pdf': 'assignment',
+        '/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf': 'assignment',
+        '/s/Still-life-photography-assignment.pdf': 'assignment',
+        '/s/Street-photography-assignment.pdf': 'assignment',
+        '/blogs/mastering-abstract-photography': 'assignment',
+        '/s/Black-and-white-photography-assignment.pdf': 'assignment',
+        '/s/Architecture-photography-assignment.pdf': 'assignment',
+        '/s/Shadows-photography-Assignment.pdf': 'assignment',
+        '/s/THE-SEASONS-photography-Assignment.pdf': 'assignment'
+      };
+      
+      const jsonRes = await ms.getMemberJSON();
+      const memberJson = normalizeMemberJson(jsonRes);
+      const rawResponse = jsonRes;
+      
+      // URL normalizer helper - converts any URL form to canonical path for module tracking
+      // Only used for module tracking keys, not for recent activity rendering
+      function normalizePath(url) {
+        if (!url || typeof url !== 'string') return '/';
+        try {
+          // Strip domain if present
+          let path = url;
+          if (url.startsWith('http://') || url.startsWith('https://')) {
+            try {
+              const urlObj = new URL(url);
+              path = urlObj.pathname;
+            } catch (e) {
+              // If URL parsing fails, try to extract path manually
+              const match = url.match(/https?:\/\/[^\/]+(\/.*)/);
+              if (match) path = match[1];
+            }
+          }
+          // Remove query string and hash
+          path = path.split('?')[0].split('#')[0];
+          // Remove trailing slash (but keep root as '/')
+          path = path.replace(/\/+$/, '') || '/';
+          // Ensure leading slash
+          if (!path.startsWith('/')) path = '/' + path;
+          return path;
+        } catch (e) {
+          return '/';
+        }
+      }
+      
+      // Update debug panel helper (defined first so it's available)
+      function updateDebugPanel(msg, data) {
+        const debugContent = document.getElementById('ar-module-debug-content');
+        if (!debugContent) return;
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = document.createElement('div');
+        entry.style.marginBottom = '8px';
+        entry.style.padding = '6px';
+        entry.style.background = 'rgba(255,255,255,0.05)';
+        entry.style.borderRadius = '4px';
+        entry.innerHTML = `<div style="color:#9ca3af; font-size:10px;">[${timestamp}]</div><div style="color:#e2e8f0; margin-top:2px;">${msg}</div>${data ? '<pre style="margin:4px 0 0 0; font-size:10px; color:#9ca3af; white-space:pre-wrap; word-break:break-all;">' + JSON.stringify(data, null, 2).substring(0, 500) + '</pre>' : ''}`;
+        debugContent.appendChild(entry);
+        debugContent.scrollTop = debugContent.scrollHeight;
+      }
+      
+      // Use the same normalization logic as the tracking script
+      // This matches the tracking script's unwrapStoredJson function
+      function unwrapStoredJson(obj) {
+        // unwrap user-stored "data" wrappers (NOT the API wrapper)
+        let cur = obj;
+        for (let i = 0; i < 10; i++) {
+          if (!cur || typeof cur !== "object") break;
+          if (!cur.data || typeof cur.data !== "object") break;
+
+          const d = cur.data;
+          const looksLikePayload =
+            (d.history && Array.isArray(d.history)) ||
+            (d.bookmarks && Array.isArray(d.bookmarks)) ||
+            (d.arAcademy && typeof d.arAcademy === "object");
+
+          if (looksLikePayload) {
+            cur = d;
+            continue;
+          }
+          break;
+        }
+        return cur || {};
+      }
+      
+      // Handle API wrapper: { data: <storedJson> }
+      let stored = (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") 
+        ? memberJson.data 
+        : (memberJson || {});
+      
+      // Unwrap nested data.data.data... structures
+      const normalized = unwrapStoredJson(stored);
+      
+      // Read from arAcademy.modules.opened (where tracking script writes)
+      let opened = (normalized?.arAcademy?.modules?.opened) || {};
+      
+      // Calculate count BEFORE fallback (so we know if we added new modules)
+      // Normalize keys to count unique modules (handles legacy duplicates)
+      const normalizedKeysBeforeFallback = new Set();
+      Object.keys(opened).forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey)) {
+          normalizedKeysBeforeFallback.add(normalizedKey);
+        }
+      });
+      const openedBeforeFallback = normalizedKeysBeforeFallback.size;
+      
+      // Fallback: Check history for blog pages that match module URLs but weren't tracked
+      // This handles cases where the tracking script didn't run or detect the page
+      // Check ALL possible history locations (root, data, normalized)
+      let history = [];
+      
+      // Priority 1: Root level history from RAW response (most recent - this is where new history lives)
+      // getMemberJSON() might return { data: {...}, history: [...] } or just { data: {...} }
+      if (rawResponse && typeof rawResponse === "object" && rawResponse.history && Array.isArray(rawResponse.history)) {
+        updateDebugPanel('✅ Found root-level history in raw response: ' + rawResponse.history.length + ' items', null);
+        rawResponse.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      } else {
+        updateDebugPanel('❌ No root-level history in raw response', { rawResponseKeys: rawResponse ? Object.keys(rawResponse) : [] });
+      }
+      
+      // Priority 2: Root level history from memberJson (in case it's there)
+      if (memberJson && typeof memberJson === "object" && memberJson.history && Array.isArray(memberJson.history)) {
+        updateDebugPanel('Found root-level history in memberJson: ' + memberJson.history.length + ' items', null);
+        memberJson.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 3: Data wrapper history
+      if (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") {
+        if (memberJson.data.history && Array.isArray(memberJson.data.history)) {
+          updateDebugPanel('Found data-level history: ' + memberJson.data.history.length + ' items', null);
+          memberJson.data.history.forEach(function(item) {
+            if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+              history.push(item);
+            }
+          });
+        }
+      }
+      
+      // Priority 4: Normalized history (from nested structure - old history)
+      if (normalized && normalized.history && Array.isArray(normalized.history)) {
+        updateDebugPanel('Found normalized history (nested): ' + normalized.history.length + ' items', null);
+        normalized.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      updateDebugPanel('Starting module progress render...', null);
+      // Debug: Check all possible history locations
+      const rootHistory = memberJson?.history;
+      const dataHistory = memberJson?.data?.history;
+      const normalizedHistory = normalized?.history;
+      
+      updateDebugPanel('JSON Structure Check:', { 
+        hasArAcademy: !!normalized?.arAcademy, 
+        memberJsonKeys: memberJson ? Object.keys(memberJson) : [],
+        hasRootHistory: !!rootHistory,
+        hasDataHistory: !!dataHistory,
+        hasNormalizedHistory: !!normalizedHistory,
+        rootHistoryCount: rootHistory ? rootHistory.length : 0,
+        dataHistoryCount: dataHistory ? dataHistory.length : 0,
+        normalizedHistoryCount: normalizedHistory ? normalizedHistory.length : 0
+      });
+      updateDebugPanel('Opened before fallback: ' + Object.keys(opened).length + ' items', opened);
+      
+      console.log('[Module Progress] History items found:', history.length, history);
+      console.log('[Module Progress] Opened before fallback:', Object.keys(opened).length, opened);
+      
+      updateDebugPanel('Checking ' + history.length + ' history items against definitive module list...', null);
+      
+      history.forEach(function(item) {
+        if (!item || !item.url) {
+          updateDebugPanel('⚠️ Skipping invalid history item:', item);
+          return;
+        }
+        // Normalize URL to canonical path for module tracking
+        const path = normalizePath(item.url);
+        updateDebugPanel('Checking URL: ' + item.url + ' → normalized: ' + path, null);
+        
+        // Only process if it's in the definitive module list (using normalized path)
+        if (DEFINITIVE_MODULE_URLS.includes(path)) {
+          if (opened[path]) {
+            updateDebugPanel('✓ Already tracked: ' + path, null);
+            // Do NOT update lastAt here - that should only happen on the module page script
+            // Dashboard only creates missing entries, never updates existing ones
+          } else {
+            // Get category from the definitive mapping
+            const category = MODULE_CATEGORY_MAP[path];
+            
+            if (category) {
+              const nowIso = item.date || new Date().toISOString();
+              opened[path] = {
+                cat: category,
+                t: item.title || 'Module',
+                at: nowIso,  // Keep 'at' for backward compatibility
+                lastAt: nowIso  // Add lastAt (will be updated by module page script on re-open)
+              };
+              updateDebugPanel('✅ Added module: ' + path + ' → ' + category, null);
+              console.log('[Module Progress] Added module', path, '→', category);
+            } else {
+              updateDebugPanel('⚠️ Module URL found but no category mapping: ' + path, null);
+              console.warn('[Module Progress] Module URL found but no category mapping:', path);
+            }
+          }
+        } else {
+          updateDebugPanel('⊘ Not in definitive module list: ' + path, null);
+        }
+      });
+      
+      // Filter opened modules to only include those in the definitive list before saving
+      // BUT preserve practice packs (they're saved in the same object but shouldn't be filtered out)
+      // Normalize keys to handle legacy non-normalized URLs
+      const filteredOpenedForSave = {};
+      // Practice pack URLs - defined here to check against when filtering
+      const PRACTICE_PACK_URLS_FOR_FILTER = [
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography',
+        '/blog-on-photography/histogram-and-exposure-review',
+        '/blog-on-photography/white-balance-and-colour-photography',
+        '/blog-on-photography/focus-modes-and-tracking',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment',
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment',
+        '/blog-on-photography/storytelling-narrative-photography-assignment',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/minimalism-photography-assignment',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment',
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson',
+        '/blog-on-photography/landscapes-photography-practise-assignment',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment',
+        '/blog-on-photography/seasons-nature-photography-assignment',
+        '/blog-on-photography/architecture-photography-practice-assignment',
+        '/blog-on-photography/still-life-photography-practice-assignment',
+        '/blog-on-photography/street-photography-practice-assignment',
+        '/blog-on-photography/portrait-photography-practice-assignment',
+        '/blog-on-photography/black-and-white-photography-practise-assignment'
+      ];
+      // Checklist URLs - defined here to check against when filtering
+      const CHECKLIST_URLS_FOR_FILTER = [
+        '/blog-on-photography/photography-storytelling-composition',
+        '/blog-on-photography/composition-photography-style',
+        '/blog-on-photography/photography-composition-observation',
+        '/blog-on-photography/photography-composition-negative-spacee',
+        '/blog-on-photography/photography-composition-leading-lines',
+        '/blog-on-photography/photography-composition-framing',
+        '/blog-on-photography/photography-contrast-composition',
+        '/blog-on-photography/photography-compositional-balance',
+        '/blog-on-photography/photography-composition-rules',
+        '/blog-on-photography/15-principles-to-improve-composition',
+        '/blog-on-photography/street-photography-guide',
+        '/blog-on-photography/still-life-photography-guide',
+        '/blog-on-photography/product-photography-guide',
+        '/blog-on-photography/portrait-photography-guide',
+        '/blog-on-photography/minimalist-photography-guide',
+        '/blog-on-photography/macro-photography-guide',
+        '/blog-on-photography/long-exposure-photography-guide',
+        '/blog-on-photography/landscape-photography-guide',
+        '/blog-on-photography/black-and-white-photography-guide',
+        '/blog-on-photography/architecture-photography-guide-checklist',
+        '/blog-on-photography/camera-white-balance-settings',
+        '/blog-on-photography/camera-shutter-speed-settings',
+        '/blog-on-photography/camera-metering-settings',
+        '/blog-on-photography/camera-manual-exposure-settings',
+        '/blog-on-photography/jpg-vs-raw-settings',
+        '/blog-on-photography/iso-camera-settings',
+        '/blog-on-photography/full-frame-or-crop-sensor',
+        '/blog-on-photography/camera-focus-plane',
+        '/blog-on-photography/lens-focal-length',
+        '/blog-on-photography/camera-exposure-checklist',
+        '/blog-on-photography/exposure-bracketing-checklist',
+        '/blog-on-photography/camera-dynamic-range',
+        '/blog-on-photography/camera-drive-modes-checklist',
+        '/blog-on-photography/depth-of-field-checklist',
+        '/blog-on-photography/aperture-field-checklist'
+      ];
+      Object.keys(opened).forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        // Check if normalized key is in definitive module list OR practice pack list OR checklist list
+        const isModule = DEFINITIVE_MODULE_URLS.includes(normalizedKey);
+        const isPracticePack = PRACTICE_PACK_URLS_FOR_FILTER.includes(normalizedKey);
+        const isChecklist = CHECKLIST_URLS_FOR_FILTER.includes(normalizedKey);
+        
+        if (isModule || isPracticePack || isChecklist) {
+          // Use normalized key (this migrates legacy keys to normalized format)
+          // If normalized key already exists, prefer the one with earlier 'at' timestamp
+          if (!filteredOpenedForSave[normalizedKey] || 
+              (opened[key].at && filteredOpenedForSave[normalizedKey].at && 
+               opened[key].at < filteredOpenedForSave[normalizedKey].at)) {
+            filteredOpenedForSave[normalizedKey] = opened[key];
+          }
+        }
+      });
+      
+      // Save filtered modules back to Memberstack so they persist
+      // Only save if we added new modules (opened count increased)
+      const openedAfterFallback = Object.keys(filteredOpenedForSave).length;
+      
+      updateDebugPanel('📊 Count check: before=' + openedBeforeFallback + ', after=' + openedAfterFallback, null);
+      
+      // Only save to Memberstack if new module keys were added
+      // This prevents overwriting good data when nothing changed
+      if (openedAfterFallback > openedBeforeFallback) {
+        updateDebugPanel('💾 Saving ' + (openedAfterFallback - openedBeforeFallback) + ' new modules to Memberstack...', null);
+        try {
+          // Ensure arAcademy structure exists
+          if (!normalized.arAcademy) normalized.arAcademy = {};
+          if (!normalized.arAcademy.modules) normalized.arAcademy.modules = {};
+          // Only save modules from the definitive list
+          normalized.arAcademy.modules.opened = filteredOpenedForSave;
+
+          // Save back to Memberstack
+          await ms.updateMemberJSON({ json: normalized });
+          updateDebugPanel('✅ Saved modules to Memberstack', null);
+          console.log('[Module Progress] Saved', openedAfterFallback - openedBeforeFallback, 'new modules to Memberstack');
+        } catch (err) {
+          updateDebugPanel('❌ Failed to save modules: ' + (err?.message || err), null);
+          console.error('[Module Progress] Failed to save modules:', err);
+        }
+      } else {
+        updateDebugPanel('⊘ No new modules added, skipping Memberstack write', null);
+        console.log('[Module Progress] No new modules added, skipping Memberstack write');
+      }
+      
+      // Use filtered modules for counting
+      opened = filteredOpenedForSave;
+      
+      const finalOpenedKeys = Object.keys(opened);
+      const uniqueOpenedModuleKeys = [];
+      const uniqueOpenedModuleSet = new Set();
+      finalOpenedKeys.forEach(function(key) {
+        const normalizedKey = normalizePath(key);
+        if (DEFINITIVE_MODULE_URLS.includes(normalizedKey) && !uniqueOpenedModuleSet.has(normalizedKey)) {
+          uniqueOpenedModuleSet.add(normalizedKey);
+          uniqueOpenedModuleKeys.push(normalizedKey);
+        }
+      });
+      const totalOpened = uniqueOpenedModuleKeys.length;
+
+      // Category totals
+      const totals = {
+        camera: 15,
+        gear: 10,
+        composition: 10,
+        genre: 10,
+        assignment: 15
+      };
+
+      // Count by category (only from definitive modules)
+      const counts = {
+        camera: 0,
+        gear: 0,
+        composition: 0,
+        genre: 0,
+        assignment: 0
+      };
+
+      uniqueOpenedModuleKeys.forEach(function(path){
+        const item = opened[path];
+        if (item && item.cat) {
+          const cat = item.cat.toLowerCase();
+          if (cat in counts) {
+            counts[cat]++;
+          }
+        } else {
+          // Fallback: check category from MODULE_CATEGORY_MAP
+          const normalizedPath = normalizePath(path);
+          const mappedCat = MODULE_CATEGORY_MAP[normalizedPath];
+          if (mappedCat && mappedCat.toLowerCase() in counts) {
+            counts[mappedCat.toLowerCase()]++;
+          }
+        }
+      });
+      
+      updateDebugPanel('📊 Total opened after fallback: ' + totalOpened, opened);
+      updateDebugPanel('Final counts: Camera=' + counts.camera + ', Gear=' + counts.gear + ', Composition=' + counts.composition + ', Genre=' + counts.genre + ', Assignments=' + counts.assignment, null);
+      
+      console.log('[Module Progress] Total opened after fallback:', totalOpened, opened);
+      
+      // Update debug panel with counts before UI update
+      const debugContent = document.getElementById('ar-module-debug-content');
+      if (debugContent) {
+        const countsEntry = document.createElement('div');
+        countsEntry.style.marginTop = '10px';
+        countsEntry.style.padding = '8px';
+        countsEntry.style.background = 'rgba(229,114,0,0.1)';
+        countsEntry.style.borderRadius = '4px';
+        countsEntry.style.border = '1px solid rgba(229,114,0,0.3)';
+        countsEntry.innerHTML = `
+          <div style="color:#E57200; font-weight:900; margin-bottom:6px;">📈 Category Counts:</div>
+          <div style="color:#e2e8f0;">Camera: ${counts.camera}/15</div>
+          <div style="color:#e2e8f0;">Gear: ${counts.gear}/10</div>
+          <div style="color:#e2e8f0;">Composition: ${counts.composition}/10</div>
+          <div style="color:#e2e8f0;">Genre: ${counts.genre}/10</div>
+          <div style="color:#e2e8f0;">Assignments: ${counts.assignment}/15</div>
+          <div style="color:#E57200; font-weight:900; margin-top:6px;">Total: ${totalOpened}/60</div>
+        `;
+        debugContent.appendChild(countsEntry);
+      }
+
+      // Update UI using data attributes
+      const totalEl = document.querySelector('[data-ar-mod-opened-total]');
+      const totalsEl = document.querySelector('[data-ar-mod-opened-totals]');
+      const cameraEl = document.querySelector('[data-ar-mod-opened-camera]');
+      const gearEl = document.querySelector('[data-ar-mod-opened-gear]');
+      const compositionEl = document.querySelector('[data-ar-mod-opened-composition]');
+      const genreEl = document.querySelector('[data-ar-mod-opened-genre]');
+      const progressTitleEl = document.getElementById('ar-modules-progress-title');
+
+      // Update progress title (top right of Modules title)
+      if (progressTitleEl) {
+        if (totalOpened > 0) {
+          progressTitleEl.textContent = totalOpened + '/60 opened';
+        } else {
+          progressTitleEl.textContent = '';
+        }
+      }
+
+      if (totalEl) {
+        totalEl.textContent = totalOpened;
+      }
+
+      // Render module grid with category rows
+      const miniGridEl = document.getElementById('ar-modules-mini-grid');
+      if (miniGridEl) {
+        var gridHtml = '';
+        
+        // Define module groups with their ranges and full labels
+        var moduleGroups = [
+          { name: 'camera', start: 1, end: 15, label: '15 Key Camera Setting Modules' },
+          { name: 'gear', start: 16, end: 25, label: '10 Essential Gear and Accessory Guides' },
+          { name: 'composition', start: 26, end: 35, label: '10 Composition Guide Modules' },
+          { name: 'genre', start: 36, end: 45, label: '10 Photography Genre Topic Guides' },
+          { name: 'assignment', start: 46, end: 60, label: '15 Practical Photography Assignments' }
+        ];
+        
+        // Helper function to get module title from URL or opened data
+        function getModuleTitle(moduleUrl, normalizedUrl) {
+          // First try to get title from opened modules data
+          var openedModule = opened[moduleUrl] || opened[normalizedUrl];
+          if (openedModule && openedModule.t) {
+            return openedModule.t;
+          }
+          
+          // Fallback: derive title from URL
+          var urlParts = moduleUrl.split('/').filter(function(p) { return p; });
+          var lastPart = urlParts[urlParts.length - 1] || '';
+          
+          // Handle PDF files
+          if (lastPart.endsWith('.pdf')) {
+            return lastPart.replace(/-/g, ' ').replace(/\.pdf$/i, '').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          }
+          
+          // Handle blog URLs - convert slug to title
+          var title = lastPart
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          
+          return title;
+        }
+        
+        // Render each category as a separate row
+        moduleGroups.forEach(function(group) {
+          // Category label row
+          gridHtml += '<div class="ar-module-category-row" style="width:100%; margin-bottom:6px;">';
+          gridHtml += '<div class="ar-module-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+          gridHtml += '<div class="ar-module-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+          
+          // Cubes for this category
+          for (var i = group.start; i <= group.end; i++) {
+            var moduleUrl = DEFINITIVE_MODULE_URLS[i - 1];
+            if (!moduleUrl) continue; // Skip if URL not defined
+            
+            // Check if module is opened (try both original and normalized paths)
+            var normalizedModuleUrl = normalizePath(moduleUrl);
+            var isOpened = !!(opened[moduleUrl] || opened[normalizedModuleUrl]);
+            
+            var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+            var label = String(i).padStart(2, '0');
+            var fullUrl = 'https://www.alanranger.com' + moduleUrl;
+            var moduleTitle = getModuleTitle(moduleUrl, normalizedModuleUrl);
+            var isPdf = moduleUrl.endsWith('.pdf');
+            
+            // Use escapeHtml if available, otherwise use simple escaping
+            var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+            var safeModuleUrl = (typeof escapeHtml === 'function') ? escapeHtml(moduleUrl) : moduleUrl.replace(/"/g, '&quot;');
+            var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+            var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(moduleTitle) : moduleTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            // Add target="_blank" for PDFs and rel="noopener" for security
+            var targetAttr = isPdf ? ' target="_blank" rel="noopener noreferrer"' : '';
+            
+            gridHtml += '<a href="' + safeUrl + '" class="ar-module-cube ' + statusClass + '" data-module-url="' + safeModuleUrl + '" data-module-number="' + i + '" data-module-category="' + safeCategory + '" data-is-pdf="' + (isPdf ? 'true' : 'false') + '" title="' + safeTitle + '"' + targetAttr + '>' + label + '</a>';
+          }
+          
+          gridHtml += '</div>'; // Close category cubes
+          gridHtml += '</div>'; // Close category row
+        });
+        
+        miniGridEl.innerHTML = gridHtml;
+        miniGridEl.style.display = 'block';
+        
+        // Add click handlers to track module opens (especially for PDFs)
+        var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
+        moduleCubes.forEach(function(cube) {
+          cube.addEventListener('click', async function(e) {
+            var cubeEl = this; // Capture cube element
+            var moduleUrl = cubeEl.getAttribute('data-module-url');
+            var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
+            var category = cubeEl.getAttribute('data-module-category');
+            var moduleTitle = cubeEl.getAttribute('title') || 'Module';
+            
+            if (!moduleUrl) return;
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            
+            // Normalize the URL
+            var normalizedUrl = normalizePath(moduleUrl);
+            
+            // Check if already opened
+            var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
+            var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
+            var persistPromise = Promise.resolve();
+            
+            if (!alreadyOpened) {
+              // Mark as opened immediately (optimistic update)
+              var nowIso = new Date().toISOString();
+              opened[normalizedUrl] = {
+                cat: category,
+                t: moduleTitle,
+                at: nowIso,
+                lastAt: nowIso
+              };
+              
+              // Update the cube visual state
+              cubeEl.classList.remove('status-not-opened');
+              cubeEl.classList.add('status-opened');
+              
+              // Save to Memberstack asynchronously
+              persistPromise = (async function() {
+                try {
+                  // Get current member JSON
+                  var jsonRes = await ms.getMemberJSON();
+                  var memberJson = normalizeMemberJson(jsonRes);
+                  
+                  // Ensure arAcademy structure exists
+                  if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                  if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                  if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                  
+                  // Add the new module
+                  memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                    cat: category,
+                    t: moduleTitle,
+                    at: nowIso,
+                    lastAt: nowIso
+                  };
+                  
+                  // Save back to Memberstack
+                  await ms.updateMemberJSON({ json: memberJson });
+                  
+                  // Update progress count (modules only, unique normalized URLs)
+                  var openedMap = memberJson.arAcademy.modules.opened || {};
+                  var uniqueOpenedModuleCount = 0;
+                  var seenModuleUrls = new Set();
+                  Object.keys(openedMap).forEach(function(key) {
+                    var normalizedKey = normalizePath(key);
+                    if (DEFINITIVE_MODULE_URLS.includes(normalizedKey) && !seenModuleUrls.has(normalizedKey)) {
+                      seenModuleUrls.add(normalizedKey);
+                      uniqueOpenedModuleCount++;
+                    }
+                  });
+                  var progressTitleEl = document.getElementById('ar-modules-progress-title');
+                  if (progressTitleEl) {
+                    progressTitleEl.textContent = uniqueOpenedModuleCount + '/60 opened';
+                  }
+                  
+                  console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
+                } catch (err) {
+                  console.error('[Module Progress] Failed to save module to Memberstack:', err);
+                  // Revert visual state on error
+                  cubeEl.classList.remove('status-opened');
+                  cubeEl.classList.add('status-not-opened');
+                  delete opened[normalizedUrl];
+                }
+              })();
+            }
+
+            if (openInNewTab) {
+              window.open(moduleUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+
+            if (!alreadyOpened) {
+              try {
+                await Promise.race([
+                  persistPromise,
+                  new Promise(function(resolve) { setTimeout(resolve, 350); })
+                ]);
+              } catch (_) {}
+            }
+
+            window.location.href = moduleUrl;
+          });
+        });
+      }
+      
+      // Keep totalsEl for backward compatibility but hide it
+      if (totalsEl) {
+        totalsEl.style.display = 'none';
+      }
+
+      // Update individual category spans (hidden, but available if needed)
+      if (cameraEl) cameraEl.textContent = counts.camera;
+      if (gearEl) gearEl.textContent = counts.gear;
+      if (compositionEl) compositionEl.textContent = counts.composition;
+      if (genreEl) genreEl.textContent = counts.genre;
+      
+      // Render practice packs grid (use same opened modules tracking)
+      // Wrap in try-catch to prevent breaking dashboard
+      try {
+        // Practice packs URLs organized by category
+        const PRACTICE_PACK_URLS = [
+        // Technical Foundations (10) - 1-10
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography',
+        '/blog-on-photography/histogram-and-exposure-review',
+        '/blog-on-photography/white-balance-and-colour-photography',
+        '/blog-on-photography/focus-modes-and-tracking',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment',
+        // Composition & Creative (10) - 11-20
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment',
+        '/blog-on-photography/storytelling-narrative-photography-assignment',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/minimalism-photography-assignment',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment',
+        // Genre-Specific (10) - 21-30
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson',
+        '/blog-on-photography/landscapes-photography-practise-assignment',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment',
+        '/blog-on-photography/seasons-nature-photography-assignment',
+        '/blog-on-photography/architecture-photography-practice-assignment',
+        '/blog-on-photography/still-life-photography-practice-assignment',
+        '/blog-on-photography/street-photography-practice-assignment',
+        '/blog-on-photography/portrait-photography-practice-assignment',
+        '/blog-on-photography/black-and-white-photography-practise-assignment'
+      ];
+      
+      const practicePacksMiniGridEl = document.getElementById('ar-practice-packs-mini-grid');
+      if (practicePacksMiniGridEl) {
+        // Count opened practice packs
+        var practicePacksOpened = 0;
+        PRACTICE_PACK_URLS.forEach(function(packUrl) {
+          if (!packUrl) return;
+          var normalizedPackUrl = normalizePath(packUrl);
+          if (opened[packUrl] || opened[normalizedPackUrl]) {
+            practicePacksOpened++;
+          }
+        });
+        
+        // Update practice packs progress title
+        var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
+        if (practicePacksProgressTitleEl) {
+          if (practicePacksOpened > 0) {
+            practicePacksProgressTitleEl.textContent = practicePacksOpened + '/30 opened';
+          } else {
+            practicePacksProgressTitleEl.textContent = '';
+          }
+        }
+        
+        var practicePacksGridHtml = '';
+        
+        // Define practice pack groups with their ranges and labels
+        var practicePackGroups = [
+          { name: 'technical', start: 0, end: 9, label: 'Technical Foundations' },
+          { name: 'composition', start: 10, end: 19, label: 'Composition & Creative' },
+          { name: 'genre', start: 20, end: 29, label: 'Genre-Specific' }
+        ];
+        
+        // Helper function to get practice pack title from URL
+        function getPracticePackTitle(packUrl, normalizedUrl) {
+          var openedPack = opened[packUrl] || opened[normalizedUrl];
+          if (openedPack && openedPack.t) {
+            return openedPack.t;
+          }
+          // Fallback: derive title from URL
+          var urlParts = packUrl.split('/').filter(function(p) { return p; });
+          var lastPart = urlParts[urlParts.length - 1] || '';
+          var title = lastPart.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          return title;
+        }
+        
+        // Render each category as a separate row
+        practicePackGroups.forEach(function(group) {
+          practicePacksGridHtml += '<div class="ar-practice-pack-category-row" style="width:100%; margin-bottom:6px;">';
+          practicePacksGridHtml += '<div class="ar-practice-pack-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+          practicePacksGridHtml += '<div class="ar-practice-pack-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+          
+          // Cubes for this category
+          for (var i = group.start; i <= group.end; i++) {
+            var packUrl = PRACTICE_PACK_URLS[i];
+            if (!packUrl) continue;
+            
+            var normalizedPackUrl = normalizePath(packUrl);
+            var isOpened = !!(opened[packUrl] || opened[normalizedPackUrl]);
+            var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+            var label = String(i + 1).padStart(2, '0');
+            var fullUrl = 'https://www.alanranger.com' + packUrl;
+            var packTitle = getPracticePackTitle(packUrl, normalizedPackUrl);
+            
+            var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+            var safePackUrl = (typeof escapeHtml === 'function') ? escapeHtml(packUrl) : packUrl.replace(/"/g, '&quot;');
+            var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+            var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(packTitle) : packTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            practicePacksGridHtml += '<a href="' + safeUrl + '" class="ar-practice-pack-cube ' + statusClass + '" data-pack-url="' + safePackUrl + '" data-pack-number="' + (i + 1) + '" data-pack-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+          }
+          
+          practicePacksGridHtml += '</div>';
+          practicePacksGridHtml += '</div>';
+        });
+        
+        practicePacksMiniGridEl.innerHTML = practicePacksGridHtml;
+        practicePacksMiniGridEl.style.display = 'block';
+        
+        // Add click handlers to track practice pack opens (exactly like modules)
+        var practicePackCubes = practicePacksMiniGridEl.querySelectorAll('.ar-practice-pack-cube');
+        practicePackCubes.forEach(function(cube) {
+          cube.addEventListener('click', async function(e) {
+            var cubeEl = this;
+            var packUrl = cubeEl.getAttribute('data-pack-url');
+            var category = cubeEl.getAttribute('data-pack-category');
+            var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
+            
+            if (!packUrl) return;
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            
+            var normalizedUrl = normalizePath(packUrl);
+            var alreadyOpened = !!(opened[packUrl] || opened[normalizedUrl]);
+            var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
+            var persistPromise = Promise.resolve();
+            
+            if (!alreadyOpened) {
+              var nowIso = new Date().toISOString();
+              opened[normalizedUrl] = {
+                cat: category,
+                t: packTitle,
+                at: nowIso,
+                lastAt: nowIso
+              };
+              
+              cubeEl.classList.remove('status-not-opened');
+              cubeEl.classList.add('status-opened');
+              
+              // Save to Memberstack asynchronously
+              persistPromise = (async function() {
+                try {
+                  var jsonRes = await ms.getMemberJSON();
+                  var memberJson = normalizeMemberJson(jsonRes);
+                  
+                  if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                  if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                  if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                  
+                  memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                    cat: category,
+                    t: packTitle,
+                    at: nowIso,
+                    lastAt: nowIso
+                  };
+                  
+                  // Also add to history array
+                  if (!memberJson.history) memberJson.history = [];
+                  var practicePackFullUrl = 'https://www.alanranger.com' + packUrl;
+                  memberJson.history = memberJson.history.filter(function(item) {
+                    return item && item.url !== practicePackFullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+                  });
+                  memberJson.history.unshift({
+                    url: practicePackFullUrl,
+                    title: packTitle,
+                    timestamp: nowIso,
+                    date: nowIso
+                  });
+                  if (memberJson.history.length > 20) {
+                    memberJson.history = memberJson.history.slice(0, 20);
+                  }
+                  
+                  await ms.updateMemberJSON({ json: memberJson });
+                  
+                  // Update practice packs progress count (recalculate from updated memberJson)
+                  var practicePacksOpenedCount = 0;
+                  var openedModules = memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened ? memberJson.arAcademy.modules.opened : {};
+                  PRACTICE_PACK_URLS.forEach(function(packUrl) {
+                    if (!packUrl) return;
+                    var normalizedPackUrl = normalizePath(packUrl);
+                    if (openedModules[packUrl] || openedModules[normalizedPackUrl]) {
+                      practicePacksOpenedCount++;
+                    }
+                  });
+                  
+                  var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
+                  if (practicePacksProgressTitleEl) {
+                    if (practicePacksOpenedCount > 0) {
+                      practicePacksProgressTitleEl.textContent = practicePacksOpenedCount + '/30 opened';
+                    } else {
+                      practicePacksProgressTitleEl.textContent = '';
+                    }
+                  }
+                  
+                  console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
+                } catch (err) {
+                  console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
+                  cubeEl.classList.remove('status-opened');
+                  cubeEl.classList.add('status-not-opened');
+                  delete opened[normalizedUrl];
+                }
+              })();
+            }
+
+            if (openInNewTab) {
+              window.open(packUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+
+            if (!alreadyOpened) {
+              try {
+                await Promise.race([
+                  persistPromise,
+                  new Promise(function(resolve) { setTimeout(resolve, 350); })
+                ]);
+              } catch (_) {}
+            }
+
+            window.location.href = packUrl;
+          });
+        });
+      }
+      } catch (err) {
+        console.error('[Practice Packs] Error rendering practice packs grid:', err);
+        console.error('[Practice Packs] Error details:', err.message, err.stack);
+        // Don't break dashboard if practice packs fail
+      }
+      
+      // Render checklists grid (similar to practice packs)
+      try {
+        // Checklists URLs organized by category (from Excel file)
+        const CHECKLIST_URLS = [
+          // Composition Guides (10) - 1-10
+          '/blog-on-photography/photography-storytelling-composition',
+          '/blog-on-photography/composition-photography-style',
+          '/blog-on-photography/photography-composition-observation',
+          '/blog-on-photography/photography-composition-negative-spacee',
+          '/blog-on-photography/photography-composition-leading-lines',
+          '/blog-on-photography/photography-composition-framing',
+          '/blog-on-photography/photography-contrast-composition',
+          '/blog-on-photography/photography-compositional-balance',
+          '/blog-on-photography/photography-composition-rules',
+          '/blog-on-photography/15-principles-to-improve-composition',
+          // Genre Guides (10) - 11-20
+          '/blog-on-photography/street-photography-guide',
+          '/blog-on-photography/still-life-photography-guide',
+          '/blog-on-photography/product-photography-guide',
+          '/blog-on-photography/portrait-photography-guide',
+          '/blog-on-photography/minimalist-photography-guide',
+          '/blog-on-photography/macro-photography-guide',
+          '/blog-on-photography/long-exposure-photography-guide',
+          '/blog-on-photography/landscape-photography-guide',
+          '/blog-on-photography/black-and-white-photography-guide',
+          '/blog-on-photography/architecture-photography-guide-checklist',
+          // Camera Settings Guides (15) - 21-35
+          '/blog-on-photography/camera-white-balance-settings',
+          '/blog-on-photography/camera-shutter-speed-settings',
+          '/blog-on-photography/camera-metering-settings',
+          '/blog-on-photography/camera-manual-exposure-settings',
+          '/blog-on-photography/jpg-vs-raw-settings',
+          '/blog-on-photography/iso-camera-settings',
+          '/blog-on-photography/full-frame-or-crop-sensor',
+          '/blog-on-photography/camera-focus-plane',
+          '/blog-on-photography/lens-focal-length',
+          '/blog-on-photography/camera-exposure-checklist',
+          '/blog-on-photography/exposure-bracketing-checklist',
+          '/blog-on-photography/camera-dynamic-range',
+          '/blog-on-photography/camera-drive-modes-checklist',
+          '/blog-on-photography/depth-of-field-checklist',
+          '/blog-on-photography/aperture-field-checklist'
+        ];
+        
+        const checklistsMiniGridEl = document.getElementById('ar-checklists-mini-grid');
+        if (checklistsMiniGridEl) {
+          // Count opened checklists
+          var checklistsOpened = 0;
+          CHECKLIST_URLS.forEach(function(checklistUrl) {
+            if (!checklistUrl) return;
+            var normalizedChecklistUrl = normalizePath(checklistUrl);
+            if (opened[checklistUrl] || opened[normalizedChecklistUrl]) {
+              checklistsOpened++;
+            }
+          });
+          
+          // Update checklists progress title
+          var checklistsProgressTitleEl = document.getElementById('ar-checklists-progress-title');
+          if (checklistsProgressTitleEl) {
+            if (checklistsOpened > 0) {
+              checklistsProgressTitleEl.textContent = checklistsOpened + '/35 opened';
+            } else {
+              checklistsProgressTitleEl.textContent = '';
+            }
+          }
+          
+          var checklistsGridHtml = '';
+          
+          // Define checklist groups with their ranges and labels
+          var checklistGroups = [
+            { name: 'composition', start: 0, end: 9, label: 'Composition Guides' },
+            { name: 'genre', start: 10, end: 19, label: 'Genre Guides' },
+            { name: 'camera', start: 20, end: 34, label: 'Camera Settings Guides' }
+          ];
+          
+          // Helper function to get checklist title from URL
+          function getChecklistTitle(checklistUrl, normalizedUrl) {
+            var openedChecklist = opened[checklistUrl] || opened[normalizedUrl];
+            if (openedChecklist && openedChecklist.t) {
+              return openedChecklist.t;
+            }
+            // Fallback: derive title from URL
+            var urlParts = checklistUrl.split('/').filter(function(p) { return p; });
+            var lastPart = urlParts[urlParts.length - 1] || '';
+            var title = lastPart.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+            return title;
+          }
+          
+          // Render each category as a separate row
+          checklistGroups.forEach(function(group) {
+            checklistsGridHtml += '<div class="ar-checklist-category-row" style="width:100%; margin-bottom:6px;">';
+            checklistsGridHtml += '<div class="ar-checklist-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+            checklistsGridHtml += '<div class="ar-checklist-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+            
+            // Cubes for this category
+            for (var i = group.start; i <= group.end; i++) {
+              var checklistUrl = CHECKLIST_URLS[i];
+              if (!checklistUrl) continue;
+              
+              var normalizedChecklistUrl = normalizePath(checklistUrl);
+              var isOpened = !!(opened[checklistUrl] || opened[normalizedChecklistUrl]);
+              var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+              var label = String(i + 1).padStart(2, '0');
+              var fullUrl = 'https://www.alanranger.com' + checklistUrl;
+              var checklistTitle = getChecklistTitle(checklistUrl, normalizedChecklistUrl);
+              
+              var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+              var safeChecklistUrl = (typeof escapeHtml === 'function') ? escapeHtml(checklistUrl) : checklistUrl.replace(/"/g, '&quot;');
+              var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+              var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(checklistTitle) : checklistTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+              
+              checklistsGridHtml += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="ar-checklist-cube ' + statusClass + '" data-checklist-url="' + safeChecklistUrl + '" data-checklist-number="' + (i + 1) + '" data-checklist-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+            }
+            
+            checklistsGridHtml += '</div>';
+            checklistsGridHtml += '</div>';
+          });
+          
+          checklistsMiniGridEl.innerHTML = checklistsGridHtml;
+          checklistsMiniGridEl.style.display = 'block';
+          
+          // Add click handlers to track checklist opens (open PDFs in new tab)
+          var checklistCubes = checklistsMiniGridEl.querySelectorAll('.ar-checklist-cube');
+          checklistCubes.forEach(function(cube) {
+            cube.addEventListener('click', async function(e) {
+              var cubeEl = this;
+              var checklistUrl = cubeEl.getAttribute('data-checklist-url');
+              var category = cubeEl.getAttribute('data-checklist-category');
+              var checklistTitle = cubeEl.getAttribute('title') || 'Checklist';
+              
+              if (!checklistUrl) return;
+              if (e && typeof e.preventDefault === 'function') e.preventDefault();
+              
+              var normalizedUrl = normalizePath(checklistUrl);
+              var alreadyOpened = !!(opened[checklistUrl] || opened[normalizedUrl]);
+              var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
+              var persistPromise = Promise.resolve();
+              
+              if (!alreadyOpened) {
+                var nowIso = new Date().toISOString();
+                opened[normalizedUrl] = {
+                  cat: category,
+                  t: checklistTitle,
+                  at: nowIso,
+                  lastAt: nowIso
+                };
+                
+                cubeEl.classList.remove('status-not-opened');
+                cubeEl.classList.add('status-opened');
+                
+                // Update progress count immediately
+                checklistsOpened++;
+                if (checklistsProgressTitleEl) {
+                  checklistsProgressTitleEl.textContent = checklistsOpened + '/35 opened';
+                }
+                
+                // Save to Memberstack asynchronously
+                persistPromise = (async function() {
+                  try {
+                    var jsonRes = await ms.getMemberJSON();
+                    var memberJson = normalizeMemberJson(jsonRes);
+                    
+                    if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                    if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                    if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                    
+                    memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                      cat: category,
+                      t: checklistTitle,
+                      at: nowIso,
+                      lastAt: nowIso
+                    };
+                    
+                    // Also add to history array
+                    if (!memberJson.history) memberJson.history = [];
+                    var checklistFullUrl = 'https://www.alanranger.com' + checklistUrl;
+                    memberJson.history = memberJson.history.filter(function(item) {
+                      return item && item.url !== checklistFullUrl && item.url !== checklistUrl && item.url !== normalizedUrl;
+                    });
+                    memberJson.history.unshift({
+                      url: checklistFullUrl,
+                      title: checklistTitle,
+                      timestamp: nowIso,
+                      date: nowIso
+                    });
+                    if (memberJson.history.length > 20) {
+                      memberJson.history = memberJson.history.slice(0, 20);
+                    }
+                    
+                    await ms.updateMemberJSON({ json: memberJson });
+                    
+                    console.log('[Checklists] Saved checklist to Memberstack:', normalizedUrl);
+                  } catch (err) {
+                    console.error('[Checklists] Failed to save checklist to Memberstack:', err);
+                    cubeEl.classList.remove('status-opened');
+                    cubeEl.classList.add('status-not-opened');
+                    delete opened[normalizedUrl];
+                    // Revert progress count
+                    checklistsOpened--;
+                    if (checklistsProgressTitleEl) {
+                      checklistsProgressTitleEl.textContent = checklistsOpened > 0 ? checklistsOpened + '/35 opened' : '';
+                    }
+                  }
+                })();
+              }
+
+              if (openInNewTab) {
+                window.open(checklistUrl, '_blank', 'noopener,noreferrer');
+                return;
+              }
+
+              if (!alreadyOpened) {
+                try {
+                  await Promise.race([
+                    persistPromise,
+                    new Promise(function(resolve) { setTimeout(resolve, 350); })
+                  ]);
+                } catch (_) {}
+              }
+
+              window.location.href = checklistUrl;
+            });
+          });
+        }
+      } catch (err) {
+        console.error('[Checklists] Error rendering checklists grid:', err);
+        console.error('[Checklists] Error details:', err.message, err.stack);
+        // Don't break dashboard if checklists fail
+      }
+    }
+    
+    // TEMPORARILY COMMENTED OUT - causing dashboard to break
+    /*
+    function renderPracticePacksGrid(ms, openedModules, normalizePath) {
+      // normalizeMemberJson is available in closure from outer scope
+      function normalizeMemberJson(jsonRes) {
+        const raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+        if (raw && raw.json && typeof raw.json === "object") return raw.json;
+        return raw || {};
+      }
+      
+      const miniGridEl = document.getElementById('ar-practice-packs-mini-grid');
+      if (!miniGridEl) return;
+      
+      // Practice packs URLs organized by category
+      const PRACTICE_PACK_URLS = [
+        // Technical Foundations (10) - 1-10
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography',
+        '/blog-on-photography/histogram-and-exposure-review',
+        '/blog-on-photography/white-balance-and-colour-photography',
+        '/blog-on-photography/focus-modes-and-tracking',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment',
+        // Composition & Creative (10) - 11-20
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment',
+        '/blog-on-photography/storytelling-narrative-photography-assignment',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/minimalism-photography-assignment',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment',
+        // Genre-Specific (10) - 21-30
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson',
+        '/blog-on-photography/landscapes-photography-practise-assignment',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment',
+        '/blog-on-photography/seasons-nature-photography-assignment',
+        '/blog-on-photography/architecture-photography-practice-assignment',
+        '/blog-on-photography/still-life-photography-practice-assignment',
+        '/blog-on-photography/street-photography-practice-assignment',
+        '/blog-on-photography/portrait-photography-practice-assignment',
+        '/blog-on-photography/black-and-white-photography-practise-assignment'
+      ];
+      
+      const PRACTICE_PACK_CATEGORY_MAP = {
+        // Technical Foundations (10)
+        '/blog-on-photography/handheld-vs-tripod-stability-photography-assignment': 'technical',
+        '/blog-on-photography/filters-mastery-nd-gnd-photography': 'technical',
+        '/blog-on-photography/histogram-and-exposure-review': 'technical',
+        '/blog-on-photography/white-balance-and-colour-photography': 'technical',
+        '/blog-on-photography/focus-modes-and-tracking': 'technical',
+        '/blog-on-photography/light-metering-modes-practice-photography-assignment': 'technical',
+        '/blog-on-photography/iso-and-noise-control-practice-assignment': 'technical',
+        '/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment': 'technical',
+        '/blog-on-photography/aperture-and-depth-of-field-assignment': 'technical',
+        '/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment': 'technical',
+        // Composition & Creative (10)
+        '/blog-on-photography/movement-and-intentional-blur-photography-assignment': 'composition',
+        '/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment': 'composition',
+        '/blog-on-photography/lines-shapes-and-geometry-photography-assignment': 'composition',
+        '/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment': 'composition',
+        '/blog-on-photography/colour-theory-in-photography-practise-assignment': 'composition',
+        '/blog-on-photography/storytelling-narrative-photography-assignment': 'composition',
+        '/blog-on-photography/shadows-and-contrast-photography-practice-assignment': 'composition',
+        '/blog-on-photography/abstract-photography-practice-assignment-free-lesson': 'composition',
+        '/blog-on-photography/minimalism-photography-assignment': 'composition',
+        '/blog-on-photography/visual-weight-and-flow-practice-assignment': 'composition',
+        // Genre-Specific (10)
+        '/blog-on-photography/wildlife-photography-practice-assignment-free-lesson': 'genre',
+        '/blog-on-photography/triptych-project-photography-assignment-free-lesson': 'genre',
+        '/blog-on-photography/landscapes-photography-practise-assignment': 'genre',
+        '/blog-on-photography/closeup-macro-photography-practice-assignment': 'genre',
+        '/blog-on-photography/seasons-nature-photography-assignment': 'genre',
+        '/blog-on-photography/architecture-photography-practice-assignment': 'genre',
+        '/blog-on-photography/still-life-photography-practice-assignment': 'genre',
+        '/blog-on-photography/street-photography-practice-assignment': 'genre',
+        '/blog-on-photography/portrait-photography-practice-assignment': 'genre',
+        '/blog-on-photography/black-and-white-photography-practise-assignment': 'genre'
+      };
+      
+      const miniGridEl = document.getElementById('ar-practice-packs-mini-grid');
+      if (!miniGridEl) return;
+      
+      var gridHtml = '';
+      
+      // Define practice pack groups with their ranges and labels
+      var practicePackGroups = [
+        { name: 'technical', start: 0, end: 9, label: 'Technical Foundations' },
+        { name: 'composition', start: 10, end: 19, label: 'Composition & Creative' },
+        { name: 'genre', start: 20, end: 29, label: 'Genre-Specific' }
+      ];
+      
+      // Helper function to get practice pack title from URL
+      function getPracticePackTitle(packUrl, normalizedUrl) {
+        // First try to get title from opened modules data (practice packs use same tracking)
+        var openedPack = openedModules[packUrl] || openedModules[normalizedUrl];
+        if (openedPack && openedPack.t) {
+          return openedPack.t;
+        }
+        
+        // Fallback: derive title from URL
+        var urlParts = packUrl.split('/').filter(function(p) { return p; });
+        var lastPart = urlParts[urlParts.length - 1] || '';
+        
+        // Convert slug to title
+        var title = lastPart
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+        
+        return title;
+      }
+      
+      // Render each category as a separate row
+      practicePackGroups.forEach(function(group) {
+        // Category label row
+        gridHtml += '<div class="ar-practice-pack-category-row" style="width:100%; margin-bottom:6px;">';
+        gridHtml += '<div class="ar-practice-pack-category-label" style="font-size:11px; font-weight:600; color:rgba(255,255,255,0.5); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">' + group.label + '</div>';
+        gridHtml += '<div class="ar-practice-pack-category-cubes" style="display:flex; flex-wrap:wrap; gap:4px;">';
+        
+        // Cubes for this category
+        for (var i = group.start; i <= group.end; i++) {
+          var packUrl = PRACTICE_PACK_URLS[i];
+          if (!packUrl) continue; // Skip if URL not defined
+          
+          // Check if practice pack is opened (try both original and normalized paths)
+          var normalizedPackUrl = normalizePath(packUrl);
+          var isOpened = !!(openedModules[packUrl] || openedModules[normalizedPackUrl]);
+          
+          // Debug logging
+          if (i === 0 && group.start === 0) {
+            console.log('[Practice Packs] Rendering grid. Sample check:', {
+              packUrl: packUrl,
+              normalizedPackUrl: normalizedPackUrl,
+              isOpened: isOpened,
+              openedModulesKeys: Object.keys(openedModules).slice(0, 5),
+              openedModulesSample: openedModules[normalizedPackUrl] || openedModules[packUrl]
+            });
+          }
+          
+          var statusClass = isOpened ? 'status-opened' : 'status-not-opened';
+          var label = String(i + 1).padStart(2, '0'); // Number from 01-30
+          var fullUrl = 'https://www.alanranger.com' + packUrl;
+          var packTitle = getPracticePackTitle(packUrl, normalizedPackUrl);
+          
+          // Use escapeHtml if available, otherwise use simple escaping
+          var safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(fullUrl) : fullUrl.replace(/"/g, '&quot;');
+          var safePackUrl = (typeof escapeHtml === 'function') ? escapeHtml(packUrl) : packUrl.replace(/"/g, '&quot;');
+          var safeCategory = (typeof escapeHtml === 'function') ? escapeHtml(group.name) : group.name.replace(/"/g, '&quot;');
+          var safeTitle = (typeof escapeHtml === 'function') ? escapeHtml(packTitle) : packTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          
+          gridHtml += '<a href="' + safeUrl + '" class="ar-practice-pack-cube ' + statusClass + '" data-pack-url="' + safePackUrl + '" data-pack-number="' + (i + 1) + '" data-pack-category="' + safeCategory + '" title="' + safeTitle + '">' + label + '</a>';
+        }
+        
+        gridHtml += '</div>'; // Close category cubes
+        gridHtml += '</div>'; // Close category row
+      });
+      
+      miniGridEl.innerHTML = gridHtml;
+      miniGridEl.style.display = 'block';
+      
+      // Add click handlers to track practice pack opens (exactly like modules)
+      var practicePackCubes = miniGridEl.querySelectorAll('.ar-practice-pack-cube');
+      practicePackCubes.forEach(function(cube) {
+        cube.addEventListener('click', function(e) {
+          var cubeEl = this; // Capture cube element
+          var packUrl = cubeEl.getAttribute('data-pack-url');
+          var category = cubeEl.getAttribute('data-pack-category');
+          var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
+          
+          if (!packUrl) return;
+          
+          // Normalize the URL
+          var normalizedUrl = normalizePath(packUrl);
+          
+          // Check if already opened
+          var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
+          
+          if (!alreadyOpened) {
+            // Mark as opened immediately (optimistic update)
+            var nowIso = new Date().toISOString();
+            openedModules[normalizedUrl] = {
+              cat: category,
+              t: packTitle,
+              at: nowIso,
+              lastAt: nowIso
+            };
+            
+            // Update the cube visual state
+            cubeEl.classList.remove('status-not-opened');
+            cubeEl.classList.add('status-opened');
+            
+            // Save to Memberstack asynchronously
+            (async function() {
+              try {
+                // Get current member JSON
+                var jsonRes = await ms.getMemberJSON();
+                var memberJson = normalizeMemberJson(jsonRes);
+                
+                // Ensure arAcademy structure exists
+                if (!memberJson.arAcademy) memberJson.arAcademy = {};
+                if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+                if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+                
+                // Add the new practice pack (using same structure as modules)
+                memberJson.arAcademy.modules.opened[normalizedUrl] = {
+                  cat: category,
+                  t: packTitle,
+                  at: nowIso,
+                  lastAt: nowIso
+                };
+                
+                // Also add to history array for recent activity tracking
+                if (!memberJson.history) memberJson.history = [];
+                var fullUrl = 'https://www.alanranger.com' + packUrl;
+                // Remove existing entry if present (to move to top)
+                memberJson.history = memberJson.history.filter(function(item) {
+                  return item && item.url !== fullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+                });
+                // Add to beginning of history array (most recent first)
+                memberJson.history.unshift({
+                  url: fullUrl,
+                  title: packTitle,
+                  timestamp: nowIso,
+                  date: nowIso
+                });
+                // Limit history to last 20 items
+                if (memberJson.history.length > 20) {
+                  memberJson.history = memberJson.history.slice(0, 20);
+                }
+                
+                // Save back to Memberstack
+                await ms.updateMemberJSON({ json: memberJson });
+                
+                console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
+              } catch (err) {
+                console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
+                // Revert visual state on error
+                cubeEl.classList.remove('status-opened');
+                cubeEl.classList.add('status-not-opened');
+                delete openedModules[normalizedUrl];
+              }
+            })();
+          }
+        });
+      });
+    }
+    */
+
+    async function run(){
+      const ms = await waitForMS();
+      if(!ms) return;
+
+      const who = await ms.getCurrentMember();
+      if(!who || !who.data) return;
+
+      const jsonRes = await ms.getMemberJSON();
+      // Debug: Log raw response to see structure
+      console.log('[Dashboard] Raw getMemberJSON() response:', jsonRes);
+      console.log('[Dashboard] Response keys:', jsonRes ? Object.keys(jsonRes) : 'null');
+      const memberJson = normalizeMemberJson(jsonRes);
+      // Also preserve raw response for root-level history access
+      const rawResponse = jsonRes;
+
+      // Collect history from ALL possible sources (like renderModuleProgress does)
+      let history = [];
+      
+      // Priority 1: Root level history from RAW response (most recent - this is where new history lives)
+      if (rawResponse && typeof rawResponse === "object" && rawResponse.history && Array.isArray(rawResponse.history)) {
+        rawResponse.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 2: Root level history from memberJson
+      if (memberJson && typeof memberJson === "object" && memberJson.history && Array.isArray(memberJson.history)) {
+        memberJson.history.forEach(function(item) {
+          if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+            history.push(item);
+          }
+        });
+      }
+      
+      // Priority 3: Data wrapper history
+      if (memberJson && typeof memberJson === "object" && memberJson.data && typeof memberJson.data === "object") {
+        if (memberJson.data.history && Array.isArray(memberJson.data.history)) {
+          memberJson.data.history.forEach(function(item) {
+            if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+              history.push(item);
+            }
+          });
+        }
+      }
+      
+      // Priority 4: Check nested data structures (unwrap stored JSON wrappers)
+      let cur = memberJson;
+      for (let i = 0; i < 10; i++) {
+        if (!cur || typeof cur !== "object") break;
+        if (!cur.data || typeof cur.data !== "object") break;
+        const d = cur.data;
+        const looksLikePayload = (d.history && Array.isArray(d.history)) || (d.bookmarks && Array.isArray(d.bookmarks)) || (d.arAcademy && typeof d.arAcademy === "object");
+        if (looksLikePayload) {
+          if (d.history && Array.isArray(d.history)) {
+            d.history.forEach(function(item) {
+              if (item && item.url && !history.find(function(h) { return h && h.url === item.url; })) {
+                history.push(item);
+              }
+            });
+          }
+          cur = d;
+          continue;
+        }
+        break;
+      }
+      
+      const bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks : [];
+
+      // Render module progress - run multiple times to ensure it runs after tracking script
+      // Tracking script runs at DOMContentLoaded + 1500ms, so we run at multiple intervals
+      // Pass ms instance so it can re-fetch fresh data each time
+      renderModuleProgress(ms);
+      setTimeout(function() { renderModuleProgress(ms); }, 2000);
+      setTimeout(function() { renderModuleProgress(ms); }, 3000);
+      setTimeout(function() { renderModuleProgress(ms); }, 4000);
+      
+
+      // Full section lists
+      const historyList = document.getElementById('history-list');
+      const bookmarksList = document.getElementById('bookmarks-list');
+      
+      // Build combined and sorted history (used by both main list and mini tile)
+      // Combine history with opened modules to show up to 10 items
+      // History might be limited to 5 by the tracking script, so supplement with opened modules
+      const openedModules = memberJson?.arAcademy?.modules?.opened || {};
+      const openedModulesArray = Object.keys(openedModules).map(function(url) {
+        const mod = openedModules[url];
+        return {
+          url: url,
+          title: mod.t || 'Module',
+          date: mod.at || new Date().toISOString(),
+          timestamp: mod.at || new Date().toISOString()
+        };
+      });
+      
+      // Merge history and opened modules, removing duplicates by URL
+      // Exclude academy dashboard from the list
+      const combinedHistory = [];
+      const seenUrls = new Set();
+      
+      // Helper function to normalize URL and check if it's dashboard
+      function isDashboard(item) {
+        if (!item || !item.url) return false;
+        const url = item.url.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+        const isDashboardUrl = url === '/academy/dashboard';
+        const isDashboardTitle = item.title && item.title.toLowerCase().includes('academy dashboard');
+        return isDashboardUrl || isDashboardTitle;
+      }
+      
+      // First, add all history items (excluding dashboard)
+      history.forEach(function(item) {
+        if (item && item.url && !isDashboard(item) && !seenUrls.has(item.url)) {
+          combinedHistory.push(item);
+          seenUrls.add(item.url);
+        }
+      });
+      
+      // Then, add opened modules that aren't already in history (excluding dashboard)
+      openedModulesArray.forEach(function(item) {
+        if (item && item.url && !isDashboard(item) && !seenUrls.has(item.url)) {
+          combinedHistory.push(item);
+          seenUrls.add(item.url);
+        }
+      });
+      
+      console.log('[Dashboard] History items:', history.length, '| Opened modules:', openedModulesArray.length, '| Combined:', combinedHistory.length);
+      
+      // Sort combined history by date (most recent first)
+      const sortedHistory = combinedHistory.slice().sort(function(a, b) {
+        const dateA = a.date || a.timestamp || a.created_at || a.createdAt || a.visitedAt || a.visited_at || '';
+        const dateB = b.date || b.timestamp || b.created_at || b.createdAt || b.visitedAt || b.visited_at || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        try {
+          return new Date(dateB) - new Date(dateA); // Most recent first
+        } catch (e) {
+          return 0;
+        }
+      });
+      
+      if (historyList) {
+        const recentHistory = sortedHistory.slice(0, 10); // Take first 10 (most recent)
+        console.log('[Dashboard] Showing', recentHistory.length, 'of', sortedHistory.length, 'total combined items');
+        historyList.innerHTML = recentHistory.length
+          ? recentHistory.map(i => itemLi(i, false)).join('')
+          : emptyLi("No recent activity yet.");
+      }
+
+      if (bookmarksList) {
+        bookmarksList.innerHTML = bookmarks.length
+          ? bookmarks.map(i => itemLi(i, false)).join('')
+          : emptyLi("No bookmarks yet.");
+      }
+
+      // Mini tile lists (top 3)
+      const historyMini = document.getElementById('history-mini');
+      const bookmarksMini = document.getElementById('bookmarks-mini');
+
+      if (bookmarksMini) {
+        // Sort bookmarks by date (most recent first), then take first 3
+        const sortedBookmarks = bookmarks.slice().sort(function(a, b) {
+          const dateA = a.date || a.timestamp || a.created_at || a.createdAt || a.visitedAt || a.visited_at || '';
+          const dateB = b.date || b.timestamp || b.created_at || b.createdAt || b.visitedAt || b.visited_at || '';
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          try {
+            return new Date(dateB) - new Date(dateA); // Most recent first
+          } catch (e) {
+            return 0;
+          }
+        });
+        const topB = sortedBookmarks.slice(0, 3); // Take first 3 (most recent)
+        bookmarksMini.innerHTML = topB.length
+          ? topB.map(i => itemLi(i, true)).join('')
+          : emptyLi("No bookmarks yet.");
+      }
+
+      if (historyMini) {
+        // Use the same sorted history as the main list, then take first 8 (most recent)
+        const topH = sortedHistory.slice(0, 8);
+        historyMini.innerHTML = topH.length
+          ? topH.map(i => itemLi(i, true)).join('')
+          : emptyLi("No recent activity yet.");
+      }
+
+      // Clear bookmarks
+      const clear = document.getElementById('clear-bookmarks');
+      if (clear) {
+        clear.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const jsonRes2 = await ms.getMemberJSON();
+          const memberJson2 = normalizeMemberJson(jsonRes2);
+          await ms.updateMemberJSON({ json: { ...memberJson2, bookmarks: [] } });
+
+          if (bookmarksList) bookmarksList.innerHTML = emptyLi("No bookmarks yet.");
+          if (bookmarksMini) bookmarksMini.innerHTML = emptyLi("No bookmarks yet.");
+        }, { passive: false });
+      }
+
+      // Clear history
+      const clearHistory = document.getElementById('clear-history');
+      if (clearHistory) {
+        clearHistory.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const jsonRes2 = await ms.getMemberJSON();
+          const memberJson2 = normalizeMemberJson(jsonRes2);
+          
+          // Clear history arrays (root level and in data)
+          const updatedJson = { ...memberJson2 };
+          updatedJson.history = [];
+          if (updatedJson.data) {
+            updatedJson.data = { ...updatedJson.data, history: [] };
+          }
+          
+          // Clear opened modules tracking
+          if (updatedJson.arAcademy && updatedJson.arAcademy.modules) {
+            updatedJson.arAcademy = {
+              ...updatedJson.arAcademy,
+              modules: {
+                ...updatedJson.arAcademy.modules,
+                opened: {}
+              }
+            };
+          } else if (updatedJson.arAcademy) {
+            updatedJson.arAcademy = {
+              ...updatedJson.arAcademy,
+              modules: { opened: {} }
+            };
+          } else {
+            updatedJson.arAcademy = { modules: { opened: {} } };
+          }
+          
+          await ms.updateMemberJSON({ json: updatedJson });
+
+          if (historyList) historyList.innerHTML = emptyLi("No recent activity yet.");
+          if (historyMini) historyMini.innerHTML = emptyLi("No recent activity yet.");
+        }, { passive: false });
+      }
+    }
+
+    function kick(){
+      // Run now, and again shortly after (Memberstack sometimes hydrates late)
+      run();
+      setTimeout(run, 600);
+      setTimeout(run, 1500);
+    }
+
+    // Robust start (works even if added after window.load)
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      setTimeout(kick, 0);
+    } else {
+      document.addEventListener("DOMContentLoaded", () => setTimeout(kick, 0));
+      window.addEventListener("load", () => setTimeout(kick, 0));
+    }
+
+    // Also update module counts when page becomes visible (user returns to dashboard)
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && window.location.pathname === "/academy/dashboard") {
+        setTimeout(async function() {
+          const ms = await waitForMS();
+          if (!ms) return;
+          const who = await ms.getCurrentMember();
+          if (!who || !who.data) return;
+          // Pass ms instance so it re-fetches fresh data
+          renderModuleProgress(ms);
+        }, 500);
+      }
+    });
+  })();
+  
