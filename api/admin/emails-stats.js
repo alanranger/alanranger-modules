@@ -74,7 +74,25 @@ function nextLondon9AMIso(nowMs) {
   return null;
 }
 
-async function countTrialReminderEligible(daysAhead, nowMs) {
+// Build a Set of member_ids for which we actually have email + name in the
+// cache. Everything we count in the tiles must belong to this set, otherwise
+// the webhook would skip them with "no email on file" and the tile would be
+// lying about deliverable candidates. Also dedupes trial rows by member_id
+// (we have a known case of duplicate rows 3 min apart for one member).
+async function fetchContactableMemberIds() {
+  if (!supabase) return new Set();
+  const { data, error } = await supabase
+    .from("ms_members_cache")
+    .select("member_id")
+    .not("email", "is", null);
+  if (error) {
+    console.warn("[emails-stats] contactable set failed:", error.message);
+    return new Set();
+  }
+  return new Set((data || []).map((r) => r.member_id));
+}
+
+async function countTrialReminderEligible(daysAhead, nowMs, contactable) {
   if (!supabase) return 0;
   // Mirror the production webhook: qualifying trial_end_at falls on the same
   // UTC calendar day as (now + daysAhead). So Day -1 run at 09:00 today targets
@@ -85,9 +103,9 @@ async function countTrialReminderEligible(daysAhead, nowMs) {
     target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate(), 0, 0, 0, 0
   ));
   const endOfDay = new Date(startOfDay.getTime() + DAY_MS - 1);
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("academy_trial_history")
-    .select("member_id", { count: "exact", head: true })
+    .select("member_id")
     .is("converted_at", null)
     .gte("trial_end_at", startOfDay.toISOString())
     .lte("trial_end_at", endOfDay.toISOString());
@@ -95,10 +113,17 @@ async function countTrialReminderEligible(daysAhead, nowMs) {
     console.warn(`[emails-stats] trial count ${daysAhead}d failed:`, error.message);
     return 0;
   }
-  return count || 0;
+  const ids = new Set((data || []).map((r) => r.member_id).filter((id) => contactable.has(id)));
+  return ids.size;
 }
 
-async function countRewindEligible(stage, nowMs) {
+function rewindRowPassesGap(row, stage, nowMs) {
+  if (!stage.gapDays) return true;
+  if (!row.reengagement_last_sent_at) return false;
+  return new Date(row.reengagement_last_sent_at).getTime() <= nowMs - stage.gapDays * DAY_MS;
+}
+
+async function countRewindEligible(stage, nowMs, contactable) {
   if (!supabase) return 0;
   const maxEndIso = new Date(nowMs - stage.minDays * DAY_MS).toISOString();
   const minEndIso = new Date(nowMs - REACH_BACK_DAYS * DAY_MS).toISOString();
@@ -115,14 +140,13 @@ async function countRewindEligible(stage, nowMs) {
     console.warn(`[emails-stats] rewind count ${stage.key} failed:`, error.message);
     return 0;
   }
-  const rows = data || [];
-  if (!stage.gapDays) return rows.length;
-  // Attempts 2 and 3 must ALSO have gone `gapDays` since the last send.
-  const gapCutoffMs = nowMs - stage.gapDays * DAY_MS;
-  return rows.filter((r) => {
-    if (!r.reengagement_last_sent_at) return false;
-    return new Date(r.reengagement_last_sent_at).getTime() <= gapCutoffMs;
-  }).length;
+  const uniqueIds = new Set();
+  for (const row of data || []) {
+    if (!contactable.has(row.member_id)) continue;
+    if (!rewindRowPassesGap(row, stage, nowMs)) continue;
+    uniqueIds.add(row.member_id);
+  }
+  return uniqueIds.size;
 }
 
 async function countSentInWindow(stageKey, windowMs, nowMs) {
@@ -142,9 +166,9 @@ async function countSentInWindow(stageKey, windowMs, nowMs) {
   return count || 0;
 }
 
-async function statsForTrialStage(stage, nowMs) {
+async function statsForTrialStage(stage, nowMs, contactable) {
   const [eligible, last24h, last7d] = await Promise.all([
-    countTrialReminderEligible(stage.daysAhead, nowMs),
+    countTrialReminderEligible(stage.daysAhead, nowMs, contactable),
     countSentInWindow(stage.key, DAY_MS, nowMs),
     countSentInWindow(stage.key, 7 * DAY_MS, nowMs),
   ]);
@@ -158,9 +182,9 @@ async function statsForTrialStage(stage, nowMs) {
   };
 }
 
-async function statsForRewindStage(stage, nowMs) {
+async function statsForRewindStage(stage, nowMs, contactable) {
   const [eligible, last24h, last7d] = await Promise.all([
-    countRewindEligible(stage, nowMs),
+    countRewindEligible(stage, nowMs, contactable),
     countSentInWindow(stage.key, DAY_MS, nowMs),
     countSentInWindow(stage.key, 7 * DAY_MS, nowMs),
   ]);
@@ -187,11 +211,12 @@ module.exports = async function handler(req, res) {
 
   try {
     const nowMs = Date.now();
+    const contactable = await fetchContactableMemberIds();
     const trialResults = await Promise.all(
-      TRIAL_STAGES.map((s) => statsForTrialStage(s, nowMs))
+      TRIAL_STAGES.map((s) => statsForTrialStage(s, nowMs, contactable))
     );
     const rewindResults = await Promise.all(
-      REWIND_STAGES.map((s) => statsForRewindStage(s, nowMs))
+      REWIND_STAGES.map((s) => statsForRewindStage(s, nowMs, contactable))
     );
     return res.status(200).json({
       success: true,
