@@ -674,6 +674,23 @@ function PreviewPanel({ preview, stage, memberEmail, onTestSend, testState }) {
 
 const SCHEDULE_DOW_LABELS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 
+// The admin page runs on a dark theme but the Templates section renders
+// email content (which is always sent as a light-theme HTML document). To
+// avoid inheriting page-level light-on-dark text onto light card backgrounds,
+// every element inside a TemplateCard uses explicit colours from this palette.
+const TPL_PALETTE = Object.freeze({
+  cardBg: '#ffffff',
+  cardText: '#111827',
+  cardBorder: '#d1d5db',
+  subtleBg: '#f9fafb',
+  subtleBorder: '#e5e7eb',
+  labelMuted: '#4b5563',
+  metaMuted: '#6b7280',
+  primary: '#2563eb',
+  primaryText: '#ffffff',
+  danger: '#b91c1c',
+});
+
 function formatScheduleSummary(schedule) {
   if (!schedule) return 'No schedule row';
   const days = Array.isArray(schedule.send_days) ? schedule.send_days : [];
@@ -705,27 +722,29 @@ function TemplateCard({ stage, expanded, onToggle, onUpdated }) {
   const [editing, setEditing] = useState(false);
   return (
     <div style={{
-      border: '1px solid var(--ar-border, #ddd)', borderRadius: 6,
-      marginBottom: 12, background: 'var(--ar-surface, #fff)',
+      border: `1px solid ${TPL_PALETTE.cardBorder}`, borderRadius: 6,
+      marginBottom: 12, background: TPL_PALETTE.cardBg,
+      color: TPL_PALETTE.cardText,
     }}>
       <button type="button" onClick={onToggle} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         width: '100%', padding: '12px 16px', background: 'transparent',
         border: 'none', cursor: 'pointer', textAlign: 'left',
+        color: TPL_PALETTE.cardText,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-          <span style={{ fontWeight: 600 }}>{stage.label}</span>
+          <span style={{ fontWeight: 600, color: TPL_PALETTE.cardText }}>{stage.label}</span>
           <TemplateStatusBadge isOverridden={stage.is_overridden} />
-          <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
+          <span style={{ fontSize: 12, color: TPL_PALETTE.metaMuted }}>
             {formatScheduleSummary(stage.schedule)}
           </span>
         </div>
-        <span style={{ fontSize: 14, color: 'var(--ar-text-muted)' }}>
+        <span style={{ fontSize: 14, color: TPL_PALETTE.metaMuted }}>
           {expanded ? '−' : '+'}
         </span>
       </button>
       {expanded ? (
-        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--ar-border, #eee)' }}>
+        <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${TPL_PALETTE.subtleBorder}` }}>
           {editing ? (
             <TemplateEditor
               stage={stage}
@@ -748,29 +767,32 @@ function TemplateBody({ stage, onEdit }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" onClick={onEdit} style={{
-          padding: '6px 14px', background: 'var(--ar-primary, #2563eb)',
-          color: '#fff', border: 'none', borderRadius: 4, fontSize: 13,
-          cursor: 'pointer', fontWeight: 500,
+          padding: '6px 14px', background: TPL_PALETTE.primary,
+          color: TPL_PALETTE.primaryText, border: 'none', borderRadius: 4,
+          fontSize: 13, cursor: 'pointer', fontWeight: 500,
         }}>Edit</button>
       </div>
-      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+      <div style={{ marginTop: 12, fontSize: 12, color: TPL_PALETTE.labelMuted }}>
         <strong>Subject:</strong>
       </div>
       <div style={{
-        padding: 8, background: 'var(--ar-surface-alt, #f9fafb)',
+        padding: 8, background: TPL_PALETTE.subtleBg,
+        border: `1px solid ${TPL_PALETTE.subtleBorder}`,
         borderRadius: 4, fontSize: 13, marginTop: 4, fontFamily: 'monospace',
+        color: TPL_PALETTE.cardText,
       }}>{subject}</div>
-      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+      <div style={{ marginTop: 12, fontSize: 12, color: TPL_PALETTE.labelMuted }}>
         <strong>Body (markdown-lite with {'{{merge_tags}}'}):</strong>
       </div>
       <pre style={{
-        padding: 12, background: 'var(--ar-surface-alt, #f9fafb)',
+        padding: 12, background: TPL_PALETTE.subtleBg,
         borderRadius: 4, fontSize: 12, marginTop: 4, whiteSpace: 'pre-wrap',
         fontFamily: 'monospace', maxHeight: 400, overflow: 'auto',
-        border: '1px solid var(--ar-border, #eee)',
+        border: `1px solid ${TPL_PALETTE.subtleBorder}`,
+        color: TPL_PALETTE.cardText,
       }}>{body}</pre>
       {stage.template_updated_at ? (
-        <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: TPL_PALETTE.metaMuted, marginTop: 8 }}>
           Last edited {formatDateTimeShort(stage.template_updated_at)}
           {stage.template_updated_by ? ` by ${stage.template_updated_by}` : ''}
         </div>
@@ -819,7 +841,7 @@ function TemplateEditor({ stage, onCancel, onSaved }) {
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 4 }}>
+      <div style={{ fontSize: 12, color: TPL_PALETTE.labelMuted, marginBottom: 4 }}>
         <strong>Subject:</strong>
       </div>
       <input
@@ -827,12 +849,12 @@ function TemplateEditor({ stage, onCancel, onSaved }) {
         disabled={saving}
         style={{
           width: '100%', padding: '6px 10px', fontSize: 13, fontFamily: 'monospace',
-          border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
-          background: 'var(--ar-surface, #fff)', color: 'var(--ar-text)',
+          border: `1px solid ${TPL_PALETTE.cardBorder}`, borderRadius: 4,
+          background: TPL_PALETTE.cardBg, color: TPL_PALETTE.cardText,
           boxSizing: 'border-box',
         }}
       />
-      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', margin: '12px 0 4px' }}>
+      <div style={{ fontSize: 12, color: TPL_PALETTE.labelMuted, margin: '12px 0 4px' }}>
         <strong>Body (markdown-lite) + live preview:</strong>
       </div>
       <div style={{
@@ -844,9 +866,9 @@ function TemplateEditor({ stage, onCancel, onSaved }) {
           disabled={saving} spellCheck={false}
           style={{
             padding: 10, fontSize: 12, fontFamily: 'monospace',
-            border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
-            resize: 'none', background: 'var(--ar-surface-alt, #fafafa)',
-            color: 'var(--ar-text)', boxSizing: 'border-box', overflow: 'auto',
+            border: `1px solid ${TPL_PALETTE.cardBorder}`, borderRadius: 4,
+            resize: 'none', background: TPL_PALETTE.subtleBg,
+            color: TPL_PALETTE.cardText, boxSizing: 'border-box', overflow: 'auto',
           }}
         />
         <iframe
@@ -854,33 +876,33 @@ function TemplateEditor({ stage, onCancel, onSaved }) {
           srcDoc={previewSrc}
           sandbox=""
           style={{
-            border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
+            border: `1px solid ${TPL_PALETTE.cardBorder}`, borderRadius: 4,
             background: '#fff', width: '100%', height: '100%',
           }}
         />
       </div>
       {error ? (
-        <div style={{ marginTop: 8, color: 'var(--ar-danger, #b91c1c)', fontSize: 12 }}>
+        <div style={{ marginTop: 8, color: TPL_PALETTE.danger, fontSize: 12 }}>
           {error}
         </div>
       ) : null}
       <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
         <button type="button" onClick={handleSave} disabled={saving || !isDirty} style={{
-          padding: '6px 16px', background: 'var(--ar-primary, #2563eb)',
-          color: '#fff', border: 'none', borderRadius: 4, fontSize: 13,
+          padding: '6px 16px', background: TPL_PALETTE.primary,
+          color: TPL_PALETTE.primaryText, border: 'none', borderRadius: 4, fontSize: 13,
           cursor: saving || !isDirty ? 'not-allowed' : 'pointer',
           opacity: saving || !isDirty ? 0.6 : 1, fontWeight: 500,
         }}>{saving ? 'Saving…' : 'Save'}</button>
         <button type="button" onClick={onCancel} disabled={saving} style={{
-          padding: '6px 16px', background: 'transparent',
-          color: 'var(--ar-text)', border: '1px solid var(--ar-border, #ddd)',
+          padding: '6px 16px', background: TPL_PALETTE.cardBg,
+          color: TPL_PALETTE.cardText, border: `1px solid ${TPL_PALETTE.cardBorder}`,
           borderRadius: 4, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer',
         }}>Cancel</button>
         {stage.is_overridden ? (
           <button type="button" onClick={handleRevert} disabled={saving} style={{
-            padding: '6px 16px', background: 'transparent',
-            color: 'var(--ar-danger, #b91c1c)',
-            border: '1px solid var(--ar-danger, #b91c1c)',
+            padding: '6px 16px', background: TPL_PALETTE.cardBg,
+            color: TPL_PALETTE.danger,
+            border: `1px solid ${TPL_PALETTE.danger}`,
             borderRadius: 4, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer',
             marginLeft: 'auto',
           }}>Revert to default</button>
