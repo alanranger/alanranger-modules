@@ -70,6 +70,12 @@ const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
 const MEMBERSTACK_UPGRADE_URL =
   process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/dashboard";
 const UPGRADE_URL_FALLBACK = MEMBERSTACK_UPGRADE_URL;
+// Vercel base URL for our own serverless endpoints. Used for the reengage
+// redirect hop that guarantees login-page email prefill survives Memberstack
+// gating (see api/academy/reengage-redirect.js).
+const API_BASE_URL =
+  process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
+const REENGAGE_REDIRECT_URL = `${API_BASE_URL}/api/academy/reengage-redirect`;
 
 // Shared HMAC secret for per-member deep-link tokens. Same fallback chain as
 // the REWIND20 webhook so both sets of emails use identical link signing.
@@ -115,8 +121,10 @@ function buildPersonalDashboardUrl(memberId, memberEmail) {
   const expiresAtMs = Date.now() + REENGAGE_TOKEN_TTL_DAYS * 86400000;
   const token = signReengageToken(memberId, memberEmail, expiresAtMs);
   if (!token) return MEMBERSTACK_UPGRADE_URL; // secret missing → fall back cleanly
-  const sep = MEMBERSTACK_UPGRADE_URL.includes("?") ? "&" : "?";
-  return `${MEMBERSTACK_UPGRADE_URL}${sep}ar_rewind=${encodeURIComponent(token)}`;
+  // Route via our Vercel redirect so the login page always receives
+  // ar_rewind_email, even when Memberstack gating strips query params on
+  // the /academy/dashboard → /academy/login hop.
+  return `${REENGAGE_REDIRECT_URL}?t=${encodeURIComponent(token)}`;
 }
 
 // Annual membership price ID from Memberstack
@@ -231,6 +239,96 @@ const SAVE20_DISCOUNT_GBP = 20;
 const SAVE20_PRICE_GBP = ACADEMY_ANNUAL_PRICE_GBP - SAVE20_DISCOUNT_GBP; // 59
 const SAVE20_GRACE_WINDOW_DAYS = 7;
 
+// Fetch a lightweight activity summary for a single member, used to render
+// the "Your Academy activity so far" block in the Day -7 reminder email.
+// One pull of recent events + one exam-table query; ~100ms typical.
+async function fetchMemberActivity(memberId) {
+  if (!supabase || !memberId) return null;
+  try {
+    const since = new Date(Date.now() - 90 * 86400000).toISOString();
+    const [eventsResp, examsResp] = await Promise.all([
+      supabase
+        .from("academy_events")
+        .select("event_type, path, title, created_at")
+        .eq("member_id", memberId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("module_results_ms")
+        .select("module_id, created_at")
+        .eq("memberstack_id", memberId)
+        .limit(100),
+    ]);
+    const events = eventsResp?.data || [];
+    const exams = examsResp?.data || [];
+    const logins = events.filter((e) => e.event_type === "login");
+    const moduleOpens = events.filter((e) => e.event_type === "module_open");
+    const uniqueModules = new Map();
+    for (const ev of moduleOpens) {
+      const key = ev.title || ev.path;
+      if (key && !uniqueModules.has(key)) uniqueModules.set(key, ev);
+    }
+    const uniqueExamIds = new Set(
+      exams.map((e) => e.module_id).filter(Boolean)
+    );
+    return {
+      last_login_at: logins[0]?.created_at || null,
+      login_count: logins.length,
+      modules_opened_count: uniqueModules.size,
+      modules_opened_list: Array.from(uniqueModules.keys()).slice(0, 5),
+      exams_attempted_count: uniqueExamIds.size,
+    };
+  } catch (err) {
+    console.warn(
+      `[trial-expiry-reminder] activity lookup failed for ${memberId}: ${err.message}`
+    );
+    return null;
+  }
+}
+
+// Render the markdown activity block that slots into the Day -7 reminder
+// under the opening paragraph. Returns an empty string when we have no
+// activity data, so the email still reads cleanly in edge cases (e.g. brand
+// new member with zero events logged yet, or Supabase transiently slow).
+function formatActivityBlock(activity) {
+  if (!activity) return "";
+  const lines = [];
+  if (activity.last_login_at) {
+    const d = new Date(activity.last_login_at);
+    const when = d.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+    lines.push(`- Last signed in: **${when}**`);
+  }
+  if (activity.login_count > 0) {
+    const noun = activity.login_count === 1 ? "sign-in" : "sign-ins";
+    lines.push(`- ${activity.login_count} ${noun} during your trial so far`);
+  }
+  if (activity.modules_opened_count > 0) {
+    const preview = activity.modules_opened_list
+      .slice(0, 3)
+      .join(", ");
+    const more = activity.modules_opened_list.length > 3 ? "…" : "";
+    lines.push(
+      `- **${activity.modules_opened_count} of 60 modules** opened so far${preview ? ` (${preview}${more})` : ""}`
+    );
+  } else {
+    lines.push("- No training modules opened yet — plenty of room to explore");
+  }
+  if (activity.exams_attempted_count > 0) {
+    lines.push(
+      `- **${activity.exams_attempted_count} of 15 exams** attempted so far`
+    );
+  } else {
+    lines.push("- No exams attempted yet — each one is short and comes with its own certificate");
+  }
+  if (!lines.length) return "";
+  return `\n**Your Academy activity so far**\n\n${lines.join("\n")}\n`;
+}
+
 const FEATURE_BULLETS = [
   "**60 training modules** — in-depth articles with practical examples, graphics and example images across settings, composition, gear, genres and post-processing",
   "**35 one-page field checklists** — print-ready PDFs for every shoot scenario",
@@ -285,33 +383,36 @@ Alan Ranger Photography Academy
   return { subject, body };
 }
 
-function buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl) {
+function buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity) {
   const subject = "You're Halfway Through Your Free Trial — 7 Days Left";
+  const firstName = (member.name || "").split(" ")[0] || "there";
+  const activityBlock = formatActivityBlock(activity);
   const body = `
-Hi ${member.name || "there"},
+Hi ${firstName},
 
-You're about halfway through your 14-day free trial of the **Alan Ranger Photography Academy** — **7 days to go**. Hopefully you're finding your way around and starting to build some momentum.
+You're halfway through your 14-day free trial of the **Alan Ranger Photography Academy** — **7 days to go**. This is the point where most members go from browsing to actually applying something, so the next week is where the Academy really starts to pay back the time you've put in.
+${activityBlock}
+**A suggested plan for your next 7 days**
 
-A quick reminder of what's in your trial (and everything you can keep if you lock in an annual membership before it ends):
+1. **Read the four foundation modules** — Exposure Triangle, Aperture, Shutter Speed, and ISO. Together they unlock nearly every decision you'll make with your camera.
+2. **Take the four matching exams** — they're quick, and they turn "I've read it" into "I know it", with a pass certificate for each.
+3. **Try practice packs 7, 8, 9 and 10** — small structured shooting assignments that move the foundation skills from theory into your camera bag.
+4. **Pick one field checklist** and take it on your next shoot — the value usually lands on the first real outing you use one.
+5. **Ask one question** — drop something in Q&A or throw it at Robo-Ranger. Members who engage here tend to progress fastest.
 
-${renderFeatureList()}
+**What Academy members have gone on to do**
 
-**A few suggestions for your next 7 days**
-
-- Pick **one module** you haven't opened yet and read it end-to-end — the practical examples make far more sense than skimming
-- Download **one field checklist** for your next shoot — it's the fastest way to feel the value
-- Try **one practice pack** — small, self-contained, and designed so you actually finish it
-- Ask Alan something in **Q&A** or throw a question at **Robo-Ranger** while the trial is still running
+Members who've stayed have gone on to **win photography competitions**, pick up **paid photography work** as side hustles or small businesses, earn **professional qualifications** like RPS Licentiate, and — most commonly of all — simply enjoy their cameras far more, coming home with photos they're genuinely proud of rather than feeling lost in settings and menus.
 
 **Want to lock in annual access now?**
 
-If you already know you want to keep learning, you can upgrade to the full annual membership for **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — that's less than a single coffee a week — and everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account.
+Full annual membership is **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — that's less than a single coffee a week — and everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account.
 
-Click the personal link below — we'll take you straight to your Academy dashboard. If you're not still signed in, your email address will be pre-filled on the login screen, so all you need is your password:
+Click the personal link below and we'll take you straight to your Academy dashboard. If your session has expired, your email address will be pre-filled on the login screen, so all you need is your password:
 
 ${upgradeUrl}
 
-Your trial expires on **${expiryDateStr}**. No pressure — your trial keeps running either way. Any questions, just reply to this email.
+Your trial expires on **${expiryDateStr}**. Whenever you're ready — and any questions, just reply to this email.
 
 Best regards,
 Alan Ranger
@@ -420,10 +521,10 @@ function buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
   return buildExpiredNoCouponEmail(member, expiryDateStr, upgradeUrl);
 }
 
-function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl) {
+function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity) {
   if (daysUntilExpiry < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
   if (daysUntilExpiry === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl);
-  if (daysUntilExpiry === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl);
+  if (daysUntilExpiry === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
 }
 
@@ -443,8 +544,13 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   // Generate personalized checkout URL for this member
   const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name);
 
+  // Pull lightweight activity summary for templates that render a personal
+  // block (currently only the Day -7 mid-trial reminder). Failures fall back
+  // to an empty block so the email still looks clean.
+  const activity = await fetchMemberActivity(member.member_id);
+
   if (!sendEmail) {
-    return { sent: false, skipped: true, upgrade_url: checkoutUrl };
+    return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity };
   }
 
   if (!emailTransporter) {
@@ -455,7 +561,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   // Build email content from the shared template helpers so all four
   // templates (soft/7-day/final-day/expired) stay aligned with the dashboard
   // modal copy. See FEATURE_BULLETS and computeSave20State above.
-  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl);
+  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity);
   const emailSubject = content.subject;
   const emailBody = content.body;
 
