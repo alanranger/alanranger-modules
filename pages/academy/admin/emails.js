@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 // Inline stage config rather than fetching it — the admin UI knows every
@@ -152,6 +152,49 @@ function markdownToHtml(body) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 
+// HTML-escapes then applies minimal markdown-lite -> HTML so the iframe
+// preview renders safely. Used by the template editor preview pane.
+function markdownLiteToSafeHtml(body) {
+  if (!body) return '';
+  const escaped = String(body)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped
+    .replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+// Client-side mirror of lib/emailTemplateDefaults.js renderTemplate. Kept
+// locally so the editor preview doesn't require bundling the server lib.
+function renderTemplateClient(source, vars) {
+  if (typeof source !== 'string') return '';
+  return source.replaceAll(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
+    if (!vars || !Object.hasOwn(vars, key)) return match;
+    const value = vars[key];
+    return value === null || value === undefined ? '' : String(value);
+  });
+}
+
+const TEMPLATE_PREVIEW_VARS = Object.freeze({
+  firstName: 'Alan',
+  fullName: 'Alan Ranger',
+  expiryDate: 'Monday, 28 April 2026',
+  upgradeUrl: 'https://example.com/upgrade?preview=1',
+  dashboardUrl: 'https://example.com/dashboard?preview=1',
+  unsubUrl: 'https://example.com/unsub?preview=1',
+  activityBlock: '\n**Your Academy activity so far**\n\n- **Last logged in** 2 days ago\n- You\'ve logged in **6 times** during your trial\n- **3 modules** viewed\n- **2 of 30 practice packs** used so far\n- **1 of 15 exams** attempted so far\n',
+  daysUntilExpiry: 7,
+  daysLeft: 7,
+  daysWord: 'days',
+  daysLeftPhrase: '**7 days**',
+  daysLapsed: 22,
+  annualPriceGbp: 79,
+  save20PriceGbp: 59,
+  save20DiscountGbp: 20,
+  couponCode: 'SAVE20',
+});
+
 // ─────────────────────────────────────────────────────────────────────────
 // Data fetching (no third-party hooks; plain fetch)
 // ─────────────────────────────────────────────────────────────────────────
@@ -182,6 +225,22 @@ async function loadTemplates() {
     stages: Array.isArray(data.stages) ? data.stages : [],
     mergeTags: Array.isArray(data.merge_tags) ? data.merge_tags : [],
   };
+}
+
+async function saveTemplate({ stageKey, subject, bodyMd, revert }) {
+  const payload = revert
+    ? { stage_key: stageKey, revert: true }
+    : { stage_key: stageKey, subject, body_md: bodyMd };
+  const res = await fetch('/api/admin/emails-templates-save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || `save HTTP ${res.status}`);
+  }
+  return data;
 }
 
 function buildWebhookUrl(stage, email, sendEmail) {
@@ -642,9 +701,8 @@ function TemplateStatusBadge({ isOverridden }) {
   );
 }
 
-function TemplateCard({ stage, expanded, onToggle }) {
-  const subject = stage.effective_subject || '(no subject)';
-  const body = stage.effective_body_md || '(no body)';
+function TemplateCard({ stage, expanded, onToggle, onUpdated }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div style={{
       border: '1px solid var(--ar-border, #ddd)', borderRadius: 6,
@@ -666,14 +724,35 @@ function TemplateCard({ stage, expanded, onToggle }) {
           {expanded ? '−' : '+'}
         </span>
       </button>
-      {expanded ? <TemplateBody subject={subject} body={body} stage={stage} /> : null}
+      {expanded ? (
+        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--ar-border, #eee)' }}>
+          {editing ? (
+            <TemplateEditor
+              stage={stage}
+              onCancel={() => setEditing(false)}
+              onSaved={() => { setEditing(false); onUpdated?.(); }}
+            />
+          ) : (
+            <TemplateBody stage={stage} onEdit={() => setEditing(true)} />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function TemplateBody({ subject, body, stage }) {
+function TemplateBody({ stage, onEdit }) {
+  const subject = stage.effective_subject || '(no subject)';
+  const body = stage.effective_body_md || '(no body)';
   return (
-    <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--ar-border, #eee)' }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <button type="button" onClick={onEdit} style={{
+          padding: '6px 14px', background: 'var(--ar-primary, #2563eb)',
+          color: '#fff', border: 'none', borderRadius: 4, fontSize: 13,
+          cursor: 'pointer', fontWeight: 500,
+        }}>Edit</button>
+      </div>
       <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ar-text-muted)' }}>
         <strong>Subject:</strong>
       </div>
@@ -700,7 +779,118 @@ function TemplateBody({ subject, body, stage }) {
   );
 }
 
-function TemplatesSection({ templates, mergeTags, loadError }) {
+function buildPreviewHtml(bodyMd) {
+  const rendered = renderTemplateClient(bodyMd || '', TEMPLATE_PREVIEW_VARS);
+  const htmlBody = markdownLiteToSafeHtml(rendered);
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    body { font: 14px/1.55 -apple-system, Segoe UI, Roboto, sans-serif;
+           color: #1f2937; padding: 16px; margin: 0; }
+    strong { color: #111827; }
+  </style></head><body>${htmlBody}</body></html>`;
+}
+
+function TemplateEditor({ stage, onCancel, onSaved }) {
+  const initialSubject = stage.effective_subject || '';
+  const initialBody = stage.effective_body_md || '';
+  const [subject, setSubject] = useState(initialSubject);
+  const [bodyMd, setBodyMd] = useState(initialBody);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const previewSrc = useMemo(() => buildPreviewHtml(bodyMd), [bodyMd]);
+  const isDirty = subject !== initialSubject || bodyMd !== initialBody;
+
+  async function handleSave() {
+    setSaving(true); setError(null);
+    try {
+      await saveTemplate({ stageKey: stage.stage_key, subject, bodyMd, revert: false });
+      onSaved?.();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+  async function handleRevert() {
+    if (!window.confirm('Revert to the built-in default? Your override will be cleared.')) return;
+    setSaving(true); setError(null);
+    try {
+      await saveTemplate({ stageKey: stage.stage_key, revert: true });
+      onSaved?.();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 4 }}>
+        <strong>Subject:</strong>
+      </div>
+      <input
+        type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
+        disabled={saving}
+        style={{
+          width: '100%', padding: '6px 10px', fontSize: 13, fontFamily: 'monospace',
+          border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
+          background: 'var(--ar-surface, #fff)', color: 'var(--ar-text)',
+          boxSizing: 'border-box',
+        }}
+      />
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', margin: '12px 0 4px' }}>
+        <strong>Body (markdown-lite) + live preview:</strong>
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+        height: 420,
+      }}>
+        <textarea
+          value={bodyMd} onChange={(e) => setBodyMd(e.target.value)}
+          disabled={saving} spellCheck={false}
+          style={{
+            padding: 10, fontSize: 12, fontFamily: 'monospace',
+            border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
+            resize: 'none', background: 'var(--ar-surface-alt, #fafafa)',
+            color: 'var(--ar-text)', boxSizing: 'border-box', overflow: 'auto',
+          }}
+        />
+        <iframe
+          title={`preview-${stage.stage_key}`}
+          srcDoc={previewSrc}
+          sandbox=""
+          style={{
+            border: '1px solid var(--ar-border, #ddd)', borderRadius: 4,
+            background: '#fff', width: '100%', height: '100%',
+          }}
+        />
+      </div>
+      {error ? (
+        <div style={{ marginTop: 8, color: 'var(--ar-danger, #b91c1c)', fontSize: 12 }}>
+          {error}
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+        <button type="button" onClick={handleSave} disabled={saving || !isDirty} style={{
+          padding: '6px 16px', background: 'var(--ar-primary, #2563eb)',
+          color: '#fff', border: 'none', borderRadius: 4, fontSize: 13,
+          cursor: saving || !isDirty ? 'not-allowed' : 'pointer',
+          opacity: saving || !isDirty ? 0.6 : 1, fontWeight: 500,
+        }}>{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" onClick={onCancel} disabled={saving} style={{
+          padding: '6px 16px', background: 'transparent',
+          color: 'var(--ar-text)', border: '1px solid var(--ar-border, #ddd)',
+          borderRadius: 4, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer',
+        }}>Cancel</button>
+        {stage.is_overridden ? (
+          <button type="button" onClick={handleRevert} disabled={saving} style={{
+            padding: '6px 16px', background: 'transparent',
+            color: 'var(--ar-danger, #b91c1c)',
+            border: '1px solid var(--ar-danger, #b91c1c)',
+            borderRadius: 4, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer',
+            marginLeft: 'auto',
+          }}>Revert to default</button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TemplatesSection({ templates, mergeTags, loadError, onTemplatesChanged }) {
   const [expanded, setExpanded] = useState({});
   if (loadError) {
     return (
@@ -715,8 +905,9 @@ function TemplatesSection({ templates, mergeTags, loadError }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 12 }}>
-        Read-only view of the 6 email templates. Content below is what the webhook will
-        render (DB override if set, otherwise the built-in default). Editing comes next.
+        The 6 email templates below are what the webhook renders (DB override if set,
+        otherwise the built-in default). Click <em>Edit</em> on any card to change the
+        subject or body; save takes effect on the next scheduled send.
         Supported merge tags: {mergeTags.map((t) => t.tag).join(', ')}.
       </div>
       {templates.map((stage) => (
@@ -727,6 +918,7 @@ function TemplatesSection({ templates, mergeTags, loadError }) {
           onToggle={() => setExpanded((prev) => ({
             ...prev, [stage.stage_key]: !prev[stage.stage_key],
           }))}
+          onUpdated={onTemplatesChanged}
         />
       ))}
     </div>
@@ -771,7 +963,7 @@ export default function EmailsAdmin() {
       .catch((err) => setLoadErrors((e) => ({ ...e, table: err.message })));
   }, []);
 
-  useEffect(() => {
+  const refreshTemplates = useCallback(() => {
     loadTemplates()
       .then(({ stages, mergeTags: tags }) => {
         setTemplates(stages);
@@ -779,6 +971,8 @@ export default function EmailsAdmin() {
       })
       .catch((err) => setLoadErrors((e) => ({ ...e, templates: err.message })));
   }, []);
+
+  useEffect(() => { refreshTemplates(); }, [refreshTemplates]);
 
   const selectedStage = filterStageKey ? STAGE_BY_KEY[filterStageKey] : null;
 
@@ -928,6 +1122,7 @@ export default function EmailsAdmin() {
           templates={templates}
           mergeTags={mergeTags}
           loadError={loadErrors.templates}
+          onTemplatesChanged={refreshTemplates}
         />
       </div>
     </div>
