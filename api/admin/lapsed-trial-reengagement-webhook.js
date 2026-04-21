@@ -1,12 +1,17 @@
 // api/admin/lapsed-trial-reengagement-webhook.js
 // Win-back (REWIND20) re-engagement webhook. Designed to be called weekly by
-// Zapier (Schedule → Webhook). Identifies members whose trial ended 8–180 days
-// ago and never converted, then emails them a personal £20-off offer valid for
-// 7 days from send.
+// Zapier (Schedule → Webhook). Identifies members whose trial ended 20–180
+// days ago, never converted, and emails them a personal £20-off offer valid
+// for 7 days from send.
 //
-// Re-sends are gated to max 3 attempts per member with a 90-day cooldown
-// between attempts; any click on the unsubscribe link opts the member out
-// permanently.
+// Cadence (days since trial expiry):
+//   Attempt 1:  day 20 (earliest)           — REWIND20 coupon, 7-day window
+//   Attempt 2:  10 days after attempt 1     — day 30 in the natural flow
+//   Attempt 3:  30 days after attempt 2     — day 60 in the natural flow
+//   Max 3 attempts ever; an unsubscribe click opts the member out forever.
+//
+// The SAVE20 grace-period coupon covers days 0–7 post-expiry via a separate
+// Zap; REWIND20 only kicks in once SAVE20 is well in the rear-view mirror.
 //
 // Query parameters:
 //   secret       — matches ORPHANED_WEBHOOK_SECRET (same as trial-expiry-reminder)
@@ -16,7 +21,8 @@
 //   limit        — cap the number of members processed per run (default 500)
 //
 // Response:
-//   { success, candidates_found, emails_sent, emails_failed, email_results }
+//   { success, candidates_found, candidates_eligible, emails_sent,
+//     emails_failed, emails_deferred, email_results, time_budget_exhausted }
 
 const { createClient } = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
@@ -53,17 +59,27 @@ const API_BASE_URL =
   process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
 
 const CAMPAIGN = {
-  reachBackDays: 180,        // only contact trials that ended within the last 180 days
-  minDaysSinceExpiry: 8,     // skip anyone still inside the SAVE20 grace window
+  reachBackDays: 180,        // candidates: trials ended within the last 180 days
+  // Attempt cadence expressed two ways:
+  //   firstAttemptMinDaysSinceExpiry = 20 (must be at least 20 days post-expiry)
+  //   attemptGapDays = gaps between consecutive attempts for the same member
+  //     Attempt 2 fires >=10 days after attempt 1 (so ~day 30)
+  //     Attempt 3 fires >=30 days after attempt 2 (so ~day 60)
+  // Anyone in the backlog naturally paces themselves through the 3 attempts.
+  firstAttemptMinDaysSinceExpiry: 20,
+  attemptGapDays: [null, 10, 30], // index = current send_count; null for first send
+  maxSends: 3,
   windowDays: 7,             // personal REWIND20 coupon window
-  maxSends: 3,               // never email any member more than 3 times
-  cooldownDays: 90,          // wait 90 days between sends for the same member
   annualPriceGbp: 79,
   discountGbp: 20,
   discountedPriceGbp: 59,
   couponCode: "REWIND20",
   defaultLimit: 500,
 };
+
+// Leave headroom below Vercel's maxDuration (configured to 60s in vercel.json)
+// so the function always has time to flush the final stamp + return cleanly.
+const TIME_BUDGET_MS = 55000;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Email content
@@ -157,16 +173,17 @@ function buildCandidateWindow() {
   const now = Date.now();
   const DAY = 86400000;
   return {
-    maxEnd: new Date(now - CAMPAIGN.minDaysSinceExpiry * DAY).toISOString(),
+    // Upper bound: earliest a trial can have ended and still be a REWIND20
+    // candidate. Must be at least firstAttemptMinDaysSinceExpiry days ago.
+    maxEnd: new Date(now - CAMPAIGN.firstAttemptMinDaysSinceExpiry * DAY).toISOString(),
     minEnd: new Date(now - CAMPAIGN.reachBackDays * DAY).toISOString(),
-    cooldownCutoff: new Date(now - CAMPAIGN.cooldownDays * DAY).toISOString(),
     now,
   };
 }
 
 async function fetchTrialRows(windowBounds, limit) {
-  // Pull candidates from academy_trial_history. We apply the cooldown filter
-  // and per-member max-sends cap in code so the SQL stays simple and indexable.
+  // Pull candidates from academy_trial_history. Per-attempt pacing is applied
+  // in code (passesResendGate) so the SQL stays simple and indexable.
   const { data, error } = await supabase
     .from("academy_trial_history")
     .select(
@@ -182,12 +199,25 @@ async function fetchTrialRows(windowBounds, limit) {
   return data || [];
 }
 
-function passesResendGate(row, cooldownCutoff) {
+function daysBetweenMs(laterMs, earlierIso) {
+  if (!earlierIso) return Infinity;
+  const earlier = new Date(earlierIso).getTime();
+  if (!Number.isFinite(earlier)) return Infinity;
+  return Math.floor((laterMs - earlier) / 86400000);
+}
+
+function passesResendGate(row, nowMs) {
   const count = row.reengagement_send_count || 0;
   if (count >= CAMPAIGN.maxSends) return false;
-  const last = row.reengagement_last_sent_at;
-  if (!last) return true;
-  return new Date(last).getTime() <= new Date(cooldownCutoff).getTime();
+  if (count === 0) {
+    // Attempt 1: require minimum days since trial expiry.
+    return daysBetweenMs(nowMs, row.trial_end_at) >= CAMPAIGN.firstAttemptMinDaysSinceExpiry;
+  }
+  // Attempts 2 and 3: pace from the previous send so each member progresses
+  // through the campaign at a natural rate regardless of when they entered it.
+  const requiredGap = CAMPAIGN.attemptGapDays[count];
+  if (!requiredGap) return false;
+  return daysBetweenMs(nowMs, row.reengagement_last_sent_at) >= requiredGap;
 }
 
 async function fetchMemberContact(memberId) {
@@ -377,34 +407,58 @@ module.exports = async (req, res) => {
 
   try {
     const rows = await fetchTrialRows(windowBounds, limit);
-    const eligible = rows.filter((r) => passesResendGate(r, windowBounds.cooldownCutoff));
-    const results = [];
-    let sent = 0;
-    let failed = 0;
-    for (const row of eligible) {
-      const outcome = await processCandidate(row, windowBounds, sendEmail);
-      results.push(outcome);
-      if (outcome.sent) sent++;
-      else if (!outcome.skipped) failed++;
-    }
+    const eligible = rows.filter((r) => passesResendGate(r, windowBounds.now));
+    const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail);
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
       send_email: sendEmail,
       window: {
         reach_back_days: CAMPAIGN.reachBackDays,
-        min_days_since_expiry: CAMPAIGN.minDaysSinceExpiry,
-        cooldown_days: CAMPAIGN.cooldownDays,
+        first_attempt_min_days_since_expiry: CAMPAIGN.firstAttemptMinDaysSinceExpiry,
+        attempt_gap_days: CAMPAIGN.attemptGapDays,
         max_sends_per_member: CAMPAIGN.maxSends,
       },
       candidates_found: rows.length,
       candidates_eligible: eligible.length,
-      emails_sent: sent,
-      emails_failed: failed,
-      email_results: results,
+      emails_sent: runOutcome.sent,
+      emails_failed: runOutcome.failed,
+      emails_deferred: runOutcome.deferred,
+      time_budget_exhausted: runOutcome.timeBudgetExhausted,
+      email_results: runOutcome.results,
     });
   } catch (err) {
     console.error("[lapsed-trial-reengagement] fatal:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+async function runCampaignBatch(eligible, windowBounds, sendEmail) {
+  const results = [];
+  let sent = 0;
+  let failed = 0;
+  let deferred = 0;
+  let timeBudgetExhausted = false;
+  const startTs = Date.now();
+
+  for (const row of eligible) {
+    // Dry-run explores the whole list (it doesn't actually send mail) so the
+    // time-budget guard only blocks live sends. This keeps previews accurate.
+    if (sendEmail && Date.now() - startTs > TIME_BUDGET_MS) {
+      timeBudgetExhausted = true;
+      deferred = eligible.length - results.length;
+      results.push({
+        skipped: true,
+        reason: "time budget exhausted — will process on the next Zap run",
+        member_id: row.member_id,
+      });
+      break;
+    }
+    const outcome = await processCandidate(row, windowBounds, sendEmail);
+    results.push(outcome);
+    if (outcome.sent) sent++;
+    else if (!outcome.skipped) failed++;
+  }
+
+  return { results, sent, failed, deferred, timeBudgetExhausted };
+}

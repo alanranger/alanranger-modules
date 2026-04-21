@@ -3,6 +3,11 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "api/admin/lapsed-trial-reengagement-webhook.js": { "maxDuration": 60 },
+    "api/admin/trial-expiry-reminder-webhook.js": { "maxDuration": 60 },
+    "api/admin/orphaned-members-webhook.js": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/admin/cleanup-cron",
