@@ -66,8 +66,13 @@ const CAMPAIGN = {
   //     Attempt 2 fires >=10 days after attempt 1 (so ~day 30)
   //     Attempt 3 fires >=30 days after attempt 2 (so ~day 60)
   // Anyone in the backlog naturally paces themselves through the 3 attempts.
-  firstAttemptMinDaysSinceExpiry: 20,
-  attemptGapDays: [null, 10, 30], // index = current send_count; null for first send
+  // Minimum days-since-trial-expiry for each attempt (indexed by send_count).
+  // Matches the product spec: send 1 on day 20, send 2 on day 30, send 3 on day 60.
+  attemptMinDaysSinceExpiry: [20, 30, 60],
+  // Minimum gap between consecutive sends (null = first send, no prior to gap from).
+  // Both the expiry threshold AND the gap must be satisfied for attempts 2/3.
+  attemptGapDays: [null, 10, 30],
+  get firstAttemptMinDaysSinceExpiry() { return this.attemptMinDaysSinceExpiry[0]; },
   maxSends: 3,
   windowDays: 7,             // personal REWIND20 coupon window
   annualPriceGbp: 79,
@@ -209,15 +214,17 @@ function daysBetweenMs(laterMs, earlierIso) {
 function passesResendGate(row, nowMs) {
   const count = row.reengagement_send_count || 0;
   if (count >= CAMPAIGN.maxSends) return false;
-  if (count === 0) {
-    // Attempt 1: require minimum days since trial expiry.
-    return daysBetweenMs(nowMs, row.trial_end_at) >= CAMPAIGN.firstAttemptMinDaysSinceExpiry;
-  }
-  // Attempts 2 and 3: pace from the previous send so each member progresses
-  // through the campaign at a natural rate regardless of when they entered it.
+  const daysSinceExpiry = daysBetweenMs(nowMs, row.trial_end_at);
+  const expiryThreshold = CAMPAIGN.attemptMinDaysSinceExpiry[count];
+  if (daysSinceExpiry < expiryThreshold) return false;
+  // Attempts 2 and 3 must ALSO wait the minimum gap since the previous send,
+  // so a member who got attempt 1 slightly early (e.g. legacy 8-day rule)
+  // isn't re-mailed until both conditions are met.
   const requiredGap = CAMPAIGN.attemptGapDays[count];
-  if (!requiredGap) return false;
-  return daysBetweenMs(nowMs, row.reengagement_last_sent_at) >= requiredGap;
+  if (requiredGap && daysBetweenMs(nowMs, row.reengagement_last_sent_at) < requiredGap) {
+    return false;
+  }
+  return true;
 }
 
 async function fetchMemberContact(memberId) {
