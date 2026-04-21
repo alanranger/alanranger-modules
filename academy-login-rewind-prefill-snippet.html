@@ -96,12 +96,25 @@
     document.addEventListener("DOMContentLoaded", attempt, { once: true });
   }
 
-  // Memberstack forms often hydrate after DOMContentLoaded; watch for up to
-  // 12 seconds, then give up quietly so the page isn't churned on forever.
+  // Memberstack's login form is rendered into a modal that may only appear
+  // when the user clicks "Log in" — often well after page load. Keep the
+  // observer alive until we successfully prefill (then disconnect). Also
+  // re-attempt on any click anywhere on the page, in case Memberstack
+  // swaps the modal contents rather than inserting new nodes.
   var observer = new MutationObserver(function(){
     if (attempt()) { observer.disconnect(); }
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(function(){ try { observer.disconnect(); } catch (e) {} }, 12000);
+
+  document.addEventListener("click", function onClickRetry(){
+    if (attempt()) {
+      try { observer.disconnect(); } catch (e) {}
+      document.removeEventListener("click", onClickRetry, true);
+    }
+  }, true);
+
+  // Final safety net: if something exotic keeps the modal off-DOM, give up
+  // silently after five minutes so the observer can be GC'd.
+  setTimeout(function(){ try { observer.disconnect(); } catch (e) {} }, 300000);
 })();
 </script>
