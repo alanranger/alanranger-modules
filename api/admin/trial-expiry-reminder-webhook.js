@@ -40,6 +40,8 @@ const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEvents");
+const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
+const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 
 // Vercel docs in this repo use SUPABASE_URL (server-only). Client builds may use NEXT_PUBLIC_SUPABASE_URL.
 const SUPABASE_URL =
@@ -680,12 +682,65 @@ function selectTemplateStage(templateDaysAhead, daysUntilExpiry) {
   return stage;
 }
 
-function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, templateDaysAhead) {
-  const stage = selectTemplateStage(templateDaysAhead, daysUntilExpiry);
+// Map the numeric stage (templateDaysAhead / computed daysUntilExpiry) to a
+// canonical stage_key that academy_email_templates can override. Returns null
+// for non-canonical stages (soft reminders, post-SAVE20 no-coupon emails) —
+// those keep using the inline builders because they're only reached from
+// legacy Zapier invocations, not the canonical cron schedule.
+function resolveTrialStageKey(stage, couponState) {
+  if (stage === 7) return STAGE_KEYS.DAY_MINUS_7;
+  if (stage === 1) return STAGE_KEYS.DAY_MINUS_1;
+  if (stage < 0 && couponState?.eligible) return STAGE_KEYS.DAY_PLUS_7;
+  return null;
+}
+
+function buildTrialMergeVars({ member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, couponState }) {
+  const firstName = (member.name || "").split(" ")[0] || "there";
+  const daysLeft = couponState?.eligible ? couponState.daysLeft : 0;
+  const daysWord = daysLeft === 1 ? "day" : "days";
+  return {
+    firstName,
+    fullName: member.name || "there",
+    expiryDate: expiryDateStr,
+    upgradeUrl,
+    activityBlock: formatActivityBlock(activity),
+    daysUntilExpiry,
+    daysLeft,
+    daysWord,
+    daysLeftPhrase: daysLeft > 0 ? `**${daysLeft} ${daysWord}**` : "",
+    annualPriceGbp: ACADEMY_ANNUAL_PRICE_GBP,
+    save20PriceGbp: SAVE20_PRICE_GBP,
+    save20DiscountGbp: SAVE20_DISCOUNT_GBP,
+    couponCode: "SAVE20",
+  };
+}
+
+// Inline fallback path preserved for non-canonical stages and for DB-lookup
+// failures. Canonical stages (Day -7 / -1 / +7 SAVE20) route through the
+// template renderer so academy_email_templates overrides take effect.
+function buildInlineTrialEmail(stage, member, expiryDateStr, upgradeUrl, activity) {
   if (stage < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, stage, activity);
   if (stage === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   if (stage === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, stage);
+}
+
+async function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, templateDaysAhead) {
+  const stage = selectTemplateStage(templateDaysAhead, daysUntilExpiry);
+  const couponState = stage < 0 ? computeSave20State(daysUntilExpiry) : null;
+  const stageKey = resolveTrialStageKey(stage, couponState);
+  if (stageKey) {
+    try {
+      const vars = buildTrialMergeVars({
+        member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, couponState,
+      });
+      const rendered = await renderStageEmail(supabase, stageKey, vars);
+      if (rendered?.subject && rendered?.body) return rendered;
+    } catch (err) {
+      console.warn(`[trial-expiry-reminder] template render failed for ${stageKey}, falling back to inline:`, err.message);
+    }
+  }
+  return buildInlineTrialEmail(stage, member, expiryDateStr, upgradeUrl, activity);
 }
 
 async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
@@ -715,7 +770,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   // modal copy. See FEATURE_BULLETS and computeSave20State above. We do this
   // BEFORE the dry-run return so the /academy/admin/emails tab can render a
   // full preview without actually sending.
-  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity, templateDaysAhead);
+  const content = await buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity, templateDaysAhead);
   const preview = {
     subject: content.subject,
     body: content.body,
@@ -1277,4 +1332,15 @@ module.exports = async (req, res) => {
       emails_failed: 0
     });
   }
+};
+
+// Exposed purely for scripts/email-defaults-parity.js to verify the refactored
+// buildEmailContent still produces byte-identical output to the original
+// inline builders. Do not import from runtime code.
+module.exports.__testing__ = {
+  buildEmailContent,
+  buildTrialMergeVars,
+  resolveTrialStageKey,
+  computeSave20State,
+  selectTemplateStage,
 };

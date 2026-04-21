@@ -28,6 +28,8 @@ const { createClient } = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
+const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
+const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -347,7 +349,44 @@ function htmlFromMarkdown(body) {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 }
 
-function buildEmailContent({ member, daysLapsed, attempt, dashboardUrl, unsubUrl, activity }) {
+function resolveRewindStageKey(attempt) {
+  if (attempt === 1) return STAGE_KEYS.DAY_PLUS_20;
+  if (attempt === 2) return STAGE_KEYS.DAY_PLUS_30;
+  if (attempt === 3) return STAGE_KEYS.DAY_PLUS_60;
+  return null;
+}
+
+function buildRewindMergeVars({ member, daysLapsed, dashboardUrl, unsubUrl, activity }) {
+  const firstName = member?.name
+    ? member.name.split(" ")[0]
+    : "there";
+  return {
+    firstName,
+    fullName: member?.name || "there",
+    dashboardUrl,
+    unsubUrl,
+    activityBlock: formatActivityBlock(activity),
+    daysLapsed,
+    annualPriceGbp: CAMPAIGN.annualPriceGbp,
+    save20PriceGbp: CAMPAIGN.discountedPriceGbp,
+    save20DiscountGbp: CAMPAIGN.discountGbp,
+    couponCode: CAMPAIGN.couponCode,
+  };
+}
+
+async function buildEmailContent({ member, daysLapsed, attempt, dashboardUrl, unsubUrl, activity }) {
+  const stageKey = resolveRewindStageKey(attempt);
+  if (stageKey) {
+    try {
+      const vars = buildRewindMergeVars({ member, daysLapsed, dashboardUrl, unsubUrl, activity });
+      const rendered = await renderStageEmail(supabase, stageKey, vars);
+      if (rendered?.subject && rendered?.body) {
+        return { subject: rendered.subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) };
+      }
+    } catch (err) {
+      console.warn(`[lapsed-trial-reengagement] template render failed for ${stageKey}, falling back to inline:`, err.message);
+    }
+  }
   const subject = buildSubject(attempt);
   const body = buildReengagementBody({
     memberName: member.name || null,
@@ -544,7 +583,7 @@ async function processCandidate(row, windowBounds, sendEmail) {
   // round-trip per candidate, but mostly cache-warm since the same member
   // only gets emailed at most 3 times over 60+ days.
   const activity = await fetchMemberActivity(row.member_id);
-  const content = buildEmailContent({
+  const content = await buildEmailContent({
     member: contact,
     daysLapsed,
     attempt,
@@ -752,3 +791,12 @@ async function runCampaignBatch(eligible, windowBounds, sendEmail) {
 
   return { results, sent, failed, deferred, timeBudgetExhausted };
 }
+
+// Exposed purely for scripts/email-defaults-parity.js to verify the refactored
+// buildEmailContent still produces byte-identical output to the original
+// inline builders. Do not import from runtime code.
+module.exports.__testing__ = {
+  buildEmailContent,
+  buildRewindMergeVars,
+  resolveRewindStageKey,
+};
