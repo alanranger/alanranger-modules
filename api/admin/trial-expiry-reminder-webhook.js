@@ -476,32 +476,69 @@ https://www.alanranger.com/online-photography-course
   return { subject, body };
 }
 
-function buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl) {
-  const subject = "Last day of your Academy trial — keep everything you've started";
+const MEMBERS_ONLY_BULLETS = [
+  "**30 Assignment Practice Packs** — step-by-step field exercises built around Alan's frameworks",
+  "**35 One-page Field Checklists** — print-ready PDFs for every shoot scenario",
+  "**741-page Searchable eBook** — every module in one printable PDF, yours for life",
+  "**Caring for Your Assets guides** — backup routines, sensor cleaning, camera maintenance",
+  "**Applied Learning Library** — 22+ scenario-based guides (portraits, product, property, landscape, close-up & food) — expanding monthly",
+  "**Royal Photographic Society Accreditation pathway** — 10-module route towards a formal qualification"
+];
+
+const MEMBERS_ONLY_FUTURE_LINE =
+  "**All new modules, new exams and new features** released each month — included for the life of your membership, at no extra cost";
+
+function renderMembersOnlyList() {
+  return [...MEMBERS_ONLY_BULLETS, MEMBERS_ONLY_FUTURE_LINE]
+    .map((b) => "- " + b)
+    .join("\n");
+}
+
+const FINAL_DAY_QUICK_WINS = [
+  "**Take one exam** — 10 minutes each, and you walk away with a pass certificate whether you upgrade or not.",
+  "**Download one field checklist** — the one-page PDFs are yours to keep and will come on every shoot with you.",
+  "**Ask Robo-Ranger one question** — on gear, technique or next steps. Members tell us this is the moment it clicks how much time it saves them."
+];
+
+function renderFinalDayQuickWins() {
+  return FINAL_DAY_QUICK_WINS.map((step, i) => `${i + 1}. ${step}`).join("\n");
+}
+
+function buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl, activity) {
+  const subject = "Your Academy trial ends tomorrow — keep everything you've built";
+  const activityBlock = formatActivityBlock(activity);
+  const firstName = member.name ? member.name.split(" ")[0] : "there";
   const body = `
-Hi ${member.name || "there"},
+Hi ${firstName},
 
-Your 14-day free trial of the **Alan Ranger Photography Academy** ends **tomorrow (${expiryDateStr})**.
+Your 14-day free trial of the **Alan Ranger Photography Academy** ends **tomorrow (${expiryDateStr})**. After that, the modules, practice packs, exams and Robo-Ranger access pause — but your account stays put, with everything you've built still on it.
+${activityBlock}
+**Three quick wins before it ends**
 
-If you've been finding your way around the training modules, practice packs and checklists, this is the moment to lock in your full annual membership — everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account, ready to pick up where you left off.
+${renderFinalDayQuickWins()}
 
-**Upgrade today for £${ACADEMY_ANNUAL_PRICE_GBP}/year and keep full access to:**
+**Members-only resources you keep for the full year**
+
+${renderMembersOnlyList()}
+
+**And everything else in the Academy continues too:**
 
 ${renderFeatureList()}
 
-**Upgrade in one click**
+**Lock it in before tomorrow**
 
-Log back in and you'll see the upgrade option on your Academy dashboard:
+Full annual membership is **£${ACADEMY_ANNUAL_PRICE_GBP}/year** — less than a single coffee a week — and everything you've already built (progress, bookmarks, notes, quiz scores) stays on your account.
+
+Click the personal link below and we'll take you straight to your Academy dashboard. If your session has expired, your email address will be pre-filled on the login screen, so all you need is your password.
 
 ${upgradeUrl}
 
-If you decide not to upgrade, your access to the training modules pauses tomorrow — but your account stays put and you can come back any time.
-
-Any questions, just reply to this email.
+Your trial expires on **${expiryDateStr}**. Whenever you're ready — and any questions, just reply to this email.
 
 Best regards,
 Alan Ranger
 Alan Ranger Photography Academy
+https://www.alanranger.com/online-photography-course
   `.trim();
   return { subject, body };
 }
@@ -592,7 +629,7 @@ function selectTemplateStage(templateDaysAhead, daysUntilExpiry) {
 function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, templateDaysAhead) {
   const stage = selectTemplateStage(templateDaysAhead, daysUntilExpiry);
   if (stage < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, stage);
-  if (stage === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl);
+  if (stage === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   if (stage === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
   return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, stage);
 }
