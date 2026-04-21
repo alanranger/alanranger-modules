@@ -522,15 +522,30 @@ function buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry) {
   return buildExpiredNoCouponEmail(member, expiryDateStr, upgradeUrl);
 }
 
-function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity) {
-  if (daysUntilExpiry < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
-  if (daysUntilExpiry === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl);
-  if (daysUntilExpiry === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
-  return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, daysUntilExpiry);
+// Pick the template using the caller's *intent* first (the `daysAhead` value
+// Zapier sent in) and fall back to the member's computed `daysUntilExpiry`
+// only when the caller did not express an intent. The fetcher window can
+// catch members at N-1, N or N+1 days-until-expiry for a given `daysAhead=N`
+// request, so trusting the intent keeps each Zap stage locked to its
+// dedicated template (Day -7 reminder, Day -1 final day, etc).
+function selectTemplateStage(templateDaysAhead, daysUntilExpiry) {
+  const stage = typeof templateDaysAhead === "number" && !Number.isNaN(templateDaysAhead)
+    ? templateDaysAhead
+    : daysUntilExpiry;
+  return stage;
+}
+
+function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, templateDaysAhead) {
+  const stage = selectTemplateStage(templateDaysAhead, daysUntilExpiry);
+  if (stage < 0) return buildExpiredEmail(member, expiryDateStr, upgradeUrl, stage);
+  if (stage === 1) return buildFinalDayReminderEmail(member, expiryDateStr, upgradeUrl);
+  if (stage === 7) return buildSevenDayReminderEmail(member, expiryDateStr, upgradeUrl, activity);
+  return buildSoftReminderEmail(member, expiryDateStr, upgradeUrl, stage);
 }
 
 async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   const sendEmail = options?.sendEmail !== false;
+  const templateDaysAhead = options?.templateDaysAhead;
 
   // Format expiry date nicely
   const expiryDate = member.trial_expiry_date 
@@ -562,7 +577,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   // Build email content from the shared template helpers so all four
   // templates (soft/7-day/final-day/expired) stay aligned with the dashboard
   // modal copy. See FEATURE_BULLETS and computeSave20State above.
-  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity);
+  const content = buildEmailContent(member, daysUntilExpiry, expiryDate, checkoutUrl, activity, templateDaysAhead);
   const emailSubject = content.subject;
   const emailBody = content.body;
 
@@ -919,7 +934,8 @@ module.exports = async (req, res) => {
       };
 
       const result = await sendTrialExpiryReminder(testMemberObj, daysUntilExpiry, {
-        sendEmail: doSendEmail
+        sendEmail: doSendEmail,
+        templateDaysAhead: useForced ? forced : daysAhead
       });
 
       return res.status(200).json({
@@ -956,7 +972,8 @@ module.exports = async (req, res) => {
       for (const member of expiringMembers) {
         try {
           const result = await sendTrialExpiryReminder(member, member.days_until_expiry, {
-            sendEmail: doSendEmail
+            sendEmail: doSendEmail,
+            templateDaysAhead: daysAhead
           });
           emailResults.push({
             email: member.email,
