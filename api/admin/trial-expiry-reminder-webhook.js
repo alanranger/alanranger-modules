@@ -1160,9 +1160,14 @@ module.exports = async (req, res) => {
         email_error: result.error || null,
         message_id: result.messageId || null,
         upgrade_url: result.upgrade_url || null,
-        email_content_preview: {
-          upgrade_url: result.upgrade_url || null
-        }
+        // Full rendered email (subject/body/html) for the Admin → Emails
+        // tab preview. Populated whenever sendTrialExpiryReminder succeeds
+        // in building content — which is before the sendEmail branch, so
+        // it's present on both dry-run and live sends.
+        preview: result.preview || null,
+        email_content_preview: result.preview
+          ? { subject: result.preview.subject, upgrade_url: result.upgrade_url || null }
+          : { upgrade_url: result.upgrade_url || null }
       });
     }
 

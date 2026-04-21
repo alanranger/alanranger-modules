@@ -137,12 +137,19 @@ async function handleTestSend(req, res) {
   });
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
     if (req.method === "POST") return handleTestSend(req, res);
     if (req.method !== "GET") {
       res.setHeader("Allow", "GET, POST");
-      return res.status(405).json({ error: "Method not allowed" });
+      return res.status(405).json({ error: `Method ${req.method} not allowed` });
     }
     if (req.query.key) return handlePreview(req, res);
     return handleList(req, res);
@@ -150,4 +157,4 @@ module.exports = async (req, res) => {
     console.error("[email-stages] unexpected error:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
-};
+}
