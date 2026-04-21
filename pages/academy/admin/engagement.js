@@ -63,6 +63,100 @@ function formatDate(iso) {
   try { return new Date(iso).toLocaleString('en-GB'); } catch { return iso; }
 }
 
+function Sparkline({ values, width = 140, height = 36, color }) {
+  if (!Array.isArray(values) || values.length < 2) {
+    return <div style={{ height, fontSize: 11, color: 'var(--ar-text-muted)' }}>no data</div>;
+  }
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = (max - min) || 1;
+  const dx = width / (values.length - 1);
+  const points = values.map((v, i) => {
+    const x = (i * dx).toFixed(1);
+    const y = (height - ((v - min) / range) * height).toFixed(1);
+    return `${x},${y}`;
+  }).join(' ');
+  const lastIdx = values.length - 1;
+  const lastX = (lastIdx * dx).toFixed(1);
+  const lastY = (height - ((values[lastIdx] - min) / range) * height).toFixed(1);
+  const fillPoints = `0,${height} ${points} ${lastX},${height}`;
+  return (
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <polygon points={fillPoints} fill={color} opacity="0.15" />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={lastX} cy={lastY} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
+function computeSparkStats(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return { avg: 0, last: 0, deltaPct: 0, total: 0 };
+  }
+  const total = values.reduce((a, b) => a + (Number(b) || 0), 0);
+  const avg = total / values.length;
+  const last = Number(values[values.length - 1]) || 0;
+  const priorAvg = values.length > 1
+    ? values.slice(0, -1).reduce((a, b) => a + (Number(b) || 0), 0) / (values.length - 1)
+    : avg;
+  const deltaPct = priorAvg > 0 ? Math.round(((last - priorAvg) / priorAvg) * 100) : 0;
+  return { avg, last, deltaPct, total };
+}
+
+function deltaBadgeStyle(deltaPct) {
+  if (deltaPct > 0) return { color: '#4ade80', arrow: '↑' };
+  if (deltaPct < 0) return { color: '#f87171', arrow: '↓' };
+  return { color: 'var(--ar-text-muted)', arrow: '→' };
+}
+
+function SparkTile({ label, values, color, fractionDigits = 1 }) {
+  const { avg, last, deltaPct } = computeSparkStats(values);
+  const badge = deltaBadgeStyle(deltaPct);
+  const avgDisplay = Number.isFinite(avg) ? avg.toFixed(fractionDigits) : '0';
+  return (
+    <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+      <div className="ar-admin-kpi-label">{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div className="ar-admin-kpi-value">{avgDisplay}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: badge.color }}>
+          {badge.arrow} {Math.abs(deltaPct)}%
+        </div>
+      </div>
+      <div style={{ marginTop: 6 }}>
+        <Sparkline values={values} color={color} />
+      </div>
+      <div className="ar-admin-kpi-period" style={{ marginTop: 4 }}>
+        Avg / week · last: {last}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyTrends({ series }) {
+  if (!series || !Array.isArray(series.weeks) || series.weeks.length === 0) return null;
+  const tiles = [
+    { label: 'Trial sign-ups / week',  values: series.trial_signups,   color: '#60a5fa' },
+    { label: 'Conversions / week',     values: series.conversions,     color: '#4ade80' },
+    { label: 'Module opens / week',    values: series.module_opens,    color: '#f5a623' },
+    { label: 'Exam attempts / week',   values: series.exam_attempts,   color: '#c084fc' },
+    { label: 'Logins / week',          values: series.logins,          color: '#22d3ee' },
+    { label: 'Active members / week',  values: series.active_members,  color: '#f472b6' },
+  ];
+  const first = series.weeks[0];
+  const last = series.weeks[series.weeks.length - 1];
+  return (
+    <>
+      <h2 style={{ marginTop: '8px' }}>Weekly Trends</h2>
+      <div className="ar-admin-kpi-grid">
+        {tiles.map(t => <SparkTile key={t.label} {...t} />)}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 6 }}>
+        Rolling {series.weeks.length} weeks · {first} → {last} · Δ% compares the latest week to the prior-weeks average.
+      </div>
+    </>
+  );
+}
+
 function DistributionBar({ buckets }) {
   const total = buckets.reduce((s, b) => s + b.value, 0) || 1;
   return (
@@ -142,7 +236,9 @@ export default function EngagementPage() {
 
       {!loading && !error && data && (
         <>
-          <h2 style={{ marginTop: '8px' }}>Totals</h2>
+          <WeeklyTrends series={data.weekly_series} />
+
+          <h2 style={{ marginTop: '24px' }}>Totals</h2>
           <div className="ar-admin-kpi-grid">
             <Tile label="Members in Cache" value={formatNumber(totals.total_members_in_cache)} hint="Synced from Memberstack" />
             <Tile label="Members with Events" value={formatNumber(totals.members_with_events)} hint={`${period === 'all' ? 'All time' : period}`} />

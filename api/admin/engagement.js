@@ -257,6 +257,109 @@ function summariseTracking(memberMeta) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Rolling 12-week trend series for the sparkline row at the top of the tab.
+// Intentionally independent of the period filter so admins always see the
+// rolling trend regardless of which "window" they are drilling into below.
+// ---------------------------------------------------------------------------
+
+const SPARKLINE_WEEKS = 12;
+
+function buildWeekKeys(weeks) {
+  const keys = [];
+  const anchor = new Date();
+  anchor.setUTCHours(0, 0, 0, 0);
+  const day = anchor.getUTCDay();
+  const diff = (day + 6) % 7; // Monday of the current week
+  anchor.setUTCDate(anchor.getUTCDate() - diff);
+  for (let i = weeks - 1; i >= 0; i--) {
+    const d = new Date(anchor);
+    d.setUTCDate(anchor.getUTCDate() - i * 7);
+    keys.push(d.toISOString().slice(0, 10));
+  }
+  return keys;
+}
+
+function bucketCountByWeek(rows, isoField) {
+  const counts = new Map();
+  (rows || []).forEach(row => {
+    const value = row?.[isoField];
+    if (!value) return;
+    const key = weekStart(value);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return counts;
+}
+
+async function fetchTrialsSince(supabase, sinceIso) {
+  const { data, error } = await supabase
+    .from('academy_trial_history')
+    .select('trial_start_at, converted_at')
+    .or(`trial_start_at.gte.${sinceIso},converted_at.gte.${sinceIso}`);
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchExamAttemptsSince(supabase, sinceIso) {
+  const { data, error } = await supabase
+    .from('module_results_ms')
+    .select('created_at')
+    .gte('created_at', sinceIso);
+  if (error) throw error;
+  return data || [];
+}
+
+function buildEventWeeklyBuckets(rows) {
+  const logins = new Map();
+  const opens = new Map();
+  const active = new Map();
+  (rows || []).forEach(row => {
+    if (!row.created_at || !row.member_id) return;
+    const key = weekStart(row.created_at);
+    if (row.event_type === 'login') logins.set(key, (logins.get(key) || 0) + 1);
+    else if (row.event_type === 'module_open') opens.set(key, (opens.get(key) || 0) + 1);
+    const members = active.get(key) || new Set();
+    members.add(row.member_id);
+    active.set(key, members);
+  });
+  return { logins, opens, active };
+}
+
+function mapWeeklyValues(weekKeys, map, transform) {
+  return weekKeys.map(k => {
+    const v = map.get(k);
+    if (v == null) return 0;
+    return transform ? transform(v) : v;
+  });
+}
+
+async function buildWeeklySeries(supabase) {
+  const weekKeys = buildWeekKeys(SPARKLINE_WEEKS);
+  const since = new Date(`${weekKeys[0]}T00:00:00Z`);
+  const sinceIso = since.toISOString();
+
+  const [events, trials, exams] = await Promise.all([
+    fetchEvents(supabase, since),
+    fetchTrialsSince(supabase, sinceIso),
+    fetchExamAttemptsSince(supabase, sinceIso),
+  ]);
+
+  const trialSignups = bucketCountByWeek(trials, 'trial_start_at');
+  const conversions = bucketCountByWeek(trials, 'converted_at');
+  const examCounts = bucketCountByWeek(exams, 'created_at');
+  const eventBuckets = buildEventWeeklyBuckets(events);
+
+  return {
+    weeks: weekKeys,
+    trial_signups:   mapWeeklyValues(weekKeys, trialSignups),
+    conversions:     mapWeeklyValues(weekKeys, conversions),
+    module_opens:    mapWeeklyValues(weekKeys, eventBuckets.opens),
+    exam_attempts:   mapWeeklyValues(weekKeys, examCounts),
+    logins:          mapWeeklyValues(weekKeys, eventBuckets.logins),
+    active_members:  mapWeeklyValues(weekKeys, eventBuckets.active, set => set.size),
+  };
+}
+
 async function handleEngagement(req, res) {
   try {
     const period = req.query?.period || 'all';
@@ -267,10 +370,11 @@ async function handleEngagement(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const [rows, memberMeta, examStats] = await Promise.all([
+    const [rows, memberMeta, examStats, weeklySeries] = await Promise.all([
       fetchEvents(supabase, since),
       fetchMemberMeta(supabase),
       fetchExamStats(supabase),
+      buildWeeklySeries(supabase),
     ]);
 
     const agg = aggregateEvents(rows);
@@ -310,6 +414,7 @@ async function handleEngagement(req, res) {
       top_paths: topPaths,
       top_members: topMembers,
       weekly,
+      weekly_series: weeklySeries,
       exams: examStats,
       tracking: summariseTracking(memberMeta),
     });
