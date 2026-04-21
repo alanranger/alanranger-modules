@@ -4211,16 +4211,36 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       }
     }
 
-    async function navigateAfterPersist(linkEl, persistFn) {
-      var href = linkEl.getAttribute("href") || "";
+    /**
+     * Server-side beacon to persist a tile open reliably across navigation.
+     * Uses fetch({ keepalive: true }) so the request survives page navigation —
+     * the earlier client-side Memberstack write often lost this race because the
+     * browser aborts in-flight requests when location.href is assigned. Server
+     * writes via the Memberstack Admin API are authoritative and guaranteed to
+     * complete even after the user has navigated away.
+     */
+    function sendTileOpenBeacon(section, key, linkEl) {
       try {
-        var persistPromise = persistFn();
-        var timeout = new Promise(function(resolve) { setTimeout(resolve, 1500); });
-        await Promise.race([persistPromise, timeout]);
+        if (!openedProgressMemberId || !section || !key) return;
+        if (typeof fetch !== "function") return;
+        var payload = {
+          member_id: openedProgressMemberId,
+          section: section,
+          key: key,
+          title: linkEl ? (linkEl.getAttribute("title") || "") : "",
+          url: linkEl ? (linkEl.getAttribute("href") || "") : ""
+        };
+        fetch("https://alanranger-modules.vercel.app/api/academy/track-tile-open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true,
+          credentials: "omit",
+          mode: "cors"
+        }).catch(function() { /* ignore — best-effort beacon */ });
       } catch (err) {
-        // Swallow: never block navigation on persistence errors.
+        // Silent: beacon must never disrupt the click flow.
       }
-      if (href) globalThis.location.href = href;
     }
 
     function showPaidOnlyAccessMessage() {
@@ -4309,13 +4329,14 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           openedSet.add(appliedId);
           setAppliedLearningOpenedSet(openedSet);
           syncAppliedLearningProgress();
+          // Reliable server-side persistence (survives navigation via keepalive).
+          sendTileOpenBeacon("appliedLearning", appliedId, linkEl);
+          // Best-effort client-side write for same-tab responsiveness when the
+          // page stays alive (new-tab / aux clicks). No preventDefault: let the
+          // browser navigate naturally; the keepalive beacon handles persistence.
           if (isAuxClick(event, linkEl)) {
-            // New tab / background open: page stays alive, fire-and-forget persist.
             persistAppliedLearningNow();
-            return;
           }
-          if (event) event.preventDefault();
-          navigateAfterPersist(linkEl, persistAppliedLearningNow);
         });
         linkEl.setAttribute("data-applied-wired", "true");
       });
@@ -4382,12 +4403,11 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
           openedSet.add(key);
           setRpsOpenedSet(openedSet);
           syncRpsProgress();
+          // Reliable server-side persistence (survives navigation via keepalive).
+          sendTileOpenBeacon("rps", key, linkEl);
           if (isAuxClick(event, linkEl)) {
             persistRpsNow();
-            return;
           }
-          if (event) event.preventDefault();
-          navigateAfterPersist(linkEl, persistRpsNow);
         });
         linkEl.setAttribute("data-rps-wired", "true");
       });
