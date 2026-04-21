@@ -5156,19 +5156,55 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
         }
       }
 
+      function daysSinceTrialExpiry(status) {
+        if (!status || !status.trialEndedAt) return null;
+        var endMs = new Date(status.trialEndedAt).getTime();
+        if (Number.isNaN(endMs)) return null;
+        return Math.max(0, Math.floor((Date.now() - endMs) / 86400000));
+      }
+
+      function buildRewindSubtitle(status) {
+        var daysAgo = daysSinceTrialExpiry(status);
+        var daysLeft = rewind20DaysLeft(status);
+        var endedStr = status && status.trialEndedAt ? formatUpgradeDate(status.trialEndedAt) : null;
+        var ago;
+        if (daysAgo !== null) {
+          ago = daysAgo + " day" + (daysAgo === 1 ? "" : "s") + " ago";
+        } else if (endedStr) {
+          ago = "on " + endedStr;
+        } else {
+          ago = "a while ago";
+        }
+        var windowText = daysLeft > 0
+          ? ("we\u2019ve just opened a personal " + daysLeft + "-day window for you to come back at \u00a359 instead of \u00a379")
+          : "your \u00a320 off win-back offer is ready at \u00a359 instead of \u00a379";
+        return "Your trial ended " + ago + ", but " + windowText + ". Everything\u2019s still here.";
+      }
+
       function populateUpgradeModal(status) {
         var headingEl = document.getElementById("ar-upgrade-modal-title");
         var subEl = document.getElementById("ar-upgrade-modal-sub");
         var bannerText = document.getElementById("ar-upgrade-banner-text");
         var endedStr = status && status.trialEndedAt ? formatUpgradeDate(status.trialEndedAt) : null;
-        if (headingEl) headingEl.textContent = "Don\u2019t lose everything you\u2019ve started";
+        var isRewind = !!(status && status.couponCode === "REWIND20" && status.couponEligible);
+        if (headingEl) {
+          headingEl.textContent = isRewind
+            ? "Welcome back \u2014 your \u00a320 off is ready"
+            : "Don\u2019t lose everything you\u2019ve started";
+        }
         if (subEl) {
-          subEl.textContent = endedStr
-            ? ("Your trial ended on " + endedStr + ". Keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus 12 months of full Academy access, tools and direct Q&A with Alan.")
-            : "Keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus 12 months of full Academy access, tools and direct Q&A with Alan.";
+          if (isRewind) {
+            subEl.textContent = buildRewindSubtitle(status);
+          } else if (endedStr) {
+            subEl.textContent = "Your trial ended on " + endedStr + ". Keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus 12 months of full Academy access, tools and direct Q&A with Alan.";
+          } else {
+            subEl.textContent = "Keep every module, practice pack, quiz score and note you\u2019ve already built \u2014 plus 12 months of full Academy access, tools and direct Q&A with Alan.";
+          }
         }
         if (bannerText && endedStr) {
-          bannerText.textContent = "Your Academy trial ended on " + endedStr + ". Upgrade to restore full access.";
+          bannerText.textContent = isRewind
+            ? ("Your \u00a320-off win-back offer is open \u2014 upgrade to restore full access.")
+            : ("Your Academy trial ended on " + endedStr + ". Upgrade to restore full access.");
         }
         applyModalCoupon(status);
       }
