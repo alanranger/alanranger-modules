@@ -1655,16 +1655,32 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
   }
   #ar-upgrade-modal .ar-upgrade-modal__close {
     position: absolute;
-    top: 10px;
+    top: 12px;
     right: 12px;
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    font-size: 22px;
-    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 50%;
+    color: #e2e8f0;
+    font-size: 28px;
+    font-weight: 600;
     line-height: 1;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 150ms ease;
   }
-  #ar-upgrade-modal .ar-upgrade-modal__close:hover { color: #fff; }
+  #ar-upgrade-modal .ar-upgrade-modal__close:hover,
+  #ar-upgrade-modal .ar-upgrade-modal__close:focus-visible {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+    color: #fff;
+    outline: none;
+    transform: scale(1.05);
+  }
+  #ar-upgrade-modal .ar-upgrade-modal__close:active { transform: scale(0.96); }
   /* Locked mode: expired-trial members cannot dismiss the modal. */
   #ar-upgrade-modal[data-ar-locked="true"] .ar-upgrade-modal__close { display: none; }
   #ar-upgrade-modal h2 {
