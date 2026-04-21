@@ -1,22 +1,31 @@
 # Zapier — Lapsed Trial Re-engagement (REWIND20)
 
-This Zap fires the `lapsed-trial-reengagement-webhook` every Monday morning. The
+This Zap fires the `lapsed-trial-reengagement-webhook` every Friday morning. The
 webhook does all the work itself — queries Supabase, sends the email, stamps
-the trial row, enforces the cooldown and max-send cap. Zapier is just the
-clock.
+the trial row, enforces the per-attempt pacing and max-send cap. Zapier is
+just the clock.
 
 **Campaign rules** (hardcoded in the webhook for safety — not Zapier-tunable):
 
 | Rule | Value |
 |------|-------|
 | Reach back | 180 days (trials that expired in the last 6 months) |
-| Min days since expiry | 8 days (skip anyone still inside the SAVE20 grace window) |
+| Attempt 1 | day 20 post-expiry (SAVE20 grace ends at day 7, so no overlap) |
+| Attempt 2 | day 30 post-expiry (AND >=10 days after attempt 1) |
+| Attempt 3 | day 60 post-expiry (AND >=30 days after attempt 2) |
 | Personal coupon window (REWIND20) | 7 days from send |
-| Cooldown between sends (same member) | 90 days |
 | Max sends per member | 3 |
 | Annual price | £79 |
 | Discount | £20 off first year → £59 |
 | Unsubscribe link | Included in every email, one-click opt-out |
+| Vercel function timeout | 60s (configured in `vercel.json`) |
+| In-function time budget | 55s — defers overflow to the next Zap run |
+
+The webhook is self-pacing: it looks at `reengagement_send_count` and
+`reengagement_last_sent_at` on every `academy_trial_history` row and only
+emails members whose attempt is due. If Zapier fires more often than weekly
+nothing bad happens — members just won't match the next gate until the day
+threshold is reached.
 
 ---
 
@@ -72,9 +81,9 @@ Open Zapier → Create Zap. Two steps only.
 ### Step 1 — Trigger: Schedule by Zapier
 
 - **Trigger event:** Every Week
-- **Day of Week:** Monday
-- **Time of Day:** 09:00 (UK time)
-- **Skip weekends:** N/A (Monday is picked explicitly)
+- **Day of Week:** Friday
+- **Time of Day:** 09:00 (Europe/London — check the Zap timezone)
+- **Skip weekends:** N/A (Friday is picked explicitly)
 
 ### Step 2 — Action: Webhooks by Zapier → Custom Request
 
@@ -117,9 +126,11 @@ what just went out so you can spot anomalies:
 
   Window:
     Reach back:         {{step2.window__reach_back_days}} days
-    Min days lapsed:    {{step2.window__min_days_since_expiry}} days
-    Cooldown:           {{step2.window__cooldown_days}} days
+    Attempt 1 at:       {{step2.window__first_attempt_min_days_since_expiry}} days post-expiry
+    Attempt gaps (days): {{step2.window__attempt_gap_days}}
     Max sends/member:   {{step2.window__max_sends_per_member}}
+    Deferred to next run: {{step2.emails_deferred}}
+    Timed out mid-run?:  {{step2.time_budget_exhausted}}
   ```
 
 ---
@@ -140,9 +151,10 @@ what just went out so you can spot anomalies:
 6. **Stripe completes payment:** Subscription metadata carries the Memberstack
    plan ids; Memberstack auto-attaches the annual plan; Supabase writes
    `converted_at`; all three systems stay in sync (same flow as SAVE20).
-7. **Member doesn't click email:** Nothing happens until the 90-day cooldown
-   elapses, at which point (if still lapsed and ≤180 days out) they may get
-   one more reminder — capped at 3 sends total.
+7. **Member doesn't click email:** Nothing happens until the next attempt is
+   due (attempt 2 at day 30 post-expiry / >=10 days after attempt 1; attempt 3
+   at day 60 post-expiry / >=30 days after attempt 2), capped at 3 sends total
+   and always within the 180-day reach-back window.
 8. **Member clicks unsubscribe in footer:** `reengagement_opted_out = true`
    in Supabase; they never receive another re-engagement email. Their trial
    history and account are otherwise untouched.
