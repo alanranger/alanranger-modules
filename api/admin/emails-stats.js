@@ -59,12 +59,14 @@ function londonHour(date) {
 }
 
 function nextLondon9AMIso(nowMs) {
-  // Walk forward one hour at a time until we find a moment whose London hour
-  // is 09 and which is strictly after `nowMs`. At most 24 iterations.
-  let candidate = nowMs + HOUR_MS;
+  // Floor to the next whole UTC hour, then walk forward one hour at a time
+  // until we find a slot whose London hour is 09. The cron jobs fire at
+  // 08:00 and 09:00 UTC so we match either tick-point. At most 24 iterations.
+  const startMs = Math.ceil((nowMs + 1000) / HOUR_MS) * HOUR_MS;
+  let candidate = startMs;
   for (let i = 0; i < 48; i++) {
     const d = new Date(candidate);
-    if (londonHour(d) === 9 && d.getUTCMinutes() < 15) {
+    if (londonHour(d) === 9) {
       return d.toISOString();
     }
     candidate += HOUR_MS;
