@@ -266,12 +266,16 @@ function summariseTracking(memberMeta) {
 const SPARKLINE_WEEKS = 12;
 
 function buildWeekKeys(weeks) {
+  // Anchor to the Monday of the MOST RECENTLY COMPLETED week. Using the
+  // current (in-progress) week as the last bucket makes every sparkline
+  // dive toward zero on the right edge because the bucket is partial,
+  // which fakes a catastrophic downtrend across all metrics.
   const keys = [];
   const anchor = new Date();
   anchor.setUTCHours(0, 0, 0, 0);
   const day = anchor.getUTCDay();
-  const diff = (day + 6) % 7; // Monday of the current week
-  anchor.setUTCDate(anchor.getUTCDate() - diff);
+  const diffToThisMonday = (day + 6) % 7;
+  anchor.setUTCDate(anchor.getUTCDate() - diffToThisMonday - 7);
   for (let i = weeks - 1; i >= 0; i--) {
     const d = new Date(anchor);
     d.setUTCDate(anchor.getUTCDate() - i * 7);

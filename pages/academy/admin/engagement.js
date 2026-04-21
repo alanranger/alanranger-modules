@@ -151,7 +151,7 @@ function WeeklyTrends({ series }) {
         {tiles.map(t => <SparkTile key={t.label} {...t} />)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 6 }}>
-        Rolling {series.weeks.length} weeks · {first} → {last} · Δ% compares the latest week to the prior-weeks average.
+        Last {series.weeks.length} completed weeks · {first} → {last} · current in-progress week excluded to avoid partial-week distortion · Δ% compares the latest completed week to the prior-weeks average.
       </div>
     </>
   );
