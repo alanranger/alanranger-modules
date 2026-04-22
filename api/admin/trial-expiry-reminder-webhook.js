@@ -21,8 +21,11 @@
 //
 // Because a single global UTC schedule can't hit "09:00 London" year-round
 // (BST shifts it by an hour), each stage is scheduled twice a day — 08:00 UTC
-// and 09:00 UTC — and the handler below runs only when the current London hour
-// equals 9. This keeps BST and GMT sends both locked to 09:00 London.
+// and 09:00 UTC — and the handler below **only sends mail** when the current
+// London hour is 9. The second slot no-ops. This gate applies to every bulk
+// send (not only when Vercel sets `x-vercel-cron`), otherwise the 09:00 UTC
+// run still delivered mail at 10:00 UK. Dry runs (`sendEmail=false`) and
+// single-recipient admin tests (`testEmail=`) may run outside that window.
 //
 // All emails link members to https://www.alanranger.com/academy/dashboard, where
 // the locked-dashboard snippet detects the trial state (via /api/academy/trial-status)
@@ -1098,10 +1101,6 @@ function isRequestAuthorized(req) {
   return providedSecret === webhookSecret ? "ok" : "unauthorized";
 }
 
-function isVercelCronInvocation(req) {
-  return !!req.headers["x-vercel-cron"];
-}
-
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -1122,22 +1121,29 @@ module.exports = async (req, res) => {
     console.log("[trial-expiry-reminder] auth=open (no secret provided; allowing for backwards compatibility)");
   }
 
-  // Gate Vercel Cron invocations to 09:00 London. Each stage is scheduled at
-  // both 08:00 and 09:00 UTC in vercel.json — exactly one of the two matches
-  // 09:00 London depending on BST/GMT, the other returns a no-op 200.
-  if (isVercelCronInvocation(req) && !isNineAmLondon()) {
+  const doSendEmail = shouldSendEmailFromRequest(req);
+  const adminTestEmail = req.query.testEmail;
+  const isSingleRecipientTest =
+    adminTestEmail !== undefined &&
+    adminTestEmail !== null &&
+    String(adminTestEmail).trim() !== "";
+
+  // Bulk scheduled sends only at 09:00 Europe/London (see vercel.json dual UTC).
+  if (doSendEmail && !isSingleRecipientTest && !isNineAmLondon()) {
     const londonHour = new Date().toLocaleString("en-GB", {
       timeZone: "Europe/London",
       hour: "numeric",
       hour12: false,
     });
-    console.log(`[trial-expiry-reminder] Cron invocation skipped — London hour is ${londonHour}, not 9`);
+    console.log(
+      `[trial-expiry-reminder] Bulk send skipped — London hour is ${londonHour}, not 9 (live sends only run 09:00 Europe/London)`
+    );
     return res.status(200).json({
       success: true,
       skipped: true,
       reason: "outside_london_nine_am_window",
       london_hour: Number.parseInt(londonHour, 10),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -1150,8 +1156,6 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-
-    const doSendEmail = shouldSendEmailFromRequest(req);
 
     // Get daysAhead from query parameter (default: 7)
     // Negative values are allowed for expired notifications (e.g., -1 for 1 day after expiry)
@@ -1180,8 +1184,8 @@ module.exports = async (req, res) => {
     }
 
     // TEST MODE: If testEmail query parameter is provided, send test email to that address
-    const testEmail = req.query.testEmail;
-    if (testEmail) {
+    if (isSingleRecipientTest) {
+      const testEmail = String(adminTestEmail).trim();
       console.log(`[trial-expiry-reminder] TEST MODE: Sending test email to ${testEmail}`);
       
       // Fetch member data from Supabase
