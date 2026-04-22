@@ -566,29 +566,107 @@ const tdStyle = {
   verticalAlign: 'top',
 };
 
-function MemberPicker({ members, value, onChange }) {
+function rowMatchesMemberSearch(row, searchEmail, searchName) {
+  const e = searchEmail.trim().toLowerCase();
+  const n = searchName.trim().toLowerCase();
+  if (e && !(row.email || '').toLowerCase().includes(e)) return false;
+  if (n && !(row.name || '').toLowerCase().includes(n)) return false;
+  return true;
+}
+
+function MemberPicker({
+  members,
+  value,
+  onChange,
+  searchEmail,
+  searchName,
+  onSearchEmailChange,
+  onSearchNameChange,
+}) {
+  const filtered = useMemo(
+    () => members.filter((m) => rowMatchesMemberSearch(m, searchEmail, searchName)),
+    [members, searchEmail, searchName],
+  );
+  const displayList = useMemo(() => {
+    if (!value) return filtered;
+    const has = filtered.some((m) => m.email === value);
+    if (has) return filtered;
+    const picked = members.find((m) => m.email === value);
+    return picked ? [picked, ...filtered] : filtered;
+  }, [filtered, value, members]);
+
+  const inputStyle = {
+    width: '100%',
+    padding: '8px 10px',
+    fontSize: 13,
+    border: '1px solid var(--ar-border)',
+    borderRadius: 6,
+    background: 'var(--ar-card)',
+    color: 'var(--ar-text)',
+    boxSizing: 'border-box',
+  };
+  const smallLabel = { fontSize: 11, fontWeight: 600, color: 'var(--ar-text-muted)', display: 'block', marginBottom: 4 };
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <label htmlFor="ar-email-member-picker" style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
-        Preview / test against member:
-      </label>
-      <select
-        id="ar-email-member-picker"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '8px 10px', fontSize: 14,
-          border: '1px solid var(--ar-border)', borderRadius: 6,
-          background: 'var(--ar-card)', color: 'var(--ar-text)',
-        }}
-      >
-        <option value="">— pick a member —</option>
-        {members.map((m) => (
-          <option key={m.member_id || m.email} value={m.email}>
-            {m.email}{m.name ? ` · ${m.name}` : ''}
-          </option>
-        ))}
-      </select>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        Preview / test against member
+      </div>
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
+      }}>
+        <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+          <label htmlFor="ar-email-member-picker" style={{ ...smallLabel, marginBottom: 4 }}>
+            Member
+          </label>
+          <select
+            id="ar-email-member-picker"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 10px', fontSize: 14,
+              border: '1px solid var(--ar-border)', borderRadius: 6,
+              background: 'var(--ar-card)', color: 'var(--ar-text)',
+            }}
+          >
+            <option value="">— pick a member —</option>
+            {displayList.map((m) => (
+              <option key={m.member_id || m.email} value={m.email}>
+                {m.email}{m.name ? ` · ${m.name}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <label htmlFor="ar-email-filter-email" style={smallLabel}>Filter by email</label>
+          <input
+            id="ar-email-filter-email"
+            type="search"
+            autoComplete="off"
+            placeholder="Contains…"
+            value={searchEmail}
+            onChange={(ev) => onSearchEmailChange(ev.target.value)}
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <label htmlFor="ar-email-filter-name" style={smallLabel}>Filter by name</label>
+          <input
+            id="ar-email-filter-name"
+            type="search"
+            autoComplete="off"
+            placeholder="Contains…"
+            value={searchName}
+            onChange={(ev) => onSearchNameChange(ev.target.value)}
+            style={inputStyle}
+          />
+        </div>
+      </div>
+      {(searchEmail.trim() || searchName.trim()) ? (
+        <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 6 }}>
+          {displayList.length} member{displayList.length === 1 ? '' : 's'} in dropdown (table below uses the same filters)
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -958,17 +1036,18 @@ export default function EmailsAdmin() {
 
   const [filterStageKey, setFilterStageKey] = useState(null);
   const [memberEmail, setMemberEmail] = useState('');
+  const [memberSearchEmail, setMemberSearchEmail] = useState('');
+  const [memberSearchName, setMemberSearchName] = useState('');
   const [preview, setPreview] = useState(null);
   const [testState, setTestState] = useState(null);
 
   const nowMs = useMemo(() => Date.now(), [tableData.generatedAt]);
 
-  // Picker is sourced from the same trial-only table rows (minus converted
-  // members) so paid annual subscribers never appear in the dropdown — they
-  // aren't in any email cohort and testing trial emails against them is nonsense.
+  // Picker lists everyone in the 90-day table with an email (including converted)
+  // so you can inspect sends for any member.
   useEffect(() => {
     const pickerMembers = (tableData.rows || [])
-      .filter((r) => !r.converted_at && !!r.email)
+      .filter((r) => !!r.email)
       .map((r) => ({ member_id: r.member_id, email: r.email, name: r.name }))
       .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
     setMembers(pickerMembers);
@@ -1016,6 +1095,11 @@ export default function EmailsAdmin() {
       (r) => isRowEligibleForStage(r, filterStageKey, nowMs) || !!r.sends?.[filterStageKey]
     );
   }, [tableData.rows, filterStageKey, nowMs]);
+
+  const displayRows = useMemo(
+    () => filteredRows.filter((r) => rowMatchesMemberSearch(r, memberSearchEmail, memberSearchName)),
+    [filteredRows, memberSearchEmail, memberSearchName],
+  );
 
   async function handleTestSend() {
     if (!selectedStage || !memberEmail) return;
@@ -1085,6 +1169,10 @@ export default function EmailsAdmin() {
             members={members}
             value={memberEmail}
             onChange={(v) => { setMemberEmail(v); setTestState(null); }}
+            searchEmail={memberSearchEmail}
+            searchName={memberSearchName}
+            onSearchEmailChange={setMemberSearchEmail}
+            onSearchNameChange={setMemberSearchName}
           />
           {selectedStage ? (
             <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', lineHeight: 1.5 }}>
@@ -1117,12 +1205,15 @@ export default function EmailsAdmin() {
             Members (last 90 days of trials)
           </h2>
           <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
-            {filteredRows.length} row{filteredRows.length === 1 ? '' : 's'}
-            {filterStageKey ? ` · filtered by ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
+            {displayRows.length} row{displayRows.length === 1 ? '' : 's'}
+            {filterStageKey ? ` · stage ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
+            {(memberSearchEmail.trim() || memberSearchName.trim())
+              ? ' · name/email filter'
+              : ''}
           </span>
         </div>
         <MembersTable
-          rows={filteredRows}
+          rows={displayRows}
           filterStage={filterStageKey}
           attributionWindowDays={tableData.attributionWindowDays}
           onRowClick={(row) => {
