@@ -94,13 +94,17 @@ function computeSparkStats(values) {
   if (!Array.isArray(values) || values.length === 0) {
     return { avg: 0, last: 0, deltaPct: 0, total: 0 };
   }
-  const total = values.reduce((a, b) => a + (Number(b) || 0), 0);
-  const avg = total / values.length;
-  const last = Number(values[values.length - 1]) || 0;
-  const priorAvg = values.length > 1
-    ? values.slice(0, -1).reduce((a, b) => a + (Number(b) || 0), 0) / (values.length - 1)
-    : avg;
-  const deltaPct = priorAvg > 0 ? Math.round(((last - priorAvg) / priorAvg) * 100) : 0;
+  const nums = values.map((v) => Number(v) || 0);
+  const total = nums.reduce((a, b) => a + b, 0);
+  const avg = total / nums.length;
+  const last = nums[nums.length - 1];
+  const prevWeek = nums.length >= 2 ? nums[nums.length - 2] : last;
+  // Week-over-week (latest vs the immediately preceding week), same order as the
+  // sparkline (oldest → newest). Positive ↑ when last week beat the prior week.
+  let deltaPct = 0;
+  if (prevWeek > 0) deltaPct = Math.round(((last - prevWeek) / prevWeek) * 100);
+  else if (prevWeek <= 0 && last > 0) deltaPct = 100;
+
   return { avg, last, deltaPct, total };
 }
 
@@ -152,7 +156,7 @@ function WeeklyTrends({ series }) {
         {tiles.map(t => <SparkTile key={t.label} {...t} />)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 6 }}>
-        Last {series.weeks.length} completed weeks · {first} → {last} · current in-progress week excluded to avoid partial-week distortion · Δ% compares the latest completed week to the prior-weeks average.
+        Last {series.weeks.length} completed weeks · {first} → {last} · current in-progress week excluded to avoid partial-week distortion · Δ% is week-over-week (latest vs preceding completed week); the large figure is still the overall average across those weeks.
       </div>
     </>
   );
