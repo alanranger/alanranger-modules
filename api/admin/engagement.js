@@ -258,12 +258,26 @@ function summariseTracking(memberMeta) {
 }
 
 // ---------------------------------------------------------------------------
-// Rolling 12-week trend series for the sparkline row at the top of the tab.
-// Intentionally independent of the period filter so admins always see the
-// rolling trend regardless of which "window" they are drilling into below.
+// Weekly trend tiles (sparklines). Bucket count derives from the same period
+// selector as the rest of the tab so the KPI row updates with 7d / 30d / 90d / all.
+// Always uses completed UTC weeks (Monday start) anchored to the latest closed week.
 // ---------------------------------------------------------------------------
 
-const SPARKLINE_WEEKS = 12;
+const MIN_SPARKLINE_WEEKS = 2;
+
+/** Maps admin period dropdown to number of completed week buckets on the charts. */
+function completedWeekCountForPeriod(period) {
+  switch (period) {
+    case '7d':
+      return MIN_SPARKLINE_WEEKS;
+    case '30d':
+      return Math.max(MIN_SPARKLINE_WEEKS, Math.ceil(30 / 7));
+    case '90d':
+      return Math.max(MIN_SPARKLINE_WEEKS, Math.ceil(90 / 7));
+    default:
+      return 26;
+  }
+}
 
 function buildWeekKeys(weeks) {
   // Anchor to the Monday of the MOST RECENTLY COMPLETED week. Using the
@@ -337,8 +351,9 @@ function mapWeeklyValues(weekKeys, map, transform) {
   });
 }
 
-async function buildWeeklySeries(supabase) {
-  const weekKeys = buildWeekKeys(SPARKLINE_WEEKS);
+async function buildWeeklySeries(supabase, period) {
+  const weekCount = completedWeekCountForPeriod(period);
+  const weekKeys = buildWeekKeys(weekCount);
   const since = new Date(`${weekKeys[0]}T00:00:00Z`);
   const sinceIso = since.toISOString();
 
@@ -378,7 +393,7 @@ async function handleEngagement(req, res) {
       fetchEvents(supabase, since),
       fetchMemberMeta(supabase),
       fetchExamStats(supabase),
-      buildWeeklySeries(supabase),
+      buildWeeklySeries(supabase, period),
     ]);
 
     const agg = aggregateEvents(rows);

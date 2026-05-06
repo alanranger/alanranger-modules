@@ -137,7 +137,14 @@ function SparkTile({ label, values, color, fractionDigits = 1 }) {
   );
 }
 
-function WeeklyTrends({ series }) {
+const PERIOD_LABELS = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+  all: 'All time',
+};
+
+function WeeklyTrends({ series, period }) {
   if (!series || !Array.isArray(series.weeks) || series.weeks.length === 0) return null;
   const tiles = [
     { label: 'Trial sign-ups / week',  values: series.trial_signups,   color: '#60a5fa' },
@@ -149,14 +156,18 @@ function WeeklyTrends({ series }) {
   ];
   const first = series.weeks[0];
   const last = series.weeks[series.weeks.length - 1];
+  const periodLabel = PERIOD_LABELS[period] || String(period);
   return (
     <>
       <h2 style={{ marginTop: '8px' }}>Weekly Trends</h2>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 10 }}>
+        Uses the period filter (<strong>{periodLabel}</strong>): {series.weeks.length} completed UTC week bucket{series.weeks.length === 1 ? '' : 's'} ending {last}.
+      </div>
       <div className="ar-admin-kpi-grid">
         {tiles.map(t => <SparkTile key={t.label} {...t} />)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 6 }}>
-        Last {series.weeks.length} completed weeks · {first} → {last} · current in-progress week excluded to avoid partial-week distortion · Δ% is week-over-week (latest vs preceding completed week); the large figure is still the overall average across those weeks.
+        Range {first} → {last} · current in-progress week excluded · Δ% is week-over-week; the headline figure averages across the buckets above (not elsewhere on the page).
       </div>
     </>
   );
@@ -241,7 +252,7 @@ export default function EngagementPage() {
 
       {!loading && !error && data && (
         <>
-          <WeeklyTrends series={data.weekly_series} />
+          <WeeklyTrends series={data.weekly_series} period={period} />
 
           <h2 style={{ marginTop: '24px' }}>Totals</h2>
           <div className="ar-admin-kpi-grid">
