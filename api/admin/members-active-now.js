@@ -1,5 +1,6 @@
 // /api/admin/members-active-now.js
-// Returns count of members who are currently logged in
+// Returns members with recent academy_events within the sliding window plus
+// a resolved name/email row from ms_members_cache for dashboard display.
 // A member is "logged in" if their most recent login is after their most recent logout (or they have no logout)
 
 const { createClient } = require("@supabase/supabase-js");
@@ -70,6 +71,8 @@ module.exports = async (req, res) => {
     if (validMemberIds.length === 0) {
       return res.status(200).json({
         count: 0,
+        members: [],
+        activity_window_minutes: 30,
         last_updated: now.toISOString()
       });
     }
@@ -90,13 +93,43 @@ module.exports = async (req, res) => {
       throw eventsError;
     }
 
-    // Count distinct members who have any activity in the last 30 minutes
-    // This means they're actively using the site right now
     const activeMemberIds = new Set(
       (recentActivities || []).map(e => e.member_id).filter(Boolean)
     );
-    
+
     const activeCount = activeMemberIds.size;
+
+    const ids = Array.from(activeMemberIds);
+    const latestActivityByMember = new Map();
+    for (const row of recentActivities || []) {
+      if (!row?.member_id || latestActivityByMember.has(row.member_id)) continue;
+      latestActivityByMember.set(row.member_id, row.created_at);
+    }
+
+    let memberRows = [];
+    if (ids.length > 0) {
+      const { data: profiles, error: profileError } = await supabase
+        .from('ms_members_cache')
+        .select('member_id, email, name')
+        .in('member_id', ids);
+      if (profileError) throw profileError;
+      const byId = new Map((profiles || []).map((r) => [r.member_id, r]));
+      memberRows = ids
+        .map((id) => {
+          const profile = byId.get(id);
+          return {
+            member_id: id,
+            email: profile?.email || null,
+            name: profile?.name || null,
+            last_activity_at: latestActivityByMember.get(id) || null,
+          };
+        })
+        .sort((a, b) => {
+          const ta = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
+          const tb = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
+          return tb - ta;
+        });
+    }
 
     // Debug logging
     console.log('[active-now-vercel-api] Query results:', {
@@ -109,6 +142,8 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       count: activeCount,
+      members: memberRows,
+      activity_window_minutes: 30,
       last_updated: now.toISOString()
     });
 

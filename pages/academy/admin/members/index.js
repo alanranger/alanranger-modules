@@ -42,6 +42,8 @@ export default function MembersDirectory() {
   
   // Active Now Count
   const [activeNowCount, setActiveNowCount] = useState(0);
+  const [activeNowMembers, setActiveNowMembers] = useState([]);
+  const [activeNowWindowMinutes, setActiveNowWindowMinutes] = useState(30);
   const [activeNowLoading, setActiveNowLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   
@@ -184,11 +186,16 @@ export default function MembersDirectory() {
       const data = await res.json();
       console.log('[fetchActiveNow] Active now response:', data);
       setActiveNowCount(data.count || 0);
+      setActiveNowMembers(Array.isArray(data.members) ? data.members : []);
+      const win = Number(data.activity_window_minutes);
+      setActiveNowWindowMinutes(Number.isFinite(win) && win > 0 ? win : 30);
       setLastUpdated(data.last_updated ? new Date(data.last_updated) : new Date());
     } catch (error) {
       console.error('[fetchActiveNow] Failed to fetch active now count:', error);
       // Set count to 0 on error to show something
       setActiveNowCount(0);
+      setActiveNowMembers([]);
+      setActiveNowWindowMinutes(30);
     } finally {
       setActiveNowLoading(false);
     }
@@ -417,7 +424,11 @@ export default function MembersDirectory() {
                 width: '100%',
                 textAlign: 'left'
               }}
-              title={activeNowFilter ? 'Click to clear filter' : 'Click to filter by logged in members'}
+              title={
+                activeNowFilter
+                  ? 'Click to clear table filter'
+                  : 'Uses academy_events in the last 30 minutes. Click to filter the table.'
+              }
             >
               <div className="ar-admin-kpi-label">
                 Logged In Right Now
@@ -458,6 +469,35 @@ export default function MembersDirectory() {
             </button>
           </div>
         </div>
+
+        {!activeNowLoading && activeNowCount > 0 && activeNowMembers.length > 0 ? (
+          <div
+            className="ar-admin-card"
+            style={{ marginBottom: 16, padding: '12px 14px', fontSize: 13 }}
+          >
+            <div style={{ marginBottom: 8, color: 'var(--ar-text-muted)', fontSize: 12 }}>
+              Activity in the last <strong>{activeNowWindowMinutes}</strong> minutes (trial or annual · ACTIVE/TRIALING). Names update with the refresh control above.
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--ar-text)' }}>
+              {activeNowMembers.map((m) => (
+                <li key={m.member_id} style={{ marginBottom: 6 }}>
+                  <strong>{m.name || '—'}</strong>
+                  {m.email ? (
+                    <>
+                      {' '}
+                      · <span style={{ opacity: 0.9 }}>{m.email}</span>
+                    </>
+                  ) : null}
+                  {m.last_activity_at ? (
+                    <span style={{ color: 'var(--ar-text-muted)', marginLeft: 8 }}>
+                      last event {formatDate(m.last_activity_at)}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {/* Filters */}
         <div className="ar-admin-card" style={{ marginBottom: '24px' }}>
