@@ -203,6 +203,10 @@ function EmailOutcomesTable({ emailOutcomes }) {
           <> · <strong>{formatNumber(t90.raw_sends)}</strong> raw sends in last 90 days</>
         ) : null}
         . {emailOutcomes.logging?.note || ''} {emailOutcomes.note || ''}
+        {emailOutcomes.debug?.events_loaded != null ? (
+          <> Loaded <strong>{formatNumber(emailOutcomes.debug.events_loaded)}</strong> login/module events for{' '}
+          <strong>{formatNumber(emailOutcomes.debug.members_with_events)}</strong> emailed members.</>
+        ) : null}
       </p>
       <div className="ar-admin-card">
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ar-text-muted)', marginBottom: 8 }}>
