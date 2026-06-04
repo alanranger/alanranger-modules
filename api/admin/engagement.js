@@ -3,6 +3,7 @@
 // Sourced from academy_events, module_results_ms and ms_members_cache.
 
 const { createClient } = require("@supabase/supabase-js");
+const { buildEmailEngagementStats } = require("../../lib/emailEngagementStats");
 
 const SESSION_GAP_SECONDS = 1800; // 30 minutes
 
@@ -389,11 +390,12 @@ async function handleEngagement(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const [rows, memberMeta, examStats, weeklySeries] = await Promise.all([
+    const [rows, memberMeta, examStats, weeklySeries, emailOutcomes] = await Promise.all([
       fetchEvents(supabase, since),
       fetchMemberMeta(supabase),
       fetchExamStats(supabase),
       buildWeeklySeries(supabase, period),
+      buildEmailEngagementStats(supabase),
     ]);
 
     const agg = aggregateEvents(rows);
@@ -436,6 +438,7 @@ async function handleEngagement(req, res) {
       weekly_series: weeklySeries,
       exams: examStats,
       tracking: summariseTracking(memberMeta),
+      email_outcomes: emailOutcomes,
     });
   } catch (error) {
     console.error('[engagement] Error:', error);

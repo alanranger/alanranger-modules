@@ -173,6 +173,148 @@ function WeeklyTrends({ series, period }) {
   );
 }
 
+function DeltaInline({ delta, isPctPoints }) {
+  const color = delta > 0 ? '#4ade80' : delta < 0 ? '#f87171' : 'var(--ar-text-muted)';
+  const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+  const text = isPctPoints
+    ? `${delta > 0 ? '+' : ''}${delta} pp`
+    : `${arrow} ${Math.abs(delta)}%`;
+  return (
+    <div style={{ fontSize: 11, fontWeight: 600, color, marginTop: 2 }}>
+      vs last mo: {text}
+    </div>
+  );
+}
+
+function EmailOutcomesTable({ emailOutcomes }) {
+  if (!emailOutcomes?.stages?.length) return null;
+  const curLabel = emailOutcomes.month_labels?.current_label || 'Current month';
+  const lastLabel = emailOutcomes.month_labels?.last_label || 'Last month';
+  return (
+    <>
+      <h2 style={{ marginTop: '8px' }}>Email lifecycle — post-send outcomes</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 10 }}>
+        From <code>academy_email_events</code> (Vercel webhooks). Values are for <strong>{curLabel} (MTD)</strong>;
+        deltas compare to <strong>{lastLabel}</strong> (full month). One row per member per stage (latest send in month).
+        {emailOutcomes.note ? ` ${emailOutcomes.note}` : ''}
+      </p>
+      <div className="ar-admin-card">
+        <table className="ar-admin-table">
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Emailed</th>
+              <th>Logged in after</th>
+              <th>Opened module after</th>
+              <th>Converted after</th>
+            </tr>
+          </thead>
+          <tbody>
+            {emailOutcomes.stages.map((s) => {
+              const p = s.periods?.current_month || {};
+              const d = s.deltas_vs_last_month || {};
+              return (
+                <tr key={s.key}>
+                  <td><strong>{s.label}</strong></td>
+                  <td>
+                    {formatNumber(p.emailed)}
+                    {d.emailed !== 0 ? (
+                      <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>
+                        ({d.emailed > 0 ? '+' : ''}{d.emailed} vs last mo)
+                      </div>
+                    ) : null}
+                    <DeltaInline delta={d.emailed_pct} />
+                  </td>
+                  <td>
+                    {p.emailed ? `${p.login_after_pct}%` : '—'}
+                    {p.emailed ? <DeltaInline delta={d.login_after_pct} isPctPoints /> : null}
+                  </td>
+                  <td>
+                    {p.emailed ? `${p.module_after_pct}%` : '—'}
+                    {p.emailed ? <DeltaInline delta={d.module_after_pct} isPctPoints /> : null}
+                  </td>
+                  <td>
+                    {p.emailed ? `${p.converted_after_pct}%` : '—'}
+                    {p.emailed ? <DeltaInline delta={d.converted_after_pct} isPctPoints /> : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <details style={{ marginTop: 8, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+        <summary style={{ cursor: 'pointer' }}>Last month vs month before (closed months)</summary>
+        <div className="ar-admin-card" style={{ marginTop: 8 }}>
+          <table className="ar-admin-table">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>{emailOutcomes.month_labels?.last_label}</th>
+                <th>{emailOutcomes.month_labels?.prev_label}</th>
+                <th>Δ emailed</th>
+                <th>Δ login % (pp)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {emailOutcomes.stages.map((s) => {
+                const last = s.periods?.last_month || {};
+                const prev = s.periods?.prev_month || {};
+                const d2 = s.deltas_vs_prev_month || {};
+                return (
+                  <tr key={s.key}>
+                    <td>{s.label}</td>
+                    <td>{formatNumber(last.emailed)} · {last.login_after_pct}% login</td>
+                    <td>{formatNumber(prev.emailed)} · {prev.login_after_pct}% login</td>
+                    <td>{d2.emailed >= 0 ? '+' : ''}{d2.emailed}</td>
+                    <td>{d2.login_after_pct >= 0 ? '+' : ''}{d2.login_after_pct} pp</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </>
+  );
+}
+
+function EmailSendTrends({ trends }) {
+  if (!trends?.weeks?.length) return null;
+  const colors = {
+    'day-minus-7': '#60a5fa',
+    'day-minus-1': '#22d3ee',
+    'day-plus-7': '#f5a623',
+    'day-plus-20': '#c084fc',
+  };
+  const tiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+    key,
+    label: `${s.label} — sends / week`,
+    values: s.sends,
+    color: colors[key] || '#94a3b8',
+  }));
+  const loginTiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+    key: `${key}-login`,
+    label: `${s.label} — logins after send / week`,
+    values: s.login_after,
+    color: colors[key] || '#94a3b8',
+  }));
+  return (
+    <>
+      <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0 }}>
+        Weekly buckets (UTC, completed weeks). Since {trends.since?.slice(0, 10) || '—'}.
+      </p>
+      <div className="ar-admin-kpi-grid">
+        {tiles.map((t) => <SparkTile key={t.key} label={t.label} values={t.values} color={t.color} fractionDigits={0} />)}
+      </div>
+      <div className="ar-admin-kpi-grid" style={{ marginTop: 12 }}>
+        {loginTiles.map((t) => <SparkTile key={t.key} label={t.label} values={t.values} color={t.color} fractionDigits={0} />)}
+      </div>
+    </>
+  );
+}
+
 function DistributionBar({ buckets }) {
   const total = buckets.reduce((s, b) => s + b.value, 0) || 1;
   return (
@@ -253,6 +395,9 @@ export default function EngagementPage() {
       {!loading && !error && data && (
         <>
           <WeeklyTrends series={data.weekly_series} period={period} />
+
+          <EmailOutcomesTable emailOutcomes={data.email_outcomes} />
+          <EmailSendTrends trends={data.email_outcomes?.trends_90d} />
 
           <h2 style={{ marginTop: '24px' }}>Totals</h2>
           <div className="ar-admin-kpi-grid">
