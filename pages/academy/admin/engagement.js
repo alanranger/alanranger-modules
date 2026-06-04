@@ -190,20 +190,30 @@ function EmailOutcomesTable({ emailOutcomes }) {
   if (!emailOutcomes?.stages?.length) return null;
   const curLabel = emailOutcomes.month_labels?.current_label || 'Current month';
   const lastLabel = emailOutcomes.month_labels?.last_label || 'Last month';
+  const logSince = emailOutcomes.logging?.logging_since?.slice(0, 10) || '—';
+  const allTime = emailOutcomes.logging?.all_time_logged_sends;
+  const t90 = emailOutcomes.totals_90d || {};
   return (
     <>
       <h2 style={{ marginTop: '8px' }}>Email lifecycle — post-send outcomes</h2>
       <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 10 }}>
-        From <code>academy_email_events</code> (Vercel webhooks). Values are for <strong>{curLabel} (MTD)</strong>;
-        deltas compare to <strong>{lastLabel}</strong> (full month). One row per member per stage (latest send in month).
-        {emailOutcomes.note ? ` ${emailOutcomes.note}` : ''}
+        From <code>academy_email_events</code> (Vercel cron/webhooks). Logging since <strong>{logSince}</strong>
+        {typeof allTime === 'number' ? <> · <strong>{formatNumber(allTime)}</strong> logged sends all-time</> : null}
+        {t90.raw_sends != null ? (
+          <> · <strong>{formatNumber(t90.raw_sends)}</strong> raw sends in last 90 days</>
+        ) : null}
+        . {emailOutcomes.logging?.note || ''} {emailOutcomes.note || ''}
       </p>
       <div className="ar-admin-card">
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ar-text-muted)', marginBottom: 8 }}>
+          Last 90 days (since {t90.since || '—'}) — primary view
+        </div>
         <table className="ar-admin-table">
           <thead>
             <tr>
               <th>Stage</th>
               <th>Emailed</th>
+              <th>Raw sends</th>
               <th>Logged in after</th>
               <th>Opened module after</th>
               <th>Converted after</th>
@@ -211,38 +221,63 @@ function EmailOutcomesTable({ emailOutcomes }) {
           </thead>
           <tbody>
             {emailOutcomes.stages.map((s) => {
-              const p = s.periods?.current_month || {};
-              const d = s.deltas_vs_last_month || {};
+              const p = s.periods?.rolling_90d || {};
               return (
                 <tr key={s.key}>
                   <td><strong>{s.label}</strong></td>
-                  <td>
-                    {formatNumber(p.emailed)}
-                    {d.emailed !== 0 ? (
-                      <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>
-                        ({d.emailed > 0 ? '+' : ''}{d.emailed} vs last mo)
-                      </div>
-                    ) : null}
-                    <DeltaInline delta={d.emailed_pct} />
-                  </td>
-                  <td>
-                    {p.emailed ? `${p.login_after_pct}%` : '—'}
-                    {p.emailed ? <DeltaInline delta={d.login_after_pct} isPctPoints /> : null}
-                  </td>
-                  <td>
-                    {p.emailed ? `${p.module_after_pct}%` : '—'}
-                    {p.emailed ? <DeltaInline delta={d.module_after_pct} isPctPoints /> : null}
-                  </td>
-                  <td>
-                    {p.emailed ? `${p.converted_after_pct}%` : '—'}
-                    {p.emailed ? <DeltaInline delta={d.converted_after_pct} isPctPoints /> : null}
-                  </td>
+                  <td>{formatNumber(p.emailed)}</td>
+                  <td>{formatNumber(s.raw_sends_90d ?? 0)}</td>
+                  <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
+                  <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
+                  <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <details style={{ marginTop: 8, fontSize: 12, color: 'var(--ar-text-muted)' }}>
+        <summary style={{ cursor: 'pointer' }}>{curLabel} month-to-date (why totals can look small)</summary>
+        <div className="ar-admin-card" style={{ marginTop: 8 }}>
+          <p style={{ margin: '0 0 10px', fontSize: 12 }}>
+            MTD only counts sends in the current calendar month. Cron may have sent hundreds in prior months
+            (e.g. REWIND batch in Apr 2026) — those appear in the 90-day table above, not here.
+          </p>
+          <table className="ar-admin-table">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Emailed (MTD)</th>
+                <th>Logged in after</th>
+                <th>Opened module after</th>
+                <th>Converted after</th>
+              </tr>
+            </thead>
+            <tbody>
+              {emailOutcomes.stages.map((s) => {
+                const p = s.periods?.current_month || {};
+                const d = s.deltas_vs_last_month || {};
+                return (
+                  <tr key={s.key}>
+                    <td>{s.label}</td>
+                    <td>
+                      {formatNumber(p.emailed)}
+                      {d.emailed !== 0 ? (
+                        <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>
+                          ({d.emailed > 0 ? '+' : ''}{d.emailed} vs {lastLabel})
+                        </div>
+                      ) : null}
+                    </td>
+                    <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
+                    <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
+                    <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
       <details style={{ marginTop: 8, fontSize: 12, color: 'var(--ar-text-muted)' }}>
         <summary style={{ cursor: 'pointer' }}>Last month vs month before (closed months)</summary>
         <div className="ar-admin-card" style={{ marginTop: 8 }}>
@@ -303,7 +338,8 @@ function EmailSendTrends({ trends }) {
     <>
       <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends</h2>
       <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0 }}>
-        Weekly buckets (UTC, completed weeks). Since {trends.since?.slice(0, 10) || '—'}.
+        Weekly buckets (UTC). Since {trends.since?.slice(0, 10) || '—'}.
+        Sparkline headline is <strong>average sends per week</strong>, not the 90-day total (see table above for totals).
       </p>
       <div className="ar-admin-kpi-grid">
         {tiles.map((t) => <SparkTile key={t.key} label={t.label} values={t.values} color={t.color} fractionDigits={0} />)}
