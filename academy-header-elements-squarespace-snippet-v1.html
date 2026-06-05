@@ -17,12 +17,35 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     background: #000;
     color: #fff;
     position: sticky;
-    top: 0; /* Stick to top of viewport (below Squarespace header) */
+    top: 0;
     left: 0;
     right: 0;
-    z-index: 998; /* Below Squarespace header but above content */
+    z-index: 998;
     min-height: 80px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Dashboard: fixed stack (sticky fails inside separate Sqsp code-block wrappers) */
+  html.ar-dashboard-fixed-stack #ar-academy-header-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+
+  #ar-academy-header-spacer,
+  #ar-do-next-strip-spacer {
+    display: block;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  html.ar-dashboard-fixed-stack .page-section,
+  html.ar-dashboard-fixed-stack .content-wrapper,
+  html.ar-dashboard-fixed-stack .sqs-layout,
+  html.ar-dashboard-fixed-stack .sqs-block-content {
+    overflow: visible !important;
   }
   
   /* Left: Welcome message */
@@ -658,11 +681,28 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
   }
   
+  function isDashboardPath() {
+    var p = (window.location && window.location.pathname) ? window.location.pathname : '';
+    p = p.replace(/\/+$/, '') || '/';
+    return p === '/academy/dashboard';
+  }
+
   function publishAcademyHeaderHeight() {
     var el = document.getElementById('ar-academy-header-container');
     if (!el) return;
     var h = Math.ceil(el.getBoundingClientRect().height) || 88;
     document.documentElement.style.setProperty('--ar-academy-header-height', h + 'px');
+    if (isDashboardPath()) {
+      document.documentElement.classList.add('ar-dashboard-fixed-stack');
+      var spacer = document.getElementById('ar-academy-header-spacer');
+      if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'ar-academy-header-spacer';
+        spacer.setAttribute('aria-hidden', 'true');
+        el.insertAdjacentElement('afterend', spacer);
+      }
+      spacer.style.height = h + 'px';
+    }
     document.dispatchEvent(new CustomEvent('ar-academy-sticky-metrics'));
   }
 

@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.1 — sticky below academy header + badge rail (block 2 injection)
+v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
 =========================== -->
 
@@ -35,6 +35,24 @@ v1.3.1 — sticky below academy header + badge rail (block 2 injection)
     box-shadow:0 4px 14px rgba(0,0,0,0.4);
 
     box-sizing:border-box;
+
+  }
+
+  html.ar-dashboard-fixed-stack #ar-do-next-strip.is-ready{
+
+    position:fixed;
+
+    top:var(--ar-academy-header-height,88px);
+
+    left:0;
+
+    right:0;
+
+    width:100%;
+
+    margin-left:0;
+
+    margin-right:0;
 
   }
 
@@ -288,9 +306,9 @@ v1.3.1 — sticky below academy header + badge rail (block 2 injection)
 
     flex-direction:column;
 
-    min-height:128px;
+    min-height:148px;
 
-    padding:16px 18px;
+    padding:18px 20px;
 
     border-radius:12px;
 
@@ -306,17 +324,19 @@ v1.3.1 — sticky below academy header + badge rail (block 2 injection)
 
   #ar-do-next-strip .ar-do-next-tile__eyebrow{
 
-    font-size:11px;
+    font-size:18px;
 
-    font-weight:800;
+    font-weight:900;
 
-    letter-spacing:0.06em;
+    letter-spacing:0.04em;
 
     text-transform:uppercase;
 
-    margin:0 0 10px;
+    margin:0 0 12px;
 
-    opacity:0.85;
+    opacity:1;
+
+    line-height:1.15;
 
   }
 
@@ -1843,6 +1863,38 @@ v1.3.1 — sticky below academy header + badge rail (block 2 injection)
     var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
 
     root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
+
+    var path = (window.location && window.location.pathname) ? window.location.pathname.replace(/\/+$/, "") || "/" : "/";
+
+    if (path === "/academy/dashboard") {
+
+      root.classList.add("ar-dashboard-fixed-stack");
+
+      var spacer = document.getElementById("ar-do-next-strip-spacer");
+
+      if (strip && strip.classList.contains("is-ready")) {
+
+        if (!spacer) {
+
+          spacer = document.createElement("div");
+
+          spacer.id = "ar-do-next-strip-spacer";
+
+          spacer.setAttribute("aria-hidden", "true");
+
+          strip.insertAdjacentElement("afterend", spacer);
+
+        }
+
+        spacer.style.height = h + "px";
+
+      } else if (spacer) {
+
+        spacer.style.height = "0px";
+
+      }
+
+    }
 
     document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
 
