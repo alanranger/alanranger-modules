@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
-v1.3.1 Fix access detection (dashboard parity), CTA placement/colour, progress strip layout
+v1.3.2 Fix member id resolution (data.id) + access debug hook
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
 - Keeps Memberstack save logic; next/exam use plain <a href> only
@@ -353,15 +353,28 @@ v1.3.1 Fix access detection (dashboard parity), CTA placement/colour, progress s
     }
   }
 
+  function getMemberId(member){
+    if (!member) return "";
+    if (member.id) return String(member.id);
+    if (member.data && member.data.id) return String(member.data.id);
+    return "";
+  }
+
   function getMemberExtended(ms){
     return ms.getCurrentMember().then(function(res){
       var m = unwrapMember(res);
-      if (!m || !m.data) return m;
+      if (!m) return m;
+      if (!m.data && (m.planConnections || m.email)) {
+        m = { id: m.id || null, data: m };
+      }
+      if (!m.data) return m;
+      if (!m.id && m.data.id) m.id = String(m.data.id);
       if (typeof ms.getMemberJSON !== "function") return m;
       return ms.getMemberJSON().then(function(json){
         var mj = unwrapMember(json);
         if (!mj) return m;
-        if (!m.id && mj.id) m.id = mj.id;
+        if (!m.id && mj.id) m.id = String(mj.id);
+        if (!m.id && mj.data && mj.data.id) m.id = String(mj.data.id);
         if (!m.data) m.data = {};
         if (mj.data) mergeMissingFields(m.data, mj.data);
         mergeMissingFields(m.data, mj);
@@ -460,12 +473,47 @@ v1.3.1 Fix access detection (dashboard parity), CTA placement/colour, progress s
     });
   }
 
+  function evaluateAccess(member){
+    var result = { loggedIn: false, hasAccess: false, reason: "not_logged_in" };
+    if (!member) return result;
+    var memberId = getMemberId(member);
+    result.loggedIn = !!memberId;
+    if (!memberId) {
+      result.reason = "missing_member_id";
+      return result;
+    }
+    try {
+      if (hasTrialAccess(member)) {
+        result.hasAccess = true;
+        result.reason = "trial";
+        return result;
+      }
+      if (hasAnnualAccess(member)) {
+        result.hasAccess = true;
+        result.reason = "annual";
+        return result;
+      }
+      if (hasAnyNonTrialPlan(member)) {
+        result.hasAccess = true;
+        result.reason = "non_trial_plan";
+        return result;
+      }
+      result.reason = "no_active_plan";
+      return result;
+    } catch (e) {
+      var pcs = getPlanConnections(member);
+      if (pcs.some(function(pc){ return isActivePlanConnection(pc); })) {
+        result.hasAccess = true;
+        result.reason = "fail_open_active_plan";
+        return result;
+      }
+      result.reason = "access_error";
+      return result;
+    }
+  }
+
   function hasAccess(member){
-    if (!member || !member.data) return false;
-    if (hasTrialAccess(member)) return true;
-    if (hasAnnualAccess(member)) return true;
-    if (hasAnyNonTrialPlan(member)) return true;
-    return false;
+    return evaluateAccess(member).hasAccess;
   }
 
   function countOpenedModules(normalized){
@@ -576,23 +624,27 @@ v1.3.1 Fix access detection (dashboard parity), CTA placement/colour, progress s
       try { member = await getMemberExtended(ms); } catch (e) { member = null; }
     }
 
-    if (!member || !member.id || !hasAccess(member)) {
+    var access = evaluateAccess(member);
+    window.__arLessonAccess = access;
+
+    if (!access.loggedIn || !access.hasAccess) {
       renderSignupStrip(strip);
       strip.dataset.wired = "1";
       return;
     }
 
+    var memberId = getMemberId(member);
     var normalized = {};
     if (ms && typeof ms.getMemberJSON === "function") {
       try { normalized = normalizeMemberJson(await ms.getMemberJSON()); } catch (e) { normalized = {}; }
     }
     var openedCount = countOpenedModules(normalized);
-    var progressData = await fetchExamProgress(String(member.id));
+    var progressData = await fetchExamProgress(memberId);
     var examsPassed = passedExamCount(progressData);
     renderProgressStrip(strip, openedCount, examsPassed);
 
     var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
-    trackLessonPageView(String(member.id), email);
+    trackLessonPageView(memberId, email);
     strip.dataset.wired = "1";
   }
 
