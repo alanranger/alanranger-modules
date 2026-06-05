@@ -734,6 +734,7 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 
     var access = evaluateAccess(ctx.member, ctx);
     access.idSource = ctx.idSource;
+    access.modulesTotal = MODULES_TOTAL;
     window.__arLessonAccess = access;
 
     if (!access.loggedIn || !access.hasAccess) {
@@ -750,6 +751,8 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     var progressData = await fetchExamProgress(memberId);
     var examsPassed = passedExamCount(progressData);
     renderProgressStrip(strip, openedCount, examsPassed);
+    access.modulesOpened = openedCount;
+    window.__arLessonAccess = access;
 
     var member = ctx.member || {};
     var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
