@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.2.1 — four-tile coach centred under header + larger impact tiles
+v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large tiles
 
 =========================== -->
 
@@ -14,9 +14,13 @@ v1.2.1 — four-tile coach centred under header + larger impact tiles
 
     display:none;
 
-    width:100%;
+    width:100vw;
 
-    margin:0 0 14px;
+    margin-left:calc(50% - 50vw);
+
+    margin-right:calc(50% - 50vw);
+
+    margin-bottom:14px;
 
     box-sizing:border-box;
 
@@ -32,13 +36,81 @@ v1.2.1 — four-tile coach centred under header + larger impact tiles
 
   #ar-do-next-strip .ar-do-next-strip__inner{
 
-    max-width:1240px;
+    max-width:1400px;
 
     margin:0 auto;
 
-    padding:0 32px;
+    padding:0 12px;
 
     box-sizing:border-box;
+
+  }
+
+  @media (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:352px;
+
+      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+
+      max-width:1400px;
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
+
+  }
+
+  @media (max-width:1600px) and (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:322px;
+
+      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+    }
+
+  }
+
+  @media (max-width:1200px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      width:100%;
+
+      max-width:100%;
+
+      margin-left:auto;
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
 
   }
 
