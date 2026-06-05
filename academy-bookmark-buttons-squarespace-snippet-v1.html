@@ -1,8 +1,9 @@
 <!-- ===========================
-AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
+AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.1 Fix A: dynamic Next module + Take the exam buttons on lesson pages
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
-- Keeps Memberstack save logic
+- Keeps Memberstack save logic; next/exam use plain <a href> only
 =========================== -->
 
 <style id="ar-bookmark-style">
@@ -45,6 +46,7 @@ AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
   #ar-bookmark-widget .ar-btn:visited{ color:#fff !important; }
   #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
   #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
+  #ar-bookmark-widget .ar-btn.is-hidden{ display:none !important; }
 
   #ar-bookmark-widget .ar-help{
     width:100%;
@@ -70,6 +72,14 @@ AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
     ← <span>Back to Dashboard</span>
   </a>
 
+  <a class="ar-btn is-hidden" id="ar-next-module-btn" href="#" aria-hidden="true">
+    <span>Next module</span>
+  </a>
+
+  <a class="ar-btn is-hidden" id="ar-take-exam-btn" href="#" aria-hidden="true">
+    <span>Take the exam</span>
+  </a>
+
   <div id="bookmark-help" class="ar-help">
     Saves to your Academy Dashboard. Maximum 20 bookmarks per account.
   </div>
@@ -83,6 +93,125 @@ AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
 
   function normAbsUrl(){
     return window.location.origin + window.location.pathname;
+  }
+
+  function normalizePath(url){
+    if (!url || typeof url !== "string") return "/";
+    var path = url;
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+      try { path = new URL(path).pathname; } catch (e) {
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+        if (m) path = m[1];
+      }
+    }
+    path = path.split("?")[0].split("#")[0];
+    path = path.replace(/\/+$/, "") || "/";
+    if (path.charAt(0) !== "/") path = "/" + path;
+    return path;
+  }
+
+  var SITE = "https://www.alanranger.com";
+  var FOUNDATION_URL = SITE + "/academy/online-photography-course";
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+
+  var ARTICLE_MODULES = [
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+  ];
+
+  var EXAM_MODULE_IDS = [
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+  ];
+
+  function findArticleIndex(path){
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+      if (ARTICLE_MODULES[i].p === path) return i;
+    }
+    return -1;
+  }
+
+  function wireNextModuleButtons(){
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    var examBtn = document.getElementById("ar-take-exam-btn");
+    if (!nextBtn || !examBtn || nextBtn.dataset.wired === "1") return;
+
+    var idx = findArticleIndex(normalizePath(window.location.pathname));
+    if (idx === -1) {
+      nextBtn.classList.add("is-hidden");
+      examBtn.classList.add("is-hidden");
+      nextBtn.dataset.wired = "1";
+      examBtn.dataset.wired = "1";
+      return;
+    }
+
+    var nextSpan = nextBtn.querySelector("span");
+    if (idx < 44) {
+      var nextMod = ARTICLE_MODULES[idx + 1];
+      nextBtn.href = SITE + nextMod.p;
+      if (nextSpan) nextSpan.textContent = "Next: " + nextMod.t + " \u2192";
+    } else {
+      nextBtn.href = FOUNDATION_URL;
+      if (nextSpan) nextSpan.textContent = "Foundation course home \u2192";
+    }
+    nextBtn.classList.remove("is-hidden");
+    nextBtn.removeAttribute("aria-hidden");
+
+    if (idx <= 14 && EXAM_MODULE_IDS[idx]) {
+      examBtn.href = EXAM_BASE + "?module=" + EXAM_MODULE_IDS[idx];
+      examBtn.classList.remove("is-hidden");
+      examBtn.removeAttribute("aria-hidden");
+    } else {
+      examBtn.classList.add("is-hidden");
+    }
+
+    nextBtn.dataset.wired = "1";
+    examBtn.dataset.wired = "1";
   }
 
   function findInsertPoint(){
@@ -167,10 +296,12 @@ AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
   function init(){
     moveWidgetOnce();
     wireBookmark();
+    wireNextModuleButtons();
 
     var obs = new MutationObserver(function(){
       moveWidgetOnce();
       wireBookmark();
+      wireNextModuleButtons();
     });
 
     obs.observe(document.documentElement, { childList:true, subtree:true });
@@ -188,5 +319,5 @@ AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD (SNIPPET-LOADER SAFE)
 </script>
 
 <!-- ===========================
-END: AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD
+END: AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM
 =========================== -->
