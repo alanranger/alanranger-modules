@@ -1,99 +1,141 @@
 <!--
-Academy Header Elements — Squarespace Code Block
+Academy Header Elements — Squarespace Code Block v1.4.2 (Option C type scale — banner welcome/title)
 For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 -->
 
 <style id="ar-academy-header-style">
-  /* Academy Header Elements - positioned below Squarespace header */
-  /* Make it sticky below the Squarespace header */
+  /* No horizontal scroll on Academy pages (100vw bleed elsewhere is banned) */
+  html.ar-academy {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  html.ar-academy body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Academy header — sticky below Squarespace nav on non-dashboard pages */
   #ar-academy-header-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
+    column-gap: 20px;
     width: 100%;
     max-width: 100%;
     padding: 16px 32px;
     background: #000;
     color: #fff;
     position: sticky;
-    top: 0;
+    top: var(--ar-sqsp-nav-offset, 0px);
     left: 0;
     right: 0;
     z-index: 998;
     min-height: 80px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    box-shadow: none;
+    border: none;
+    margin: 0;
   }
 
-  /* Dashboard: fixed stack (sticky fails inside separate Sqsp code-block wrappers) */
-  html.ar-dashboard-fixed-stack #ar-academy-header-container {
-    position: fixed;
-    top: 0;
+  /* Dashboard: fixed pin-stack below Sqsp nav (header injection + page blocks stay separate) */
+  html.ar-dashboard-pin-stack #ar-academy-header-container {
+    position: fixed !important;
+    top: var(--ar-sqsp-nav-offset, 71px) !important;
     left: 0;
     right: 0;
     width: 100%;
+    max-width: 100%;
+    margin: 0 !important;
+    z-index: 998;
   }
 
-  #ar-academy-header-spacer,
+  /* Header injection spacers are never used (header sits outside page blocks) */
+  #ar-academy-header-spacer {
+    display: none !important;
+    height: 0 !important;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
   #ar-do-next-strip-spacer {
     display: block;
     width: 100%;
+    max-width: 100%;
     pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
 
-  html.ar-dashboard-fixed-stack .page-section,
-  html.ar-dashboard-fixed-stack .content-wrapper,
-  html.ar-dashboard-fixed-stack .sqs-layout,
-  html.ar-dashboard-fixed-stack .sqs-block-content {
-    overflow: visible !important;
-  }
-  
-  /* Left: Welcome message */
+  /* Left: Welcome message (+ optional journey badge from block 2) */
   #ar-academy-header-welcome {
+    grid-column: 1;
+    justify-self: start;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    max-width: 100%;
+    z-index: 3;
+  }
+
+  #ar-academy-header-welcome-copy {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    flex: 0 0 auto;
-    min-width: 280px;
+    gap: 4px;
+    min-width: 0;
   }
-  
-  /* Responsive min-width for welcome section */
-  @media (max-width: 1200px) {
-    #ar-academy-header-welcome {
-      min-width: auto;
-    }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage {
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle {
+    width: 52px;
+    height: 52px;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg {
+    width: 26px;
+    height: 26px;
   }
   
   #ar-academy-header-welcome-text {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 500;
     color: #fff;
     line-height: 1.3;
   }
   
   #ar-academy-header-welcome-name {
-    color: #E57200;
-    font-weight: 800;
-    font-size: 22px;
+    color: #fff;
+    font-weight: 500;
+    font-size: 14px;
   }
   
   #ar-academy-header-last-login {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: #8b9099;
     line-height: 1.3;
-    font-weight: 500;
+    font-weight: 400;
   }
   
   /* Center: Academy Dashboard title */
   #ar-academy-header-center {
+    grid-column: 2;
+    justify-self: center;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1 1 auto;
     gap: 16px;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    min-width: 0;
+    max-width: min(560px, 100%);
+    text-align: center;
+    z-index: 1;
   }
   
   #ar-academy-header-logo-icon {
@@ -104,29 +146,31 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
   }
   
   #ar-academy-header-title {
-    font-size: 32px;
-    font-weight: 800;
+    font-size: 22px;
+    font-weight: 600;
     color: #fff;
     margin: 0;
     line-height: 1.2;
-    letter-spacing: -0.5px;
+    letter-spacing: 0;
   }
   
   #ar-academy-header-subtitle {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: #8b9099;
     margin: 4px 0 0 0;
     line-height: 1.3;
-    font-weight: 500;
+    font-weight: 400;
   }
   
   /* Right: Logo and Logout */
   #ar-academy-header-right {
+    grid-column: 3;
+    justify-self: end;
     display: flex;
     align-items: center;
     gap: 20px;
-    flex: 0 0 auto;
-    margin-left: auto;
+    min-width: 0;
+    z-index: 3;
   }
   
   #ar-academy-header-brand-logo {
@@ -159,58 +203,56 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
   /* Responsive adjustments - match dashboard breakpoint at 1200px */
   @media (max-width: 1200px) {
     #ar-academy-header-container {
-      flex-wrap: wrap;
+      grid-template-columns: 1fr;
+      row-gap: 10px;
       padding: 14px 20px;
       min-height: auto;
     }
     
     #ar-academy-header-welcome {
-      order: 1;
-      min-width: auto;
-      flex: 1 1 auto;
+      grid-column: 1;
+      justify-self: stretch;
       width: 100%;
-      margin-bottom: 8px;
+      margin-bottom: 0;
     }
     
     #ar-academy-header-center {
-      position: static !important;
-      transform: none !important;
-      order: 2;
+      grid-column: 1;
+      justify-self: center;
       width: 100%;
-      margin: 8px 0;
+      max-width: 100%;
+      margin: 0;
       gap: 10px;
-      justify-content: center;
     }
     
     #ar-academy-header-right {
-      order: 3;
-      margin-left: 0;
+      grid-column: 1;
+      justify-self: stretch;
       gap: 12px;
       width: 100%;
       justify-content: space-between;
-      margin-top: 8px;
+      margin-top: 0;
     }
   }
   
   @media (max-width: 768px) {
     #ar-academy-header-container {
       padding: 12px 16px;
-      flex-direction: column;
-      align-items: stretch;
     }
     
     #ar-academy-header-welcome {
-      order: 1;
+      flex-direction: column;
+      align-items: flex-start;
       width: 100%;
-      margin-bottom: 10px;
+      margin-bottom: 0;
     }
     
     #ar-academy-header-welcome-text {
-      font-size: 16px;
+      font-size: 14px;
     }
     
     #ar-academy-header-welcome-name {
-      font-size: 18px;
+      font-size: 14px;
     }
     
     #ar-academy-header-last-login {
@@ -218,9 +260,8 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
     
     #ar-academy-header-center {
-      order: 2;
       width: 100%;
-      margin: 10px 0;
+      margin: 0;
       gap: 8px;
       flex-direction: column;
       text-align: center;
@@ -233,6 +274,7 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     
     #ar-academy-header-title {
       font-size: 20px;
+      font-weight: 600;
       margin: 4px 0;
     }
     
@@ -242,9 +284,8 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
     
     #ar-academy-header-right {
-      order: 3;
       width: 100%;
-      margin-top: 10px;
+      margin-top: 0;
       justify-content: space-between;
       gap: 10px;
     }
@@ -266,19 +307,20 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
     
     #ar-academy-header-welcome-text {
-      font-size: 15px;
+      font-size: 14px;
     }
     
     #ar-academy-header-welcome-name {
-      font-size: 17px;
+      font-size: 14px;
     }
     
     #ar-academy-header-last-login {
-      font-size: 12px;
+      font-size: 13px;
     }
     
     #ar-academy-header-title {
       font-size: 18px;
+      font-weight: 600;
     }
     
     #ar-academy-header-subtitle {
@@ -299,10 +341,12 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
 <div id="ar-academy-header-container">
   <!-- Left: Welcome message -->
   <div id="ar-academy-header-welcome">
-    <div id="ar-academy-header-welcome-text">
-      Welcome back, <span id="ar-academy-header-welcome-name">...</span>
+    <div id="ar-academy-header-welcome-copy">
+      <div id="ar-academy-header-welcome-text">
+        Welcome back, <span id="ar-academy-header-welcome-name">...</span>
+      </div>
+      <div id="ar-academy-header-last-login"></div>
     </div>
-    <div id="ar-academy-header-last-login">Loading...</div>
   </div>
   
   <!-- Center: Academy Dashboard title -->
@@ -398,7 +442,128 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       return "Last logged in: " + dateStr;
     }
   }
+
+  function lastLoginCacheKey(memberId) {
+    return 'ar-display-last-login-' + memberId;
+  }
+
+  function getCachedLastLogin(memberId) {
+    if (!memberId) return null;
+    try {
+      return sessionStorage.getItem(lastLoginCacheKey(memberId));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setCachedLastLogin(memberId, iso) {
+    if (!memberId || !iso) return;
+    try {
+      sessionStorage.setItem(lastLoginCacheKey(memberId), iso);
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearLastLoginCache(memberId) {
+    if (!memberId) return;
+    try {
+      sessionStorage.removeItem(lastLoginCacheKey(memberId));
+    } catch (e) { /* ignore */ }
+  }
+
+  function setLastLoginDisplay(iso, memberId, allowCache) {
+    var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+    if (!lastLoginEl) return;
+    if (iso) {
+      lastLoginEl.textContent = formatLastLogin(iso);
+      if (allowCache !== false && memberId) setCachedLastLogin(memberId, iso);
+      return;
+    }
+    lastLoginEl.textContent = 'First visit';
+  }
+
+  async function fetchLastLoginFromApi(memberId) {
+    if (!memberId) return null;
+    try {
+      var response = await fetch(
+        'https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId)
+      );
+      if (!response.ok) return null;
+      var memberData = await response.json();
+      return memberData.last_login || null;
+    } catch (e) {
+      console.debug('[Academy Header] Error fetching last login:', e);
+      return null;
+    }
+  }
   
+  function withTimeout(promise, ms, fallback) {
+    return Promise.race([
+      promise,
+      new Promise(function(resolve) {
+        setTimeout(function() { resolve(fallback); }, ms);
+      })
+    ]);
+  }
+
+  function unwrapHeaderMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id || res.data.customFields)) return res;
+    if (res.email || res.planConnections || res.customFields) {
+      return { id: res.id || null, data: res };
+    }
+    if (res.data && res.data.data) return res.data;
+    return res;
+  }
+
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== 'object' || !source || typeof source !== 'object') return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+
+  async function resolveHeaderMember(ms) {
+    var member = null;
+    try {
+      var current = null;
+      if (typeof ms.getCurrentMember === 'function') {
+        try {
+          current = await withTimeout(ms.getCurrentMember({ useCache: false }), 5000, null);
+        } catch (e1) {
+          current = await withTimeout(ms.getCurrentMember(), 3000, null);
+        }
+      }
+      member = unwrapHeaderMember(current);
+    } catch (e) { /* ignore */ }
+
+    if (typeof ms.getMemberJSON === 'function') {
+      try {
+        var jsonRes = await withTimeout(ms.getMemberJSON(), 4000, null);
+        var mj = unwrapHeaderMember(jsonRes);
+        if (mj) {
+          if (!member) member = { id: mj.id || null, data: {} };
+          if (!member.data) member.data = {};
+          if (!member.id && mj.id) member.id = mj.id;
+          if (mj.data) mergeMissingFields(member.data, mj.data);
+          mergeMissingFields(member.data, mj);
+        }
+      } catch (e2) { /* ignore */ }
+    }
+    return member;
+  }
+
+  function applyWelcomeFromMember(member, ms) {
+    if (!member || !member.data) return false;
+    var nameEl = document.getElementById('ar-academy-header-welcome-name');
+    var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+    var welcomeEl = document.getElementById('ar-academy-header-welcome');
+    if (welcomeEl) welcomeEl.style.display = '';
+    var name = getMemberName(member);
+    if (nameEl && name) nameEl.textContent = name;
+    return true;
+  }
+
   // Load member data and update header
   async function loadHeaderData() {
     var ms = await waitForMemberstack();
@@ -422,7 +587,7 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
       
       // If in ghost mode and getCurrentMember has been overridden by dashboard, it will return ghost member
       // Otherwise, get the normal member (admin)
-      var member = await ms.getCurrentMember();
+      var member = await resolveHeaderMember(ms);
       
       // If we're in ghost mode, check if we got the admin member instead of ghost member
       // The dashboard script will override getCurrentMember, but header might run first
@@ -453,29 +618,33 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
         return;
       }
       
-      // Update welcome name
+      applyWelcomeFromMember(member, ms);
       var nameEl = document.getElementById('ar-academy-header-welcome-name');
-      var name = getMemberName(member);
-      if (nameEl && name) {
-        nameEl.textContent = name;
-      }
       
       // Get last login - try multiple sources
       var lastLogin = null;
       var memberId = member.id || (member.data && member.data.id);
       var memberEmail = (member.data && member.data.email) || null;
       
-      // Track login event - simplified and more reliable
-      // Track if we haven't tracked in the last 1 minute (allows re-tracking after logout/login)
       var now = Date.now();
       var lastTracked = sessionStorage.getItem('ar-login-tracked-' + memberId);
-      var oneMinuteAgo = 60 * 1000;
-      var shouldTrack = !lastTracked || (now - parseInt(lastTracked, 10)) > oneMinuteAgo;
-      
-      if (memberId && shouldTrack) {
+      var shouldTrack = memberId && !lastTracked;
+      var cachedLastLogin = memberId ? getCachedLastLogin(memberId) : null;
+
+      if (cachedLastLogin) {
+        setLastLoginDisplay(cachedLastLogin, memberId, false);
+      } else if (!shouldTrack && memberId) {
+        lastLogin = await fetchLastLoginFromApi(memberId);
+        if (lastLogin) {
+          setLastLoginDisplay(lastLogin, memberId, true);
+        } else {
+          setLastLoginDisplay(null, memberId, false);
+        }
+      }
+
+      if (shouldTrack) {
         console.log('[Academy Header] Tracking login event for member:', memberId, 'email:', memberEmail);
-        
-        // Track login event immediately
+
         fetch('https://alanranger-modules.vercel.app/api/academy/track-login', {
           method: 'POST',
           headers: {
@@ -488,102 +657,33 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
         }).then(function(response) {
           if (response.ok) {
             return response.json();
-          } else {
-            return response.text().then(function(text) {
-              throw new Error('HTTP ' + response.status + ': ' + text);
-            });
           }
-        }).then(function(data) {
-          // Mark as tracked with current timestamp
+          return response.text().then(function(text) {
+            throw new Error('HTTP ' + response.status + ': ' + text);
+          });
+        }).then(function(payload) {
           sessionStorage.setItem('ar-login-tracked-' + memberId, String(now));
           sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
-          console.log('[Academy Header] Login event tracked successfully:', data);
-          
-          // Update last login display with current time immediately
-          var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-          if (lastLoginEl) {
-            lastLoginEl.textContent = formatLastLogin(new Date().toISOString());
+          console.log('[Academy Header] Login event tracked successfully:', payload);
+
+          var loginIso = null;
+          if (payload && payload.data && payload.data[0] && payload.data[0].created_at) {
+            loginIso = payload.data[0].created_at;
           }
-          
-          // Refresh from API after a short delay to get the recorded time
-          setTimeout(function() {
-            fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId))
-              .then(function(response) {
-                if (response.ok) {
-                  return response.json();
-                }
-                return null;
-              })
-              .then(function(memberData) {
-                if (memberData && memberData.last_login) {
-                  var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-                  if (lastLoginEl) {
-                    lastLoginEl.textContent = formatLastLogin(memberData.last_login);
-                  }
-                }
-              })
-              .catch(function(err) {
-                console.debug('[Academy Header] Error refreshing last login:', err);
-              });
-          }, 2000);
+          if (loginIso) {
+            setLastLoginDisplay(loginIso, memberId, true);
+          } else {
+            fetchLastLoginFromApi(memberId).then(function(apiLastLogin) {
+              if (apiLastLogin) {
+                setLastLoginDisplay(apiLastLogin, memberId, true);
+              }
+            });
+          }
         }).catch(function(err) {
           console.error('[Academy Header] Error tracking login event:', err);
-          // Don't mark as tracked if it failed - allow retry
         });
       } else if (memberId) {
-        // Not tracking because we recently tracked - update activity timestamp
         sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
-      }
-      
-      // First, try Memberstack JSON directly (as it worked in previous code block)
-      try {
-        var jsonRes = await ms.getMemberJSON();
-        if (jsonRes) {
-          // Check various possible locations in Memberstack JSON
-          if (jsonRes.lastLogin) {
-            lastLogin = jsonRes.lastLogin;
-          } else if (jsonRes.data && jsonRes.data.lastLogin) {
-            lastLogin = jsonRes.data.lastLogin;
-          } else if (jsonRes.data && jsonRes.data.data && jsonRes.data.data.lastLogin) {
-            lastLogin = jsonRes.data.data.lastLogin;
-          }
-        }
-      } catch (e) {
-        console.debug('[Academy Header] Could not get lastLogin from Memberstack JSON:', e);
-      }
-      
-      // If not found in Memberstack, try API (Supabase)
-      if (!lastLogin && memberId) {
-        try {
-          var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
-          if (response.ok) {
-            var memberData = await response.json();
-            lastLogin = memberData.last_login || null;
-            
-            // Debug logging
-            console.log('[Academy Header] Member data response:', {
-              memberId: memberId,
-              hasLastLogin: !!lastLogin,
-              lastLogin: lastLogin,
-              memberDataKeys: Object.keys(memberData)
-            });
-          } else {
-            var errorText = await response.text();
-            console.error('[Academy Header] Failed to fetch member data:', response.status, errorText);
-          }
-        } catch (e) {
-          console.error('[Academy Header] Error fetching from API:', e);
-        }
-      }
-      
-      // Update last login display
-      var lastLoginEl = document.getElementById('ar-academy-header-last-login');
-      if (lastLoginEl) {
-        if (lastLogin) {
-          lastLoginEl.textContent = formatLastLogin(lastLogin);
-        } else {
-          lastLoginEl.textContent = "First visit";
-        }
       }
       
       // Wire up logout button
@@ -658,6 +758,7 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
             // Clear session storage
             sessionStorage.removeItem('ar-login-tracked-' + memberId);
             sessionStorage.removeItem('ar-last-activity-' + memberId);
+            clearLastLoginCache(memberId);
           }
           
           if (ms && typeof ms.logout === 'function') {
@@ -681,40 +782,160 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
   }
   
-  function isDashboardPath() {
-    var p = (window.location && window.location.pathname) ? window.location.pathname : '';
-    p = p.replace(/\/+$/, '') || '/';
-    return p === '/academy/dashboard';
+  function getSqspNavOffset() {
+    var academyHeader = document.getElementById('ar-academy-header-container');
+    var selectors = [
+      '#header',
+      'header.Header',
+      'header.header',
+      '.header-nav-wrapper',
+      '.sqs-site-header',
+      '#siteWrapper header',
+      'body > header'
+    ];
+    var best = 0;
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (!el || (academyHeader && el.contains(academyHeader))) continue;
+      var rect = el.getBoundingClientRect();
+      var h = Math.ceil(rect.height) || Math.ceil(el.offsetHeight) || 0;
+      if (h < 40 || h > 240) continue;
+      if (rect.top <= 8) best = Math.max(best, h);
+    }
+    return best >= 40 ? best : 71;
   }
 
-  function publishAcademyHeaderHeight() {
-    var el = document.getElementById('ar-academy-header-container');
-    if (!el) return;
-    var h = Math.ceil(el.getBoundingClientRect().height) || 88;
-    document.documentElement.style.setProperty('--ar-academy-header-height', h + 'px');
-    if (isDashboardPath()) {
-      document.documentElement.classList.add('ar-dashboard-fixed-stack');
-      var spacer = document.getElementById('ar-academy-header-spacer');
+  function clearFixedLayout(el) {
+    if (!el || !el.style) return;
+    ['position', 'top', 'left', 'right', 'width', 'margin-left', 'margin-right', 'z-index'].forEach(function(prop) {
+      el.style.removeProperty(prop);
+    });
+  }
+  if (!window.__arAcademyLayout || window.__arAcademyLayout.pinVersion !== 2) {
+  window.__arAcademyLayout = (function() {
+    var state = { busy: false, raf: 0 };
+    function isDashboardPath() {
+      var p = (window.location && window.location.pathname) ? window.location.pathname : '';
+      p = p.replace(/\/+$/, '') || '/';
+      return p === '/academy/dashboard';
+    }
+    function ensureSpacer(id, anchor, height) {
+      if (!anchor) return;
+      var spacer = document.getElementById(id);
+      if (!height) {
+        if (spacer) spacer.style.height = '0px';
+        return;
+      }
       if (!spacer) {
         spacer = document.createElement('div');
-        spacer.id = 'ar-academy-header-spacer';
+        spacer.id = id;
         spacer.setAttribute('aria-hidden', 'true');
-        el.insertAdjacentElement('afterend', spacer);
+        anchor.insertAdjacentElement('afterend', spacer);
       }
-      spacer.style.height = h + 'px';
+      spacer.style.height = height + 'px';
     }
-    document.dispatchEvent(new CustomEvent('ar-academy-sticky-metrics'));
+    function measureStripHeight(strip) {
+      if (!strip || !strip.classList.contains('is-ready')) return 0;
+      var inner = strip.querySelector('.ar-do-next-strip__inner') || strip;
+      var h = Math.ceil(inner.offsetHeight) || 0;
+      if (h > 0 && h < 2000) return h;
+      var card = strip.querySelector('.ar-do-next-strip__card');
+      if (card) {
+        h = Math.ceil(card.offsetHeight) || 0;
+        if (h > 0 && h < 2000) return h;
+      }
+      return 0;
+    }
+    function syncLayout() {
+      if (state.busy) return;
+      var root = document.documentElement;
+      var header = document.getElementById('ar-academy-header-container');
+      var strip = document.getElementById('ar-do-next-strip');
+      var sqspTop = getSqspNavOffset();
+      root.style.setProperty('--ar-sqsp-nav-offset', sqspTop + 'px');
+      if (!isDashboardPath()) {
+        root.classList.remove('ar-dashboard-pin-stack');
+        root.classList.remove('ar-dashboard-in-flow');
+        clearFixedLayout(header);
+        clearFixedLayout(strip);
+        ensureSpacer('ar-academy-header-spacer', header, 0);
+        ensureSpacer('ar-do-next-strip-spacer', strip, 0);
+        return;
+      }
+      if (!header) return;
+      state.busy = true;
+      try {
+        var headerH = Math.ceil(header.offsetHeight) || 88;
+        var stripH = measureStripHeight(strip);
+        root.style.setProperty('--ar-academy-header-height', headerH + 'px');
+        root.style.setProperty('--ar-do-next-strip-height', stripH + 'px');
+        root.style.setProperty('--ar-academy-sticky-stack-height', (sqspTop + headerH + stripH) + 'px');
+        root.classList.remove('ar-dashboard-in-flow');
+        root.classList.add('ar-dashboard-pin-stack');
+        header.style.setProperty('position', 'fixed', 'important');
+        header.style.setProperty('top', sqspTop + 'px', 'important');
+        header.style.setProperty('left', '0', 'important');
+        header.style.setProperty('right', '0', 'important');
+        header.style.setProperty('width', '100%', 'important');
+        header.style.setProperty('max-width', '100%', 'important');
+        header.style.setProperty('margin-top', '0', 'important');
+        header.style.setProperty('z-index', '998', 'important');
+        if (strip && strip.classList.contains('is-ready')) {
+          strip.style.setProperty('position', 'fixed', 'important');
+          strip.style.setProperty('top', (sqspTop + headerH) + 'px', 'important');
+          strip.style.setProperty('left', '0', 'important');
+          strip.style.setProperty('right', '0', 'important');
+          strip.style.setProperty('width', '100%', 'important');
+          strip.style.setProperty('max-width', '100%', 'important');
+          strip.style.setProperty('margin-left', '0', 'important');
+          strip.style.setProperty('margin-right', '0', 'important');
+          strip.style.setProperty('z-index', '997', 'important');
+        } else {
+          clearFixedLayout(strip);
+        }
+        ensureSpacer('ar-academy-header-spacer', header, 0);
+        if (strip) ensureSpacer('ar-do-next-strip-spacer', strip, stripH);
+      } finally {
+        state.busy = false;
+      }
+      document.dispatchEvent(new CustomEvent('ar-academy-layout-sync'));
+    }
+    return {
+      pinVersion: 2,
+      schedule: function() {
+        if (state.raf) return;
+        state.raf = requestAnimationFrame(function() {
+          state.raf = 0;
+          syncLayout();
+        });
+      },
+      sync: syncLayout
+    };
+  })();
   }
 
   function watchAcademyHeaderHeight() {
     var el = document.getElementById('ar-academy-header-container');
     if (!el) return;
-    publishAcademyHeaderHeight();
+    window.__arAcademyLayout.schedule();
     if (typeof ResizeObserver !== 'undefined') {
-      new ResizeObserver(publishAcademyHeaderHeight).observe(el);
+      new ResizeObserver(function() { window.__arAcademyLayout.schedule(); }).observe(el);
     }
-    window.addEventListener('resize', publishAcademyHeaderHeight);
+    window.addEventListener('resize', function() { window.__arAcademyLayout.schedule(); });
+    window.addEventListener('scroll', function() { window.__arAcademyLayout.schedule(); }, { passive: true });
   }
+
+  document.addEventListener('ar-academy-member-ready', function(ev) {
+    if (ev && ev.detail && ev.detail.member) {
+      waitForMemberstack().then(function(ms) {
+        if (!ms) return;
+        applyWelcomeFromMember(ev.detail.member, ms);
+        loadHeaderData();
+      });
+      return;
+    }
+    loadHeaderData();
+  });
 
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
@@ -730,8 +951,10 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
   // Also try after a delay (Memberstack sometimes loads late)
   setTimeout(loadHeaderData, 1000);
   setTimeout(loadHeaderData, 2000);
-  setTimeout(publishAcademyHeaderHeight, 100);
-  setTimeout(publishAcademyHeaderHeight, 1000);
+  setTimeout(loadHeaderData, 4000);
+  setTimeout(loadHeaderData, 8000);
+  setTimeout(function() { window.__arAcademyLayout.schedule(); }, 100);
+  setTimeout(function() { window.__arAcademyLayout.schedule(); }, 1000);
 })();
 </script>
 
