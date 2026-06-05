@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.24 — Fix Practitioner proximity label counting met requirements not remaining
+v1.3.25 — Goal tile 4 checklist + upcoming-badge criteria tooltips (REVISED spec)
 
 =========================== -->
 
@@ -531,6 +531,198 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
   #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__trial-line{
 
     color:#fcd34d !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist{
+
+    cursor:default;
+
+    text-decoration:none;
+
+    min-height:148px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-list{
+
+    list-style:none;
+
+    margin:8px 0 0;
+
+    padding:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    width:100%;
+
+    max-width:100%;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:6px;
+
+    font-size:12px;
+
+    line-height:1.35;
+
+    color:#d6d3d1;
+
+    max-width:100%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row--met{
+
+    color:#9fe1cb;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row--unmet{
+
+    color:#a8a29e;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon{
+
+    flex:0 0 14px;
+
+    width:14px;
+
+    height:14px;
+
+    margin-top:1px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--met{
+
+    stroke:#9fe1cb;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--unmet{
+
+    stroke:#78716c;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-soft{
+
+    margin:8px 0 0;
+
+    font-size:12px;
+
+    line-height:1.4;
+
+    color:#d6d3d1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__trigger{
+
+    border:none;
+
+    background:transparent;
+
+    padding:0;
+
+    margin:0 0 6px;
+
+    cursor:pointer;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:50%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__trigger:focus-visible{
+
+    outline:2px solid #e57200;
+
+    outline-offset:2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip{
+
+    display:none;
+
+    position:absolute;
+
+    left:50%;
+
+    bottom:calc(100% + 8px);
+
+    transform:translateX(-50%);
+
+    z-index:5;
+
+    min-width:200px;
+
+    max-width:min(260px,calc(100vw - 24px));
+
+    padding:10px 12px;
+
+    background:#1a1f2e;
+
+    border:1px solid rgba(255,255,255,0.12);
+
+    border-radius:10px;
+
+    box-shadow:0 8px 20px rgba(0,0,0,0.35);
+
+    text-align:left;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__trigger:hover + .ar-do-next-badge__tooltip,
+
+  #ar-do-next-strip .ar-do-next-badge__trigger:focus-visible + .ar-do-next-badge__tooltip,
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip.is-open{
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip--left{
+
+    left:auto;
+
+    right:0;
+
+    transform:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--has-tooltip{
+
+    position:relative;
 
   }
 
@@ -2016,6 +2208,242 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
 
 
+  var CRITERIA_CHECK_SVG = '<svg class="ar-do-next-criteria-icon ar-do-next-criteria-icon--met" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
+
+  var CRITERIA_EMPTY_SVG = '<svg class="ar-do-next-criteria-icon ar-do-next-criteria-icon--unmet" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>';
+
+  var activeBadgeTooltipBtn = null;
+
+
+
+  function buildBadgeCriteriaContent(stageKey, stats, activeDays, engagementDegraded){
+
+    if (stageKey === "enrolled") return { type: "soft", text: "Joined - automatic" };
+
+    if (stageKey === "graduate") return { type: "soft", text: "All modules + sustained activity (full criteria coming soon)" };
+
+    if (stageKey === "master") return { type: "soft", text: "Long-term applied mastery (full criteria coming soon)" };
+
+    if (stageKey === "foundation") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Modules opened", current: stats.foundationModulesOpened, target: FOUNDATION_GATE.minModules, met: stats.foundationModulesOpened >= FOUNDATION_GATE.minModules },
+
+          { label: "Active days", current: engagementDegraded ? 0 : activeDays, target: FOUNDATION_GATE.minActiveDays, met: engagementDegraded || activeDays >= FOUNDATION_GATE.minActiveDays }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "practitioner") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Camera modules", current: stats.cameraOpened, target: CAMERA_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllCamera || stats.cameraOpened >= CAMERA_MODULE_PATHS.length },
+
+          { label: "Composition modules", current: stats.compositionOpened, target: COMPOSITION_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllComposition || stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length },
+
+          { label: "Assignments", current: stats.pdfAssignmentsOpened, target: PRACTITIONER_GATE.minPdfAssignments, met: stats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments },
+
+          { label: "Exams passed", current: stats.examsPassed, target: PRACTITIONER_GATE.minExamsPassed, met: stats.examsPassed >= PRACTITIONER_GATE.minExamsPassed }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "certified") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Exams passed", current: stats.examsPassed, target: 15, met: !CERTIFIED_GATE.requireAllExamsPassed || stats.examsPassed >= 15 },
+
+          { label: "Modules opened", current: stats.totalModulesOpened, target: CERTIFIED_GATE.minModulesOpened, met: stats.totalModulesOpened >= CERTIFIED_GATE.minModulesOpened }
+
+        ]
+
+      };
+
+    }
+
+    return { type: "soft", text: "" };
+
+  }
+
+
+
+  function appendCriteriaContent(parent, criteria){
+
+    if (!criteria || criteria.type === "soft") {
+
+      var soft = document.createElement("p");
+
+      soft.className = "ar-do-next-criteria-soft";
+
+      soft.textContent = criteria && criteria.text ? criteria.text : "";
+
+      parent.appendChild(soft);
+
+      return;
+
+    }
+
+    var list = document.createElement("ul");
+
+    list.className = "ar-do-next-criteria-list";
+
+    criteria.rows.forEach(function(row){
+
+      var li = document.createElement("li");
+
+      li.className = "ar-do-next-criteria-row " + (row.met ? "ar-do-next-criteria-row--met" : "ar-do-next-criteria-row--unmet");
+
+      li.innerHTML = (row.met ? CRITERIA_CHECK_SVG : CRITERIA_EMPTY_SVG) +
+
+        '<span>' + row.label + " (" + row.current + "/" + row.target + ")</span>";
+
+      list.appendChild(li);
+
+    });
+
+    parent.appendChild(list);
+
+  }
+
+
+
+  function isUpcomingBadge(badges, badgeKey){
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) return badgeKey === "master";
+
+    var nextIdx = -1;
+
+    var keyIdx = -1;
+
+    for (var i = 0; i < JOURNEY_STAGES.length; i++) {
+
+      if (JOURNEY_STAGES[i].key === next.key) nextIdx = i;
+
+      if (JOURNEY_STAGES[i].key === badgeKey) keyIdx = i;
+
+    }
+
+    return keyIdx >= nextIdx && keyIdx >= 0;
+
+  }
+
+
+
+  function closeBadgeTooltip(){
+
+    if (!activeBadgeTooltipBtn) return;
+
+    activeBadgeTooltipBtn.setAttribute("aria-expanded", "false");
+
+    var tip = activeBadgeTooltipBtn.parentNode.querySelector(".ar-do-next-badge__tooltip");
+
+    if (tip) tip.classList.remove("is-open");
+
+    activeBadgeTooltipBtn = null;
+
+  }
+
+
+
+  function wireBadgeTooltipDismiss(){
+
+    if (window.__arBadgeTooltipDismissWired) return;
+
+    window.__arBadgeTooltipDismissWired = true;
+
+    document.addEventListener("click", function(e){
+
+      if (!activeBadgeTooltipBtn) return;
+
+      if (e.target.closest(".ar-do-next-badge__trigger")) return;
+
+      closeBadgeTooltip();
+
+    });
+
+    document.addEventListener("keydown", function(e){
+
+      if (e.key === "Escape") closeBadgeTooltip();
+
+    });
+
+  }
+
+
+
+  function attachBadgeTooltip(item, circle, badgeKey, stats, activeDays, engagementDegraded, badges){
+
+    var criteria = buildBadgeCriteriaContent(badgeKey, stats, activeDays, engagementDegraded);
+
+    var trigger = document.createElement("button");
+
+    trigger.type = "button";
+
+    trigger.className = "ar-do-next-badge__trigger";
+
+    trigger.setAttribute("aria-expanded", "false");
+
+    trigger.setAttribute("aria-label", JOURNEY_STAGES.filter(function(s){ return s.key === badgeKey; })[0].label + " requirements");
+
+    trigger.appendChild(circle);
+
+    var tooltip = document.createElement("div");
+
+    tooltip.className = "ar-do-next-badge__tooltip" + (badgeKey === "master" ? " ar-do-next-badge__tooltip--left" : "");
+
+    tooltip.setAttribute("role", "tooltip");
+
+    appendCriteriaContent(tooltip, criteria);
+
+    item.classList.add("ar-do-next-badge--has-tooltip");
+
+    item.insertBefore(trigger, item.firstChild);
+
+    item.insertBefore(tooltip, trigger.nextSibling);
+
+    trigger.addEventListener("click", function(e){
+
+      e.stopPropagation();
+
+      if (activeBadgeTooltipBtn === trigger) { closeBadgeTooltip(); return; }
+
+      closeBadgeTooltip();
+
+      trigger.setAttribute("aria-expanded", "true");
+
+      tooltip.classList.add("is-open");
+
+      activeBadgeTooltipBtn = trigger;
+
+    });
+
+  }
+
+
+
   function wireJourneyToggle(){
 
     var toggle = document.getElementById("ar-do-next-journey-toggle");
@@ -2050,6 +2478,8 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
   function buildBadgeRail(stats, activeDays, engagementDegraded){
 
+    wireBadgeTooltipDismiss();
+
     var badges = computeJourneyBadges(stats, activeDays, engagementDegraded);
 
     var earnedCount = badges.filter(function(b){ return b.earned; }).length;
@@ -2078,6 +2508,10 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
       applyBadgeCircleStyle(circle, badge.colour, badge.earned, badge.key);
 
+      if (isUpcomingBadge(badges, badge.key)) attachBadgeTooltip(item, circle, badge.key, stats, activeDays, engagementDegraded, badges);
+
+      else item.appendChild(circle);
+
       var label = document.createElement("p");
 
       label.className = "ar-do-next-badge__label";
@@ -2085,8 +2519,6 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
       label.textContent = badge.label;
 
       label.style.color = badge.earned ? "#fff" : "#cdd2da";
-
-      item.appendChild(circle);
 
       item.appendChild(label);
 
@@ -2814,77 +3246,43 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
 
 
-  function buildGoalTile(openedCount, examsPassed, nextArt, engagement, badges){
+  function buildGoalTile(stats, activeDays, engagementDegraded, engagement, badges){
 
-    var tile = { n: 4, label: "4 - Goal", variant: "amber" };
+    var tile = { n: 4, variant: "amber", isGoalChecklist: true };
 
     var trialLine = formatGoalTileTrialLine(engagement, badges);
 
     if (trialLine) tile.trialLine = trialLine;
 
-    var goalTarget = null;
+    var next = getNextUnearnedBadge(badges);
 
-    var goalRemaining = 0;
+    if (!next) {
 
-    if (openedCount < 30) {
+      tile.label = "4 - Goal";
 
-      goalTarget = 30;
+      tile.criteria = { type: "soft", text: "You have earned every available badge." };
 
-      goalRemaining = 30 - openedCount;
-
-      tile.action = "Reach 30 modules \u2192";
-
-      tile.why = goalRemaining + " to your halfway badge";
-
-      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
-
-    } else if (openedCount < 60) {
-
-      goalTarget = 60;
-
-      goalRemaining = 60 - openedCount;
-
-      tile.action = "Reach 60 modules \u2192";
-
-      tile.why = goalRemaining + " to finish the foundations course";
-
-      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
-
-    } else if (examsPassed < 15) {
-
-      goalTarget = 15;
-
-      goalRemaining = 15 - examsPassed;
-
-      tile.action = "Finish your certificates \u2192";
-
-      tile.why = goalRemaining + " exams to full certification";
-
-      tile.href = EXAM_BASE;
-
-    } else {
-
-      tile.action = "All done - explore practice packs \u2192";
-
-      tile.why = "You have completed the foundations course";
-
-      tile.href = PRACTICE_URL;
+      return { tile: tile, goalTarget: null, goalRemaining: 0 };
 
     }
 
-    return { tile: tile, goalTarget: goalTarget, goalRemaining: goalRemaining };
+    tile.label = "4 - Goal: " + next.label;
+
+    tile.criteria = buildBadgeCriteriaContent(next.key, stats, activeDays, engagementDegraded);
+
+    var rows = tile.criteria.type === "rows" ? tile.criteria.rows : [];
+
+    var goalRemaining = rows.filter(function(r){ return !r.met; }).length;
+
+    return { tile: tile, goalTarget: rows.length, goalRemaining: goalRemaining };
 
   }
 
 
 
-  function buildStage1Tiles(openedSet, examInfo, rag, engagement, badges){
+  function buildStage1Tiles(openedSet, examInfo, rag, engagement, badges, gateStats, activeDays, engagementDegraded){
 
-    var openedCount = openedSet.size;
-
-    var nextArt = firstUnopenedArticle(openedSet);
-
-    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt, engagement, badges);
+    var goal = buildGoalTile(gateStats, activeDays, engagementDegraded, engagement, badges);
 
     return {
 
@@ -2911,6 +3309,38 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
 
   function renderTile(tile){
+
+    if (tile.isGoalChecklist) {
+
+      var box = document.createElement("div");
+
+      box.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant + " ar-do-next-tile--goal-checklist";
+
+      var eyebrow = document.createElement("span");
+
+      eyebrow.className = "ar-do-next-tile__eyebrow";
+
+      eyebrow.textContent = tile.label;
+
+      box.appendChild(eyebrow);
+
+      appendCriteriaContent(box, tile.criteria);
+
+      if (tile.trialLine) {
+
+        var trialLine = document.createElement("span");
+
+        trialLine.className = "ar-do-next-tile__trial-line";
+
+        trialLine.textContent = tile.trialLine;
+
+        box.appendChild(trialLine);
+
+      }
+
+      return box;
+
+    }
 
     var a = document.createElement("a");
 
@@ -2996,7 +3426,7 @@ v1.3.24 — Fix Practitioner proximity label counting met requirements not remai
 
     var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
 
-    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges);
+    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges, gateStats, activeDays, engagementDegraded);
 
     var currentStage = injectBannerCurrentStage(badgeRail.badges);
 
