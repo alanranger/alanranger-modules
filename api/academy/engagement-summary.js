@@ -14,6 +14,7 @@ const { isFoundationPath } = require("../../lib/foundation-module-paths");
 const WINDOW_DAYS = 14;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const DAY_MS = 86_400_000;
+const MAX_TRIAL_DAYS = 30;
 const ALLOWED_ORIGINS = ["https://www.alanranger.com", "https://alanranger.com"];
 const ACTIVITY_TYPES = ["login", "member_login", "module_open", "exam_start", "exam_submit"];
 const LOGIN_TYPES = new Set(["login", "member_login"]);
@@ -67,49 +68,110 @@ async function resolveMemberId(req) {
   return getMemberstackMemberId(req);
 }
 
-function deriveTrialStatus(trialEndAt, convertedAt) {
-  const hasConverted = Boolean(convertedAt);
-  if (hasConverted) return { isTrial: false, daysLeftInTrial: null, hasConverted: true };
+function isPaidPlan(plan = {}) {
+  if (plan.is_paid) return true;
+  const type = plan.plan_type;
+  return type === "annual" || type === "monthly";
+}
 
+function trialSpanDays(trialStartAt, trialEndAt) {
+  const start = parseDate(trialStartAt);
   const end = parseDate(trialEndAt);
-  if (!end) return { isTrial: false, daysLeftInTrial: null, hasConverted: false };
+  if (!start || !end) return null;
+  return Math.round((end.getTime() - start.getTime()) / DAY_MS);
+}
+
+function deriveTrialStatus(ctx) {
+  const plan = ctx.planSummary || {};
+  const hasConverted =
+    Boolean(ctx.convertedAt) || Boolean(ctx.everConverted) || isPaidPlan(plan);
+  if (hasConverted) {
+    return { isTrial: false, daysLeftInTrial: null, hasConverted: true };
+  }
+
+  const start = parseDate(ctx.trialStartAt);
+  const end = parseDate(ctx.trialEndAt);
+  if (!start || !end) {
+    return { isTrial: false, daysLeftInTrial: null, hasConverted: false };
+  }
+
+  const spanDays = trialSpanDays(ctx.trialStartAt, ctx.trialEndAt);
+  const lengthDays = ctx.trialLengthDays || spanDays;
+  const paidTerm = plan.plan_type === "annual" || plan.plan_type === "monthly";
+  if (
+    paidTerm ||
+    (spanDays != null && spanDays > MAX_TRIAL_DAYS) ||
+    (lengthDays != null && lengthDays > MAX_TRIAL_DAYS)
+  ) {
+    return { isTrial: false, daysLeftInTrial: null, hasConverted: paidTerm || isPaidPlan(plan) };
+  }
 
   const now = Date.now();
-  if (end.getTime() <= now) return { isTrial: false, daysLeftInTrial: null, hasConverted: false };
+  if (end.getTime() <= now) {
+    return { isTrial: false, daysLeftInTrial: null, hasConverted: false };
+  }
 
   const daysLeft = Math.ceil((end.getTime() - now) / DAY_MS);
   return { isTrial: true, daysLeftInTrial: daysLeft, hasConverted: false };
 }
 
-async function fetchTrialWindow(supabase, memberId) {
-  const { data: trial, error } = await supabase
-    .from("academy_trial_history")
-    .select("trial_start_at, trial_end_at, converted_at")
+async function fetchMemberPlan(supabase, memberId) {
+  const { data, error } = await supabase
+    .from("ms_members_cache")
+    .select("created_at, plan_summary")
     .eq("member_id", memberId)
-    .order("trial_start_at", { ascending: false })
-    .limit(1)
     .maybeSingle();
   if (error) throw error;
+  return data || null;
+}
+
+async function fetchEverConverted(supabase, memberId) {
+  const { data, error } = await supabase
+    .from("academy_trial_history")
+    .select("converted_at")
+    .eq("member_id", memberId)
+    .not("converted_at", "is", null)
+    .limit(1);
+  if (error) throw error;
+  return !!(data && data.length);
+}
+
+async function fetchTrialWindow(supabase, memberId) {
+  const [trialRes, member, everConverted] = await Promise.all([
+    supabase
+      .from("academy_trial_history")
+      .select("trial_start_at, trial_end_at, converted_at, trial_length_days")
+      .eq("member_id", memberId)
+      .order("trial_start_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    fetchMemberPlan(supabase, memberId),
+    fetchEverConverted(supabase, memberId),
+  ]);
+  if (trialRes.error) throw trialRes.error;
+
+  const plan = member?.plan_summary || {};
+  const trial = trialRes.data;
 
   if (trial && trial.trial_start_at) {
     return {
       trialStartAt: trial.trial_start_at,
       trialEndAt: trial.trial_end_at || null,
       convertedAt: trial.converted_at || null,
+      trialLengthDays: trial.trial_length_days || null,
+      planSummary: plan,
+      everConverted,
     };
   }
 
-  const { data: member, error: memberError } = await supabase
-    .from("ms_members_cache")
-    .select("created_at, plan_summary")
-    .eq("member_id", memberId)
-    .maybeSingle();
-  if (memberError) throw memberError;
-
-  const plan = member?.plan_summary || {};
-  const trialStartAt = plan.trial_start_at || member?.created_at || null;
-  const trialEndAt = plan.expiry_date || null;
-  return { trialStartAt, trialEndAt, convertedAt: plan.converted_at || null };
+  return {
+    trialStartAt: plan.trial_start_at || member?.created_at || null,
+    trialEndAt: plan.expiry_date || null,
+    convertedAt: plan.converted_at || null,
+    trialLengthDays: plan.trial_length_days || null,
+    planSummary: plan,
+    everConverted,
+  };
 }
 
 async function fetchWindowEvents(supabase, memberId, startIso, endIso) {
@@ -182,8 +244,9 @@ function summariseEvents(events) {
 }
 
 async function buildSummary(supabase, memberId) {
-  const { trialStartAt, trialEndAt, convertedAt } = await fetchTrialWindow(supabase, memberId);
-  const trialStatus = deriveTrialStatus(trialEndAt, convertedAt);
+  const trialWindow = await fetchTrialWindow(supabase, memberId);
+  const trialStatus = deriveTrialStatus(trialWindow);
+  const { trialStartAt, trialEndAt } = trialWindow;
   const start = parseDate(trialStartAt);
   const now = Date.now();
   const daysSinceSignup = start ? Math.floor((now - start.getTime()) / DAY_MS) : null;
