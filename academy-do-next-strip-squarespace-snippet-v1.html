@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.23 — Practitioner + Certified floor gates; badge target-line copy finalised
+v1.3.24 — Fix Practitioner proximity label counting met requirements not remaining
 
 =========================== -->
 
@@ -2504,11 +2504,9 @@ v1.3.23 — Practitioner + Certified floor gates; badge target-line copy finalis
 
     if (r.met >= r.total) return "";
 
-    var left = r.total - r.met;
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Practitioner";
 
-    if (left === 1) return "1 of " + r.total + " requirements complete for Practitioner";
-
-    return left + " of " + r.total + " requirements complete for Practitioner";
+    return r.met + " of " + r.total + " requirements complete for Practitioner";
 
   }
 
