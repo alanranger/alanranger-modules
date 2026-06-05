@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.2 — larger tile step labels + sticky below academy header (block 2)
+v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
 =========================== -->
 
@@ -546,14 +546,6 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle{
-
-    background:#166534;
-
-    border:1px solid #14532d;
-
-  }
-
   #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle svg{
 
     stroke:#fff;
@@ -562,43 +554,33 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__label{
-
-    color:#fff;
-
-  }
-
-  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__sublabel{
-
-    color:#7bbf95;
-
-  }
-
-  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle{
-
-    background:rgba(255,255,255,0.06);
-
-    border:1px dashed rgba(255,255,255,0.2);
-
-  }
-
   #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
-
-    stroke:#5a6066;
 
     fill:none;
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__label{
+  #ar-do-next-strip .ar-do-next-badge__stars{
 
-    color:#cdd2da;
+    display:flex;
+
+    gap:2px;
+
+    justify-content:center;
+
+    margin:0 0 3px;
+
+    line-height:1;
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__sublabel{
+  #ar-do-next-strip .ar-do-next-badge__stars svg{
 
-    color:#7a8088;
+    width:13px;
+
+    height:13px;
+
+    display:block;
 
   }
 
@@ -648,10 +630,6 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
     border-radius:50%;
 
-    background:#166534;
-
-    border:1px solid #14532d;
-
     display:flex;
 
     align-items:center;
@@ -659,6 +637,8 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
     justify-content:center;
 
     margin:0 0 6px;
+
+    box-sizing:border-box;
 
   }
 
@@ -699,6 +679,30 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
     margin:0;
 
     line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars{
+
+    display:flex;
+
+    gap:3px;
+
+    justify-content:center;
+
+    margin:0 0 4px;
+
+    line-height:1;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars svg{
+
+    width:14px;
+
+    height:14px;
+
+    display:block;
 
   }
 
@@ -1108,11 +1112,31 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
       circle.innerHTML = journeyIconSvg(badge.iconClass);
 
+      applyBadgeCircleStyle(circle, badge.colour, badge.earned);
+
       var label = document.createElement("p");
 
       label.className = "ar-do-next-badge__label";
 
       label.textContent = badge.label;
+
+      label.style.color = badge.earned ? "#fff" : rgbaFromHex(badge.colour, 0.78);
+
+      if (badge.stars > 0) {
+
+        item.appendChild(circle);
+
+        item.appendChild(label);
+
+        item.appendChild(buildStarRow(badge.stars, badge.earned, "ar-do-next-badge__stars"));
+
+      } else {
+
+        item.appendChild(circle);
+
+        item.appendChild(label);
+
+      }
 
       var sub = document.createElement("p");
 
@@ -1120,9 +1144,7 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
       sub.textContent = badge.sublabel;
 
-      item.appendChild(circle);
-
-      item.appendChild(label);
+      sub.style.color = badge.earned ? mixHexWithWhite(badge.colour, 0.55) : rgbaFromHex(badge.colour, 0.45);
 
       item.appendChild(sub);
 
@@ -1156,7 +1178,17 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
       existing.id = "ar-do-next-banner-stage";
 
-      welcome.appendChild(existing);
+      var copy = document.getElementById("ar-academy-header-welcome-copy");
+
+      if (copy && copy.parentNode === welcome) {
+
+        welcome.insertBefore(existing, copy);
+
+      } else {
+
+        welcome.insertBefore(existing, welcome.firstChild);
+
+      }
 
     }
 
@@ -1168,21 +1200,29 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
     circle.innerHTML = journeyIconSvg(current.iconClass);
 
+    applyBadgeCircleStyle(circle, current.colour, true);
+
     var label = document.createElement("p");
 
     label.className = "ar-do-next-banner-stage__label";
 
     label.textContent = current.label;
 
+    existing.appendChild(circle);
+
+    existing.appendChild(label);
+
+    if (current.stars > 0) {
+
+      existing.appendChild(buildStarRow(current.stars, true, "ar-do-next-banner-stage__stars"));
+
+    }
+
     var caption = document.createElement("p");
 
     caption.className = "ar-do-next-banner-stage__caption";
 
     caption.textContent = "Level " + current.levelIndex + " of " + current.levelTotal;
-
-    existing.appendChild(circle);
-
-    existing.appendChild(label);
 
     existing.appendChild(caption);
 
@@ -1810,7 +1850,7 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
       coachDebug.badges = badgeRail.badges.map(function(b){
 
-        return { key: b.key, label: b.label, earned: b.earned };
+        return { key: b.key, label: b.label, earned: b.earned, colour: b.colour, stars: b.stars };
 
       });
 
@@ -1824,7 +1864,11 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
 
         levelIndex: currentStage.levelIndex,
 
-        levelTotal: currentStage.levelTotal
+        levelTotal: currentStage.levelTotal,
+
+        colour: currentStage.colour,
+
+        stars: currentStage.stars
 
       } : null;
 
@@ -1839,6 +1883,8 @@ v1.3.2 — larger tile step labels + sticky below academy header (block 2)
     strip.removeAttribute("aria-hidden");
 
     publishDoNextStripMetrics();
+
+    document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
 
   }
 
