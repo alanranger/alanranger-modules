@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
+v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
 
 =========================== -->
 
@@ -756,6 +756,16 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
   .ar-do-next-badge__tooltip--fixed.is-open{
 
     display:block;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed:not(.is-open){
+
+    display:none !important;
+
+    pointer-events:none;
+
+    visibility:hidden;
 
   }
 
@@ -2501,6 +2511,38 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
 
 
+  function resetBadgeTooltipStyles(tooltip){
+
+    if (!tooltip) return;
+
+    tooltip.classList.remove("is-open");
+
+    tooltip.style.display = "";
+
+    tooltip.style.visibility = "";
+
+    tooltip.style.top = "";
+
+    tooltip.style.left = "";
+
+  }
+
+
+
+  function hideAllBadgeTooltips(except){
+
+    document.querySelectorAll(".ar-do-next-badge__tooltip--fixed").forEach(function(tip){
+
+      if (except && tip === except) return;
+
+      resetBadgeTooltipStyles(tip);
+
+    });
+
+  }
+
+
+
   function positionBadgeTooltip(trigger, tooltip){
 
     tooltip.style.visibility = "hidden";
@@ -2533,6 +2575,20 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
     tooltip.style.visibility = "";
 
+    tooltip.style.display = "";
+
+  }
+
+
+
+  function openBadgeTooltip(trigger, tooltip){
+
+    hideAllBadgeTooltips(tooltip);
+
+    positionBadgeTooltip(trigger, tooltip);
+
+    tooltip.classList.add("is-open");
+
   }
 
 
@@ -2541,15 +2597,17 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
     if (open) {
 
-      positionBadgeTooltip(trigger, tooltip);
+      if (activeBadgeTooltipBtn && activeBadgeTooltipBtn !== trigger) closeBadgeTooltip();
 
-      tooltip.classList.add("is-open");
+      openBadgeTooltip(trigger, tooltip);
 
       return;
 
     }
 
-    if (activeBadgeTooltipBtn !== trigger) tooltip.classList.remove("is-open");
+    if (activeBadgeTooltipBtn === trigger) return;
+
+    resetBadgeTooltipStyles(tooltip);
 
   }
 
@@ -2561,7 +2619,7 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
     activeBadgeTooltipBtn.setAttribute("aria-expanded", "false");
 
-    if (activeBadgeTooltipBtn._arTooltip) activeBadgeTooltipBtn._arTooltip.classList.remove("is-open");
+    resetBadgeTooltipStyles(activeBadgeTooltipBtn._arTooltip);
 
     activeBadgeTooltipBtn = null;
 
@@ -2577,17 +2635,17 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
     document.addEventListener("click", function(e){
 
-      if (!activeBadgeTooltipBtn) return;
-
       if (e.target.closest(".ar-do-next-badge__trigger")) return;
 
       closeBadgeTooltip();
+
+      hideAllBadgeTooltips();
 
     });
 
     document.addEventListener("keydown", function(e){
 
-      if (e.key === "Escape") closeBadgeTooltip();
+      if (e.key === "Escape") { closeBadgeTooltip(); hideAllBadgeTooltips(); }
 
     });
 
@@ -2647,7 +2705,7 @@ v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
       trigger.setAttribute("aria-expanded", "true");
 
-      setBadgeTooltipOpen(trigger, tooltip, true);
+      openBadgeTooltip(trigger, tooltip);
 
       activeBadgeTooltipBtn = trigger;
 

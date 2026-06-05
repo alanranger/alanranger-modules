@@ -38,6 +38,17 @@ window.$memberstackDom = {
 ${scripts.map((s) => `<script>${s}</script>`).join("\n")}
 </body></html>`;
 
+function countVisibleTooltips(page) {
+  return page.evaluate(() => {
+    var n = 0;
+    document.querySelectorAll(".ar-do-next-badge__tooltip--fixed").forEach(function(tip) {
+      var cs = getComputedStyle(tip);
+      if (cs.display !== "none" && cs.visibility !== "hidden" && Number(cs.opacity) > 0) n++;
+    });
+    return n;
+  });
+}
+
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(pageHtml);
@@ -52,21 +63,38 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.goto(url, { waitUntil: "networkidle" });
 await page.waitForTimeout(3000);
 
-const trigger = page.locator(".ar-do-next-badge--ghost .ar-do-next-badge__trigger").first();
-await trigger.hover();
+const onLoad = await countVisibleTooltips(page);
+const triggers = page.locator(".ar-do-next-badge__trigger");
+const count = await triggers.count();
+
+await triggers.nth(0).hover();
+await page.waitForTimeout(200);
+const afterHover1 = await countVisibleTooltips(page);
+
+if (count > 1) {
+  await triggers.nth(1).hover();
+  await page.waitForTimeout(200);
+}
+const afterHover2 = await countVisibleTooltips(page);
+
+await page.mouse.move(0, 0);
+await page.waitForTimeout(200);
+const afterLeave = await countVisibleTooltips(page);
+
+await triggers.nth(0).hover();
 await page.waitForTimeout(200);
 
 const out = await page.evaluate(() => {
   const strip = document.getElementById("ar-do-next-strip");
   const tip = document.querySelector(".ar-do-next-badge__tooltip--fixed.is-open");
-  const trigger = document.querySelector(".ar-do-next-badge--ghost .ar-do-next-badge__trigger");
+  const trigger = document.querySelector(".ar-do-next-badge__trigger");
   const header = document.getElementById("header");
   const tipRect = tip ? tip.getBoundingClientRect() : null;
   const triggerRect = trigger ? trigger.getBoundingClientRect() : null;
   const headerRect = header ? header.getBoundingClientRect() : null;
   const cs = tip ? getComputedStyle(tip) : null;
   return {
-    tipFound: !!tip,
+    tipCount: document.querySelectorAll(".ar-do-next-badge__tooltip--fixed").length,
     tipParent: tip ? tip.parentElement?.tagName : null,
     position: cs ? cs.position : null,
     zIndex: cs ? cs.zIndex : null,
@@ -77,15 +105,6 @@ const out = await page.evaluate(() => {
       tipRect.left >= 0 &&
       tipRect.bottom <= window.innerHeight &&
       tipRect.right <= window.innerWidth,
-    tipRect: tipRect
-      ? {
-          top: Math.round(tipRect.top),
-          left: Math.round(tipRect.left),
-          bottom: Math.round(tipRect.bottom),
-          right: Math.round(tipRect.right)
-        }
-      : null,
-    viewport: { w: window.innerWidth, h: window.innerHeight },
     aboveBanner: tipRect && headerRect ? tipRect.top >= headerRect.bottom - 1 : null,
     stripNoHScroll: strip ? strip.scrollWidth === strip.clientWidth : null,
     docNoHScroll: document.documentElement.scrollWidth === document.documentElement.clientWidth
@@ -96,7 +115,11 @@ await browser.close();
 server.close();
 
 const pass =
-  out.tipFound &&
+  onLoad === 0 &&
+  afterHover1 === 1 &&
+  afterHover2 === 1 &&
+  afterLeave === 0 &&
+  out.tipCount > 0 &&
   out.tipParent === "BODY" &&
   out.position === "fixed" &&
   Number(out.zIndex) >= 1000 &&
@@ -106,5 +129,18 @@ const pass =
   out.stripNoHScroll &&
   out.docNoHScroll;
 
-console.log(JSON.stringify({ pass, ...out }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      pass,
+      onLoad,
+      afterHover1,
+      afterHover2,
+      afterLeave,
+      ...out
+    },
+    null,
+    2
+  )
+);
 process.exit(pass ? 0 : 1);
