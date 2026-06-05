@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
-v1.2 Fix A: green forward buttons + dynamic exam label
+v1.3.0 State-aware signup CTA or member progress strip + Fix A forward buttons
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
 - Keeps Memberstack save logic; next/exam use plain <a href> only
@@ -47,18 +47,18 @@ v1.2 Fix A: green forward buttons + dynamic exam label
   #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
   #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
   #ar-bookmark-widget .ar-btn.is-hidden{ display:none !important; }
-  /* Forward actions: match dashboard course CTA green (#16a34a core, gradient from .ar-academy-dashboard__course-cta) */
+  /* Forward actions: flat dark green for strong white-text contrast */
   #ar-bookmark-widget #ar-next-module-btn,
   #ar-bookmark-widget #ar-take-exam-btn{
-    background:linear-gradient(180deg,#34d399 0%,#16a34a 55%,#15803d 100%) !important;
-    border:2px solid #4ade80 !important;
+    background:#166534 !important;
+    border:2px solid #14532d !important;
     color:#fff !important;
-    text-shadow:0 1px 0 rgba(0,0,0,0.25);
-    box-shadow:0 0 0 1px rgba(255,255,255,0.2) inset,0 4px 16px rgba(34,197,94,0.45);
+    box-shadow:none;
   }
   #ar-bookmark-widget #ar-next-module-btn:hover,
   #ar-bookmark-widget #ar-take-exam-btn:hover{
-    filter:brightness(1.08) saturate(1.05);
+    background:#15803d !important;
+    filter:none;
   }
 
   #ar-bookmark-widget .ar-help{
@@ -68,9 +68,57 @@ v1.2 Fix A: green forward buttons + dynamic exam label
     font-size:13px;
     font-weight:700;
   }
+  #ar-lesson-member-strip{
+    width:100%;
+    flex:0 0 100%;
+    margin:0 0 4px;
+  }
+  #ar-lesson-member-strip.is-hidden{ display:none !important; }
+  #ar-lesson-member-strip .ar-lesson-signup-cta{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 18px;
+    border-radius:8px;
+    border:2px solid #14532d;
+    background:#166534;
+    color:#fff !important;
+    font-size:15px;
+    font-weight:800;
+    line-height:1.3;
+    text-decoration:none !important;
+    box-shadow:none;
+  }
+  #ar-lesson-member-strip .ar-lesson-signup-cta:hover{
+    background:#15803d;
+    color:#fff !important;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-stats{
+    margin:0 0 6px;
+    font-size:13px;
+    font-weight:700;
+    color:#111827;
+    line-height:1.4;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-bar{
+    width:100%;
+    max-width:320px;
+    height:6px;
+    border-radius:999px;
+    background:#e5e7eb;
+    overflow:hidden;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-bar__fill{
+    height:100%;
+    background:#166534;
+    border-radius:999px;
+    width:0%;
+    transition:width 0.25s ease;
+  }
 </style>
 
 <div id="ar-bookmark-widget">
+  <div id="ar-lesson-member-strip" class="is-hidden" aria-hidden="true"></div>
   <button id="bookmark-btn" class="ar-btn" type="button">
     ⭐ <span>Bookmark this page</span>
   </button>
@@ -124,8 +172,15 @@ v1.2 Fix A: green forward buttons + dynamic exam label
   }
 
   var SITE = "https://www.alanranger.com";
+  var API_BASE = "https://alanranger-modules.vercel.app";
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+  var SIGNUP_URL = SITE + "/free-online-photography-course";
   var FOUNDATION_URL = SITE + "/academy/online-photography-course";
   var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+  var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+  var ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+  var ANNUAL_WITH_TRIAL_PRICE_ID = "prc_annual-membership-with-30-day-trial-881h0iui";
 
   var ARTICLE_MODULES = [
     { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
@@ -275,6 +330,193 @@ v1.2 Fix A: green forward buttons + dynamic exam label
     return window.$memberstackDom;
   }
 
+  function unwrapMember(res){
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data) return res.data;
+    return res;
+  }
+
+  function unwrapStoredJson(obj){
+    var cur = obj;
+    for (var i = 0; i < 10; i++) {
+      if (!cur || typeof cur !== "object") break;
+      if (!cur.data || typeof cur.data !== "object") break;
+      var d = cur.data;
+      var looks = (d.history && Array.isArray(d.history)) ||
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+        (d.arAcademy && typeof d.arAcademy === "object");
+      if (looks) { cur = d; continue; }
+      break;
+    }
+    return cur || {};
+  }
+
+  function normalizeMemberJson(jsonRes){
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+    return unwrapStoredJson(stored);
+  }
+
+  function getPlanConnections(member){
+    var pcs = member && member.data && Array.isArray(member.data.planConnections) ? member.data.planConnections : [];
+    return pcs.filter(Boolean);
+  }
+
+  function isActivePlanConnection(pc){
+    if (!pc) return false;
+    if (pc.active === false) return false;
+    var status = String(pc.status || "").toUpperCase();
+    if (status === "CANCELED" || status === "CANCELLED" || status === "EXPIRED" || status === "ENDED") return false;
+    return true;
+  }
+
+  function hasTrialAccess(member){
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId === TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
+  }
+
+  function hasAnnualAccess(member){
+    var data = member && member.data ? member.data : null;
+    if (!data) return false;
+    for (var k in data) {
+      if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+      var v = data[k];
+      if (!Array.isArray(v)) continue;
+      for (var i = 0; i < v.length; i++) {
+        var item = v[i];
+        if (!item || typeof item !== "object") continue;
+        if (item.priceId === ANNUAL_PRICE_ID || item.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) return true;
+      }
+    }
+    return false;
+  }
+
+  function hasAnyNonTrialPlan(member){
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
+  }
+
+  function hasAcademyAccess(member){
+    if (!member || !member.data) return false;
+    if (hasTrialAccess(member)) return true;
+    if (hasAnnualAccess(member)) return true;
+    if (hasAnyNonTrialPlan(member)) return true;
+    return false;
+  }
+
+  function countOpenedModules(normalized){
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var set = new Set();
+    Object.keys(opened).forEach(function(key){
+      var p = normalizePath(key);
+      for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+        if (ARTICLE_MODULES[i].p === p) { set.add(p); break; }
+      }
+    });
+    return set.size;
+  }
+
+  async function fetchExamProgress(memberId){
+    if (!memberId) return null;
+    try {
+      var res = await fetch(PROGRESS_URL, {
+        headers: { "X-Memberstack-Id": memberId },
+        credentials: "omit"
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function passedExamCount(progressData){
+    var n = 0;
+    var mods = progressData && Array.isArray(progressData.modules) ? progressData.modules : [];
+    mods.forEach(function(m){
+      if (m && m.status === "passed") n++;
+    });
+    if (n === 0 && progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+      n = progressData.summary.passedCount;
+    }
+    return n;
+  }
+
+  function renderSignupStrip(el){
+    el.innerHTML = '<a class="ar-lesson-signup-cta" href="' + SIGNUP_URL + '">Want all 60 modules, 15 exams and certificates? Start your free 14-day trial \u2192</a>';
+    el.classList.remove("is-hidden");
+    el.removeAttribute("aria-hidden");
+  }
+
+  function renderProgressStrip(el, openedCount, examsPassed){
+    var pct = Math.round((openedCount / 45) * 100);
+    el.innerHTML =
+      '<p class="ar-lesson-progress-stats">Modules opened: ' + openedCount + '/45 - Exams passed: ' + examsPassed + '/15</p>' +
+      '<div class="ar-lesson-progress-bar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100">' +
+      '<div class="ar-lesson-progress-bar__fill" style="width:' + pct + '%;"></div></div>';
+    el.classList.remove("is-hidden");
+    el.removeAttribute("aria-hidden");
+  }
+
+  function trackLessonPageView(memberId, email){
+    if (!memberId) return;
+    var path = normalizePath(window.location.pathname);
+    if (path.indexOf("/blog-on-photography/") !== 0) return;
+    var key = "ar-pv-lesson-" + memberId + "-" + path;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch (e) { /* ignore */ }
+
+    fetch(TRACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "omit",
+      body: JSON.stringify({
+        member_id: memberId,
+        email: email || null,
+        path: path,
+        title: document.title || null,
+        category: "lesson",
+        meta: { source: "lesson-widget", surface: "lesson" }
+      })
+    }).catch(function(){ /* non-blocking */ });
+  }
+
+  async function wireMemberStrip(){
+    var strip = document.getElementById("ar-lesson-member-strip");
+    if (!strip || strip.dataset.wired === "1") return;
+
+    var ms = await waitForMemberstack();
+    var member = null;
+    if (ms && typeof ms.getCurrentMember === "function") {
+      try { member = unwrapMember(await ms.getCurrentMember()); } catch (e) { member = null; }
+    }
+
+    if (!member || !member.id || !hasAcademyAccess(member)) {
+      renderSignupStrip(strip);
+      strip.dataset.wired = "1";
+      return;
+    }
+
+    var normalized = {};
+    if (ms && typeof ms.getMemberJSON === "function") {
+      try { normalized = normalizeMemberJson(await ms.getMemberJSON()); } catch (e) { normalized = {}; }
+    }
+    var openedCount = countOpenedModules(normalized);
+    var progressData = await fetchExamProgress(String(member.id));
+    var examsPassed = passedExamCount(progressData);
+    renderProgressStrip(strip, openedCount, examsPassed);
+
+    var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
+    trackLessonPageView(String(member.id), email);
+    strip.dataset.wired = "1";
+  }
+
   async function wireBookmark(){
     var btn = document.getElementById('bookmark-btn');
     if (!btn || btn.dataset.wired === "1") return;
@@ -320,11 +562,13 @@ v1.2 Fix A: green forward buttons + dynamic exam label
     moveWidgetOnce();
     wireBookmark();
     wireNextModuleButtons();
+    wireMemberStrip();
 
     var obs = new MutationObserver(function(){
       moveWidgetOnce();
       wireBookmark();
       wireNextModuleButtons();
+      wireMemberStrip();
     });
 
     obs.observe(document.documentElement, { childList:true, subtree:true });
