@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
+v1.3.19 — Foundation gate + proximity messaging + upbeat trial nudge (trial members only)
 
 =========================== -->
 
@@ -14,17 +14,17 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     display:none;
 
-    position:sticky;
-
-    top:var(--ar-academy-header-height,88px);
+    position:relative;
 
     z-index:997;
 
-    width:100vw;
+    width:100%;
 
-    margin-left:calc(50% - 50vw);
+    max-width:100%;
 
-    margin-right:calc(50% - 50vw);
+    margin-left:0;
+
+    margin-right:0;
 
     margin-bottom:14px;
 
@@ -34,7 +34,37 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     box-shadow:0 4px 14px rgba(0,0,0,0.4);
 
+    outline:none;
+
     box-sizing:border-box;
+
+    contain:layout style;
+
+    overflow-x:hidden;
+
+  }
+
+  html.ar-dashboard-pin-stack #ar-do-next-strip.is-ready{
+
+    position:fixed !important;
+
+    top:calc(var(--ar-sqsp-nav-offset, 0px) + var(--ar-academy-header-height, 88px)) !important;
+
+    left:0;
+
+    right:0;
+
+    width:100%;
+
+    margin-left:0;
+
+    margin-right:0;
+
+    z-index:997;
+
+    height:auto;
+
+    max-height:none;
 
   }
 
@@ -64,7 +94,7 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
       --arp-dash-gutter:352px;
 
-      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
 
       max-width:1400px;
 
@@ -72,7 +102,7 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
         var(--arp-dash-gutter) +
 
-        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
 
           2
 
@@ -92,13 +122,13 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
       --arp-dash-gutter:322px;
 
-      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
 
       margin-left:calc(
 
         var(--arp-dash-gutter) +
 
-        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
 
           2
 
@@ -156,9 +186,9 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     gap:10px 16px;
 
-    margin:0 0 14px;
+    margin:0 0 18px;
 
-    font-size:15px;
+    font-size:16px;
 
     line-height:1.4;
 
@@ -200,6 +230,8 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     font-weight:800;
 
+    font-size:16px;
+
     color:#f8fafc;
 
   }
@@ -216,13 +248,15 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   #ar-do-next-strip .ar-do-next-strip__pct{
 
-    color:#cbd5e1;
+    color:#94a3b8;
 
-    font-weight:700;
+    font-weight:600;
 
-    font-size:14px;
+    font-size:12px;
 
     white-space:nowrap;
+
+    opacity:0.92;
 
   }
 
@@ -254,11 +288,41 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   #ar-do-next-strip .ar-do-next-strip__tiles{
 
-    display:grid;
+    display:flex;
 
-    grid-template-columns:repeat(4,1fr);
+    flex-direction:row;
 
-    gap:14px;
+    align-items:stretch;
+
+    gap:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tile-arrow{
+
+    flex:0 0 28px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    align-self:center;
+
+    color:rgba(255,255,255,0.38);
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tile-arrow svg{
+
+    width:20px;
+
+    height:20px;
+
+    display:block;
 
   }
 
@@ -266,7 +330,21 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     #ar-do-next-strip .ar-do-next-strip__tiles{
 
-      grid-template-columns:repeat(2,1fr);
+      flex-wrap:wrap;
+
+      gap:14px;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-strip__tile-arrow{
+
+      display:none;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-tile{
+
+      flex:1 1 calc(50% - 7px);
 
     }
 
@@ -274,9 +352,9 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   @media (max-width:520px){
 
-    #ar-do-next-strip .ar-do-next-strip__tiles{
+    #ar-do-next-strip .ar-do-next-tile{
 
-      grid-template-columns:1fr;
+      flex:1 1 100%;
 
     }
 
@@ -287,6 +365,10 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
     display:flex;
 
     flex-direction:column;
+
+    flex:1 1 0;
+
+    min-width:0;
 
     min-height:148px;
 
@@ -316,9 +398,9 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     margin:0 0 12px;
 
-    opacity:1;
-
     line-height:1.15;
+
+    opacity:1;
 
   }
 
@@ -352,7 +434,9 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   }
 
-  #ar-do-next-strip .ar-do-next-tile--resume{
+  #ar-do-next-strip .ar-do-next-tile--resume,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green{
 
     background:#166534;
 
@@ -362,33 +446,21 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__eyebrow,
 
-  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why{
-
-    color:#dcfce7 !important;
-
-  }
-
-  #ar-do-next-strip .ar-do-next-tile--ghost-green{
-
-    background:rgba(22,101,52,0.16);
-
-    border:0.5px solid rgba(22,101,52,0.55);
-
-  }
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why,
 
   #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__eyebrow,
 
   #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__why{
 
-    color:#bbf7d0 !important;
+    color:#dcfce7 !important;
 
   }
 
   #ar-do-next-strip .ar-do-next-tile--amber{
 
-    background:rgba(217,119,6,0.12);
+    background:#b45309;
 
-    border:0.5px solid rgba(217,119,6,0.45);
+    border:0.5px solid #92400e;
 
   }
 
@@ -406,6 +478,210 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   }
 
+  #ar-do-next-strip .ar-do-next-tile__trial-line{
+
+    font-size:11px;
+
+    font-weight:500;
+
+    line-height:1.35;
+
+    margin:6px 0 0;
+
+    opacity:0.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__trial-line{
+
+    color:#fcd34d !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-head{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:12px;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card.is-journey-expanded .ar-do-next-strip__journey-head{
+
+    margin-bottom:18px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    border:none;
+
+    background:transparent;
+
+    padding:0;
+
+    cursor:pointer;
+
+    font:inherit;
+
+    color:inherit;
+
+    text-align:left;
+
+    position:relative;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:focus-visible{
+
+    outline:2px solid #e57200;
+
+    outline-offset:2px;
+
+    border-radius:6px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle::after{
+
+    content:attr(data-tip);
+
+    position:absolute;
+
+    left:0;
+
+    bottom:calc(100% + 8px);
+
+    background:#1a1f2e;
+
+    color:#f8fafc;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    line-height:1.3;
+
+    padding:8px 10px;
+
+    border-radius:8px;
+
+    border:1px solid rgba(229,114,0,0.45);
+
+    white-space:nowrap;
+
+    opacity:0;
+
+    pointer-events:none;
+
+    transition:opacity 0.15s ease;
+
+    z-index:2;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:hover::after,
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:focus-visible::after{
+
+    opacity:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-chevron{
+
+    flex-shrink:0;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    width:32px;
+
+    height:32px;
+
+    color:#e57200;
+
+    border-radius:6px;
+
+    transition:background 0.15s ease, transform 0.2s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:hover .ar-do-next-strip__journey-chevron{
+
+    background:rgba(229,114,0,0.14);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-chevron svg{
+
+    width:22px;
+
+    height:22px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card:not(.is-journey-expanded) .ar-do-next-strip__journey-chevron{
+
+    transform:rotate(180deg);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-title{
+
+    font-size:18px;
+
+    font-weight:800;
+
+    color:#f8fafc;
+
+    margin:0;
+
+    letter-spacing:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-count{
+
+    font-size:13px;
+
+    font-weight:700;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+    color:#cbd5e1;
+
+    margin:0;
+
+    white-space:nowrap;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card:not(.is-journey-expanded) .ar-do-next-strip__journey-panel{
+
+    display:none;
+
+  }
+
   #ar-do-next-strip .ar-do-next-strip__badge-rail{
 
     margin:0 0 18px;
@@ -416,53 +692,73 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge-rail__head{
+  #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+    display:flex;
+
+    flex-wrap:nowrap;
+
+    flex-direction:row;
+
+    align-items:flex-start;
+
+    align-content:flex-start;
+
+    justify-content:center;
+
+    gap:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__arrow{
+
+    flex:0 0 22px;
 
     display:flex;
 
     align-items:center;
 
-    justify-content:space-between;
+    justify-content:center;
 
-    gap:8px;
+    align-self:flex-start;
 
-    margin:0 0 14px;
+    margin-top:17px;
 
-  }
+    height:24px;
 
-  #ar-do-next-strip .ar-do-next-badge-rail__title{
+    color:rgba(255,255,255,0.38);
 
-    font-size:13px;
-
-    font-weight:700;
-
-    color:#e2e8f0;
-
-    margin:0;
+    pointer-events:none;
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge-rail__count{
+  #ar-do-next-strip .ar-do-next-badge-rail__arrow svg{
 
-    font-size:12px;
+    width:18px;
 
-    font-weight:600;
+    height:18px;
 
-    color:#7a8088;
-
-    margin:0;
+    display:block;
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge-rail__row{
+  @media (max-width:900px){
 
-    display:flex;
+    #ar-do-next-strip .ar-do-next-badge-rail__row{
 
-    flex-wrap:wrap;
+      flex-wrap:wrap;
 
-    justify-content:space-between;
+      justify-content:center;
 
-    gap:12px 8px;
+      gap:8px 4px;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-badge-rail__arrow{
+
+      display:none;
+
+    }
 
   }
 
@@ -474,11 +770,17 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     align-items:center;
 
-    flex:1 1 0;
+    flex:0 0 118px;
 
-    min-width:72px;
+    width:118px;
 
-    max-width:120px;
+    min-width:96px;
+
+    max-width:140px;
+
+    height:auto;
+
+    align-self:flex-start;
 
     text-align:center;
 
@@ -500,9 +802,19 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   #ar-do-next-strip .ar-do-next-badge__circle{
 
-    width:46px;
+    width:58px;
 
-    height:46px;
+    height:58px;
+
+    min-width:58px;
+
+    min-height:58px;
+
+    max-width:58px;
+
+    max-height:58px;
+
+    flex:0 0 58px;
 
     border-radius:50%;
 
@@ -516,13 +828,15 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     box-sizing:border-box;
 
+    overflow:hidden;
+
   }
 
   #ar-do-next-strip .ar-do-next-badge__circle svg{
 
-    width:22px;
+    width:28px;
 
-    height:22px;
+    height:28px;
 
     display:block;
 
@@ -546,21 +860,41 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     display:flex;
 
+    flex:0 0 auto;
+
     gap:2px;
 
     justify-content:center;
+
+    align-items:center;
 
     margin:0 0 3px;
 
     line-height:1;
 
+    height:18px;
+
+    min-height:18px;
+
+    max-height:18px;
+
+    overflow:hidden;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars--spacer{
+
+    visibility:hidden;
+
+    pointer-events:none;
+
   }
 
   #ar-do-next-strip .ar-do-next-badge__stars svg{
 
-    width:13px;
+    width:11px;
 
-    height:13px;
+    height:11px;
 
     display:block;
 
@@ -568,25 +902,39 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   #ar-do-next-strip .ar-do-next-badge__label{
 
-    font-size:12px;
+    font-size:14px;
 
-    font-weight:500;
+    font-weight:700;
 
-    line-height:1.25;
+    line-height:1.2;
 
-    margin:0 0 2px;
+    margin:0 0 4px;
 
   }
 
   #ar-do-next-strip .ar-do-next-badge__sublabel{
 
-    font-size:11px;
+    font-size:12px;
 
-    font-weight:500;
+    font-weight:600;
 
     line-height:1.25;
 
     margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row .ar-do-next-badge:last-child.ar-do-next-badge--ghost .ar-do-next-badge__circle{
+
+    border-color:rgba(245,179,1,0.55) !important;
+
+    border-style:dashed !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row .ar-do-next-badge:last-child.ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
+
+    stroke:#f5b301 !important;
 
   }
 
@@ -656,6 +1004,10 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     font-weight:600;
 
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
     color:rgba(255,255,255,0.65);
 
     margin:0;
@@ -696,19 +1048,37 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   <div class="ar-do-next-strip__inner">
 
-    <div class="ar-do-next-strip__card">
+    <div class="ar-do-next-strip__card is-journey-expanded">
 
-      <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your journey"></div>
+      <div class="ar-do-next-strip__journey-head">
 
-      <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+        <button type="button" id="ar-do-next-journey-toggle" class="ar-do-next-strip__journey-toggle" aria-expanded="true" aria-controls="ar-do-next-journey-panel" data-tip="Collapse Your Journey coach panel">
 
-      <div class="ar-do-next-strip__bar" aria-hidden="true">
+          <span class="ar-do-next-strip__journey-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></span>
 
-        <div class="ar-do-next-strip__bar-fill" id="ar-do-next-bar-fill"></div>
+          <span class="ar-do-next-strip__journey-title">Your Journey</span>
+
+        </button>
+
+        <p class="ar-do-next-strip__journey-count" id="ar-do-next-journey-count"></p>
 
       </div>
 
-      <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
+      <div class="ar-do-next-strip__journey-panel" id="ar-do-next-journey-panel">
+
+        <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your Journey badges"></div>
+
+        <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+
+        <div class="ar-do-next-strip__bar" aria-hidden="true">
+
+          <div class="ar-do-next-strip__bar-fill" id="ar-do-next-bar-fill"></div>
+
+        </div>
+
+        <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
+
+      </div>
 
     </div>
 
@@ -728,6 +1098,232 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
+  function isDashboardPath(){
+
+    var p = (window.location && window.location.pathname) ? window.location.pathname : "";
+
+    p = p.replace(/\/+$/, "") || "/";
+
+    return p === "/academy/dashboard";
+
+  }
+
+
+
+  function getSqspNavOffset(){
+
+    var selectors = ["#header", "header.header", ".header-nav-wrapper", ".sqs-site-header"];
+
+    for (var i = 0; i < selectors.length; i++) {
+
+      var el = document.querySelector(selectors[i]);
+
+      if (!el || el.contains(document.getElementById("ar-academy-header-container"))) continue;
+
+      var h = Math.ceil(el.getBoundingClientRect().height) || Math.ceil(el.offsetHeight) || 0;
+
+      if (h >= 40 && h <= 240) return h;
+
+    }
+
+    return 71;
+
+  }
+
+
+
+  function ensureAcademyLayout(){
+
+    if (window.__arAcademyLayout && window.__arAcademyLayout.pinVersion === 2) {
+
+      return window.__arAcademyLayout;
+
+    }
+
+    var state = { busy: false, raf: 0 };
+
+    function ensureSpacer(id, anchor, height){
+
+      if (!anchor) return;
+
+      var spacer = document.getElementById(id);
+
+      if (!height) {
+
+        if (spacer) spacer.style.height = "0px";
+
+        return;
+
+      }
+
+      if (!spacer) {
+
+        spacer = document.createElement("div");
+
+        spacer.id = id;
+
+        spacer.setAttribute("aria-hidden", "true");
+
+        anchor.insertAdjacentElement("afterend", spacer);
+
+      }
+
+      spacer.style.height = height + "px";
+
+    }
+
+    function measureStripHeight(strip){
+
+      if (!strip || !strip.classList.contains("is-ready")) return 0;
+
+      var inner = strip.querySelector(".ar-do-next-strip__inner") || strip;
+
+      var h = Math.ceil(inner.offsetHeight) || 0;
+
+      if (h > 0 && h < 2000) return h;
+
+      var card = strip.querySelector(".ar-do-next-strip__card");
+
+      if (card) {
+
+        h = Math.ceil(card.offsetHeight) || 0;
+
+        if (h > 0 && h < 2000) return h;
+
+      }
+
+      return 0;
+
+    }
+
+    function syncLayout(){
+
+      if (state.busy) return;
+
+      if (!isDashboardPath()) {
+
+        document.documentElement.classList.remove("ar-dashboard-pin-stack");
+
+        return;
+
+      }
+
+      var header = document.getElementById("ar-academy-header-container");
+
+      if (!header) return;
+
+      var strip = document.getElementById("ar-do-next-strip");
+
+      var sqspTop = getSqspNavOffset();
+
+      state.busy = true;
+
+      try {
+
+        var headerH = Math.ceil(header.offsetHeight) || 88;
+
+        var stripH = measureStripHeight(strip);
+
+        var root = document.documentElement;
+
+        root.style.setProperty("--ar-sqsp-nav-offset", sqspTop + "px");
+
+        root.style.setProperty("--ar-academy-header-height", headerH + "px");
+
+        root.style.setProperty("--ar-do-next-strip-height", stripH + "px");
+
+        root.style.setProperty("--ar-academy-sticky-stack-height", (sqspTop + headerH + stripH) + "px");
+
+        root.classList.add("ar-dashboard-pin-stack");
+
+        header.style.setProperty("position", "fixed", "important");
+
+        header.style.setProperty("top", sqspTop + "px", "important");
+
+        header.style.setProperty("left", "0", "important");
+
+        header.style.setProperty("right", "0", "important");
+
+        header.style.setProperty("width", "100%", "important");
+
+        header.style.setProperty("max-width", "100%", "important");
+
+        header.style.setProperty("margin-top", "0", "important");
+
+        header.style.setProperty("z-index", "998", "important");
+
+        if (strip && strip.classList.contains("is-ready")) {
+
+          strip.style.setProperty("position", "fixed", "important");
+
+          strip.style.setProperty("top", (sqspTop + headerH) + "px", "important");
+
+          strip.style.setProperty("left", "0", "important");
+
+          strip.style.setProperty("right", "0", "important");
+
+          strip.style.setProperty("width", "100%", "important");
+
+          strip.style.setProperty("max-width", "100%", "important");
+
+          strip.style.setProperty("margin-left", "0", "important");
+
+          strip.style.setProperty("margin-right", "0", "important");
+
+          strip.style.setProperty("z-index", "997", "important");
+
+        }
+
+        ensureSpacer("ar-academy-header-spacer", header, 0);
+
+        if (strip) ensureSpacer("ar-do-next-strip-spacer", strip, stripH);
+
+      } finally {
+
+        state.busy = false;
+
+      }
+
+      document.dispatchEvent(new CustomEvent("ar-academy-layout-sync"));
+
+    }
+
+    window.__arAcademyLayout = {
+
+      pinVersion: 2,
+
+      schedule: function(){
+
+        if (state.raf) return;
+
+        state.raf = requestAnimationFrame(function(){
+
+          state.raf = 0;
+
+          syncLayout();
+
+        });
+
+      },
+
+      sync: syncLayout
+
+    };
+
+    return window.__arAcademyLayout;
+
+  }
+
+
+
+  function scheduleLayout(){
+
+    ensureAcademyLayout().schedule();
+
+  }
+
+
+
   var SITE = "https://www.alanranger.com";
 
   var API_BASE = "https://alanranger-modules.vercel.app";
@@ -739,6 +1335,8 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
 
   var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+
+  var ENGAGEMENT_URL = API_BASE + "/api/academy/engagement-summary";
 
   var MODULES_TOTAL = 60;
 
@@ -938,11 +1536,25 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
+  var FOUNDATION_GATE = {
+
+    minModules: 3,
+
+    minActiveDays: 3,
+
+    bonusModules: 6,
+
+    bonusActiveDays: 5
+
+  };
+
+
+
   var JOURNEY_STAGES = [
 
     { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
 
-    { key: "foundation", label: "Foundation", sublabel: "15 camera modules", iconClass: "ti-camera", colour: "green", stars: 1, minModules: 15 },
+    { key: "foundation", label: "Foundation", sublabel: "3 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
 
     { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", colour: "green", stars: 2, minModules: 60 },
 
@@ -1068,11 +1680,25 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function isJourneyStageEarned(stage, modulesOpened, examsPassed){
+  function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded){
+
+    if (modulesOpened < FOUNDATION_GATE.minModules) return false;
+
+    if (engagementDegraded) return true;
+
+    return activeDays >= FOUNDATION_GATE.minActiveDays;
+
+  }
+
+
+
+  function isJourneyStageEarned(stage, modulesOpened, examsPassed, activeDays, engagementDegraded){
 
     if (stage.stageEarned === false) return false;
 
     if (stage.alwaysEarned) return true;
+
+    if (stage.foundationGate) return isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded);
 
     if (stage.minModules && modulesOpened >= stage.minModules) return true;
 
@@ -1084,7 +1710,7 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function computeJourneyBadges(modulesOpened, examsPassed){
+  function computeJourneyBadges(modulesOpened, examsPassed, activeDays, engagementDegraded){
 
     return JOURNEY_STAGES.map(function(stage){
 
@@ -1102,7 +1728,7 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
         stars: stage.stars,
 
-        earned: isJourneyStageEarned(stage, modulesOpened, examsPassed)
+        earned: isJourneyStageEarned(stage, modulesOpened, examsPassed, activeDays, engagementDegraded)
 
       };
 
@@ -1152,39 +1778,93 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function buildBadgeRail(modulesOpened, examsPassed){
+  var TILE_ARROW_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
 
-    var badges = computeJourneyBadges(modulesOpened, examsPassed);
+  var CHEVRON_TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
+
+
+
+  function buildTileArrow(){
+
+    var el = document.createElement("div");
+
+    el.className = "ar-do-next-strip__tile-arrow";
+
+    el.setAttribute("aria-hidden", "true");
+
+    el.innerHTML = TILE_ARROW_SVG;
+
+    return el;
+
+  }
+
+
+
+  function buildJourneyArrow(){
+
+    var el = document.createElement("div");
+
+    el.className = "ar-do-next-badge-rail__arrow";
+
+    el.setAttribute("aria-hidden", "true");
+
+    el.innerHTML = TILE_ARROW_SVG;
+
+    return el;
+
+  }
+
+
+
+  function wireJourneyToggle(){
+
+    var toggle = document.getElementById("ar-do-next-journey-toggle");
+
+    var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
+
+    if (!toggle || !card || toggle.getAttribute("data-wired")) return;
+
+    toggle.setAttribute("data-wired", "true");
+
+    toggle.addEventListener("click", function(){
+
+      var expanded = card.classList.toggle("is-journey-expanded");
+
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+      toggle.setAttribute(
+
+        "data-tip",
+
+        expanded ? "Collapse Your Journey coach panel" : "Expand Your Journey coach panel"
+
+      );
+
+      scheduleLayout();
+
+    });
+
+  }
+
+
+
+  function buildBadgeRail(modulesOpened, examsPassed, activeDays, engagementDegraded){
+
+    var badges = computeJourneyBadges(modulesOpened, examsPassed, activeDays, engagementDegraded);
 
     var earnedCount = badges.filter(function(b){ return b.earned; }).length;
 
     var rail = document.createElement("div");
 
-    var head = document.createElement("div");
-
-    head.className = "ar-do-next-badge-rail__head";
-
-    var title = document.createElement("p");
-
-    title.className = "ar-do-next-badge-rail__title";
-
-    title.textContent = "Your journey";
-
-    var count = document.createElement("p");
-
-    count.className = "ar-do-next-badge-rail__count";
-
-    count.textContent = earnedCount + " of " + badges.length + " earned";
-
-    head.appendChild(title);
-
-    head.appendChild(count);
+    rail.className = "ar-do-next-badge-rail";
 
     var row = document.createElement("div");
 
     row.className = "ar-do-next-badge-rail__row";
 
-    badges.forEach(function(badge){
+    badges.forEach(function(badge, idx){
+
+      if (idx > 0) row.appendChild(buildJourneyArrow());
 
       var item = document.createElement("div");
 
@@ -1206,19 +1886,23 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
       label.style.color = badge.earned ? "#fff" : "#cdd2da";
 
+      item.appendChild(circle);
+
+      item.appendChild(label);
+
       if (badge.stars > 0) {
-
-        item.appendChild(circle);
-
-        item.appendChild(label);
 
         item.appendChild(buildStarRow(badge.stars, badge.earned, "ar-do-next-badge__stars"));
 
       } else {
 
-        item.appendChild(circle);
+        var starSpacer = document.createElement("div");
 
-        item.appendChild(label);
+        starSpacer.className = "ar-do-next-badge__stars ar-do-next-badge__stars--spacer";
+
+        starSpacer.setAttribute("aria-hidden", "true");
+
+        item.appendChild(starSpacer);
 
       }
 
@@ -1235,8 +1919,6 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
       row.appendChild(item);
 
     });
-
-    rail.appendChild(head);
 
     rail.appendChild(row);
 
@@ -1550,15 +2232,161 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function computeRagState(openedCount, examsPassed){
+  function pluralWord(n, singular, plural){
 
-    if (openedCount < 3) {
+    return n === 1 ? singular : plural;
 
-      return { state: "red", label: "Just getting started", color: RAG_COLORS.red };
+  }
+
+
+
+  function formatFoundationProximity(modulesOpened, activeDays, engagementDegraded){
+
+    var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+
+    if (engagementDegraded) {
+
+      if (!modShort) return "";
+
+      return modShort === 1 ? "Open 1 more module to earn Foundation" : "Open " + modShort + " more modules to earn Foundation";
 
     }
 
-    if (openedCount >= 30 && examsPassed >= 1) {
+    var dayShort = Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+    if (!modShort && !dayShort) return "";
+
+    if (modShort && dayShort) {
+
+      return "You're " + dayShort + " " + pluralWord(dayShort, "day", "days") +
+
+        " and " + modShort + " " + pluralWord(modShort, "module", "modules") +
+
+        " from your Foundation badge";
+
+    }
+
+    if (modShort) {
+
+      return modShort === 1 ? "Open 1 more module to earn Foundation" : "Open " + modShort + " more modules to earn Foundation";
+
+    }
+
+    return dayShort === 1 ? "1 more active day to earn Foundation" : dayShort + " more active days to earn Foundation";
+
+  }
+
+
+
+  function formatPractitionerProximity(modulesOpened){
+
+    var short = Math.max(0, 60 - modulesOpened);
+
+    if (!short) return "";
+
+    if (short === 1) return "Open 1 more module to earn Practitioner";
+
+    return "You're " + short + " modules from your Practitioner badge";
+
+  }
+
+
+
+  function isTrialNudgeEligible(engagement){
+
+    return engagement && engagement.isTrial === true &&
+
+      typeof engagement.daysLeftInTrial === "number" && engagement.daysLeftInTrial > 0;
+
+  }
+
+
+
+  function formatTrialNudgeClause(engagement, rag, modulesOpened, activeDays, engagementDegraded){
+
+    if (!isTrialNudgeEligible(engagement)) return "";
+
+    var days = engagement.daysLeftInTrial;
+
+    if (!modulesOpened && (!activeDays || engagementDegraded)) {
+
+      return "Welcome - you've got " + days + " days to explore. Open a module to get going.";
+
+    }
+
+    var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+
+    var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+    var nearlyThere = rag.state === "green" ||
+
+      (modShort <= 1 && dayShort <= 1 && (modShort > 0 || dayShort > 0));
+
+    if (nearlyThere) {
+
+      return "You've got " + days + " days to earn your Foundation badge - you're nearly there.";
+
+    }
+
+    return "Lots of time to earn your Foundation badge - " + days + " days to enjoy the modules.";
+
+  }
+
+
+
+  function formatGoalTileTrialLine(engagement){
+
+    if (!isTrialNudgeEligible(engagement)) return "";
+
+    return "Plenty of time in your trial to get there.";
+
+  }
+
+
+
+  function computeMomentumRag(badges, modulesOpened, activeDays, examsPassed, engagementDegraded){
+
+    var foundation = badges.filter(function(b){ return b.key === "foundation"; })[0];
+
+    if (!foundation || !foundation.earned) {
+
+      var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+
+      var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+      var proximity = formatFoundationProximity(modulesOpened, activeDays, engagementDegraded);
+
+      if (!modulesOpened && (!activeDays || engagementDegraded)) {
+
+        return { state: "red", label: proximity || "Just getting started", color: RAG_COLORS.red };
+
+      }
+
+      if (!engagementDegraded && modShort <= 1 && dayShort <= 1 && (modShort > 0 || dayShort > 0)) {
+
+        return { state: "green", label: "Almost there - 1 step from Foundation", color: RAG_COLORS.green };
+
+      }
+
+      return { state: "amber", label: proximity || "Building momentum", color: RAG_COLORS.amber };
+
+    }
+
+    var practitioner = badges.filter(function(b){ return b.key === "practitioner"; })[0];
+
+    if (practitioner && !practitioner.earned) {
+
+      var pShort = Math.max(0, 60 - modulesOpened);
+
+      var pLabel = formatPractitionerProximity(modulesOpened);
+
+      if (pShort <= 5) return { state: "green", label: pLabel || "Almost there", color: RAG_COLORS.green };
+
+      return { state: "amber", label: pLabel || "Building momentum", color: RAG_COLORS.amber };
+
+    }
+
+    if (modulesOpened >= 30 && examsPassed >= 1) {
 
       return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
 
@@ -1682,9 +2510,13 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function buildGoalTile(openedCount, examsPassed, nextArt){
+  function buildGoalTile(openedCount, examsPassed, nextArt, engagement){
 
     var tile = { n: 4, label: "4 - Goal", variant: "amber" };
+
+    var trialLine = formatGoalTileTrialLine(engagement);
+
+    if (trialLine) tile.trialLine = trialLine;
 
     var goalTarget = null;
 
@@ -1742,13 +2574,13 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-  function buildStage1Tiles(openedSet, examInfo, rag){
+  function buildStage1Tiles(openedSet, examInfo, rag, engagement){
 
     var openedCount = openedSet.size;
 
     var nextArt = firstUnopenedArticle(openedSet);
 
-    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt);
+    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt, engagement);
 
     return {
 
@@ -1806,13 +2638,25 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     a.appendChild(why);
 
+    if (tile.trialLine) {
+
+      var trialLine = document.createElement("span");
+
+      trialLine.className = "ar-do-next-tile__trial-line";
+
+      trialLine.textContent = tile.trialLine;
+
+      a.appendChild(trialLine);
+
+    }
+
     return a;
 
   }
 
 
 
-  function renderStrip(openedSet, examInfo, coachDebug){
+  function renderStrip(openedSet, examInfo, coachDebug, engagement){
 
     var strip = document.getElementById("ar-do-next-strip");
 
@@ -1832,13 +2676,19 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     var examsPassed = examInfo.examsPassed;
 
-    var rag = computeRagState(openedCount, examsPassed);
+    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
+
+      ? engagement.distinctActiveDaysFirst14d : 0;
+
+    var engagementDegraded = !engagement;
+
+    var badgeRail = buildBadgeRail(openedCount, examsPassed, activeDays, engagementDegraded);
+
+    var rag = computeMomentumRag(badgeRail.badges, openedCount, activeDays, examsPassed, engagementDegraded);
 
     var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
 
-    var stage = buildStage1Tiles(openedSet, examInfo, rag);
-
-    var badgeRail = buildBadgeRail(openedCount, examsPassed);
+    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement);
 
     var currentStage = injectBannerCurrentStage(badgeRail.badges);
 
@@ -1849,6 +2699,14 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
       badgeRailEl.innerHTML = "";
 
       badgeRailEl.appendChild(badgeRail.rail);
+
+    }
+
+    var journeyCountEl = document.getElementById("ar-do-next-journey-count");
+
+    if (journeyCountEl) {
+
+      journeyCountEl.textContent = badgeRail.badgesEarned + " of " + badgeRail.badges.length + " earned";
 
     }
 
@@ -1870,7 +2728,9 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     label.className = "ar-do-next-rag__label";
 
-    label.textContent = rag.label;
+    var trialClause = formatTrialNudgeClause(engagement, rag, openedCount, activeDays, engagementDegraded);
+
+    label.textContent = trialClause ? rag.label + " " + trialClause : rag.label;
 
     var counts = document.createElement("span");
 
@@ -1904,7 +2764,13 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     tilesEl.innerHTML = "";
 
-    stage.tiles.forEach(function(tile){ tilesEl.appendChild(renderTile(tile)); });
+    stage.tiles.forEach(function(tile, idx){
+
+      if (idx > 0) tilesEl.appendChild(buildTileArrow());
+
+      tilesEl.appendChild(renderTile(tile));
+
+    });
 
 
 
@@ -1966,51 +2832,7 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     strip.removeAttribute("aria-hidden");
 
-    publishDoNextStripMetrics(true);
-
-  }
-
-
-
-  var __arPublishingStripMetrics = false;
-
-  function publishDoNextStripMetrics(emitEvent){
-
-    if (__arPublishingStripMetrics) return;
-
-    var strip = document.getElementById("ar-do-next-strip");
-
-    var root = document.documentElement;
-
-    __arPublishingStripMetrics = true;
-
-    try {
-
-      var h = 0;
-
-      if (strip && strip.classList.contains("is-ready")) {
-
-        h = Math.ceil(strip.getBoundingClientRect().height) || 0;
-
-      }
-
-      root.style.setProperty("--ar-do-next-strip-height", h + "px");
-
-      var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
-
-      root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
-
-      if (emitEvent !== false) {
-
-        document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
-
-      }
-
-    } finally {
-
-      __arPublishingStripMetrics = false;
-
-    }
+    scheduleLayout();
 
   }
 
@@ -2024,17 +2846,13 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     if (typeof ResizeObserver !== "undefined") {
 
-      new ResizeObserver(function(){ publishDoNextStripMetrics(true); }).observe(strip);
+      new ResizeObserver(function(){ scheduleLayout(); }).observe(strip);
 
     }
 
-    window.addEventListener("resize", function(){ publishDoNextStripMetrics(true); });
+    window.addEventListener("resize", function(){ scheduleLayout(); });
 
-    document.addEventListener("ar-academy-sticky-metrics", function(){
-
-      publishDoNextStripMetrics(false);
-
-    });
+    document.addEventListener("ar-academy-layout-sync", function(){ scheduleLayout(); });
 
   }
 
@@ -2206,6 +3024,68 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
+  async function fetchEngagementSummary(memberId){
+
+    if (!memberId) return null;
+
+    var cacheKey = "ar-engagement-" + memberId;
+
+    try {
+
+      var raw = sessionStorage.getItem(cacheKey);
+
+      if (raw) {
+
+        var cached = JSON.parse(raw);
+
+        if (cached && cached.at && Date.now() - cached.at < 300000) return cached.data;
+
+      }
+
+    } catch (e) { /* ignore */ }
+
+
+
+    try {
+
+      var res = await fetch(ENGAGEMENT_URL, {
+
+        headers: { "X-Memberstack-Id": memberId },
+
+        credentials: "omit"
+
+      });
+
+      if (!res.ok) {
+
+        console.warn("[do-next-strip] engagement-summary failed:", res.status);
+
+        return null;
+
+      }
+
+      var data = await res.json();
+
+      try {
+
+        sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data }));
+
+      } catch (e2) { /* ignore */ }
+
+      return data;
+
+    } catch (e) {
+
+      console.warn("[do-next-strip] engagement-summary error");
+
+      return null;
+
+    }
+
+  }
+
+
+
   function trackPageView(memberId, email){
 
     if (!memberId) return;
@@ -2270,9 +3150,21 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
   async function init(){
 
+    if (!isDashboardPath()) return;
+
     var strip = document.getElementById("ar-do-next-strip");
 
     if (!strip) return;
+
+
+
+    try {
+
+    strip.classList.add("is-ready");
+
+    strip.removeAttribute("aria-hidden");
+
+    scheduleLayout();
 
 
 
@@ -2284,11 +3176,23 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
         strip.setAttribute("aria-hidden", "true");
 
+        scheduleLayout();
+
       }
 
     });
 
-    if (isExpiredTrialBody()) return;
+    if (isExpiredTrialBody()) {
+
+      strip.classList.remove("is-ready");
+
+      strip.setAttribute("aria-hidden", "true");
+
+      scheduleLayout();
+
+      return;
+
+    }
 
 
 
@@ -2340,7 +3244,17 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
       var expired = await fetchTrialExpired(memberId);
 
-      if (expired || isExpiredTrialBody()) return;
+      if (expired || isExpiredTrialBody()) {
+
+        strip.classList.remove("is-ready");
+
+        strip.setAttribute("aria-hidden", "true");
+
+        scheduleLayout();
+
+        return;
+
+      }
 
     }
 
@@ -2358,6 +3272,10 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
     var examInfo = parseExamProgress(progressData);
 
+    var engagement = await fetchEngagementSummary(memberId);
+
+    var engagementDegraded = !engagement;
+
 
 
     var coachDebug = {
@@ -2370,7 +3288,15 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
       nextExamModuleId: examInfo.nextExamModuleId,
 
-      stage: "stage1"
+      stage: "stage1",
+
+      engagementDegraded: engagementDegraded,
+
+      distinctActiveDaysFirst14d: engagement ? engagement.distinctActiveDaysFirst14d : null,
+
+      isTrial: engagement ? engagement.isTrial : null,
+
+      daysLeftInTrial: engagement ? engagement.daysLeftInTrial : null
 
     };
 
@@ -2378,15 +3304,37 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 
 
-    renderStrip(openedSet, examInfo, coachDebug);
+    renderStrip(openedSet, examInfo, coachDebug, engagement);
 
     trackPageView(memberId, getMemberEmail(member));
+
+    } catch (err) {
+
+      console.error("[do-next] init failed:", err);
+
+      var statusEl = document.getElementById("ar-do-next-status");
+
+      if (statusEl) statusEl.textContent = "Learning coach could not load. Refresh the page.";
+
+      strip.classList.add("is-ready");
+
+      strip.removeAttribute("aria-hidden");
+
+      scheduleLayout();
+
+    }
 
   }
 
 
 
+  ensureAcademyLayout();
+
+  wireJourneyToggle();
+
   watchDoNextStripMetrics();
+
+  window.addEventListener("scroll", function(){ scheduleLayout(); }, { passive: true });
 
   if (document.readyState === "loading") {
 
@@ -2397,6 +3345,12 @@ v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
     init();
 
   }
+
+  setTimeout(scheduleLayout, 100);
+
+  setTimeout(scheduleLayout, 1000);
+
+  setTimeout(scheduleLayout, 2500);
 
 })();
 
