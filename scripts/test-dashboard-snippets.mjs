@@ -148,6 +148,8 @@ const afterScroll = await page.evaluate(() => {
     stripScrollOverflow: strip ? strip.scrollWidth === strip.clientWidth : null,
     docScrollOverflow: doc.scrollWidth === doc.clientWidth,
     tile3Href: tile3 ? tile3.getAttribute("href") : null,
+    tile3Target: tile3 ? tile3.getAttribute("target") : null,
+    tile3Tracked: tile3 ? tile3.getAttribute("data-wired-module-track") === "true" : null,
     tile3Action: tile3 ? tile3.querySelector(".ar-do-next-tile__action")?.textContent?.trim() : null
   };
 });
@@ -174,6 +176,8 @@ const pass =
   afterScroll.docScrollOverflow === true &&
   afterScroll.tile3Href &&
   afterScroll.tile3Href.includes("/s/") &&
+  afterScroll.tile3Target === "_blank" &&
+  afterScroll.tile3Tracked === true &&
   afterScroll.tile3Action &&
   afterScroll.tile3Action.includes("practical assignment") &&
   errors.length === 0;

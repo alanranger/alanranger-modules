@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
+v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
 =========================== -->
 
@@ -1743,6 +1743,10 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
 
   var TRACK_URL = API_BASE + "/api/academy/track-page-view";
 
+  var TRACK_TILE_OPEN_URL = API_BASE + "/api/academy/track-tile-open";
+
+  var doNextRuntime = { ms: null, memberId: null };
+
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
 
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
@@ -3025,6 +3029,134 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
 
 
 
+  function sendModuleOpenBeacon(memberId, modulePath, linkEl){
+
+    try {
+
+      if (!memberId || !modulePath || typeof fetch !== "function") return;
+
+      fetch(TRACK_TILE_OPEN_URL, {
+
+        method: "POST",
+
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({
+
+          member_id: memberId,
+
+          section: "modules",
+
+          key: modulePath,
+
+          title: linkEl ? (linkEl.getAttribute("title") || "") : "",
+
+          url: linkEl ? (linkEl.getAttribute("href") || "") : "",
+
+          category: "assignment"
+
+        }),
+
+        keepalive: true,
+
+        credentials: "omit",
+
+        mode: "cors"
+
+      }).catch(function(){ /* best-effort */ });
+
+    } catch (e) { /* ignore */ }
+
+  }
+
+
+
+  async function persistModuleOpen(ms, modulePath, title, category){
+
+    var jsonRes = await ms.getMemberJSON();
+
+    var memberJson = normalizeMemberJson(jsonRes);
+
+    if (!memberJson.arAcademy) memberJson.arAcademy = {};
+
+    if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+
+    if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+
+    var nowIso = new Date().toISOString();
+
+    memberJson.arAcademy.modules.opened[modulePath] = {
+
+      cat: category,
+
+      t: title,
+
+      at: nowIso,
+
+      lastAt: nowIso
+
+    };
+
+    await ms.updateMemberJSON({ json: memberJson });
+
+  }
+
+
+
+  function wirePracticeAssignmentLink(a, tile){
+
+    if (!tile.trackPath || a.getAttribute("data-wired-module-track") === "true") return;
+
+    a.setAttribute("data-wired-module-track", "true");
+
+    a.addEventListener("click", async function(e){
+
+      e.preventDefault();
+
+      var path = normalizePath(tile.trackPath);
+
+      var ms = doNextRuntime.ms;
+
+      var memberId = doNextRuntime.memberId;
+
+      if (ms && memberId) {
+
+        try {
+
+          var jsonRes = await ms.getMemberJSON();
+
+          var memberJson = normalizeMemberJson(jsonRes);
+
+          var openedMap = (memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened) || {};
+
+          var already = !!(openedMap[path] || openedMap[tile.trackPath]);
+
+          if (!already) {
+
+            sendModuleOpenBeacon(memberId, path, a);
+
+            await persistModuleOpen(ms, path, tile.action, "assignment");
+
+            setTimeout(init, 300);
+
+          }
+
+        } catch (err) {
+
+          console.warn("[do-next] assignment track failed:", err);
+
+        }
+
+      }
+
+      window.open(tile.href, "_blank", "noopener,noreferrer");
+
+    });
+
+  }
+
+
+
   function getMemberId(member){
 
     if (!member) return "";
@@ -3535,6 +3667,12 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
 
       tile.href = SITE + next.path;
 
+      tile.trackPath = next.path;
+
+      tile.target = "_blank";
+
+      tile.rel = "noopener noreferrer";
+
       return tile;
 
     }
@@ -3652,6 +3790,12 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
     a.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant;
 
     a.href = tile.href;
+
+    if (tile.target) a.target = tile.target;
+
+    if (tile.rel) a.rel = tile.rel;
+
+    if (tile.trackPath) wirePracticeAssignmentLink(a, tile);
 
     var eyebrow = document.createElement("span");
 
@@ -4467,6 +4611,10 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
 
     var memberId = resolved.memberId;
 
+    doNextRuntime.ms = ms;
+
+    doNextRuntime.memberId = memberId || null;
+
 
 
     if (memberId) {
@@ -4594,6 +4742,30 @@ v1.3.31 — Badge tooltips hidden by default; one-at-a-time show/hide
   wireJourneyToggle();
 
   watchDoNextStripMetrics();
+
+
+
+  function watchStripFocusRefresh(){
+
+    if (window.__arStripFocusWired) return;
+
+    window.__arStripFocusWired = true;
+
+    document.addEventListener("visibilitychange", function(){
+
+      if (document.visibilityState === "visible" && isDashboardPath()) {
+
+        setTimeout(init, 500);
+
+      }
+
+    });
+
+  }
+
+
+
+  watchStripFocusRefresh();
 
   window.addEventListener("scroll", function(){ scheduleLayout(); }, { passive: true });
 
