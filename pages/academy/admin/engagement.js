@@ -144,6 +144,137 @@ const PERIOD_LABELS = {
   all: 'All time',
 };
 
+function ActivationTargetTile({ label, metric, targetPct, trendValues, noisy, stretchHint }) {
+  const hit = metric?.hit ?? 0;
+  const total = metric?.total ?? 0;
+  const currentPct = metric?.pct ?? 0;
+  const { deltaPct } = computeSparkStats(trendValues || []);
+  const badge = deltaBadgeStyle(deltaPct);
+  const vsTarget = currentPct - targetPct;
+  const vsColor = vsTarget >= 0 ? '#4ade80' : '#f87171';
+
+  return (
+    <div className="ar-admin-kpi-tile" style={{ cursor: 'default' }}>
+      <div className="ar-admin-kpi-label">{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div className="ar-admin-kpi-value">{currentPct}%</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: badge.color }}>
+          {badge.arrow} {Math.abs(deltaPct)}%
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 2 }}>
+        Target: <strong style={{ color: '#E57200' }}>{targetPct}%</strong> (provisional)
+        <span style={{ marginLeft: 6, color: vsColor, fontWeight: 600 }}>
+          ({vsTarget >= 0 ? '+' : ''}{vsTarget.toFixed(1)} pp)
+        </span>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
+        <strong>{formatNumber(hit)}</strong> / {formatNumber(total)} trials
+      </div>
+      {stretchHint ? (
+        <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 4 }}>{stretchHint}</div>
+      ) : null}
+      {noisy ? (
+        <div style={{ fontSize: 11, color: '#fbbf24', marginTop: 4 }}>Small sample - noisy</div>
+      ) : null}
+      <div style={{ marginTop: 6 }}>
+        <Sparkline values={trendValues} color="#E57200" />
+      </div>
+      <div className="ar-admin-kpi-period" style={{ marginTop: 4 }}>
+        28-day signup cohort trend (last {trendValues?.length || 0} buckets)
+      </div>
+    </div>
+  );
+}
+
+function ActivationTargetsPanel({ data, period }) {
+  if (!data?.cohort) return null;
+  const periodLabel = PERIOD_LABELS[period] || String(period);
+  const targets = data.provisional_targets || {};
+  const trend = data.trend || {};
+
+  const tiles = [
+    {
+      key: 'week1_modules_3',
+      label: 'Week-1: opened >=3 modules',
+      metric: data.cohort.week1_modules_3,
+      target: targets.week1_modules_3 ?? 40,
+      trend: trend.week1_modules_3,
+      stretch: 'Stretch: >=5 modules in week 1',
+    },
+    {
+      key: 'week1_logins_5',
+      label: 'Week-1: >=5 logins',
+      metric: data.cohort.week1_logins_5,
+      target: targets.week1_logins_5 ?? 35,
+      trend: trend.week1_logins_5,
+      stretch: 'Stretch: >=10 logins in week 1',
+    },
+    {
+      key: 'week2_active',
+      label: 'Week-2: still active (days 8-14)',
+      metric: data.cohort.week2_active,
+      target: targets.week2_active ?? 50,
+      trend: trend.week2_active,
+      stretch: null,
+    },
+    {
+      key: 'conversion',
+      label: 'Cohort conversion %',
+      metric: data.cohort.conversion,
+      target: targets.cohort_conversion ?? 5,
+      trend: trend.conversion,
+      stretch: null,
+      noisy: true,
+    },
+  ];
+
+  return (
+    <>
+      <h2 style={{ marginTop: '24px' }}>Trial activation vs target</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 8 }}>
+        {data.cohort_definition}
+      </p>
+      <div className="ar-admin-card" style={{ padding: '12px 14px', marginBottom: 12, borderLeft: '4px solid #E57200' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#E57200', marginBottom: 6 }}>Provisional targets</div>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--ar-text-muted)', lineHeight: 1.5 }}>
+          {data.note}
+        </p>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ar-text-muted)', lineHeight: 1.45 }}>
+          {data.reference_rates}
+        </p>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 10 }}>
+        Period filter: <strong>{periodLabel}</strong>
+        {typeof data.cohort_trials === 'number' ? (
+          <> · <strong>{formatNumber(data.cohort_trials)}</strong> organic signups in window</>
+        ) : null}
+        {typeof data.mature_week1_trials === 'number' ? (
+          <> · <strong>{formatNumber(data.mature_week1_trials)}</strong> mature for week-1 (7d+)</>
+        ) : null}
+        {period !== '90d' ? (
+          <span style={{ display: 'block', marginTop: 4 }}>
+            Tip: use <strong>Last 90 days</strong> for a more usable cohort sample.
+          </span>
+        ) : null}
+      </div>
+      <div className="ar-admin-kpi-grid">
+        {tiles.map((t) => (
+          <ActivationTargetTile
+            key={t.key}
+            label={t.label}
+            metric={t.metric}
+            targetPct={t.target}
+            trendValues={t.trend}
+            noisy={t.noisy}
+            stretchHint={t.stretch}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 function WeeklyTrends({ series, period }) {
   if (!series || !Array.isArray(series.weeks) || series.weeks.length === 0) return null;
   const tiles = [
@@ -435,6 +566,8 @@ export default function EngagementPage() {
       {!loading && !error && data && (
         <>
           <WeeklyTrends series={data.weekly_series} period={period} />
+
+          <ActivationTargetsPanel data={data.activation_targets} period={period} />
 
           <EmailOutcomesTable emailOutcomes={data.email_outcomes} />
           <EmailSendTrends trends={data.email_outcomes?.trends_90d} />

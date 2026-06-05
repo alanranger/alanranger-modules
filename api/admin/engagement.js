@@ -4,6 +4,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const { buildEmailEngagementStats } = require("../../lib/emailEngagementStats");
+const { buildActivationTargetsStats } = require("../../lib/activationTargetsStats");
 
 const SESSION_GAP_SECONDS = 1800; // 30 minutes
 
@@ -390,12 +391,13 @@ async function handleEngagement(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const [rows, memberMeta, examStats, weeklySeries, emailOutcomes] = await Promise.all([
+    const [rows, memberMeta, examStats, weeklySeries, emailOutcomes, activationTargets] = await Promise.all([
       fetchEvents(supabase, since),
       fetchMemberMeta(supabase),
       fetchExamStats(supabase),
       buildWeeklySeries(supabase, period),
       buildEmailEngagementStats(supabase),
+      buildActivationTargetsStats(supabase, period),
     ]);
 
     const agg = aggregateEvents(rows);
@@ -439,6 +441,7 @@ async function handleEngagement(req, res) {
       exams: examStats,
       tracking: summariseTracking(memberMeta),
       email_outcomes: emailOutcomes,
+      activation_targets: activationTargets,
     });
   } catch (error) {
     console.error('[engagement] Error:', error);
