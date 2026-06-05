@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 injection)
+v1.3.1 — sticky below academy header + badge rail (block 2 injection)
 
 =========================== -->
 
@@ -14,6 +14,12 @@ v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 inj
 
     display:none;
 
+    position:sticky;
+
+    top:var(--ar-academy-header-height,88px);
+
+    z-index:997;
+
     width:100vw;
 
     margin-left:calc(50% - 50vw);
@@ -21,6 +27,12 @@ v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 inj
     margin-right:calc(50% - 50vw);
 
     margin-bottom:14px;
+
+    padding:8px 0 10px;
+
+    background:#0f1419;
+
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);
 
     box-sizing:border-box;
 
@@ -1806,6 +1818,54 @@ v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 inj
 
     strip.removeAttribute("aria-hidden");
 
+    publishDoNextStripMetrics();
+
+  }
+
+
+
+  function publishDoNextStripMetrics(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    var root = document.documentElement;
+
+    var h = 0;
+
+    if (strip && strip.classList.contains("is-ready")) {
+
+      h = Math.ceil(strip.getBoundingClientRect().height) || 0;
+
+    }
+
+    root.style.setProperty("--ar-do-next-strip-height", h + "px");
+
+    var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
+
+    root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
+
+    document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
+
+  }
+
+
+
+  function watchDoNextStripMetrics(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+    if (typeof ResizeObserver !== "undefined") {
+
+      new ResizeObserver(publishDoNextStripMetrics).observe(strip);
+
+    }
+
+    window.addEventListener("resize", publishDoNextStripMetrics);
+
+    document.addEventListener("ar-academy-sticky-metrics", publishDoNextStripMetrics);
+
   }
 
 
@@ -2155,6 +2215,8 @@ v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 inj
   }
 
 
+
+  watchDoNextStripMetrics();
 
   if (document.readyState === "loading") {
 

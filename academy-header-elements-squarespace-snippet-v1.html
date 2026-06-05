@@ -658,16 +658,40 @@ Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (ri
     }
   }
   
+  function publishAcademyHeaderHeight() {
+    var el = document.getElementById('ar-academy-header-container');
+    if (!el) return;
+    var h = Math.ceil(el.getBoundingClientRect().height) || 88;
+    document.documentElement.style.setProperty('--ar-academy-header-height', h + 'px');
+    document.dispatchEvent(new CustomEvent('ar-academy-sticky-metrics'));
+  }
+
+  function watchAcademyHeaderHeight() {
+    var el = document.getElementById('ar-academy-header-container');
+    if (!el) return;
+    publishAcademyHeaderHeight();
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(publishAcademyHeaderHeight).observe(el);
+    }
+    window.addEventListener('resize', publishAcademyHeaderHeight);
+  }
+
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadHeaderData);
+    document.addEventListener('DOMContentLoaded', function() {
+      loadHeaderData();
+      watchAcademyHeaderHeight();
+    });
   } else {
     loadHeaderData();
+    watchAcademyHeaderHeight();
   }
   
   // Also try after a delay (Memberstack sometimes loads late)
   setTimeout(loadHeaderData, 1000);
   setTimeout(loadHeaderData, 2000);
+  setTimeout(publishAcademyHeaderHeight, 100);
+  setTimeout(publishAcademyHeaderHeight, 1000);
 })();
 </script>
 
