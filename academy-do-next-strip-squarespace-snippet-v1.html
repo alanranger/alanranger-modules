@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.26 — Brighter green met ticks on Goal checklist + badge tooltips
+v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
 =========================== -->
 
@@ -606,9 +606,17 @@ v1.3.26 — Brighter green met ticks on Goal checklist + badge tooltips
 
   #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet{
 
-    color:#fde68a;
+    color:#2e2e2e;
 
-    opacity:0.9;
+    opacity:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-icon--unmet circle{
+
+    stroke:#404040;
+
+    stroke-width:1.75;
 
   }
 
