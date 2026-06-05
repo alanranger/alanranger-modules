@@ -40,6 +40,10 @@
     {
       "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=-7&sendEmail=true",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/activation-snapshot-cron",
+      "schedule": "0 4 * * 1"
     }
   ]
 }
