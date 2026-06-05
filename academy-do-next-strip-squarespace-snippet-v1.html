@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
-v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
+v1.1.0 — RAG learning coach + one hero action (modules X/60, whoami fallback)
 =========================== -->
 
 <style id="ar-do-next-strip-style">
@@ -22,59 +22,127 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
     margin:0 auto;
     padding:14px 12px 16px;
     box-sizing:border-box;
+    display:flex;
+    justify-content:center;
   }
   @media (min-width:1201px){
     #ar-do-next-strip .ar-do-next-strip__inner{
       margin-left:352px;
       max-width:calc(1400px - 352px);
+      justify-content:center;
     }
   }
-  #ar-do-next-strip .ar-do-next-strip__heading{
-    margin:0 0 6px;
-    font-size:15px;
+  #ar-do-next-strip .ar-do-next-strip__coach{
+    width:100%;
+    max-width:720px;
+    text-align:center;
+  }
+  #ar-do-next-strip .ar-do-next-strip__rag{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:0 0 8px;
+    font-size:14px;
+    line-height:1.45;
+    color:#e2e8f0;
+  }
+  #ar-do-next-strip .ar-do-next-rag__dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  #ar-do-next-strip .ar-do-next-rag__dot--red{ background:#dc2626; }
+  #ar-do-next-strip .ar-do-next-rag__dot--amber{ background:#d97706; }
+  #ar-do-next-strip .ar-do-next-rag__dot--green{ background:#16a34a; }
+  #ar-do-next-strip .ar-do-next-rag__label{
     font-weight:800;
     color:#f8fafc;
-    letter-spacing:0.01em;
+  }
+  #ar-do-next-strip .ar-do-next-rag__message{
+    color:#cbd5e1;
+    font-weight:600;
   }
   #ar-do-next-strip .ar-do-next-strip__progress{
     margin:0 0 12px;
-    font-size:13px;
+    font-size:12px;
     font-weight:600;
     color:#94a3b8;
   }
-  #ar-do-next-strip .ar-do-next-strip__ctas{
+  #ar-do-next-strip .ar-do-next-strip__actions{
     display:flex;
-    flex-wrap:wrap;
-    gap:10px;
+    flex-direction:column;
     align-items:center;
+    gap:8px;
+  }
+  @media (min-width:600px){
+    #ar-do-next-strip .ar-do-next-strip__actions{
+      flex-direction:row;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
   }
   #ar-do-next-strip .ar-do-next-cta{
     display:inline-flex;
     align-items:center;
-    gap:8px;
-    padding:10px 18px;
+    justify-content:center;
+    gap:6px;
     border-radius:8px;
-    border:2px solid #14532d;
-    background:#166534;
-    color:#fff !important;
-    font-size:15px;
-    font-weight:800;
     line-height:1.2;
     text-decoration:none !important;
     box-shadow:none;
+    max-width:100%;
+    text-align:center;
   }
-  #ar-do-next-strip .ar-do-next-cta:hover{
+  #ar-do-next-strip .ar-do-next-cta--hero{
+    padding:9px 16px;
+    border:2px solid #14532d;
+    background:#166534;
+    color:#fff !important;
+    font-size:14px;
+    font-weight:800;
+  }
+  #ar-do-next-strip .ar-do-next-cta--hero:hover{
     background:#15803d;
     color:#fff !important;
   }
-  #ar-do-next-strip .ar-do-next-cta:visited{ color:#fff !important; }
+  #ar-do-next-strip .ar-do-next-cta--secondary{
+    padding:7px 14px;
+    border:1px solid rgba(148,163,184,0.45);
+    background:transparent;
+    color:#e2e8f0 !important;
+    font-size:13px;
+    font-weight:700;
+  }
+  #ar-do-next-strip .ar-do-next-cta--secondary:hover{
+    border-color:rgba(226,232,240,0.55);
+    color:#f8fafc !important;
+  }
+  #ar-do-next-strip .ar-do-next-cta:visited{ color:inherit; }
+  #ar-do-next-strip .ar-do-next-strip__tertiary{
+    margin:10px 0 0;
+    font-size:12px;
+    font-weight:600;
+  }
+  #ar-do-next-strip .ar-do-next-strip__tertiary a{
+    color:#94a3b8 !important;
+    text-decoration:underline !important;
+  }
+  #ar-do-next-strip .ar-do-next-strip__tertiary a:hover{
+    color:#cbd5e1 !important;
+  }
 </style>
 
 <div id="ar-do-next-strip" aria-hidden="true">
   <div class="ar-do-next-strip__inner">
-    <p class="ar-do-next-strip__heading">Do these next</p>
-    <p class="ar-do-next-strip__progress" id="ar-do-next-progress">Loading your progress...</p>
-    <div class="ar-do-next-strip__ctas" id="ar-do-next-ctas"></div>
+    <div class="ar-do-next-strip__coach">
+      <div class="ar-do-next-strip__rag" id="ar-do-next-rag" aria-live="polite">Loading your coach...</div>
+      <p class="ar-do-next-strip__progress" id="ar-do-next-progress"></p>
+      <div class="ar-do-next-strip__actions" id="ar-do-next-actions"></div>
+      <p class="ar-do-next-strip__tertiary" id="ar-do-next-tertiary" hidden></p>
+    </div>
   </div>
 </div>
 
@@ -90,7 +158,6 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
   var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
   var MODULES_TOTAL = 60;
-  var FOUNDATION_URL = SITE + "/academy/online-photography-course";
   var EXAM_BASE = SITE + "/academy/photography-exams-certification";
   var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
   var CHECKLISTS_URL = SITE + "/academy/photography-checklists";
@@ -306,96 +373,136 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
     return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
   }
 
-  function buildCtas(openedSet, examInfo){
-    var links = [];
+  function computeRagState(openedCount, examsPassed){
+    if (openedCount < 3) {
+      var msg = openedCount === 0
+        ? "Open your first module to get underway."
+        : "You have opened " + openedCount + " of 60 modules. Open your next lesson to build early momentum.";
+      return { state: "red", label: "Just getting started", message: msg };
+    }
+    if (openedCount >= 15 && examsPassed >= 1) {
+      return {
+        state: "green",
+        label: "On track to certify",
+        message: "You have opened " + openedCount + " of 60 modules and passed " + examsPassed + " of 15 exams. Keep going toward your certificates."
+      };
+    }
+    var amberMsg = "You have opened " + openedCount + " of 60 modules";
+    if (examsPassed === 0) amberMsg += " and have not passed an exam yet";
+    amberMsg += ". Your next lesson is the best place to continue.";
+    return { state: "amber", label: "Building momentum", message: amberMsg };
+  }
+
+  function buildCoachActions(openedSet, examInfo){
     var openedCount = openedSet.size;
     var statusMap = examInfo.statusMap;
     var examsPassed = examInfo.examsPassed;
     var hasModuleStatus = examInfo.hasModuleStatus;
     var nextArt = firstUnopenedArticle(openedSet);
+    var hero = null;
+    var secondary = null;
+    var tertiary = null;
 
     if (nextArt) {
       var prefix = openedCount === 0 ? "Start here:" : "Continue:";
-      links.push({
+      hero = {
         href: SITE + nextArt.mod.p,
         label: prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192"
-      });
+      };
+      if (hasModuleStatus && nextArt.idx <= 14) {
+        var examId = EXAM_MODULE_IDS[nextArt.idx];
+        if (examId && statusMap[examId] !== "passed") {
+          var enNum = String(nextArt.idx + 1).padStart(2, "0");
+          secondary = {
+            href: EXAM_BASE + "?module=" + examId,
+            label: "Take exam: " + enNum + " " + (EXAM_NAMES[examId] || "Exam")
+          };
+        }
+      }
     } else if (hasModuleStatus && examsPassed < 15) {
       var nextExam = firstUnpassedExam(statusMap);
       if (nextExam) {
         var num = String(nextExam.idx + 1).padStart(2, "0");
-        var name = EXAM_NAMES[nextExam.id] || "Exam";
-        links.push({
+        hero = {
           href: EXAM_BASE + "?module=" + nextExam.id,
-          label: "Take your next exam: " + num + " " + name + " \u2192"
-        });
+          label: "Take your next exam: " + num + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192"
+        };
       }
-    } else if (!hasModuleStatus) {
-      links.push({ href: EXAM_BASE, label: "All exams \u2192" });
+    } else if (!hasModuleStatus && examsPassed < 15) {
+      hero = { href: EXAM_BASE, label: "View exams and certificates \u2192" };
     } else {
-      links.push({
-        href: PRACTICE_URL,
-        label: "Explore practice assignments \u2192"
-      });
+      hero = { href: PRACTICE_URL, label: "Explore practice assignments \u2192" };
+      tertiary = { href: CHECKLISTS_URL, label: "Photography checklists" };
     }
 
-    if (hasModuleStatus && nextArt && nextArt.idx <= 14) {
-      var examId = EXAM_MODULE_IDS[nextArt.idx];
-      if (examId && statusMap[examId] !== "passed") {
-        var en = EXAM_NAMES[examId] || "Exam";
-        var enNum = String(nextArt.idx + 1).padStart(2, "0");
-        links.push({
-          href: EXAM_BASE + "?module=" + examId,
-          label: "Take exam: " + enNum + " " + en + " \u2192"
-        });
-      }
-    } else if (hasModuleStatus && examsPassed < 15) {
-      var fallbackExam = firstUnpassedExam(statusMap);
-      if (fallbackExam && links.length < 2) {
-        var fNum = String(fallbackExam.idx + 1).padStart(2, "0");
-        links.push({
-          href: EXAM_BASE + "?module=" + fallbackExam.id,
-          label: "Take exam: " + fNum + " " + (EXAM_NAMES[fallbackExam.id] || "Exam") + " \u2192"
-        });
-      }
-    }
-
-    if (openedCount < 10) {
-      links.push({ href: FOUNDATION_URL, label: "Foundation course overview \u2192" });
-    } else if (hasModuleStatus && examsPassed < 15) {
-      links.push({ href: EXAM_BASE, label: "All exams \u2192" });
-    } else if (links.length < 3) {
-      links.push({ href: PRACTICE_URL, label: "Practice packs \u2192" });
-    }
-
-    var seen = new Set();
-    var out = [];
-    links.forEach(function(l){
-      if (!l || !l.href || seen.has(l.href) || out.length >= 3) return;
-      seen.add(l.href);
-      out.push(l);
-    });
-    return out;
+    return { hero: hero, secondary: secondary, tertiary: tertiary };
   }
 
-  function renderStrip(openedSet, examInfo){
+  function renderActionLink(action, className){
+    if (!action || !action.href) return null;
+    var a = document.createElement("a");
+    a.className = className;
+    a.href = action.href;
+    a.textContent = action.label;
+    return a;
+  }
+
+  function renderStrip(openedSet, examInfo, coachDebug){
     var strip = document.getElementById("ar-do-next-strip");
+    var ragEl = document.getElementById("ar-do-next-rag");
     var progressEl = document.getElementById("ar-do-next-progress");
-    var ctasEl = document.getElementById("ar-do-next-ctas");
-    if (!strip || !progressEl || !ctasEl) return;
+    var actionsEl = document.getElementById("ar-do-next-actions");
+    var tertiaryEl = document.getElementById("ar-do-next-tertiary");
+    if (!strip || !ragEl || !progressEl || !actionsEl) return;
 
     var openedCount = openedSet.size;
     var examsPassed = examInfo.examsPassed;
-    progressEl.textContent = "Modules opened " + openedCount + "/" + MODULES_TOTAL + " - Exams passed " + examsPassed + "/15";
+    var rag = computeRagState(openedCount, examsPassed);
+    var actions = buildCoachActions(openedSet, examInfo);
 
-    ctasEl.innerHTML = "";
-    buildCtas(openedSet, examInfo).forEach(function(link){
-      var a = document.createElement("a");
-      a.className = "ar-do-next-cta";
-      a.href = link.href;
-      a.textContent = link.label;
-      ctasEl.appendChild(a);
-    });
+    ragEl.innerHTML = "";
+    var dot = document.createElement("span");
+    dot.className = "ar-do-next-rag__dot ar-do-next-rag__dot--" + rag.state;
+    dot.setAttribute("aria-hidden", "true");
+    ragEl.appendChild(dot);
+    var label = document.createElement("span");
+    label.className = "ar-do-next-rag__label";
+    label.textContent = rag.label;
+    ragEl.appendChild(label);
+    var message = document.createElement("span");
+    message.className = "ar-do-next-rag__message";
+    message.textContent = rag.message;
+    ragEl.appendChild(message);
+
+    progressEl.textContent = "Modules opened " + openedCount + "/" + MODULES_TOTAL + " \u00b7 Exams passed " + examsPassed + "/15";
+
+    actionsEl.innerHTML = "";
+    var heroLink = renderActionLink(actions.hero, "ar-do-next-cta ar-do-next-cta--hero");
+    if (heroLink) actionsEl.appendChild(heroLink);
+    var secondaryLink = renderActionLink(actions.secondary, "ar-do-next-cta ar-do-next-cta--secondary");
+    if (secondaryLink) actionsEl.appendChild(secondaryLink);
+
+    if (tertiaryEl) {
+      tertiaryEl.innerHTML = "";
+      if (actions.tertiary && actions.tertiary.href) {
+        var tLink = document.createElement("a");
+        tLink.href = actions.tertiary.href;
+        tLink.textContent = actions.tertiary.label;
+        tertiaryEl.appendChild(tLink);
+        tertiaryEl.hidden = false;
+      } else {
+        tertiaryEl.hidden = true;
+      }
+    }
+
+    if (coachDebug) {
+      coachDebug.ragState = rag.state;
+      coachDebug.ragLabel = rag.label;
+      coachDebug.heroAction = actions.hero;
+      coachDebug.secondaryAction = actions.secondary || null;
+      coachDebug.tertiaryAction = actions.tertiary || null;
+      coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
+    }
 
     strip.classList.add("is-ready");
     strip.removeAttribute("aria-hidden");
@@ -540,8 +647,8 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
 
     var ms = await waitForMemberstack();
     if (!ms) {
-      var progressEl = document.getElementById("ar-do-next-progress");
-      if (progressEl) progressEl.textContent = "Sign in to see your next steps.";
+      var ragEl = document.getElementById("ar-do-next-rag");
+      if (ragEl) ragEl.textContent = "Sign in to see your learning coach.";
       strip.classList.add("is-ready");
       return;
     }
@@ -572,7 +679,7 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
     var progressData = await fetchExamProgress(memberId);
     var examInfo = parseExamProgress(progressData);
 
-    window.__arDoNextStrip = {
+    var coachDebug = {
       modulesOpened: openedSet.size,
       modulesTotal: MODULES_TOTAL,
       examsPassed: examInfo.examsPassed,
@@ -582,8 +689,9 @@ v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
       memberId: memberId || null,
       idSource: resolved.idSource
     };
+    window.__arDoNextStrip = coachDebug;
 
-    renderStrip(openedSet, examInfo);
+    renderStrip(openedSet, examInfo, coachDebug);
     trackPageView(memberId, getMemberEmail(member));
   }
 
