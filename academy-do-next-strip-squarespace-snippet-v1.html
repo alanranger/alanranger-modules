@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.25 — Goal tile 4 checklist + upcoming-badge criteria tooltips (REVISED spec)
+v1.3.26 — Brighter green met ticks on Goal checklist + badge tooltips
 
 =========================== -->
 
@@ -586,41 +586,85 @@ v1.3.25 — Goal tile 4 checklist + upcoming-badge criteria tooltips (REVISED sp
 
   #ar-do-next-strip .ar-do-next-criteria-row--met{
 
-    color:#9fe1cb;
+    color:#ecfdf5;
+
+    font-weight:600;
 
   }
 
   #ar-do-next-strip .ar-do-next-criteria-row--unmet{
 
-    color:#a8a29e;
+    color:rgba(255,255,255,0.72);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--met{
+
+    color:#fff;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet{
+
+    color:#fde68a;
+
+    opacity:0.9;
 
   }
 
   #ar-do-next-strip .ar-do-next-criteria-icon{
 
-    flex:0 0 14px;
+    flex:0 0 16px;
 
-    width:14px;
+    width:16px;
 
-    height:14px;
+    height:16px;
 
-    margin-top:1px;
-
-  }
-
-  #ar-do-next-strip .ar-do-next-criteria-icon--met{
-
-    stroke:#9fe1cb;
-
-    fill:none;
+    margin-top:0;
 
   }
 
-  #ar-do-next-strip .ar-do-next-criteria-icon--unmet{
+  #ar-do-next-strip .ar-do-next-criteria-icon--met circle{
 
-    stroke:#78716c;
+    fill:#36c98a;
+
+    stroke:#1f9d55;
+
+    stroke-width:1.5;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--met path{
+
+    stroke:#fff;
 
     fill:none;
+
+    stroke-width:2.2;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--unmet circle{
+
+    fill:none;
+
+    stroke:rgba(255,255,255,0.42);
+
+    stroke-width:1.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip .ar-do-next-criteria-row--met{
+
+    color:#d1fae5;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip .ar-do-next-criteria-row--unmet{
+
+    color:#cbd5e1;
+
+    opacity:1;
 
   }
 
