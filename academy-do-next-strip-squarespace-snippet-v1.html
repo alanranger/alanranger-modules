@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
+v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 =========================== -->
 
@@ -2023,7 +2023,7 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
     { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
 
-    { key: "graduate", label: "Graduate", sublabel: "All modules + sustained activity", iconClass: "ti-award", colour: "green", stars: 4, minExams: 15 },
+    { key: "graduate", label: "Graduate", sublabel: "All modules + sustained activity", iconClass: "ti-award", colour: "green", stars: 4, stageEarned: false },
 
     { key: "master", label: "Master", sublabel: "Long-term applied mastery", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
 
@@ -2203,13 +2203,48 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
 
 
+  // BEGIN BADGE-GATES-SYNC
+  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-strip.mjs)
+
+  function safeNum(value, fallback){
+
+    return (typeof value === "number" && !isNaN(value)) ? value : fallback;
+
+  }
+
+
+
+  function normaliseStats(raw){
+
+    var stats = raw || {};
+
+    return {
+
+      foundationModulesOpened: safeNum(stats.foundationModulesOpened, 0),
+
+      cameraOpened: safeNum(stats.cameraOpened, 0),
+
+      compositionOpened: safeNum(stats.compositionOpened, 0),
+
+      pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
+
+      totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
+
+      examsPassed: safeNum(stats.examsPassed, 0)
+
+    };
+
+  }
+
+
+
   function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded){
 
     if (modulesOpened < FOUNDATION_GATE.minModules) return false;
 
     if (engagementDegraded) return true;
 
-    return activeDays >= FOUNDATION_GATE.minActiveDays;
+    return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
 
   }
 
@@ -2245,7 +2280,7 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
 
 
-  function isJourneyStageEarned(stage, stats, activeDays, engagementDegraded){
+  function isStageConditionsMet(stage, stats, activeDays, engagementDegraded){
 
     if (stage.stageEarned === false) return false;
 
@@ -2267,7 +2302,25 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
   function computeJourneyBadges(stats, activeDays, engagementDegraded){
 
+    var safeStats = normaliseStats(stats);
+
+    var safeDays = safeNum(activeDays, 0);
+
+    var degraded = engagementDegraded === true;
+
+    var canEarnHigher = true;
+
     return JOURNEY_STAGES.map(function(stage){
+
+      var earned = false;
+
+      if (canEarnHigher) {
+
+        earned = isStageConditionsMet(stage, safeStats, safeDays, degraded);
+
+        if (!earned) canEarnHigher = false;
+
+      }
 
       return {
 
@@ -2283,7 +2336,7 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
         stars: stage.stars,
 
-        earned: isJourneyStageEarned(stage, stats, activeDays, engagementDegraded)
+        earned: earned
 
       };
 
@@ -2293,7 +2346,7 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
 
 
-  function getCurrentStage(badges){
+  function getHighestConsecutiveEarned(badges){
 
     var current = badges[0];
 
@@ -2301,7 +2354,19 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
       if (badges[i].earned) current = badges[i];
 
+      else break;
+
     }
+
+    return current;
+
+  }
+
+
+
+  function getCurrentStage(badges){
+
+    var current = getHighestConsecutiveEarned(badges);
 
     return {
 
@@ -2322,6 +2387,8 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
     };
 
   }
+
+  // END BADGE-GATES-SYNC
 
 
 
@@ -3333,17 +3400,19 @@ v1.3.32 — PDF assignment tracking from tile 3 + focus refresh
 
   function practitionerRequirementsMet(stats){
 
+    var safeStats = normaliseStats(stats);
+
     var total = 4;
 
     var met = 0;
 
-    if (!PRACTITIONER_GATE.requireAllCamera || stats.cameraOpened >= CAMERA_MODULE_PATHS.length) met++;
+    if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) met++;
 
-    if (!PRACTITIONER_GATE.requireAllComposition || stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length) met++;
+    if (!PRACTITIONER_GATE.requireAllComposition || safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length) met++;
 
-    if (stats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met++;
+    if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met++;
 
-    if (stats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met++;
+    if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met++;
 
     return { met: met, total: total };
 
