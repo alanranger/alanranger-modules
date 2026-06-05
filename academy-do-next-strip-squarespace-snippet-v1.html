@@ -1,782 +1,1552 @@
-<!-- ===========================
-AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
-v1.2.0 — four-tile horizontal coach (Stage 1 static rules) + RAG status
-=========================== -->
-
-<style id="ar-do-next-strip-style">
-  #ar-do-next-strip{
-    display:none;
-    width:100%;
-    margin:0 0 14px;
-    box-sizing:border-box;
-  }
-  #ar-do-next-strip.is-ready{ display:block; }
-  body[data-ar-academy-state="expired-trial"] #ar-do-next-strip{
-    display:none !important;
-  }
-  #ar-do-next-strip .ar-do-next-strip__inner{
-    max-width:1400px;
-    margin:0 auto;
-    padding:0 12px;
-    box-sizing:border-box;
-  }
-  @media (min-width:1201px){
-    #ar-do-next-strip .ar-do-next-strip__inner{
-      margin-left:352px;
-      max-width:calc(1400px - 352px);
-    }
-  }
-  #ar-do-next-strip .ar-do-next-strip__card{
-    width:100%;
-    background:#0f1115;
-    border:0.5px solid rgba(255,255,255,0.08);
-    border-radius:14px;
-    padding:18px 20px;
-    box-sizing:border-box;
-    color:#e2e8f0;
-  }
-  #ar-do-next-strip .ar-do-next-strip__status{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px 16px;
-    margin:0 0 12px;
-    font-size:14px;
-    line-height:1.4;
-  }
-  #ar-do-next-strip .ar-do-next-strip__status-left{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:8px;
-    min-width:0;
-  }
-  #ar-do-next-strip .ar-do-next-rag__dot{
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    flex-shrink:0;
-  }
-  #ar-do-next-strip .ar-do-next-rag__dot--red{ background:#dc2626; }
-  #ar-do-next-strip .ar-do-next-rag__dot--amber{ background:#d97706; }
-  #ar-do-next-strip .ar-do-next-rag__dot--green{ background:#16a34a; }
-  #ar-do-next-strip .ar-do-next-rag__label{
-    font-weight:800;
-    color:#f8fafc;
-  }
-  #ar-do-next-strip .ar-do-next-strip__counts{
-    color:#94a3b8;
-    font-weight:600;
-    font-size:13px;
-  }
-  #ar-do-next-strip .ar-do-next-strip__pct{
-    color:#cbd5e1;
-    font-weight:700;
-    font-size:13px;
-    white-space:nowrap;
-  }
-  #ar-do-next-strip .ar-do-next-strip__bar{
-    height:6px;
-    border-radius:999px;
-    background:rgba(255,255,255,0.09);
-    overflow:hidden;
-    margin:0 0 14px;
-  }
-  #ar-do-next-strip .ar-do-next-strip__bar-fill{
-    height:100%;
-    border-radius:999px;
-    width:0%;
-    transition:width 0.25s ease;
-  }
-  #ar-do-next-strip .ar-do-next-strip__tiles{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:10px;
-  }
-  @media (max-width:900px){
-    #ar-do-next-strip .ar-do-next-strip__tiles{
-      grid-template-columns:repeat(2,1fr);
-    }
-  }
-  @media (max-width:520px){
-    #ar-do-next-strip .ar-do-next-strip__tiles{
-      grid-template-columns:1fr;
-    }
-  }
-  #ar-do-next-strip .ar-do-next-tile{
-    display:flex;
-    flex-direction:column;
-    min-height:96px;
-    padding:12px 14px;
-    border-radius:10px;
-    text-decoration:none !important;
-    box-sizing:border-box;
-    transition:opacity 0.15s ease;
-  }
-  #ar-do-next-strip .ar-do-next-tile:hover{ opacity:0.92; }
-  #ar-do-next-strip .ar-do-next-tile__eyebrow{
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:0.06em;
-    text-transform:uppercase;
-    margin:0 0 8px;
-    opacity:0.85;
-  }
-  #ar-do-next-strip .ar-do-next-tile__action{
-    font-size:15px;
-    font-weight:500;
-    line-height:1.35;
-    color:#f8fafc !important;
-    margin:0 0 auto;
-    padding-bottom:10px;
-  }
-  #ar-do-next-strip .ar-do-next-tile__why{
-    font-size:12px;
-    font-weight:600;
-    line-height:1.35;
-    margin:0;
-    opacity:0.78;
-  }
-  #ar-do-next-strip .ar-do-next-tile--resume{
-    background:#166534;
-    border:0.5px solid #14532d;
-  }
-  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__eyebrow,
-  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why{
-    color:#dcfce7 !important;
-  }
-  #ar-do-next-strip .ar-do-next-tile--ghost-green{
-    background:rgba(22,101,52,0.16);
-    border:0.5px solid rgba(22,101,52,0.55);
-  }
-  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__eyebrow,
-  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__why{
-    color:#bbf7d0 !important;
-  }
-  #ar-do-next-strip .ar-do-next-tile--amber{
-    background:rgba(217,119,6,0.12);
-    border:0.5px solid rgba(217,119,6,0.45);
-  }
-  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__action{
-    color:#fde68a !important;
-  }
-  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__eyebrow,
-  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__why{
-    color:#fcd34d !important;
-  }
-</style>
-
-<div id="ar-do-next-strip" aria-hidden="true">
-  <div class="ar-do-next-strip__inner">
-    <div class="ar-do-next-strip__card">
-      <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
-      <div class="ar-do-next-strip__bar" aria-hidden="true">
-        <div class="ar-do-next-strip__bar-fill" id="ar-do-next-bar-fill"></div>
-      </div>
-      <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  if (window.__arDoNextStripInit) return;
-  window.__arDoNextStripInit = true;
-
-  var SITE = "https://www.alanranger.com";
-  var API_BASE = "https://alanranger-modules.vercel.app";
-  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
-  var PROGRESS_URL = API_BASE + "/api/exams/progress";
-  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
-  var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
-  var MODULES_TOTAL = 60;
-  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
-  var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
-  var CHECKLISTS_URL = SITE + "/35-photography-1-page-field-checklists";
-  var FOUNDATION_COURSE_URL = SITE + "/academy/online-photography-course";
-
-  var ARTICLE_MODULES = [
-    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
-    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
-    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
-    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
-    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
-    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
-    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
-    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
-    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
-    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
-    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
-    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
-    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
-    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
-    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
-    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
-    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
-    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
-    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
-    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
-    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
-    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
-    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
-    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
-    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
-    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
-    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
-    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
-    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
-    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
-    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
-    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
-    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
-    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
-    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
-    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
-    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
-    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
-    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
-    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
-    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
-    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
-    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
-    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
-    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
-  ];
-
-  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
-    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
-    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
-    "/s/Photography-Practice-Assignment-Triptych.pdf",
-    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
-    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
-    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
-    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
-    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
-    "/s/Still-life-photography-assignment.pdf",
-    "/s/Street-photography-assignment.pdf",
-    "/blogs/mastering-abstract-photography",
-    "/s/Black-and-white-photography-assignment.pdf",
-    "/s/Architecture-photography-assignment.pdf",
-    "/s/Shadows-photography-Assignment.pdf",
-    "/s/THE-SEASONS-photography-Assignment.pdf"
-  ]);
-
-  var EXAM_MODULE_IDS = [
-    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
-    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
-    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
-    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
-  ];
-
-  var EXAM_NAMES = {
-    "module-01-exposure": "Exposure",
-    "module-02-aperture": "Aperture",
-    "module-03-shutter": "Shutter",
-    "module-04-iso": "ISO",
-    "module-05-manual": "Manual",
-    "module-06-metering": "Metering",
-    "module-07-bracketing": "Bracketing",
-    "module-08-focusing": "Focusing",
-    "module-09-dof": "DoF",
-    "module-10-drange": "DRange",
-    "module-11-wb": "WB",
-    "module-12-drive": "Drive",
-    "module-13-jpeg-raw": "JPEG/RAW",
-    "module-14-sensors": "Sensors",
-    "module-15-focal": "Focal"
-  };
-
-  var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
-
-  function normalizePath(url){
-    if (!url || typeof url !== "string") return "/";
-    var path = url;
-    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
-      try { path = new URL(path).pathname; } catch (e) {
-        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
-        if (m) path = m[1];
-      }
-    }
-    path = path.split("?")[0].split("#")[0];
-    path = path.replace(/\/+$/, "") || "/";
-    if (path.charAt(0) !== "/") path = "/" + path;
-    return path;
-  }
-
-  function unwrapStoredJson(obj){
-    var cur = obj;
-    for (var i = 0; i < 10; i++) {
-      if (!cur || typeof cur !== "object") break;
-      if (!cur.data || typeof cur.data !== "object") break;
-      var d = cur.data;
-      var looks = (d.history && Array.isArray(d.history)) ||
-        (d.bookmarks && Array.isArray(d.bookmarks)) ||
-        (d.arAcademy && typeof d.arAcademy === "object");
-      if (looks) { cur = d; continue; }
-      break;
-    }
-    return cur || {};
-  }
-
-  function normalizeMemberJson(jsonRes){
-    if (!jsonRes || typeof jsonRes !== "object") return {};
-    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
-    return unwrapStoredJson(stored);
-  }
-
-  function getOpenedSet(normalized){
-    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
-    var set = new Set();
-    Object.keys(opened).forEach(function(key){
-      var p = normalizePath(key);
-      if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
-    });
-    return set;
-  }
-
-  function firstUnopenedArticle(openedSet){
-    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
-      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { idx: i, mod: ARTICLE_MODULES[i] };
-    }
-    return null;
-  }
-
-  function getMemberId(member){
-    if (!member) return "";
-    if (member.id) return String(member.id);
-    if (member.data && member.data.id) return String(member.data.id);
-    return "";
-  }
-
-  function parseExamProgress(progressData){
-    var statusMap = {};
-    var source = "none";
-    var examsPassed = 0;
-    var nextExamModuleId = null;
-    var hasData = false;
-
-    EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
-
-    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
-      hasData = true;
-      progressData.modules.forEach(function(m){
-        if (!m || !m.moduleId) return;
-        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
-        statusMap[m.moduleId] = m.status || "not_taken";
-      });
-      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
-      source = "modules-count";
-    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
-      hasData = true;
-      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
-      source = "summary.passedCount";
-    }
-
-    if (source === "modules-count") {
-      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
-        if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
-          nextExamModuleId = EXAM_MODULE_IDS[i];
-          break;
-        }
-      }
-    }
-
-    return {
-      statusMap: statusMap,
-      examsPassed: examsPassed,
-      nextExamModuleId: nextExamModuleId,
-      source: source,
-      hasData: hasData,
-      hasModuleStatus: source === "modules-count"
-    };
-  }
-
-  function firstUnpassedExam(statusMap){
-    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
-      var id = EXAM_MODULE_IDS[i];
-      if (statusMap[id] !== "passed") return { idx: i, id: id };
-    }
-    return null;
-  }
-
-  function shortArticleTitle(t){
-    return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
-  }
-
-  function examNum(idx){ return String(idx + 1).padStart(2, "0"); }
-
-  function computeRagState(openedCount, examsPassed){
-    if (openedCount < 3) {
-      return { state: "red", label: "Just getting started", color: RAG_COLORS.red };
-    }
-    if (openedCount >= 30 && examsPassed >= 1) {
-      return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
-    }
-    return { state: "amber", label: "Building momentum", color: RAG_COLORS.amber };
-  }
-
-  function buildResumeTile(openedSet, examInfo, rag){
-    var openedCount = openedSet.size;
-    var nextArt = firstUnopenedArticle(openedSet);
-    var tile = { n: 1, label: "1 - Resume", variant: "resume", why: "Pick up where you left off" };
-    if (rag.state === "red") tile.why = "This is the most important step";
-    if (nextArt) {
-      var prefix = openedCount === 0 ? "Start here:" : "Continue:";
-      tile.action = prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192";
-      tile.href = SITE + nextArt.mod.p;
-      return tile;
-    }
-    if (examInfo.hasModuleStatus && examInfo.examsPassed < 15) {
-      var nextExam = firstUnpassedExam(examInfo.statusMap);
-      if (nextExam) {
-        tile.action = "Take your next exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
-        tile.href = EXAM_BASE + "?module=" + nextExam.id;
-        return tile;
-      }
-    }
-    tile.action = "Explore practice assignments \u2192";
-    tile.href = PRACTICE_URL;
-    return tile;
-  }
-
-  function buildTestTile(examInfo){
-    var tile = { n: 2, label: "2 - Test yourself", variant: "ghost-green", why: "Earns a certificate" };
-    if (examInfo.examsPassed >= 15) {
-      tile.action = "Review your certificates \u2192";
-      tile.href = EXAM_BASE;
-      tile.why = "All 15 exams passed";
-      return tile;
-    }
-    if (examInfo.hasModuleStatus) {
-      var nextExam = firstUnpassedExam(examInfo.statusMap);
-      if (nextExam) {
-        tile.action = "Take exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
-        tile.href = EXAM_BASE + "?module=" + nextExam.id;
-        return tile;
-      }
-    }
-    tile.action = "View exams and certificates \u2192";
-    tile.href = EXAM_BASE;
-    return tile;
-  }
-
-  function buildPracticeTile(){
-    return {
-      n: 3,
-      label: "3 - Put it into practice",
-      action: "Save a field checklist \u2192",
-      why: "Take it on your next shoot",
-      href: CHECKLISTS_URL,
-      variant: "ghost-green"
-    };
-  }
-
-  function buildGoalTile(openedCount, examsPassed, nextArt){
-    var tile = { n: 4, label: "4 - Goal", variant: "amber" };
-    var goalTarget = null;
-    var goalRemaining = 0;
-    if (openedCount < 30) {
-      goalTarget = 30;
-      goalRemaining = 30 - openedCount;
-      tile.action = "Reach 30 modules \u2192";
-      tile.why = goalRemaining + " to your halfway badge";
-      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
-    } else if (openedCount < 60) {
-      goalTarget = 60;
-      goalRemaining = 60 - openedCount;
-      tile.action = "Reach 60 modules \u2192";
-      tile.why = goalRemaining + " to finish the foundations course";
-      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
-    } else if (examsPassed < 15) {
-      goalTarget = 15;
-      goalRemaining = 15 - examsPassed;
-      tile.action = "Finish your certificates \u2192";
-      tile.why = goalRemaining + " exams to full certification";
-      tile.href = EXAM_BASE;
-    } else {
-      tile.action = "All done - explore practice packs \u2192";
-      tile.why = "You have completed the foundations course";
-      tile.href = PRACTICE_URL;
-    }
-    return { tile: tile, goalTarget: goalTarget, goalRemaining: goalRemaining };
-  }
-
-  function buildStage1Tiles(openedSet, examInfo, rag){
-    var openedCount = openedSet.size;
-    var nextArt = firstUnopenedArticle(openedSet);
-    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt);
-    return {
-      tiles: [
-        buildResumeTile(openedSet, examInfo, rag),
-        buildTestTile(examInfo),
-        buildPracticeTile(),
-        goal.tile
-      ],
-      goalTarget: goal.goalTarget,
-      goalRemaining: goal.goalRemaining
-    };
-  }
-
-  function renderTile(tile){
-    var a = document.createElement("a");
-    a.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant;
-    a.href = tile.href;
-    var eyebrow = document.createElement("span");
-    eyebrow.className = "ar-do-next-tile__eyebrow";
-    eyebrow.textContent = tile.label;
-    var action = document.createElement("span");
-    action.className = "ar-do-next-tile__action";
-    action.textContent = tile.action;
-    var why = document.createElement("span");
-    why.className = "ar-do-next-tile__why";
-    why.textContent = tile.why;
-    a.appendChild(eyebrow);
-    a.appendChild(action);
-    a.appendChild(why);
-    return a;
-  }
-
-  function renderStrip(openedSet, examInfo, coachDebug){
-    var strip = document.getElementById("ar-do-next-strip");
-    var statusEl = document.getElementById("ar-do-next-status");
-    var barFill = document.getElementById("ar-do-next-bar-fill");
-    var tilesEl = document.getElementById("ar-do-next-tiles");
-    if (!strip || !statusEl || !barFill || !tilesEl) return;
-
-    var openedCount = openedSet.size;
-    var examsPassed = examInfo.examsPassed;
-    var rag = computeRagState(openedCount, examsPassed);
-    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
-    var stage = buildStage1Tiles(openedSet, examInfo, rag);
-
-    statusEl.innerHTML = "";
-    var left = document.createElement("div");
-    left.className = "ar-do-next-strip__status-left";
-    var dot = document.createElement("span");
-    dot.className = "ar-do-next-rag__dot ar-do-next-rag__dot--" + rag.state;
-    dot.setAttribute("aria-hidden", "true");
-    var label = document.createElement("span");
-    label.className = "ar-do-next-rag__label";
-    label.textContent = rag.label;
-    var counts = document.createElement("span");
-    counts.className = "ar-do-next-strip__counts";
-    counts.textContent = " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
-    left.appendChild(dot);
-    left.appendChild(label);
-    left.appendChild(counts);
-    var right = document.createElement("span");
-    right.className = "ar-do-next-strip__pct";
-    right.textContent = pct + "% of the foundations course";
-    statusEl.appendChild(left);
-    statusEl.appendChild(right);
-
-    barFill.style.width = pct + "%";
-    barFill.style.background = rag.color;
-
-    tilesEl.innerHTML = "";
-    stage.tiles.forEach(function(tile){ tilesEl.appendChild(renderTile(tile)); });
-
-    if (coachDebug) {
-      coachDebug.ragState = rag.state;
-      coachDebug.ragLabel = rag.label;
-      coachDebug.modulesOpened = openedCount;
-      coachDebug.modulesTotal = MODULES_TOTAL;
-      coachDebug.examsPassed = examsPassed;
-      coachDebug.examsTotal = 15;
-      coachDebug.tiles = stage.tiles.map(function(t){
-        return { n: t.n, label: t.label, href: t.href, action: t.action };
-      });
-      coachDebug.goalTarget = stage.goalTarget;
-      coachDebug.goalRemaining = stage.goalRemaining;
-      coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
-    }
-
-    strip.classList.add("is-ready");
-    strip.removeAttribute("aria-hidden");
-  }
-
-  function isExpiredTrialBody(){
-    return document.body && document.body.getAttribute("data-ar-academy-state") === "expired-trial";
-  }
-
-  function waitForMemberstack(maxMs){
-    maxMs = typeof maxMs === "number" ? maxMs : 8000;
-    return new Promise(function(resolve){
-      var start = Date.now();
-      (function tick(){
-        if (window.$memberstackDom && typeof window.$memberstackDom.getMemberJSON === "function") {
-          resolve(window.$memberstackDom);
-          return;
-        }
-        if ((Date.now() - start) > maxMs) { resolve(null); return; }
-        setTimeout(tick, 100);
-      })();
-    });
-  }
-
-  function getMemberEmail(member){
-    var d = member && member.data ? member.data : {};
-    return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
-  }
-
-  async function fetchWhoami(){
-    try {
-      var res = await fetch(WHOAMI_URL, { credentials: "include" });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) { return null; }
-  }
-
-  async function resolveMemberId(ms, member){
-    var memberId = getMemberId(member);
-    var idSource = memberId ? "getCurrentMember" : "none";
-    if (!memberId && ms && typeof ms.getMemberJSON === "function") {
-      try {
-        var jsonRes = await ms.getMemberJSON();
-        var mj = unwrapMember(jsonRes);
-        var mjId = getMemberId(mj);
-        if (mjId) { memberId = mjId; idSource = "getMemberJSON"; }
-      } catch (e) { /* ignore */ }
-    }
-    if (!memberId) {
-      var identity = await fetchWhoami();
-      if (identity && identity.memberstack_id) {
-        memberId = String(identity.memberstack_id);
-        idSource = "whoami";
-      }
-    }
-    return { memberId: memberId, idSource: idSource };
-  }
-
-  function unwrapMember(res){
-    if (!res) return null;
-    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
-    if (res.email || res.planConnections) return { id: res.id || null, data: res };
-    if (res.data && res.data.data) return res.data;
-    return res;
-  }
-
-  async function fetchTrialExpired(memberId){
-    if (!memberId) return false;
-    try {
-      var res = await fetch(TRIAL_STATUS_URL + "?memberId=" + encodeURIComponent(memberId), { credentials: "omit" });
-      if (!res.ok) return false;
-      var data = await res.json();
-      return !!(data && (data.isExpiredTrial || data.state === "expired-trial"));
-    } catch (e) { return false; }
-  }
-
-  async function fetchExamProgress(memberId){
-    if (!memberId) return null;
-    try {
-      var res = await fetch(PROGRESS_URL, {
-        headers: { "X-Memberstack-Id": memberId },
-        credentials: "omit"
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) { return null; }
-  }
-
-  function trackPageView(memberId, email){
-    if (!memberId) return;
-    var key = "ar-pv-dashboard-" + memberId;
-    try {
-      if (sessionStorage.getItem(key) === "1") return;
-      sessionStorage.setItem(key, "1");
-    } catch (e) { /* ignore */ }
-
-    fetch(TRACK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "omit",
-      body: JSON.stringify({
-        member_id: memberId,
-        email: email || null,
-        path: "/academy/dashboard",
-        title: "Academy Dashboard",
-        category: "dashboard",
-        meta: { source: "do-next-strip", surface: "dashboard" }
-      })
-    }).catch(function(){ /* non-blocking */ });
-  }
-
-  function watchExpiredTrial(onChange){
-    if (!document.body) return;
-    if (isExpiredTrialBody()) onChange(true);
-    var obs = new MutationObserver(function(){ onChange(isExpiredTrialBody()); });
-    obs.observe(document.body, { attributes: true, attributeFilter: ["data-ar-academy-state"] });
-    setTimeout(function(){ obs.disconnect(); }, 30000);
-  }
-
-  async function init(){
-    var strip = document.getElementById("ar-do-next-strip");
-    if (!strip) return;
-
-    watchExpiredTrial(function(expired){
-      if (expired) {
-        strip.classList.remove("is-ready");
-        strip.setAttribute("aria-hidden", "true");
-      }
-    });
-    if (isExpiredTrialBody()) return;
-
-    var ms = await waitForMemberstack();
-    if (!ms) {
-      var statusEl = document.getElementById("ar-do-next-status");
-      if (statusEl) statusEl.textContent = "Sign in to see your learning coach.";
-      strip.classList.add("is-ready");
-      return;
-    }
-
-    var memberRes = null;
-    try {
-      if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
-    } catch (e) { /* ignore */ }
-    var member = unwrapMember(memberRes);
-    if (member && !member.data && (member.planConnections || member.email)) {
-      member = { id: member.id || null, data: member };
-    }
-    if (member && !member.id && member.data && member.data.id) {
-      member.id = String(member.data.id);
-    }
-    var resolved = await resolveMemberId(ms, member);
-    var memberId = resolved.memberId;
-
-    if (memberId) {
-      var expired = await fetchTrialExpired(memberId);
-      if (expired || isExpiredTrialBody()) return;
-    }
-
-    var jsonRes = null;
-    try { jsonRes = await ms.getMemberJSON(); } catch (e) { jsonRes = null; }
-    var normalized = normalizeMemberJson(jsonRes);
-    var openedSet = getOpenedSet(normalized);
-    var progressData = await fetchExamProgress(memberId);
-    var examInfo = parseExamProgress(progressData);
-
-    var coachDebug = {
-      memberId: memberId || null,
-      idSource: resolved.idSource,
-      source: examInfo.source,
-      nextExamModuleId: examInfo.nextExamModuleId,
-      stage: "stage1"
-    };
-    window.__arDoNextStrip = coachDebug;
-
-    renderStrip(openedSet, examInfo, coachDebug);
-    trackPageView(memberId, getMemberEmail(member));
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
-</script>
-
-<!-- ===========================
-END: AR | DASHBOARD "DO THESE NEXT" STRIP
-=========================== -->
+<!-- ===========================
+
+AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
+
+v1.2.1 — four-tile coach centred under header + larger impact tiles
+
+=========================== -->
+
+
+
+<style id="ar-do-next-strip-style">
+
+  #ar-do-next-strip{
+
+    display:none;
+
+    width:100%;
+
+    margin:0 0 14px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip.is-ready{ display:block; }
+
+  body[data-ar-academy-state="expired-trial"] #ar-do-next-strip{
+
+    display:none !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__inner{
+
+    max-width:1240px;
+
+    margin:0 auto;
+
+    padding:0 32px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card{
+
+    width:100%;
+
+    background:#0f1115;
+
+    border:0.5px solid rgba(255,255,255,0.08);
+
+    border-radius:14px;
+
+    padding:22px 26px;
+
+    box-sizing:border-box;
+
+    color:#e2e8f0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:10px 16px;
+
+    margin:0 0 14px;
+
+    font-size:15px;
+
+    line-height:1.4;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status-left{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    gap:8px;
+
+    min-width:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    flex-shrink:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--red{ background:#dc2626; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--amber{ background:#d97706; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--green{ background:#16a34a; }
+
+  #ar-do-next-strip .ar-do-next-rag__label{
+
+    font-weight:800;
+
+    color:#f8fafc;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__counts{
+
+    color:#94a3b8;
+
+    font-weight:600;
+
+    font-size:14px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__pct{
+
+    color:#cbd5e1;
+
+    font-weight:700;
+
+    font-size:14px;
+
+    white-space:nowrap;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__bar{
+
+    height:8px;
+
+    border-radius:999px;
+
+    background:rgba(255,255,255,0.09);
+
+    overflow:hidden;
+
+    margin:0 0 18px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__bar-fill{
+
+    height:100%;
+
+    border-radius:999px;
+
+    width:0%;
+
+    transition:width 0.25s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tiles{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:14px;
+
+  }
+
+  @media (max-width:900px){
+
+    #ar-do-next-strip .ar-do-next-strip__tiles{
+
+      grid-template-columns:repeat(2,1fr);
+
+    }
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-strip__tiles{
+
+      grid-template-columns:1fr;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile{
+
+    display:flex;
+
+    flex-direction:column;
+
+    min-height:128px;
+
+    padding:16px 18px;
+
+    border-radius:12px;
+
+    text-decoration:none !important;
+
+    box-sizing:border-box;
+
+    transition:opacity 0.15s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile:hover{ opacity:0.92; }
+
+  #ar-do-next-strip .ar-do-next-tile__eyebrow{
+
+    font-size:11px;
+
+    font-weight:800;
+
+    letter-spacing:0.06em;
+
+    text-transform:uppercase;
+
+    margin:0 0 10px;
+
+    opacity:0.85;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__action{
+
+    font-size:16px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    color:#f8fafc !important;
+
+    margin:0 0 auto;
+
+    padding-bottom:12px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__why{
+
+    font-size:13px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    margin:0;
+
+    opacity:0.82;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume{
+
+    background:#166534;
+
+    border:0.5px solid #14532d;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why{
+
+    color:#dcfce7 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green{
+
+    background:rgba(22,101,52,0.16);
+
+    border:0.5px solid rgba(22,101,52,0.55);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__why{
+
+    color:#bbf7d0 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber{
+
+    background:rgba(217,119,6,0.12);
+
+    border:0.5px solid rgba(217,119,6,0.45);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__action{
+
+    color:#fde68a !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__why{
+
+    color:#fcd34d !important;
+
+  }
+
+</style>
+
+
+
+<div id="ar-do-next-strip" aria-hidden="true">
+
+  <div class="ar-do-next-strip__inner">
+
+    <div class="ar-do-next-strip__card">
+
+      <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+
+      <div class="ar-do-next-strip__bar" aria-hidden="true">
+
+        <div class="ar-do-next-strip__bar-fill" id="ar-do-next-bar-fill"></div>
+
+      </div>
+
+      <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+(function(){
+
+  if (window.__arDoNextStripInit) return;
+
+  window.__arDoNextStripInit = true;
+
+
+
+  var SITE = "https://www.alanranger.com";
+
+  var API_BASE = "https://alanranger-modules.vercel.app";
+
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+  var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+
+  var MODULES_TOTAL = 60;
+
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+
+  var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
+
+  var CHECKLISTS_URL = SITE + "/35-photography-1-page-field-checklists";
+
+  var FOUNDATION_COURSE_URL = SITE + "/academy/online-photography-course";
+
+
+
+  var ARTICLE_MODULES = [
+
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+
+  ];
+
+
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+
+    "/s/Still-life-photography-assignment.pdf",
+
+    "/s/Street-photography-assignment.pdf",
+
+    "/blogs/mastering-abstract-photography",
+
+    "/s/Black-and-white-photography-assignment.pdf",
+
+    "/s/Architecture-photography-assignment.pdf",
+
+    "/s/Shadows-photography-Assignment.pdf",
+
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+
+  ]);
+
+
+
+  var EXAM_MODULE_IDS = [
+
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+
+  ];
+
+
+
+  var EXAM_NAMES = {
+
+    "module-01-exposure": "Exposure",
+
+    "module-02-aperture": "Aperture",
+
+    "module-03-shutter": "Shutter",
+
+    "module-04-iso": "ISO",
+
+    "module-05-manual": "Manual",
+
+    "module-06-metering": "Metering",
+
+    "module-07-bracketing": "Bracketing",
+
+    "module-08-focusing": "Focusing",
+
+    "module-09-dof": "DoF",
+
+    "module-10-drange": "DRange",
+
+    "module-11-wb": "WB",
+
+    "module-12-drive": "Drive",
+
+    "module-13-jpeg-raw": "JPEG/RAW",
+
+    "module-14-sensors": "Sensors",
+
+    "module-15-focal": "Focal"
+
+  };
+
+
+
+  var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
+
+
+
+  function normalizePath(url){
+
+    if (!url || typeof url !== "string") return "/";
+
+    var path = url;
+
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+
+      try { path = new URL(path).pathname; } catch (e) {
+
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+
+        if (m) path = m[1];
+
+      }
+
+    }
+
+    path = path.split("?")[0].split("#")[0];
+
+    path = path.replace(/\/+$/, "") || "/";
+
+    if (path.charAt(0) !== "/") path = "/" + path;
+
+    return path;
+
+  }
+
+
+
+  function unwrapStoredJson(obj){
+
+    var cur = obj;
+
+    for (var i = 0; i < 10; i++) {
+
+      if (!cur || typeof cur !== "object") break;
+
+      if (!cur.data || typeof cur.data !== "object") break;
+
+      var d = cur.data;
+
+      var looks = (d.history && Array.isArray(d.history)) ||
+
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+
+        (d.arAcademy && typeof d.arAcademy === "object");
+
+      if (looks) { cur = d; continue; }
+
+      break;
+
+    }
+
+    return cur || {};
+
+  }
+
+
+
+  function normalizeMemberJson(jsonRes){
+
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+
+    return unwrapStoredJson(stored);
+
+  }
+
+
+
+  function getOpenedSet(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+
+    var set = new Set();
+
+    Object.keys(opened).forEach(function(key){
+
+      var p = normalizePath(key);
+
+      if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
+
+    });
+
+    return set;
+
+  }
+
+
+
+  function firstUnopenedArticle(openedSet){
+
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { idx: i, mod: ARTICLE_MODULES[i] };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function getMemberId(member){
+
+    if (!member) return "";
+
+    if (member.id) return String(member.id);
+
+    if (member.data && member.data.id) return String(member.data.id);
+
+    return "";
+
+  }
+
+
+
+  function parseExamProgress(progressData){
+
+    var statusMap = {};
+
+    var source = "none";
+
+    var examsPassed = 0;
+
+    var nextExamModuleId = null;
+
+    var hasData = false;
+
+
+
+    EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
+
+
+
+    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+
+      hasData = true;
+
+      progressData.modules.forEach(function(m){
+
+        if (!m || !m.moduleId) return;
+
+        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
+
+        statusMap[m.moduleId] = m.status || "not_taken";
+
+      });
+
+      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      source = "modules-count";
+
+    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+
+      hasData = true;
+
+      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
+
+      source = "summary.passedCount";
+
+    }
+
+
+
+    if (source === "modules-count") {
+
+      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+        if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
+
+          nextExamModuleId = EXAM_MODULE_IDS[i];
+
+          break;
+
+        }
+
+      }
+
+    }
+
+
+
+    return {
+
+      statusMap: statusMap,
+
+      examsPassed: examsPassed,
+
+      nextExamModuleId: nextExamModuleId,
+
+      source: source,
+
+      hasData: hasData,
+
+      hasModuleStatus: source === "modules-count"
+
+    };
+
+  }
+
+
+
+  function firstUnpassedExam(statusMap){
+
+    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+      var id = EXAM_MODULE_IDS[i];
+
+      if (statusMap[id] !== "passed") return { idx: i, id: id };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function shortArticleTitle(t){
+
+    return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
+
+  }
+
+
+
+  function examNum(idx){ return String(idx + 1).padStart(2, "0"); }
+
+
+
+  function computeRagState(openedCount, examsPassed){
+
+    if (openedCount < 3) {
+
+      return { state: "red", label: "Just getting started", color: RAG_COLORS.red };
+
+    }
+
+    if (openedCount >= 30 && examsPassed >= 1) {
+
+      return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
+
+    }
+
+    return { state: "amber", label: "Building momentum", color: RAG_COLORS.amber };
+
+  }
+
+
+
+  function buildResumeTile(openedSet, examInfo, rag){
+
+    var openedCount = openedSet.size;
+
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    var tile = { n: 1, label: "1 - Resume", variant: "resume", why: "Pick up where you left off" };
+
+    if (rag.state === "red") tile.why = "This is the most important step";
+
+    if (nextArt) {
+
+      var prefix = openedCount === 0 ? "Start here:" : "Continue:";
+
+      tile.action = prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192";
+
+      tile.href = SITE + nextArt.mod.p;
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus && examInfo.examsPassed < 15) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take your next exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "Explore practice assignments \u2192";
+
+    tile.href = PRACTICE_URL;
+
+    return tile;
+
+  }
+
+
+
+  function buildTestTile(examInfo){
+
+    var tile = { n: 2, label: "2 - Test yourself", variant: "ghost-green", why: "Earns a certificate" };
+
+    if (examInfo.examsPassed >= 15) {
+
+      tile.action = "Review your certificates \u2192";
+
+      tile.href = EXAM_BASE;
+
+      tile.why = "All 15 exams passed";
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "View exams and certificates \u2192";
+
+    tile.href = EXAM_BASE;
+
+    return tile;
+
+  }
+
+
+
+  function buildPracticeTile(){
+
+    return {
+
+      n: 3,
+
+      label: "3 - Put it into practice",
+
+      action: "Save a field checklist \u2192",
+
+      why: "Take it on your next shoot",
+
+      href: CHECKLISTS_URL,
+
+      variant: "ghost-green"
+
+    };
+
+  }
+
+
+
+  function buildGoalTile(openedCount, examsPassed, nextArt){
+
+    var tile = { n: 4, label: "4 - Goal", variant: "amber" };
+
+    var goalTarget = null;
+
+    var goalRemaining = 0;
+
+    if (openedCount < 30) {
+
+      goalTarget = 30;
+
+      goalRemaining = 30 - openedCount;
+
+      tile.action = "Reach 30 modules \u2192";
+
+      tile.why = goalRemaining + " to your halfway badge";
+
+      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
+
+    } else if (openedCount < 60) {
+
+      goalTarget = 60;
+
+      goalRemaining = 60 - openedCount;
+
+      tile.action = "Reach 60 modules \u2192";
+
+      tile.why = goalRemaining + " to finish the foundations course";
+
+      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
+
+    } else if (examsPassed < 15) {
+
+      goalTarget = 15;
+
+      goalRemaining = 15 - examsPassed;
+
+      tile.action = "Finish your certificates \u2192";
+
+      tile.why = goalRemaining + " exams to full certification";
+
+      tile.href = EXAM_BASE;
+
+    } else {
+
+      tile.action = "All done - explore practice packs \u2192";
+
+      tile.why = "You have completed the foundations course";
+
+      tile.href = PRACTICE_URL;
+
+    }
+
+    return { tile: tile, goalTarget: goalTarget, goalRemaining: goalRemaining };
+
+  }
+
+
+
+  function buildStage1Tiles(openedSet, examInfo, rag){
+
+    var openedCount = openedSet.size;
+
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt);
+
+    return {
+
+      tiles: [
+
+        buildResumeTile(openedSet, examInfo, rag),
+
+        buildTestTile(examInfo),
+
+        buildPracticeTile(),
+
+        goal.tile
+
+      ],
+
+      goalTarget: goal.goalTarget,
+
+      goalRemaining: goal.goalRemaining
+
+    };
+
+  }
+
+
+
+  function renderTile(tile){
+
+    var a = document.createElement("a");
+
+    a.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant;
+
+    a.href = tile.href;
+
+    var eyebrow = document.createElement("span");
+
+    eyebrow.className = "ar-do-next-tile__eyebrow";
+
+    eyebrow.textContent = tile.label;
+
+    var action = document.createElement("span");
+
+    action.className = "ar-do-next-tile__action";
+
+    action.textContent = tile.action;
+
+    var why = document.createElement("span");
+
+    why.className = "ar-do-next-tile__why";
+
+    why.textContent = tile.why;
+
+    a.appendChild(eyebrow);
+
+    a.appendChild(action);
+
+    a.appendChild(why);
+
+    return a;
+
+  }
+
+
+
+  function renderStrip(openedSet, examInfo, coachDebug){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    var statusEl = document.getElementById("ar-do-next-status");
+
+    var barFill = document.getElementById("ar-do-next-bar-fill");
+
+    var tilesEl = document.getElementById("ar-do-next-tiles");
+
+    if (!strip || !statusEl || !barFill || !tilesEl) return;
+
+
+
+    var openedCount = openedSet.size;
+
+    var examsPassed = examInfo.examsPassed;
+
+    var rag = computeRagState(openedCount, examsPassed);
+
+    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
+
+    var stage = buildStage1Tiles(openedSet, examInfo, rag);
+
+
+
+    statusEl.innerHTML = "";
+
+    var left = document.createElement("div");
+
+    left.className = "ar-do-next-strip__status-left";
+
+    var dot = document.createElement("span");
+
+    dot.className = "ar-do-next-rag__dot ar-do-next-rag__dot--" + rag.state;
+
+    dot.setAttribute("aria-hidden", "true");
+
+    var label = document.createElement("span");
+
+    label.className = "ar-do-next-rag__label";
+
+    label.textContent = rag.label;
+
+    var counts = document.createElement("span");
+
+    counts.className = "ar-do-next-strip__counts";
+
+    counts.textContent = " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
+
+    left.appendChild(dot);
+
+    left.appendChild(label);
+
+    left.appendChild(counts);
+
+    var right = document.createElement("span");
+
+    right.className = "ar-do-next-strip__pct";
+
+    right.textContent = pct + "% of the foundations course";
+
+    statusEl.appendChild(left);
+
+    statusEl.appendChild(right);
+
+
+
+    barFill.style.width = pct + "%";
+
+    barFill.style.background = rag.color;
+
+
+
+    tilesEl.innerHTML = "";
+
+    stage.tiles.forEach(function(tile){ tilesEl.appendChild(renderTile(tile)); });
+
+
+
+    if (coachDebug) {
+
+      coachDebug.ragState = rag.state;
+
+      coachDebug.ragLabel = rag.label;
+
+      coachDebug.modulesOpened = openedCount;
+
+      coachDebug.modulesTotal = MODULES_TOTAL;
+
+      coachDebug.examsPassed = examsPassed;
+
+      coachDebug.examsTotal = 15;
+
+      coachDebug.tiles = stage.tiles.map(function(t){
+
+        return { n: t.n, label: t.label, href: t.href, action: t.action };
+
+      });
+
+      coachDebug.goalTarget = stage.goalTarget;
+
+      coachDebug.goalRemaining = stage.goalRemaining;
+
+      coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
+
+    }
+
+
+
+    strip.classList.add("is-ready");
+
+    strip.removeAttribute("aria-hidden");
+
+  }
+
+
+
+  function isExpiredTrialBody(){
+
+    return document.body && document.body.getAttribute("data-ar-academy-state") === "expired-trial";
+
+  }
+
+
+
+  function waitForMemberstack(maxMs){
+
+    maxMs = typeof maxMs === "number" ? maxMs : 8000;
+
+    return new Promise(function(resolve){
+
+      var start = Date.now();
+
+      (function tick(){
+
+        if (window.$memberstackDom && typeof window.$memberstackDom.getMemberJSON === "function") {
+
+          resolve(window.$memberstackDom);
+
+          return;
+
+        }
+
+        if ((Date.now() - start) > maxMs) { resolve(null); return; }
+
+        setTimeout(tick, 100);
+
+      })();
+
+    });
+
+  }
+
+
+
+  function getMemberEmail(member){
+
+    var d = member && member.data ? member.data : {};
+
+    return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
+
+  }
+
+
+
+  async function fetchWhoami(){
+
+    try {
+
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  async function resolveMemberId(ms, member){
+
+    var memberId = getMemberId(member);
+
+    var idSource = memberId ? "getCurrentMember" : "none";
+
+    if (!memberId && ms && typeof ms.getMemberJSON === "function") {
+
+      try {
+
+        var jsonRes = await ms.getMemberJSON();
+
+        var mj = unwrapMember(jsonRes);
+
+        var mjId = getMemberId(mj);
+
+        if (mjId) { memberId = mjId; idSource = "getMemberJSON"; }
+
+      } catch (e) { /* ignore */ }
+
+    }
+
+    if (!memberId) {
+
+      var identity = await fetchWhoami();
+
+      if (identity && identity.memberstack_id) {
+
+        memberId = String(identity.memberstack_id);
+
+        idSource = "whoami";
+
+      }
+
+    }
+
+    return { memberId: memberId, idSource: idSource };
+
+  }
+
+
+
+  function unwrapMember(res){
+
+    if (!res) return null;
+
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+
+    if (res.data && res.data.data) return res.data;
+
+    return res;
+
+  }
+
+
+
+  async function fetchTrialExpired(memberId){
+
+    if (!memberId) return false;
+
+    try {
+
+      var res = await fetch(TRIAL_STATUS_URL + "?memberId=" + encodeURIComponent(memberId), { credentials: "omit" });
+
+      if (!res.ok) return false;
+
+      var data = await res.json();
+
+      return !!(data && (data.isExpiredTrial || data.state === "expired-trial"));
+
+    } catch (e) { return false; }
+
+  }
+
+
+
+  async function fetchExamProgress(memberId){
+
+    if (!memberId) return null;
+
+    try {
+
+      var res = await fetch(PROGRESS_URL, {
+
+        headers: { "X-Memberstack-Id": memberId },
+
+        credentials: "omit"
+
+      });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  function trackPageView(memberId, email){
+
+    if (!memberId) return;
+
+    var key = "ar-pv-dashboard-" + memberId;
+
+    try {
+
+      if (sessionStorage.getItem(key) === "1") return;
+
+      sessionStorage.setItem(key, "1");
+
+    } catch (e) { /* ignore */ }
+
+
+
+    fetch(TRACK_URL, {
+
+      method: "POST",
+
+      headers: { "Content-Type": "application/json" },
+
+      credentials: "omit",
+
+      body: JSON.stringify({
+
+        member_id: memberId,
+
+        email: email || null,
+
+        path: "/academy/dashboard",
+
+        title: "Academy Dashboard",
+
+        category: "dashboard",
+
+        meta: { source: "do-next-strip", surface: "dashboard" }
+
+      })
+
+    }).catch(function(){ /* non-blocking */ });
+
+  }
+
+
+
+  function watchExpiredTrial(onChange){
+
+    if (!document.body) return;
+
+    if (isExpiredTrialBody()) onChange(true);
+
+    var obs = new MutationObserver(function(){ onChange(isExpiredTrialBody()); });
+
+    obs.observe(document.body, { attributes: true, attributeFilter: ["data-ar-academy-state"] });
+
+    setTimeout(function(){ obs.disconnect(); }, 30000);
+
+  }
+
+
+
+  async function init(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+
+
+    watchExpiredTrial(function(expired){
+
+      if (expired) {
+
+        strip.classList.remove("is-ready");
+
+        strip.setAttribute("aria-hidden", "true");
+
+      }
+
+    });
+
+    if (isExpiredTrialBody()) return;
+
+
+
+    var ms = await waitForMemberstack();
+
+    if (!ms) {
+
+      var statusEl = document.getElementById("ar-do-next-status");
+
+      if (statusEl) statusEl.textContent = "Sign in to see your learning coach.";
+
+      strip.classList.add("is-ready");
+
+      return;
+
+    }
+
+
+
+    var memberRes = null;
+
+    try {
+
+      if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
+
+    } catch (e) { /* ignore */ }
+
+    var member = unwrapMember(memberRes);
+
+    if (member && !member.data && (member.planConnections || member.email)) {
+
+      member = { id: member.id || null, data: member };
+
+    }
+
+    if (member && !member.id && member.data && member.data.id) {
+
+      member.id = String(member.data.id);
+
+    }
+
+    var resolved = await resolveMemberId(ms, member);
+
+    var memberId = resolved.memberId;
+
+
+
+    if (memberId) {
+
+      var expired = await fetchTrialExpired(memberId);
+
+      if (expired || isExpiredTrialBody()) return;
+
+    }
+
+
+
+    var jsonRes = null;
+
+    try { jsonRes = await ms.getMemberJSON(); } catch (e) { jsonRes = null; }
+
+    var normalized = normalizeMemberJson(jsonRes);
+
+    var openedSet = getOpenedSet(normalized);
+
+    var progressData = await fetchExamProgress(memberId);
+
+    var examInfo = parseExamProgress(progressData);
+
+
+
+    var coachDebug = {
+
+      memberId: memberId || null,
+
+      idSource: resolved.idSource,
+
+      source: examInfo.source,
+
+      nextExamModuleId: examInfo.nextExamModuleId,
+
+      stage: "stage1"
+
+    };
+
+    window.__arDoNextStrip = coachDebug;
+
+
+
+    renderStrip(openedSet, examInfo, coachDebug);
+
+    trackPageView(memberId, getMemberEmail(member));
+
+  }
+
+
+
+  if (document.readyState === "loading") {
+
+    document.addEventListener("DOMContentLoaded", init);
+
+  } else {
+
+    init();
+
+  }
+
+})();
+
+</script>
+
+
+
+<!-- ===========================
+
+END: AR | DASHBOARD "DO THESE NEXT" STRIP
+
+=========================== -->
+
