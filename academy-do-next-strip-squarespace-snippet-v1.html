@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
-v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
+v1.0.1 — fix member id + exam count from summary.passedCount / modules[].status
 =========================== -->
 
 <style id="ar-do-next-strip-style">
@@ -220,13 +220,59 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
     return null;
   }
 
-  function examStatusMap(progressData){
-    var map = {};
-    var mods = progressData && Array.isArray(progressData.modules) ? progressData.modules : [];
-    mods.forEach(function(m){
-      if (m && m.moduleId) map[m.moduleId] = m.status || "not_taken";
+  function getMemberId(member){
+    if (!member) return "";
+    if (member.id) return String(member.id);
+    if (member.data && member.data.id) return String(member.data.id);
+    return "";
+  }
+
+  function parseExamProgress(progressData){
+    var statusMap = {};
+    var source = "none";
+    var examsPassed = 0;
+    var nextExamModuleId = null;
+    var hasData = false;
+
+    EXAM_MODULE_IDS.forEach(function(id){
+      statusMap[id] = "not_taken";
     });
-    return map;
+
+    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+      hasData = true;
+      progressData.modules.forEach(function(m){
+        if (!m || !m.moduleId) return;
+        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
+        statusMap[m.moduleId] = m.status || "not_taken";
+      });
+      examsPassed = EXAM_MODULE_IDS.filter(function(id){
+        return statusMap[id] === "passed";
+      }).length;
+      source = "modules-count";
+    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+      hasData = true;
+      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
+      source = "summary.passedCount";
+    }
+
+    if (source === "modules-count") {
+      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+        var mid = EXAM_MODULE_IDS[i];
+        if (statusMap[mid] !== "passed") {
+          nextExamModuleId = mid;
+          break;
+        }
+      }
+    }
+
+    return {
+      statusMap: statusMap,
+      examsPassed: examsPassed,
+      nextExamModuleId: nextExamModuleId,
+      source: source,
+      hasData: hasData,
+      hasModuleStatus: source === "modules-count"
+    };
   }
 
   function firstUnpassedExam(statusMap){
@@ -237,22 +283,16 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
     return null;
   }
 
-  function passedCount(statusMap){
-    var n = 0;
-    EXAM_MODULE_IDS.forEach(function(id){
-      if (statusMap[id] === "passed") n++;
-    });
-    return n;
-  }
-
   function shortArticleTitle(t){
     return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
   }
 
-  function buildCtas(openedSet, statusMap){
+  function buildCtas(openedSet, examInfo){
     var links = [];
     var openedCount = openedSet.size;
-    var examsPassed = passedCount(statusMap);
+    var statusMap = examInfo.statusMap;
+    var examsPassed = examInfo.examsPassed;
+    var hasModuleStatus = examInfo.hasModuleStatus;
     var nextArt = firstUnopenedArticle(openedSet);
 
     if (nextArt) {
@@ -261,7 +301,7 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
         href: SITE + nextArt.mod.p,
         label: prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192"
       });
-    } else if (examsPassed < 15) {
+    } else if (hasModuleStatus && examsPassed < 15) {
       var nextExam = firstUnpassedExam(statusMap);
       if (nextExam) {
         var num = String(nextExam.idx + 1).padStart(2, "0");
@@ -271,6 +311,8 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
           label: "Take your next exam: " + num + " " + name + " \u2192"
         });
       }
+    } else if (!hasModuleStatus) {
+      links.push({ href: EXAM_BASE, label: "All exams \u2192" });
     } else {
       links.push({
         href: PRACTICE_URL,
@@ -278,7 +320,7 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
       });
     }
 
-    if (nextArt && nextArt.idx <= 14) {
+    if (hasModuleStatus && nextArt && nextArt.idx <= 14) {
       var examId = EXAM_MODULE_IDS[nextArt.idx];
       if (examId && statusMap[examId] !== "passed") {
         var en = EXAM_NAMES[examId] || "Exam";
@@ -288,7 +330,7 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
           label: "Take exam: " + enNum + " " + en + " \u2192"
         });
       }
-    } else if (examsPassed < 15) {
+    } else if (hasModuleStatus && examsPassed < 15) {
       var fallbackExam = firstUnpassedExam(statusMap);
       if (fallbackExam && links.length < 2) {
         var fNum = String(fallbackExam.idx + 1).padStart(2, "0");
@@ -301,7 +343,7 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
 
     if (openedCount < 10) {
       links.push({ href: FOUNDATION_URL, label: "Foundation course overview \u2192" });
-    } else if (examsPassed < 15) {
+    } else if (hasModuleStatus && examsPassed < 15) {
       links.push({ href: EXAM_BASE, label: "All exams \u2192" });
     } else if (links.length < 3) {
       links.push({ href: PRACTICE_URL, label: "Practice packs \u2192" });
@@ -317,18 +359,18 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
     return out;
   }
 
-  function renderStrip(openedSet, statusMap){
+  function renderStrip(openedSet, examInfo){
     var strip = document.getElementById("ar-do-next-strip");
     var progressEl = document.getElementById("ar-do-next-progress");
     var ctasEl = document.getElementById("ar-do-next-ctas");
     if (!strip || !progressEl || !ctasEl) return;
 
     var openedCount = openedSet.size;
-    var examsPassed = passedCount(statusMap);
+    var examsPassed = examInfo.examsPassed;
     progressEl.textContent = "Modules opened " + openedCount + "/45 - Exams passed " + examsPassed + "/15";
 
     ctasEl.innerHTML = "";
-    buildCtas(openedSet, statusMap).forEach(function(link){
+    buildCtas(openedSet, examInfo).forEach(function(link){
       var a = document.createElement("a");
       a.className = "ar-do-next-cta";
       a.href = link.href;
@@ -456,7 +498,13 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
       if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
     } catch (e) { /* ignore */ }
     var member = unwrapMember(memberRes);
-    var memberId = member && member.id ? String(member.id) : "";
+    if (member && !member.data && (member.planConnections || member.email)) {
+      member = { id: member.id || null, data: member };
+    }
+    if (member && !member.id && member.data && member.data.id) {
+      member.id = String(member.data.id);
+    }
+    var memberId = getMemberId(member);
 
     if (memberId) {
       var expired = await fetchTrialExpired(memberId);
@@ -468,9 +516,19 @@ v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
     var normalized = normalizeMemberJson(jsonRes);
     var openedSet = getOpenedSet(normalized);
     var progressData = await fetchExamProgress(memberId);
-    var statusMap = examStatusMap(progressData);
+    var examInfo = parseExamProgress(progressData);
 
-    renderStrip(openedSet, statusMap);
+    window.__arDoNextStrip = {
+      modulesOpened: openedSet.size,
+      modulesTotal: 45,
+      examsPassed: examInfo.examsPassed,
+      examsTotal: 15,
+      nextExamModuleId: examInfo.nextExamModuleId,
+      source: examInfo.source,
+      memberId: memberId || null
+    };
+
+    renderStrip(openedSet, examInfo);
     trackPageView(memberId, getMemberEmail(member));
   }
 
