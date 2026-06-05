@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
+v1.3.30 — Badge tooltips portaled/fixed; tile 3 → next practical assignment
 
 =========================== -->
 
@@ -604,17 +604,20 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
   }
 
-  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet{
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet,
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet span{
 
-    color:#2e2e2e;
+    color:#f1f5f9 !important;
 
-    opacity:1;
+    font-weight:500;
+
+    opacity:1 !important;
 
   }
 
   #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-icon--unmet circle{
 
-    stroke:#404040;
+    stroke:#f8fafc !important;
 
     stroke-width:1.75;
 
@@ -718,19 +721,15 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge__tooltip{
+  #ar-do-next-strip .ar-do-next-badge__tooltip,
+
+  .ar-do-next-badge__tooltip--fixed{
 
     display:none;
 
-    position:absolute;
+    position:fixed;
 
-    left:50%;
-
-    bottom:calc(100% + 8px);
-
-    transform:translateX(-50%);
-
-    z-index:5;
+    z-index:1001;
 
     min-width:200px;
 
@@ -752,23 +751,121 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge__trigger:hover + .ar-do-next-badge__tooltip,
+  #ar-do-next-strip .ar-do-next-badge__tooltip.is-open,
 
-  #ar-do-next-strip .ar-do-next-badge__trigger:focus-visible + .ar-do-next-badge__tooltip,
-
-  #ar-do-next-strip .ar-do-next-badge__tooltip.is-open{
+  .ar-do-next-badge__tooltip--fixed.is-open{
 
     display:block;
 
   }
 
-  #ar-do-next-strip .ar-do-next-badge__tooltip--left{
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-list{
 
-    left:auto;
+    list-style:none;
 
-    right:0;
+    margin:8px 0 0;
 
-    transform:none;
+    padding:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    width:100%;
+
+    max-width:100%;
+
+    box-sizing:border-box;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:6px;
+
+    font-size:12px;
+
+    line-height:1.35;
+
+    color:#d6d3d1;
+
+    max-width:100%;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row--met{
+
+    color:#d1fae5;
+
+    font-weight:600;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row--unmet{
+
+    color:#cbd5e1;
+
+    opacity:1;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon{
+
+    flex:0 0 16px;
+
+    width:16px;
+
+    height:16px;
+
+    margin-top:0;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--met circle{
+
+    fill:#36c98a;
+
+    stroke:#1f9d55;
+
+    stroke-width:1.5;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--met path{
+
+    stroke:#fff;
+
+    fill:none;
+
+    stroke-width:2.2;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--unmet circle{
+
+    fill:none;
+
+    stroke:rgba(255,255,255,0.42);
+
+    stroke-width:1.75;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-soft{
+
+    margin:8px 0 0;
+
+    font-size:12px;
+
+    line-height:1.4;
+
+    color:#d6d3d1;
 
   }
 
@@ -2404,15 +2501,67 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
 
 
+  function positionBadgeTooltip(trigger, tooltip){
+
+    tooltip.style.visibility = "hidden";
+
+    tooltip.style.display = "block";
+
+    var rect = trigger.getBoundingClientRect();
+
+    var tipW = tooltip.offsetWidth || 220;
+
+    var tipH = tooltip.offsetHeight || 120;
+
+    var gap = 8;
+
+    var top = rect.bottom + gap;
+
+    if (top + tipH > window.innerHeight - gap && rect.top - tipH - gap >= gap) top = rect.top - tipH - gap;
+
+    var left = tooltip.classList.contains("ar-do-next-badge__tooltip--left")
+
+      ? rect.right - tipW
+
+      : rect.left + rect.width / 2 - tipW / 2;
+
+    left = Math.max(gap, Math.min(left, window.innerWidth - tipW - gap));
+
+    tooltip.style.top = Math.round(top) + "px";
+
+    tooltip.style.left = Math.round(left) + "px";
+
+    tooltip.style.visibility = "";
+
+  }
+
+
+
+  function setBadgeTooltipOpen(trigger, tooltip, open){
+
+    if (open) {
+
+      positionBadgeTooltip(trigger, tooltip);
+
+      tooltip.classList.add("is-open");
+
+      return;
+
+    }
+
+    if (activeBadgeTooltipBtn !== trigger) tooltip.classList.remove("is-open");
+
+  }
+
+
+
   function closeBadgeTooltip(){
 
     if (!activeBadgeTooltipBtn) return;
 
     activeBadgeTooltipBtn.setAttribute("aria-expanded", "false");
 
-    var tip = activeBadgeTooltipBtn.parentNode.querySelector(".ar-do-next-badge__tooltip");
-
-    if (tip) tip.classList.remove("is-open");
+    if (activeBadgeTooltipBtn._arTooltip) activeBadgeTooltipBtn._arTooltip.classList.remove("is-open");
 
     activeBadgeTooltipBtn = null;
 
@@ -2464,7 +2613,9 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
     var tooltip = document.createElement("div");
 
-    tooltip.className = "ar-do-next-badge__tooltip" + (badgeKey === "master" ? " ar-do-next-badge__tooltip--left" : "");
+    tooltip.className = "ar-do-next-badge__tooltip ar-do-next-badge__tooltip--fixed" +
+
+      (badgeKey === "master" ? " ar-do-next-badge__tooltip--left" : "");
 
     tooltip.setAttribute("role", "tooltip");
 
@@ -2474,7 +2625,17 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
     item.insertBefore(trigger, item.firstChild);
 
-    item.insertBefore(tooltip, trigger.nextSibling);
+    document.body.appendChild(tooltip);
+
+    trigger._arTooltip = tooltip;
+
+    trigger.addEventListener("mouseenter", function(){ setBadgeTooltipOpen(trigger, tooltip, true); });
+
+    trigger.addEventListener("mouseleave", function(){ setBadgeTooltipOpen(trigger, tooltip, false); });
+
+    trigger.addEventListener("focus", function(){ setBadgeTooltipOpen(trigger, tooltip, true); });
+
+    trigger.addEventListener("blur", function(){ setBadgeTooltipOpen(trigger, tooltip, false); });
 
     trigger.addEventListener("click", function(e){
 
@@ -2486,7 +2647,7 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
       trigger.setAttribute("aria-expanded", "true");
 
-      tooltip.classList.add("is-open");
+      setBadgeTooltipOpen(trigger, tooltip, true);
 
       activeBadgeTooltipBtn = trigger;
 
@@ -2785,6 +2946,24 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
     return null;
 
   }
+
+
+
+  function firstUnopenedAssignment(openedSet){
+
+    for (var i = 0; i < PDF_ASSIGNMENT_PATHS.length; i++) {
+
+      if (!openedSet.has(PDF_ASSIGNMENT_PATHS[i])) return { idx: i, path: PDF_ASSIGNMENT_PATHS[i] };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function assignmentNum(idx){ return String(idx + 1).padStart(2, "0"); }
 
 
 
@@ -3276,23 +3455,39 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
 
 
-  function buildPracticeTile(){
+  function buildPracticeTile(openedSet){
 
-    return {
+    var tile = {
 
       n: 3,
 
       label: "3 - Put it into practice",
 
-      action: "Save a field checklist \u2192",
-
-      why: "Take it on your next shoot",
-
-      href: CHECKLISTS_URL,
-
       variant: "ghost-green"
 
     };
+
+    var next = firstUnopenedAssignment(openedSet);
+
+    if (next) {
+
+      tile.action = "Open practical assignment " + assignmentNum(next.idx) + " \u2192";
+
+      tile.why = "Counts towards Practitioner";
+
+      tile.href = SITE + next.path;
+
+      return tile;
+
+    }
+
+    tile.action = "Save a field checklist \u2192";
+
+    tile.why = "Take it on your next shoot";
+
+    tile.href = CHECKLISTS_URL;
+
+    return tile;
 
   }
 
@@ -3344,7 +3539,7 @@ v1.3.27 — Goal tile unmet checklist rows dark grey (not gold-on-gold)
 
         buildTestTile(examInfo),
 
-        buildPracticeTile(),
+        buildPracticeTile(openedSet),
 
         goal.tile
 
