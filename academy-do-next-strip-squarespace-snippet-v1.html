@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large tiles
+v1.3.0 — badge rail above four tiles + current-stage banner badge (block 2 injection)
 
 =========================== -->
 
@@ -392,6 +392,284 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
 
   }
 
+  #ar-do-next-strip .ar-do-next-strip__badge-rail{
+
+    margin:0 0 18px;
+
+    padding:0 0 18px;
+
+    border-bottom:1px solid rgba(255,255,255,0.08);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__head{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:8px;
+
+    margin:0 0 14px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__title{
+
+    font-size:13px;
+
+    font-weight:700;
+
+    color:#e2e8f0;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__count{
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:#7a8088;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    justify-content:space-between;
+
+    gap:12px 8px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    flex:1 1 0;
+
+    min-width:72px;
+
+    max-width:120px;
+
+    text-align:center;
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-badge{
+
+      flex:0 0 calc(33.333% - 8px);
+
+      min-width:0;
+
+      max-width:none;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle{
+
+    width:46px;
+
+    height:46px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle svg{
+
+    width:22px;
+
+    height:22px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle{
+
+    background:#166534;
+
+    border:1px solid #14532d;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle svg{
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__label{
+
+    color:#fff;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__sublabel{
+
+    color:#7bbf95;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle{
+
+    background:rgba(255,255,255,0.06);
+
+    border:1px dashed rgba(255,255,255,0.2);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
+
+    stroke:#5a6066;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__label{
+
+    color:#cdd2da;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__sublabel{
+
+    color:#7a8088;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__label{
+
+    font-size:12px;
+
+    font-weight:500;
+
+    line-height:1.25;
+
+    margin:0 0 2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__sublabel{
+
+    font-size:11px;
+
+    font-weight:500;
+
+    line-height:1.25;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-banner-stage{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    margin-top:12px;
+
+    text-align:center;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle{
+
+    width:64px;
+
+    height:64px;
+
+    border-radius:50%;
+
+    background:#166534;
+
+    border:1px solid #14532d;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg{
+
+    width:30px;
+
+    height:30px;
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__label{
+
+    font-size:15px;
+
+    font-weight:700;
+
+    color:#f8fafc;
+
+    margin:0 0 2px;
+
+    line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__caption{
+
+    font-size:11px;
+
+    font-weight:600;
+
+    color:rgba(255,255,255,0.65);
+
+    margin:0;
+
+    line-height:1.2;
+
+  }
+
 </style>
 
 
@@ -401,6 +679,8 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
   <div class="ar-do-next-strip__inner">
 
     <div class="ar-do-next-strip__card">
+
+      <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your journey"></div>
 
       <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
 
@@ -637,6 +917,246 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
 
 
   var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
+
+
+
+  var JOURNEY_STAGES = [
+
+    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", alwaysEarned: true },
+
+    { key: "foundation", label: "Foundation", sublabel: "15 camera modules", iconClass: "ti-camera", minModules: 15 },
+
+    { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", minModules: 60 },
+
+    { key: "certified", label: "Certified", sublabel: "5 exams passed", iconClass: "ti-certificate", minExams: 5 },
+
+    { key: "graduate", label: "Graduate", sublabel: "All 15 exams", iconClass: "ti-award", minExams: 15 },
+
+    { key: "master", label: "Master", sublabel: "Applied learning", iconClass: "ti-trophy", stageEarned: false }
+
+  ];
+
+
+
+  var JOURNEY_ICON_SVGS = {
+
+    "ti-school": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M22 9l-10-5-10 5 10 5 10-5z"/><path d="M6 10v6c0 1 2 3 6 3s6-2 6-3v-6"/></svg>',
+
+    "ti-camera": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3"/></svg>',
+
+    "ti-aperture": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>',
+
+    "ti-certificate": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="1"/><path d="M8 20l4-2 4 2v-8H8z"/></svg>',
+
+    "ti-award": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M8.5 14L7 21l5-2 5 2-1.5-7"/></svg>',
+
+    "ti-trophy": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3a4 4 0 01-8 0V4z"/><path d="M6 4H4v1a3 3 0 003 3M18 4h2v1a3 3 0 01-3 3"/><path d="M12 11v3M9 20h6M10 14h4v6h-4z"/></svg>'
+
+  };
+
+
+
+  function isJourneyStageEarned(stage, modulesOpened, examsPassed){
+
+    if (stage.stageEarned === false) return false;
+
+    if (stage.alwaysEarned) return true;
+
+    if (stage.minModules && modulesOpened >= stage.minModules) return true;
+
+    if (stage.minExams && examsPassed >= stage.minExams) return true;
+
+    return false;
+
+  }
+
+
+
+  function computeJourneyBadges(modulesOpened, examsPassed){
+
+    return JOURNEY_STAGES.map(function(stage){
+
+      return {
+
+        key: stage.key,
+
+        label: stage.label,
+
+        sublabel: stage.sublabel,
+
+        iconClass: stage.iconClass,
+
+        earned: isJourneyStageEarned(stage, modulesOpened, examsPassed)
+
+      };
+
+    });
+
+  }
+
+
+
+  function getCurrentStage(badges){
+
+    var current = badges[0];
+
+    for (var i = 0; i < badges.length; i++) {
+
+      if (badges[i].earned) current = badges[i];
+
+    }
+
+    return {
+
+      key: current.key,
+
+      label: current.label,
+
+      levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
+
+      levelTotal: JOURNEY_STAGES.length,
+
+      iconClass: current.iconClass
+
+    };
+
+  }
+
+
+
+  function journeyIconSvg(iconClass){
+
+    return JOURNEY_ICON_SVGS[iconClass] || JOURNEY_ICON_SVGS["ti-school"];
+
+  }
+
+
+
+  function buildBadgeRail(modulesOpened, examsPassed){
+
+    var badges = computeJourneyBadges(modulesOpened, examsPassed);
+
+    var earnedCount = badges.filter(function(b){ return b.earned; }).length;
+
+    var rail = document.createElement("div");
+
+    var head = document.createElement("div");
+
+    head.className = "ar-do-next-badge-rail__head";
+
+    var title = document.createElement("p");
+
+    title.className = "ar-do-next-badge-rail__title";
+
+    title.textContent = "Your journey";
+
+    var count = document.createElement("p");
+
+    count.className = "ar-do-next-badge-rail__count";
+
+    count.textContent = earnedCount + " of " + badges.length + " earned";
+
+    head.appendChild(title);
+
+    head.appendChild(count);
+
+    var row = document.createElement("div");
+
+    row.className = "ar-do-next-badge-rail__row";
+
+    badges.forEach(function(badge){
+
+      var item = document.createElement("div");
+
+      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost");
+
+      var circle = document.createElement("div");
+
+      circle.className = "ar-do-next-badge__circle";
+
+      circle.innerHTML = journeyIconSvg(badge.iconClass);
+
+      var label = document.createElement("p");
+
+      label.className = "ar-do-next-badge__label";
+
+      label.textContent = badge.label;
+
+      var sub = document.createElement("p");
+
+      sub.className = "ar-do-next-badge__sublabel";
+
+      sub.textContent = badge.sublabel;
+
+      item.appendChild(circle);
+
+      item.appendChild(label);
+
+      item.appendChild(sub);
+
+      row.appendChild(item);
+
+    });
+
+    rail.appendChild(head);
+
+    rail.appendChild(row);
+
+    return { rail: rail, badges: badges, badgesEarned: earnedCount };
+
+  }
+
+
+
+  function injectBannerCurrentStage(badges){
+
+    var welcome = document.getElementById("ar-academy-header-welcome");
+
+    if (!welcome) return;
+
+    var current = getCurrentStage(badges);
+
+    var existing = document.getElementById("ar-do-next-banner-stage");
+
+    if (!existing) {
+
+      existing = document.createElement("div");
+
+      existing.id = "ar-do-next-banner-stage";
+
+      welcome.appendChild(existing);
+
+    }
+
+    existing.innerHTML = "";
+
+    var circle = document.createElement("div");
+
+    circle.className = "ar-do-next-banner-stage__circle";
+
+    circle.innerHTML = journeyIconSvg(current.iconClass);
+
+    var label = document.createElement("p");
+
+    label.className = "ar-do-next-banner-stage__label";
+
+    label.textContent = current.label;
+
+    var caption = document.createElement("p");
+
+    caption.className = "ar-do-next-banner-stage__caption";
+
+    caption.textContent = "Level " + current.levelIndex + " of " + current.levelTotal;
+
+    existing.appendChild(circle);
+
+    existing.appendChild(label);
+
+    existing.appendChild(caption);
+
+    return current;
+
+  }
 
 
 
@@ -1140,6 +1660,8 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
 
     var strip = document.getElementById("ar-do-next-strip");
 
+    var badgeRailEl = document.getElementById("ar-do-next-badge-rail");
+
     var statusEl = document.getElementById("ar-do-next-status");
 
     var barFill = document.getElementById("ar-do-next-bar-fill");
@@ -1159,6 +1681,20 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
     var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
 
     var stage = buildStage1Tiles(openedSet, examInfo, rag);
+
+    var badgeRail = buildBadgeRail(openedCount, examsPassed);
+
+    var currentStage = injectBannerCurrentStage(badgeRail.badges);
+
+
+
+    if (badgeRailEl) {
+
+      badgeRailEl.innerHTML = "";
+
+      badgeRailEl.appendChild(badgeRail.rail);
+
+    }
 
 
 
@@ -1239,6 +1775,26 @@ v1.2.2 — coach aligned to dashboard main column (Members Guide offset) + large
       coachDebug.goalTarget = stage.goalTarget;
 
       coachDebug.goalRemaining = stage.goalRemaining;
+
+      coachDebug.badges = badgeRail.badges.map(function(b){
+
+        return { key: b.key, label: b.label, earned: b.earned };
+
+      });
+
+      coachDebug.badgesEarned = badgeRail.badgesEarned;
+
+      coachDebug.currentStage = currentStage ? {
+
+        key: currentStage.key,
+
+        label: currentStage.label,
+
+        levelIndex: currentStage.levelIndex,
+
+        levelTotal: currentStage.levelTotal
+
+      } : null;
 
       coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
 
