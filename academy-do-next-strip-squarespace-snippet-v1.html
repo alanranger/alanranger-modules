@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
-v1.0.1 — fix member id + exam count from summary.passedCount / modules[].status
+v1.0.2 — modules X/60 (all foundation modules) + whoami member-id fallback
 =========================== -->
 
 <style id="ar-do-next-strip-style">
@@ -87,7 +87,9 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
   var API_BASE = "https://alanranger-modules.vercel.app";
   var TRACK_URL = API_BASE + "/api/academy/track-page-view";
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
   var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+  var MODULES_TOTAL = 60;
   var FOUNDATION_URL = SITE + "/academy/online-photography-course";
   var EXAM_BASE = SITE + "/academy/photography-exams-certification";
   var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
@@ -140,6 +142,24 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
     { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
     { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
   ];
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+    "/s/Still-life-photography-assignment.pdf",
+    "/s/Street-photography-assignment.pdf",
+    "/blogs/mastering-abstract-photography",
+    "/s/Black-and-white-photography-assignment.pdf",
+    "/s/Architecture-photography-assignment.pdf",
+    "/s/Shadows-photography-Assignment.pdf",
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+  ]);
 
   var EXAM_MODULE_IDS = [
     "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
@@ -205,10 +225,9 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
   function getOpenedSet(normalized){
     var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
     var set = new Set();
-    var paths = ARTICLE_MODULES.map(function(m){ return m.p; });
     Object.keys(opened).forEach(function(key){
       var p = normalizePath(key);
-      if (paths.indexOf(p) !== -1) set.add(p);
+      if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
     });
     return set;
   }
@@ -367,7 +386,7 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
 
     var openedCount = openedSet.size;
     var examsPassed = examInfo.examsPassed;
-    progressEl.textContent = "Modules opened " + openedCount + "/45 - Exams passed " + examsPassed + "/15";
+    progressEl.textContent = "Modules opened " + openedCount + "/" + MODULES_TOTAL + " - Exams passed " + examsPassed + "/15";
 
     ctasEl.innerHTML = "";
     buildCtas(openedSet, examInfo).forEach(function(link){
@@ -404,6 +423,40 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
   function getMemberEmail(member){
     var d = member && member.data ? member.data : {};
     return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
+  }
+
+  async function fetchWhoami(){
+    try {
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function resolveMemberId(ms, member){
+    var memberId = getMemberId(member);
+    var idSource = memberId ? "getCurrentMember" : "none";
+    if (!memberId && ms && typeof ms.getMemberJSON === "function") {
+      try {
+        var jsonRes = await ms.getMemberJSON();
+        var mj = unwrapMember(jsonRes);
+        var mjId = getMemberId(mj);
+        if (mjId) {
+          memberId = mjId;
+          idSource = "getMemberJSON";
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (!memberId) {
+      var identity = await fetchWhoami();
+      if (identity && identity.memberstack_id) {
+        memberId = String(identity.memberstack_id);
+        idSource = "whoami";
+      }
+    }
+    return { memberId: memberId, idSource: idSource };
   }
 
   function unwrapMember(res){
@@ -504,7 +557,8 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
     if (member && !member.id && member.data && member.data.id) {
       member.id = String(member.data.id);
     }
-    var memberId = getMemberId(member);
+    var resolved = await resolveMemberId(ms, member);
+    var memberId = resolved.memberId;
 
     if (memberId) {
       var expired = await fetchTrialExpired(memberId);
@@ -520,12 +574,13 @@ v1.0.1 — fix member id + exam count from summary.passedCount / modules[].statu
 
     window.__arDoNextStrip = {
       modulesOpened: openedSet.size,
-      modulesTotal: 45,
+      modulesTotal: MODULES_TOTAL,
       examsPassed: examInfo.examsPassed,
       examsTotal: 15,
       nextExamModuleId: examInfo.nextExamModuleId,
       source: examInfo.source,
-      memberId: memberId || null
+      memberId: memberId || null,
+      idSource: resolved.idSource
     };
 
     renderStrip(openedSet, examInfo);

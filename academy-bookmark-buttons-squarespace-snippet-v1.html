@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
-v1.3.2 Fix member id resolution (data.id) + access debug hook
+v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
 - Keeps Memberstack save logic; next/exam use plain <a href> only
@@ -181,6 +181,9 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
   var API_BASE = "https://alanranger-modules.vercel.app";
   var TRACK_URL = API_BASE + "/api/academy/track-page-view";
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+  var MODULES_TOTAL = 60;
+  var LS_SEEN_MEMBER = "arpAcademySeenMember";
   var SIGNUP_URL = SITE + "/free-online-photography-course";
   var FOUNDATION_URL = SITE + "/academy/online-photography-course";
   var EXAM_BASE = SITE + "/academy/photography-exams-certification";
@@ -236,6 +239,24 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
     { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
     { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
   ];
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+    "/s/Still-life-photography-assignment.pdf",
+    "/s/Street-photography-assignment.pdf",
+    "/blogs/mastering-abstract-photography",
+    "/s/Black-and-white-photography-assignment.pdf",
+    "/s/Architecture-photography-assignment.pdf",
+    "/s/Shadows-photography-Assignment.pdf",
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+  ]);
 
   var EXAM_MODULE_IDS = [
     "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
@@ -330,11 +351,90 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
 
   async function waitForMemberstack(){
     var start = Date.now();
-    while (!window.$memberstackDom){
+    while (!window.$memberstackDom || typeof window.$memberstackDom.getMemberJSON !== "function"){
       if (Date.now() - start > 8000) return null;
       await new Promise(r => setTimeout(r, 100));
     }
     return window.$memberstackDom;
+  }
+
+  async function fetchWhoami(){
+    try {
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function memberFromWhoami(identity){
+    if (!identity || !identity.memberstack_id) return null;
+    return {
+      id: String(identity.memberstack_id),
+      data: {
+        id: String(identity.memberstack_id),
+        email: identity.email || null,
+        planConnections: identity.planConnections || []
+      }
+    };
+  }
+
+  function seenMemberFlag(){
+    try { return localStorage.getItem(LS_SEEN_MEMBER) === "1"; } catch (e) { return false; }
+  }
+
+  function hasAcademyJsonData(normalized){
+    return !!(normalized && normalized.arAcademy && typeof normalized.arAcademy === "object");
+  }
+
+  async function resolveMemberIdentity(ms){
+    var out = { member: null, memberId: "", idSource: "none", normalized: {} };
+    var jsonRes = null;
+    if (ms && typeof ms.getMemberJSON === "function") {
+      try {
+        jsonRes = await ms.getMemberJSON();
+        out.normalized = normalizeMemberJson(jsonRes);
+        var mj = unwrapMember(jsonRes);
+        var mjId = getMemberId(mj);
+        if (mjId) {
+          out.memberId = mjId;
+          out.idSource = "getMemberJSON";
+          out.member = mj;
+        } else if (mj) {
+          out.member = mj;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (!out.memberId && ms && typeof ms.getCurrentMember === "function") {
+      for (var i = 0; i < 5 && !out.memberId; i++) {
+        try {
+          var cm = await getMemberExtended(ms);
+          var cmId = getMemberId(cm);
+          if (cmId) {
+            out.memberId = cmId;
+            out.idSource = "getCurrentMember";
+            out.member = cm;
+            break;
+          }
+          if (cm && !out.member) out.member = cm;
+        } catch (e) { /* ignore */ }
+        if (!out.memberId && i < 4) await new Promise(function(r){ setTimeout(r, 400 * (i + 1)); });
+      }
+    }
+    if (!out.memberId) {
+      var identity = await fetchWhoami();
+      var wm = memberFromWhoami(identity);
+      if (wm) {
+        out.memberId = wm.id;
+        out.idSource = "whoami";
+        out.member = wm;
+      }
+    }
+    if (!out.memberId && seenMemberFlag() && hasAcademyJsonData(out.normalized)) {
+      out.idSource = "localStorage:arpAcademySeenMember";
+    }
+    return out;
   }
 
   function unwrapMember(res){
@@ -473,10 +573,17 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
     });
   }
 
-  function evaluateAccess(member){
-    var result = { loggedIn: false, hasAccess: false, reason: "not_logged_in" };
+  function evaluateAccess(member, ctx){
+    var result = { loggedIn: false, hasAccess: false, reason: "not_logged_in", idSource: (ctx && ctx.idSource) || "none" };
+    ctx = ctx || {};
+    var memberId = getMemberId(member) || ctx.memberId || "";
+    if (!memberId && ctx.idSource === "localStorage:arpAcademySeenMember" && hasAcademyJsonData(ctx.normalized)) {
+      result.loggedIn = true;
+      result.hasAccess = true;
+      result.reason = "seen_member_json";
+      return result;
+    }
     if (!member) return result;
-    var memberId = getMemberId(member);
     result.loggedIn = !!memberId;
     if (!memberId) {
       result.reason = "missing_member_id";
@@ -521,8 +628,8 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
     var set = new Set();
     Object.keys(opened).forEach(function(key){
       var p = normalizePath(key);
-      for (var i = 0; i < ARTICLE_MODULES.length; i++) {
-        if (ARTICLE_MODULES[i].p === p) { set.add(p); break; }
+      for (var i = 0; i < FOUNDATION_MODULE_PATHS.length; i++) {
+        if (FOUNDATION_MODULE_PATHS[i] === p) { set.add(p); break; }
       }
     });
     return set.size;
@@ -578,10 +685,10 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
   }
 
   function renderProgressStrip(el, openedCount, examsPassed){
-    var pct = Math.round((openedCount / 45) * 100);
+    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
     el.classList.add("is-progress");
     el.innerHTML =
-      '<p class="ar-lesson-progress-stats">Modules opened: ' + openedCount + '/45 - Exams passed: ' + examsPassed + '/15</p>' +
+      '<p class="ar-lesson-progress-stats">Modules opened: ' + openedCount + '/' + MODULES_TOTAL + ' - Exams passed: ' + examsPassed + '/15</p>' +
       '<div class="ar-lesson-progress-bar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100">' +
       '<div class="ar-lesson-progress-bar__fill" style="width:' + pct + '%;"></div></div>';
     el.classList.remove("is-hidden");
@@ -616,36 +723,45 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
 
   async function wireMemberStrip(){
     var strip = document.getElementById("ar-lesson-member-strip");
-    if (!strip || strip.dataset.wired === "1") return;
+    if (!strip) return;
+    if (strip.dataset.wired === "1" && strip.dataset.wiredFinal === "1") return;
 
     var ms = await waitForMemberstack();
-    var member = null;
-    if (ms && typeof ms.getCurrentMember === "function") {
-      try { member = await getMemberExtended(ms); } catch (e) { member = null; }
+    var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
+    if (ms) {
+      try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
     }
 
-    var access = evaluateAccess(member);
+    var access = evaluateAccess(ctx.member, ctx);
+    access.idSource = ctx.idSource;
     window.__arLessonAccess = access;
 
     if (!access.loggedIn || !access.hasAccess) {
       renderSignupStrip(strip);
-      strip.dataset.wired = "1";
+      if (access.reason !== "missing_member_id") {
+        strip.dataset.wired = "1";
+        strip.dataset.wiredFinal = "1";
+      }
       return;
     }
 
-    var memberId = getMemberId(member);
-    var normalized = {};
-    if (ms && typeof ms.getMemberJSON === "function") {
-      try { normalized = normalizeMemberJson(await ms.getMemberJSON()); } catch (e) { normalized = {}; }
-    }
-    var openedCount = countOpenedModules(normalized);
+    var memberId = ctx.memberId || getMemberId(ctx.member);
+    var openedCount = countOpenedModules(ctx.normalized);
     var progressData = await fetchExamProgress(memberId);
     var examsPassed = passedExamCount(progressData);
     renderProgressStrip(strip, openedCount, examsPassed);
 
+    var member = ctx.member || {};
     var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
     trackLessonPageView(memberId, email);
     strip.dataset.wired = "1";
+    strip.dataset.wiredFinal = "1";
+  }
+
+  function kickMemberStrip(){
+    wireMemberStrip();
+    setTimeout(wireMemberStrip, 600);
+    setTimeout(wireMemberStrip, 1500);
   }
 
   async function wireBookmark(){
@@ -693,13 +809,13 @@ v1.3.2 Fix member id resolution (data.id) + access debug hook
     moveWidgetOnce();
     wireBookmark();
     wireNextModuleButtons();
-    wireMemberStrip();
+    kickMemberStrip();
 
     var obs = new MutationObserver(function(){
       moveWidgetOnce();
       wireBookmark();
       wireNextModuleButtons();
-      wireMemberStrip();
+      kickMemberStrip();
     });
 
     obs.observe(document.documentElement, { childList:true, subtree:true });
