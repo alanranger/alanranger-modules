@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
+v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
 
 =========================== -->
 
@@ -35,24 +35,6 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
     box-shadow:0 4px 14px rgba(0,0,0,0.4);
 
     box-sizing:border-box;
-
-  }
-
-  html.ar-dashboard-fixed-stack #ar-do-next-strip.is-ready{
-
-    position:fixed;
-
-    top:var(--ar-academy-header-height,88px);
-
-    left:0;
-
-    right:0;
-
-    width:100%;
-
-    margin-left:0;
-
-    margin-right:0;
 
   }
 
@@ -958,17 +940,17 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
   var JOURNEY_STAGES = [
 
-    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", alwaysEarned: true },
+    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
 
-    { key: "foundation", label: "Foundation", sublabel: "15 camera modules", iconClass: "ti-camera", minModules: 15 },
+    { key: "foundation", label: "Foundation", sublabel: "15 camera modules", iconClass: "ti-camera", colour: "green", stars: 1, minModules: 15 },
 
-    { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", minModules: 60 },
+    { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", colour: "green", stars: 2, minModules: 60 },
 
-    { key: "certified", label: "Certified", sublabel: "5 exams passed", iconClass: "ti-certificate", minExams: 5 },
+    { key: "certified", label: "Certified", sublabel: "5 exams passed", iconClass: "ti-certificate", colour: "green", stars: 3, minExams: 5 },
 
-    { key: "graduate", label: "Graduate", sublabel: "All 15 exams", iconClass: "ti-award", minExams: 15 },
+    { key: "graduate", label: "Graduate", sublabel: "All 15 exams", iconClass: "ti-award", colour: "green", stars: 4, minExams: 15 },
 
-    { key: "master", label: "Master", sublabel: "Applied learning", iconClass: "ti-trophy", stageEarned: false }
+    { key: "master", label: "Master", sublabel: "Applied learning", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
 
   ];
 
@@ -989,6 +971,100 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
     "ti-trophy": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3a4 4 0 01-8 0V4z"/><path d="M6 4H4v1a3 3 0 003 3M18 4h2v1a3 3 0 01-3 3"/><path d="M12 11v3M9 20h6M10 14h4v6h-4z"/></svg>'
 
   };
+
+
+
+  var BADGE_GREEN = "#166534";
+
+  var BADGE_GREEN_BORDER = "#14532d";
+
+  var BADGE_GOLD = "#b45309";
+
+  var BADGE_GOLD_BORDER = "#92400e";
+
+  var STAR_GOLD = "#f5b301";
+
+
+
+  function badgeEarnedFill(colour){
+
+    return colour === "gold" ? BADGE_GOLD : BADGE_GREEN;
+
+  }
+
+
+
+  function badgeEarnedBorder(colour){
+
+    return colour === "gold" ? BADGE_GOLD_BORDER : BADGE_GREEN_BORDER;
+
+  }
+
+
+
+  function applyBadgeCircleStyle(circle, colour, earned, stageKey){
+
+    var svg = circle.querySelector("svg");
+
+    if (earned) {
+
+      circle.style.background = badgeEarnedFill(colour);
+
+      circle.style.border = "1px solid " + badgeEarnedBorder(colour);
+
+      if (svg) svg.style.stroke = "#fff";
+
+      return;
+
+    }
+
+    circle.style.background = "rgba(255,255,255,0.06)";
+
+    var ring = stageKey === "master" ? "rgba(245,179,1,0.4)" : "rgba(255,255,255,0.2)";
+
+    circle.style.border = "1px dashed " + ring;
+
+    if (svg) svg.style.stroke = "#5a6066";
+
+  }
+
+
+
+  function starSvgMarkup(earned){
+
+    var fill = earned ? STAR_GOLD : "none";
+
+    var opacity = earned ? "1" : "0.35";
+
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" style="opacity:' + opacity + '"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12" fill="' + fill + '" stroke="' + STAR_GOLD + '" stroke-width="1.5"/></svg>';
+
+  }
+
+
+
+  function buildStarRow(count, earned, className){
+
+    var row = document.createElement("div");
+
+    row.className = className;
+
+    for (var i = 0; i < count; i++) {
+
+      row.insertAdjacentHTML("beforeend", starSvgMarkup(earned));
+
+    }
+
+    return row;
+
+  }
+
+
+
+  function earnedSublabelColour(colour){
+
+    return colour === "gold" ? "#fcd34d" : "#7bbf95";
+
+  }
 
 
 
@@ -1022,6 +1098,10 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
         iconClass: stage.iconClass,
 
+        colour: stage.colour,
+
+        stars: stage.stars,
+
         earned: isJourneyStageEarned(stage, modulesOpened, examsPassed)
 
       };
@@ -1052,7 +1132,11 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
       levelTotal: JOURNEY_STAGES.length,
 
-      iconClass: current.iconClass
+      iconClass: current.iconClass,
+
+      colour: current.colour,
+
+      stars: current.stars
 
     };
 
@@ -1112,7 +1196,7 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
       circle.innerHTML = journeyIconSvg(badge.iconClass);
 
-      applyBadgeCircleStyle(circle, badge.colour, badge.earned);
+      applyBadgeCircleStyle(circle, badge.colour, badge.earned, badge.key);
 
       var label = document.createElement("p");
 
@@ -1120,7 +1204,7 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
       label.textContent = badge.label;
 
-      label.style.color = badge.earned ? "#fff" : rgbaFromHex(badge.colour, 0.78);
+      label.style.color = badge.earned ? "#fff" : "#cdd2da";
 
       if (badge.stars > 0) {
 
@@ -1144,7 +1228,7 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
       sub.textContent = badge.sublabel;
 
-      sub.style.color = badge.earned ? mixHexWithWhite(badge.colour, 0.55) : rgbaFromHex(badge.colour, 0.45);
+      sub.style.color = badge.earned ? earnedSublabelColour(badge.colour) : "#7a8088";
 
       item.appendChild(sub);
 
@@ -1200,7 +1284,7 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
     circle.innerHTML = journeyIconSvg(current.iconClass);
 
-    applyBadgeCircleStyle(circle, current.colour, true);
+    applyBadgeCircleStyle(circle, current.colour, true, current.key);
 
     var label = document.createElement("p");
 
@@ -1882,67 +1966,51 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
     strip.removeAttribute("aria-hidden");
 
-    publishDoNextStripMetrics();
-
-    document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
+    publishDoNextStripMetrics(true);
 
   }
 
 
 
-  function publishDoNextStripMetrics(){
+  var __arPublishingStripMetrics = false;
+
+  function publishDoNextStripMetrics(emitEvent){
+
+    if (__arPublishingStripMetrics) return;
 
     var strip = document.getElementById("ar-do-next-strip");
 
     var root = document.documentElement;
 
-    var h = 0;
+    __arPublishingStripMetrics = true;
 
-    if (strip && strip.classList.contains("is-ready")) {
+    try {
 
-      h = Math.ceil(strip.getBoundingClientRect().height) || 0;
-
-    }
-
-    root.style.setProperty("--ar-do-next-strip-height", h + "px");
-
-    var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
-
-    root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
-
-    var path = (window.location && window.location.pathname) ? window.location.pathname.replace(/\/+$/, "") || "/" : "/";
-
-    if (path === "/academy/dashboard") {
-
-      root.classList.add("ar-dashboard-fixed-stack");
-
-      var spacer = document.getElementById("ar-do-next-strip-spacer");
+      var h = 0;
 
       if (strip && strip.classList.contains("is-ready")) {
 
-        if (!spacer) {
-
-          spacer = document.createElement("div");
-
-          spacer.id = "ar-do-next-strip-spacer";
-
-          spacer.setAttribute("aria-hidden", "true");
-
-          strip.insertAdjacentElement("afterend", spacer);
-
-        }
-
-        spacer.style.height = h + "px";
-
-      } else if (spacer) {
-
-        spacer.style.height = "0px";
+        h = Math.ceil(strip.getBoundingClientRect().height) || 0;
 
       }
 
-    }
+      root.style.setProperty("--ar-do-next-strip-height", h + "px");
 
-    document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
+      var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
+
+      root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
+
+      if (emitEvent !== false) {
+
+        document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
+
+      }
+
+    } finally {
+
+      __arPublishingStripMetrics = false;
+
+    }
 
   }
 
@@ -1956,13 +2024,17 @@ v1.3.3 — badge colour tiers + 0-5 star ratings (block 2)
 
     if (typeof ResizeObserver !== "undefined") {
 
-      new ResizeObserver(publishDoNextStripMetrics).observe(strip);
+      new ResizeObserver(function(){ publishDoNextStripMetrics(true); }).observe(strip);
 
     }
 
-    window.addEventListener("resize", publishDoNextStripMetrics);
+    window.addEventListener("resize", function(){ publishDoNextStripMetrics(true); });
 
-    document.addEventListener("ar-academy-sticky-metrics", publishDoNextStripMetrics);
+    document.addEventListener("ar-academy-sticky-metrics", function(){
+
+      publishDoNextStripMetrics(false);
+
+    });
 
   }
 
