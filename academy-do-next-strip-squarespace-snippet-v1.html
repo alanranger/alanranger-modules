@@ -2,7 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
-v1.3.20 — Fix annual/trial detection guards + admin preview mode
+v1.3.23 — Practitioner + Certified floor gates; badge target-line copy finalised
 
 =========================== -->
 
@@ -360,6 +360,22 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
   }
 
+  @keyframes ar-do-next-tile-wobble{
+
+    0%, 100%{ transform:rotate(0deg) scale(1); }
+
+    15%{ transform:rotate(-1.1deg) scale(1.015); }
+
+    30%{ transform:rotate(0.9deg) scale(1.015); }
+
+    45%{ transform:rotate(-0.7deg) scale(1.01); }
+
+    60%{ transform:rotate(0.5deg) scale(1.008); }
+
+    75%{ transform:rotate(-0.25deg) scale(1.004); }
+
+  }
+
   #ar-do-next-strip .ar-do-next-tile{
 
     display:flex;
@@ -380,11 +396,31 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
     box-sizing:border-box;
 
-    transition:opacity 0.15s ease;
+    transform-origin:center center;
+
+    transition:opacity 0.15s ease, transform 0.15s ease;
 
   }
 
-  #ar-do-next-strip .ar-do-next-tile:hover{ opacity:0.92; }
+  #ar-do-next-strip .ar-do-next-tile:hover{
+
+    opacity:0.96;
+
+    animation:ar-do-next-tile-wobble 0.55s ease-in-out;
+
+  }
+
+  @media (prefers-reduced-motion: reduce){
+
+    #ar-do-next-strip .ar-do-next-tile:hover{
+
+      animation:none;
+
+      opacity:0.92;
+
+    }
+
+  }
 
   #ar-do-next-strip .ar-do-next-tile__eyebrow{
 
@@ -1520,6 +1556,16 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
+  // SYNC: lib/academy-module-paths.js (CAMERA 0-14, COMPOSITION 25-34, PDF assignments 45-59)
+
+  var CAMERA_MODULE_PATHS = ARTICLE_MODULES.slice(0, 15).map(function(m){ return m.p; });
+
+  var COMPOSITION_MODULE_PATHS = ARTICLE_MODULES.slice(25, 35).map(function(m){ return m.p; });
+
+  var PDF_ASSIGNMENT_PATHS = FOUNDATION_MODULE_PATHS.slice(45, 60);
+
+
+
   var EXAM_MODULE_IDS = [
 
     "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
@@ -1588,19 +1634,43 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
+  var PRACTITIONER_GATE = {
+
+    requireAllCamera: true,
+
+    requireAllComposition: true,
+
+    minPdfAssignments: 3,
+
+    minExamsPassed: 8
+
+  };
+
+
+
+  var CERTIFIED_GATE = {
+
+    requireAllExamsPassed: true,
+
+    minModulesOpened: 30
+
+  };
+
+
+
   var JOURNEY_STAGES = [
 
     { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
 
     { key: "foundation", label: "Foundation", sublabel: "3 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
 
-    { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", colour: "green", stars: 2, minModules: 60 },
+    { key: "practitioner", label: "Practitioner", sublabel: "Camera + composition, 3 assignments, 8 exams", iconClass: "ti-aperture", colour: "green", stars: 2, practitionerGate: true },
 
-    { key: "certified", label: "Certified", sublabel: "5 exams passed", iconClass: "ti-certificate", colour: "green", stars: 3, minExams: 5 },
+    { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
 
-    { key: "graduate", label: "Graduate", sublabel: "All 15 exams", iconClass: "ti-award", colour: "green", stars: 4, minExams: 15 },
+    { key: "graduate", label: "Graduate", sublabel: "All modules + sustained activity", iconClass: "ti-award", colour: "green", stars: 4, minExams: 15 },
 
-    { key: "master", label: "Master", sublabel: "Applied learning", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
+    { key: "master", label: "Master", sublabel: "Long-term applied mastery", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
 
   ];
 
@@ -1718,6 +1788,66 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
+  function countOpenedInList(openedSet, paths){
+
+    var n = 0;
+
+    for (var i = 0; i < paths.length; i++) {
+
+      if (openedSet.has(paths[i])) n++;
+
+    }
+
+    return n;
+
+  }
+
+
+
+  function getAllModulesOpenedCount(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+
+    var seen = new Set();
+
+    Object.keys(opened).forEach(function(key){
+
+      var p = normalizePath(key);
+
+      if (p) seen.add(p);
+
+    });
+
+    return seen.size;
+
+  }
+
+
+
+  function computeGateStats(normalized, foundationOpenedSet, examInfo, preview){
+
+    var stats = {
+
+      foundationModulesOpened: foundationOpenedSet.size,
+
+      cameraOpened: countOpenedInList(foundationOpenedSet, CAMERA_MODULE_PATHS),
+
+      compositionOpened: countOpenedInList(foundationOpenedSet, COMPOSITION_MODULE_PATHS),
+
+      pdfAssignmentsOpened: countOpenedInList(foundationOpenedSet, PDF_ASSIGNMENT_PATHS),
+
+      totalModulesOpened: preview ? preview.modulesOpened : getAllModulesOpenedCount(normalized),
+
+      examsPassed: examInfo.examsPassed || 0
+
+    };
+
+    return stats;
+
+  }
+
+
+
   function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded){
 
     if (modulesOpened < FOUNDATION_GATE.minModules) return false;
@@ -1730,17 +1860,49 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function isJourneyStageEarned(stage, modulesOpened, examsPassed, activeDays, engagementDegraded){
+  function isPractitionerGateEarned(stats){
+
+    if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) return false;
+
+    if (PRACTITIONER_GATE.requireAllComposition && stats.compositionOpened < COMPOSITION_MODULE_PATHS.length) return false;
+
+    if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
+
+    if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
+
+    return true;
+
+  }
+
+
+
+  function isCertifiedGateEarned(stats){
+
+    if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
+
+    if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+
+    // TODO(points-layer): AND memberMeetsCertifiedPointsThreshold(stats) when longevity engine ships
+
+    return true;
+
+  }
+
+
+
+  function isJourneyStageEarned(stage, stats, activeDays, engagementDegraded){
 
     if (stage.stageEarned === false) return false;
 
     if (stage.alwaysEarned) return true;
 
-    if (stage.foundationGate) return isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded);
+    if (stage.foundationGate) return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
 
-    if (stage.minModules && modulesOpened >= stage.minModules) return true;
+    if (stage.practitionerGate) return isPractitionerGateEarned(stats);
 
-    if (stage.minExams && examsPassed >= stage.minExams) return true;
+    if (stage.certifiedGate) return isCertifiedGateEarned(stats);
+
+    if (stage.minExams && stats.examsPassed >= stage.minExams) return true;
 
     return false;
 
@@ -1748,7 +1910,7 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function computeJourneyBadges(modulesOpened, examsPassed, activeDays, engagementDegraded){
+  function computeJourneyBadges(stats, activeDays, engagementDegraded){
 
     return JOURNEY_STAGES.map(function(stage){
 
@@ -1766,7 +1928,7 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
         stars: stage.stars,
 
-        earned: isJourneyStageEarned(stage, modulesOpened, examsPassed, activeDays, engagementDegraded)
+        earned: isJourneyStageEarned(stage, stats, activeDays, engagementDegraded)
 
       };
 
@@ -1886,9 +2048,9 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function buildBadgeRail(modulesOpened, examsPassed, activeDays, engagementDegraded){
+  function buildBadgeRail(stats, activeDays, engagementDegraded){
 
-    var badges = computeJourneyBadges(modulesOpened, examsPassed, activeDays, engagementDegraded);
+    var badges = computeJourneyBadges(stats, activeDays, engagementDegraded);
 
     var earnedCount = badges.filter(function(b){ return b.earned; }).length;
 
@@ -2316,15 +2478,67 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function formatPractitionerProximity(modulesOpened){
+  function practitionerRequirementsMet(stats){
 
-    var short = Math.max(0, 60 - modulesOpened);
+    var total = 4;
 
-    if (!short) return "";
+    var met = 0;
 
-    if (short === 1) return "Open 1 more module to earn Practitioner";
+    if (!PRACTITIONER_GATE.requireAllCamera || stats.cameraOpened >= CAMERA_MODULE_PATHS.length) met++;
 
-    return "You're " + short + " modules from your Practitioner badge";
+    if (!PRACTITIONER_GATE.requireAllComposition || stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length) met++;
+
+    if (stats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met++;
+
+    if (stats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met++;
+
+    return { met: met, total: total };
+
+  }
+
+
+
+  function formatPractitionerProximity(stats){
+
+    var r = practitionerRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    var left = r.total - r.met;
+
+    if (left === 1) return "1 of " + r.total + " requirements complete for Practitioner";
+
+    return left + " of " + r.total + " requirements complete for Practitioner";
+
+  }
+
+
+
+  function formatCertifiedProximity(stats){
+
+    var parts = [];
+
+    if (stats.examsPassed < 15) {
+
+      var examLeft = 15 - stats.examsPassed;
+
+      parts.push(examLeft + " " + pluralWord(examLeft, "exam", "exams"));
+
+    }
+
+    if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) {
+
+      var modLeft = CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened;
+
+      parts.push(modLeft + " " + pluralWord(modLeft, "module", "modules"));
+
+    }
+
+    if (!parts.length) return "";
+
+    if (parts.length === 1) return parts[0] + " from Certified";
+
+    return parts.join(" and ") + " from Certified";
 
   }
 
@@ -2394,14 +2608,6 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
     if (next.key === "practitioner") {
 
-      var pShort = Math.max(0, 60 - modulesOpened);
-
-      if (pShort <= 5) {
-
-        return "You've got " + days + " days to push toward Practitioner - you're nearly there.";
-
-      }
-
       return "Lots of time to keep exploring - " + days + " days left in your trial.";
 
     }
@@ -2424,19 +2630,19 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function computeMomentumRag(badges, modulesOpened, activeDays, examsPassed, engagementDegraded){
+  function computeMomentumRag(badges, stats, activeDays, engagementDegraded){
 
     var foundation = badges.filter(function(b){ return b.key === "foundation"; })[0];
 
     if (!foundation || !foundation.earned) {
 
-      var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+      var modShort = Math.max(0, FOUNDATION_GATE.minModules - stats.foundationModulesOpened);
 
       var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
 
-      var proximity = formatFoundationProximity(modulesOpened, activeDays, engagementDegraded);
+      var proximity = formatFoundationProximity(stats.foundationModulesOpened, activeDays, engagementDegraded);
 
-      if (!modulesOpened && (!activeDays || engagementDegraded)) {
+      if (!stats.foundationModulesOpened && (!activeDays || engagementDegraded)) {
 
         return { state: "red", label: proximity || "Just getting started", color: RAG_COLORS.red };
 
@@ -2456,17 +2662,37 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
     if (practitioner && !practitioner.earned) {
 
-      var pShort = Math.max(0, 60 - modulesOpened);
+      var pReq = practitionerRequirementsMet(stats);
 
-      var pLabel = formatPractitionerProximity(modulesOpened);
+      var pLabel = formatPractitionerProximity(stats);
 
-      if (pShort <= 5) return { state: "green", label: pLabel || "Almost there", color: RAG_COLORS.green };
+      if (pReq.met >= pReq.total - 1 && pReq.met < pReq.total) return { state: "green", label: pLabel || "Almost there", color: RAG_COLORS.green };
 
       return { state: "amber", label: pLabel || "Building momentum", color: RAG_COLORS.amber };
 
     }
 
-    if (modulesOpened >= 30 && examsPassed >= 1) {
+    var certified = badges.filter(function(b){ return b.key === "certified"; })[0];
+
+    if (certified && !certified.earned) {
+
+      var cLabel = formatCertifiedProximity(stats);
+
+      var examLeft = Math.max(0, 15 - stats.examsPassed);
+
+      var modLeft = Math.max(0, CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened);
+
+      if (examLeft <= 1 && modLeft <= 1 && (examLeft > 0 || modLeft > 0)) {
+
+        return { state: "green", label: cLabel || "Almost there for Certified", color: RAG_COLORS.green };
+
+      }
+
+      return { state: "amber", label: cLabel || "Building toward Certified", color: RAG_COLORS.amber };
+
+    }
+
+    if (stats.totalModulesOpened >= 30 && stats.examsPassed >= 1) {
 
       return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
 
@@ -2736,7 +2962,7 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-  function renderStrip(openedSet, examInfo, coachDebug, engagement){
+  function renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats){
 
     var strip = document.getElementById("ar-do-next-strip");
 
@@ -2766,9 +2992,9 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
     var engagementDegraded = !engagement;
 
-    var badgeRail = buildBadgeRail(openedCount, examsPassed, activeDays, engagementDegraded);
+    var badgeRail = buildBadgeRail(gateStats, activeDays, engagementDegraded);
 
-    var rag = computeMomentumRag(badgeRail.badges, openedCount, activeDays, examsPassed, engagementDegraded);
+    var rag = computeMomentumRag(badgeRail.badges, gateStats, activeDays, engagementDegraded);
 
     var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
 
@@ -2812,7 +3038,7 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
     label.className = "ar-do-next-rag__label";
 
-    var trialClause = formatTrialNudgeClause(engagement, rag, openedCount, activeDays, engagementDegraded, badgeRail.badges);
+    var trialClause = formatTrialNudgeClause(engagement, rag, gateStats.foundationModulesOpened, activeDays, engagementDegraded, badgeRail.badges);
 
     var momentumLabel = rag.label;
 
@@ -2871,6 +3097,8 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
       coachDebug.modulesOpened = openedCount;
 
       coachDebug.modulesTotal = MODULES_TOTAL;
+
+      coachDebug.gateStats = gateStats;
 
       coachDebug.examsPassed = examsPassed;
 
@@ -3602,7 +3830,9 @@ v1.3.20 — Fix annual/trial detection guards + admin preview mode
 
 
 
-    renderStrip(openedSet, examInfo, coachDebug, engagement);
+    var gateStats = computeGateStats(normalized, openedSet, examInfo, preview);
+
+    renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats);
 
     if (!preview) trackPageView(memberId, memberEmail);
 
