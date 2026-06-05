@@ -1,0 +1,487 @@
+<!-- ===========================
+AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
+v1.0.0 — paste BETWEEN header block (1) and dashboard body v1.3.6 (3)
+=========================== -->
+
+<style id="ar-do-next-strip-style">
+  #ar-do-next-strip{
+    display:none;
+    width:100%;
+    background:#0f1419;
+    color:#e2e8f0;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    margin:0 0 14px;
+    box-sizing:border-box;
+  }
+  #ar-do-next-strip.is-ready{ display:block; }
+  body[data-ar-academy-state="expired-trial"] #ar-do-next-strip{
+    display:none !important;
+  }
+  #ar-do-next-strip .ar-do-next-strip__inner{
+    max-width:1400px;
+    margin:0 auto;
+    padding:14px 12px 16px;
+    box-sizing:border-box;
+  }
+  @media (min-width:1201px){
+    #ar-do-next-strip .ar-do-next-strip__inner{
+      margin-left:352px;
+      max-width:calc(1400px - 352px);
+    }
+  }
+  #ar-do-next-strip .ar-do-next-strip__heading{
+    margin:0 0 6px;
+    font-size:15px;
+    font-weight:800;
+    color:#f8fafc;
+    letter-spacing:0.01em;
+  }
+  #ar-do-next-strip .ar-do-next-strip__progress{
+    margin:0 0 12px;
+    font-size:13px;
+    font-weight:600;
+    color:#94a3b8;
+  }
+  #ar-do-next-strip .ar-do-next-strip__ctas{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  #ar-do-next-strip .ar-do-next-cta{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 18px;
+    border-radius:8px;
+    border:2px solid #14532d;
+    background:#166534;
+    color:#fff !important;
+    font-size:15px;
+    font-weight:800;
+    line-height:1.2;
+    text-decoration:none !important;
+    box-shadow:none;
+  }
+  #ar-do-next-strip .ar-do-next-cta:hover{
+    background:#15803d;
+    color:#fff !important;
+  }
+  #ar-do-next-strip .ar-do-next-cta:visited{ color:#fff !important; }
+</style>
+
+<div id="ar-do-next-strip" aria-hidden="true">
+  <div class="ar-do-next-strip__inner">
+    <p class="ar-do-next-strip__heading">Do these next</p>
+    <p class="ar-do-next-strip__progress" id="ar-do-next-progress">Loading your progress...</p>
+    <div class="ar-do-next-strip__ctas" id="ar-do-next-ctas"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  if (window.__arDoNextStripInit) return;
+  window.__arDoNextStripInit = true;
+
+  var SITE = "https://www.alanranger.com";
+  var API_BASE = "https://alanranger-modules.vercel.app";
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+  var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+  var FOUNDATION_URL = SITE + "/academy/online-photography-course";
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+  var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
+  var CHECKLISTS_URL = SITE + "/academy/photography-checklists";
+
+  var ARTICLE_MODULES = [
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+  ];
+
+  var EXAM_MODULE_IDS = [
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+  ];
+
+  var EXAM_NAMES = {
+    "module-01-exposure": "Exposure",
+    "module-02-aperture": "Aperture",
+    "module-03-shutter": "Shutter",
+    "module-04-iso": "ISO",
+    "module-05-manual": "Manual",
+    "module-06-metering": "Metering",
+    "module-07-bracketing": "Bracketing",
+    "module-08-focusing": "Focusing",
+    "module-09-dof": "DoF",
+    "module-10-drange": "DRange",
+    "module-11-wb": "WB",
+    "module-12-drive": "Drive",
+    "module-13-jpeg-raw": "JPEG/RAW",
+    "module-14-sensors": "Sensors",
+    "module-15-focal": "Focal"
+  };
+
+  function normalizePath(url){
+    if (!url || typeof url !== "string") return "/";
+    var path = url;
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+      try { path = new URL(path).pathname; } catch (e) {
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+        if (m) path = m[1];
+      }
+    }
+    path = path.split("?")[0].split("#")[0];
+    path = path.replace(/\/+$/, "") || "/";
+    if (path.charAt(0) !== "/") path = "/" + path;
+    return path;
+  }
+
+  function unwrapStoredJson(obj){
+    var cur = obj;
+    for (var i = 0; i < 10; i++) {
+      if (!cur || typeof cur !== "object") break;
+      if (!cur.data || typeof cur.data !== "object") break;
+      var d = cur.data;
+      var looks = (d.history && Array.isArray(d.history)) ||
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+        (d.arAcademy && typeof d.arAcademy === "object");
+      if (looks) { cur = d; continue; }
+      break;
+    }
+    return cur || {};
+  }
+
+  function normalizeMemberJson(jsonRes){
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+    return unwrapStoredJson(stored);
+  }
+
+  function getOpenedSet(normalized){
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var set = new Set();
+    var paths = ARTICLE_MODULES.map(function(m){ return m.p; });
+    Object.keys(opened).forEach(function(key){
+      var p = normalizePath(key);
+      if (paths.indexOf(p) !== -1) set.add(p);
+    });
+    return set;
+  }
+
+  function firstUnopenedArticle(openedSet){
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { idx: i, mod: ARTICLE_MODULES[i] };
+    }
+    return null;
+  }
+
+  function examStatusMap(progressData){
+    var map = {};
+    var mods = progressData && Array.isArray(progressData.modules) ? progressData.modules : [];
+    mods.forEach(function(m){
+      if (m && m.moduleId) map[m.moduleId] = m.status || "not_taken";
+    });
+    return map;
+  }
+
+  function firstUnpassedExam(statusMap){
+    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+      var id = EXAM_MODULE_IDS[i];
+      if (statusMap[id] !== "passed") return { idx: i, id: id };
+    }
+    return null;
+  }
+
+  function passedCount(statusMap){
+    var n = 0;
+    EXAM_MODULE_IDS.forEach(function(id){
+      if (statusMap[id] === "passed") n++;
+    });
+    return n;
+  }
+
+  function shortArticleTitle(t){
+    return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
+  }
+
+  function buildCtas(openedSet, statusMap){
+    var links = [];
+    var openedCount = openedSet.size;
+    var examsPassed = passedCount(statusMap);
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    if (nextArt) {
+      var prefix = openedCount === 0 ? "Start here:" : "Continue:";
+      links.push({
+        href: SITE + nextArt.mod.p,
+        label: prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192"
+      });
+    } else if (examsPassed < 15) {
+      var nextExam = firstUnpassedExam(statusMap);
+      if (nextExam) {
+        var num = String(nextExam.idx + 1).padStart(2, "0");
+        var name = EXAM_NAMES[nextExam.id] || "Exam";
+        links.push({
+          href: EXAM_BASE + "?module=" + nextExam.id,
+          label: "Take your next exam: " + num + " " + name + " \u2192"
+        });
+      }
+    } else {
+      links.push({
+        href: PRACTICE_URL,
+        label: "Explore practice assignments \u2192"
+      });
+    }
+
+    if (nextArt && nextArt.idx <= 14) {
+      var examId = EXAM_MODULE_IDS[nextArt.idx];
+      if (examId && statusMap[examId] !== "passed") {
+        var en = EXAM_NAMES[examId] || "Exam";
+        var enNum = String(nextArt.idx + 1).padStart(2, "0");
+        links.push({
+          href: EXAM_BASE + "?module=" + examId,
+          label: "Take exam: " + enNum + " " + en + " \u2192"
+        });
+      }
+    } else if (examsPassed < 15) {
+      var fallbackExam = firstUnpassedExam(statusMap);
+      if (fallbackExam && links.length < 2) {
+        var fNum = String(fallbackExam.idx + 1).padStart(2, "0");
+        links.push({
+          href: EXAM_BASE + "?module=" + fallbackExam.id,
+          label: "Take exam: " + fNum + " " + (EXAM_NAMES[fallbackExam.id] || "Exam") + " \u2192"
+        });
+      }
+    }
+
+    if (openedCount < 10) {
+      links.push({ href: FOUNDATION_URL, label: "Foundation course overview \u2192" });
+    } else if (examsPassed < 15) {
+      links.push({ href: EXAM_BASE, label: "All exams \u2192" });
+    } else if (links.length < 3) {
+      links.push({ href: PRACTICE_URL, label: "Practice packs \u2192" });
+    }
+
+    var seen = new Set();
+    var out = [];
+    links.forEach(function(l){
+      if (!l || !l.href || seen.has(l.href) || out.length >= 3) return;
+      seen.add(l.href);
+      out.push(l);
+    });
+    return out;
+  }
+
+  function renderStrip(openedSet, statusMap){
+    var strip = document.getElementById("ar-do-next-strip");
+    var progressEl = document.getElementById("ar-do-next-progress");
+    var ctasEl = document.getElementById("ar-do-next-ctas");
+    if (!strip || !progressEl || !ctasEl) return;
+
+    var openedCount = openedSet.size;
+    var examsPassed = passedCount(statusMap);
+    progressEl.textContent = "Modules opened " + openedCount + "/45 - Exams passed " + examsPassed + "/15";
+
+    ctasEl.innerHTML = "";
+    buildCtas(openedSet, statusMap).forEach(function(link){
+      var a = document.createElement("a");
+      a.className = "ar-do-next-cta";
+      a.href = link.href;
+      a.textContent = link.label;
+      ctasEl.appendChild(a);
+    });
+
+    strip.classList.add("is-ready");
+    strip.removeAttribute("aria-hidden");
+  }
+
+  function isExpiredTrialBody(){
+    return document.body && document.body.getAttribute("data-ar-academy-state") === "expired-trial";
+  }
+
+  function waitForMemberstack(maxMs){
+    maxMs = typeof maxMs === "number" ? maxMs : 8000;
+    return new Promise(function(resolve){
+      var start = Date.now();
+      (function tick(){
+        if (window.$memberstackDom && typeof window.$memberstackDom.getMemberJSON === "function") {
+          resolve(window.$memberstackDom);
+          return;
+        }
+        if ((Date.now() - start) > maxMs) { resolve(null); return; }
+        setTimeout(tick, 100);
+      })();
+    });
+  }
+
+  function getMemberEmail(member){
+    var d = member && member.data ? member.data : {};
+    return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
+  }
+
+  function unwrapMember(res){
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data) return res.data;
+    return res;
+  }
+
+  async function fetchTrialExpired(memberId){
+    if (!memberId) return false;
+    try {
+      var res = await fetch(TRIAL_STATUS_URL + "?memberId=" + encodeURIComponent(memberId), { credentials: "omit" });
+      if (!res.ok) return false;
+      var data = await res.json();
+      return !!(data && (data.isExpiredTrial || data.state === "expired-trial"));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function fetchExamProgress(memberId){
+    if (!memberId) return null;
+    try {
+      var res = await fetch(PROGRESS_URL, {
+        headers: { "X-Memberstack-Id": memberId },
+        credentials: "omit"
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function trackPageView(memberId, email){
+    if (!memberId) return;
+    var key = "ar-pv-dashboard-" + memberId;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch (e) { /* ignore */ }
+
+    fetch(TRACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "omit",
+      body: JSON.stringify({
+        member_id: memberId,
+        email: email || null,
+        path: "/academy/dashboard",
+        title: "Academy Dashboard",
+        category: "dashboard",
+        meta: { source: "do-next-strip", surface: "dashboard" }
+      })
+    }).catch(function(){ /* non-blocking */ });
+  }
+
+  function watchExpiredTrial(onChange){
+    if (!document.body) return;
+    if (isExpiredTrialBody()) onChange(true);
+    var obs = new MutationObserver(function(){
+      onChange(isExpiredTrialBody());
+    });
+    obs.observe(document.body, { attributes: true, attributeFilter: ["data-ar-academy-state"] });
+    setTimeout(function(){ obs.disconnect(); }, 30000);
+  }
+
+  async function init(){
+    var strip = document.getElementById("ar-do-next-strip");
+    if (!strip) return;
+
+    watchExpiredTrial(function(expired){
+      if (expired) {
+        strip.classList.remove("is-ready");
+        strip.setAttribute("aria-hidden", "true");
+      }
+    });
+    if (isExpiredTrialBody()) return;
+
+    var ms = await waitForMemberstack();
+    if (!ms) {
+      var progressEl = document.getElementById("ar-do-next-progress");
+      if (progressEl) progressEl.textContent = "Sign in to see your next steps.";
+      strip.classList.add("is-ready");
+      return;
+    }
+
+    var memberRes = null;
+    try {
+      if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
+    } catch (e) { /* ignore */ }
+    var member = unwrapMember(memberRes);
+    var memberId = member && member.id ? String(member.id) : "";
+
+    if (memberId) {
+      var expired = await fetchTrialExpired(memberId);
+      if (expired || isExpiredTrialBody()) return;
+    }
+
+    var jsonRes = null;
+    try { jsonRes = await ms.getMemberJSON(); } catch (e) { jsonRes = null; }
+    var normalized = normalizeMemberJson(jsonRes);
+    var openedSet = getOpenedSet(normalized);
+    var progressData = await fetchExamProgress(memberId);
+    var statusMap = examStatusMap(progressData);
+
+    renderStrip(openedSet, statusMap);
+    trackPageView(memberId, getMemberEmail(member));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<!-- ===========================
+END: AR | DASHBOARD "DO THESE NEXT" STRIP
+=========================== -->
