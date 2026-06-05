@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
-v1.1 Fix A: dynamic Next module + Take the exam buttons on lesson pages
+v1.2 Fix A: green forward buttons + dynamic exam label
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
 - Keeps Memberstack save logic; next/exam use plain <a href> only
@@ -47,6 +47,19 @@ v1.1 Fix A: dynamic Next module + Take the exam buttons on lesson pages
   #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
   #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
   #ar-bookmark-widget .ar-btn.is-hidden{ display:none !important; }
+  /* Forward actions: match dashboard course CTA green (#16a34a core, gradient from .ar-academy-dashboard__course-cta) */
+  #ar-bookmark-widget #ar-next-module-btn,
+  #ar-bookmark-widget #ar-take-exam-btn{
+    background:linear-gradient(180deg,#34d399 0%,#16a34a 55%,#15803d 100%) !important;
+    border:2px solid #4ade80 !important;
+    color:#fff !important;
+    text-shadow:0 1px 0 rgba(0,0,0,0.25);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.2) inset,0 4px 16px rgba(34,197,94,0.45);
+  }
+  #ar-bookmark-widget #ar-next-module-btn:hover,
+  #ar-bookmark-widget #ar-take-exam-btn:hover{
+    filter:brightness(1.08) saturate(1.05);
+  }
 
   #ar-bookmark-widget .ar-help{
     width:100%;
@@ -176,6 +189,13 @@ v1.1 Fix A: dynamic Next module + Take the exam buttons on lesson pages
     return -1;
   }
 
+  function examButtonLabel(title){
+    var shortTitle = String(title || "")
+      .replace(/\bWhat Is /gi, "")
+      .replace(/\bWhat Are /gi, "");
+    return "Take the " + shortTitle + " exam \u2192";
+  }
+
   function wireNextModuleButtons(){
     var nextBtn = document.getElementById("ar-next-module-btn");
     var examBtn = document.getElementById("ar-take-exam-btn");
@@ -203,7 +223,10 @@ v1.1 Fix A: dynamic Next module + Take the exam buttons on lesson pages
     nextBtn.removeAttribute("aria-hidden");
 
     if (idx <= 14 && EXAM_MODULE_IDS[idx]) {
+      var examSpan = examBtn.querySelector("span");
+      var mod = ARTICLE_MODULES[idx];
       examBtn.href = EXAM_BASE + "?module=" + EXAM_MODULE_IDS[idx];
+      if (examSpan && mod) examSpan.textContent = examButtonLabel(mod.t);
       examBtn.classList.remove("is-hidden");
       examBtn.removeAttribute("aria-hidden");
     } else {
