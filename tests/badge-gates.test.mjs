@@ -22,6 +22,7 @@ const {
   evaluateBadges,
   computeLongevityPoints,
   getCurrentStage,
+  getNextUnearnedBadge,
 } = gates;
 
 const DAY_MS = 86400000;
@@ -265,4 +266,21 @@ test("17. getCurrentStage carries paused when summit badge is idle 60+ days", ()
   assert.equal(current.key, "master");
   assert.equal(current.colour, "gold");
   assert.equal(current.paused, true);
+});
+
+test("18. Graduate earned, Master not -> getNextUnearnedBadge returns master", () => {
+  const result = evaluateBadges(graduateCountsStats(), 10, false, paidContext());
+  const next = getNextUnearnedBadge(result.badges);
+  assert.equal(result.earned.graduate, true);
+  assert.equal(result.earned.master, false);
+  assert.equal(next.key, "master");
+  assert.equal(result.target, "master");
+});
+
+test("19. all 6 badges earned -> getNextUnearnedBadge returns null", () => {
+  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
+  const next = getNextUnearnedBadge(result.badges);
+  assert.equal(result.earned.master, true);
+  assert.equal(next, null);
+  assert.equal(result.target, null);
 });

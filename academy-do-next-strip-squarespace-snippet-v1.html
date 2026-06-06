@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.41 — fix: remove duplicate getNextUnearnedBadge that excluded master; tile-4 now shows Goal: Master when Graduate earned (earned everything only when all 6 earned)
 v1.3.40 — fix: getCurrentStage carries colour/stars/iconClass to banner badge (gold Master + stars restored in header); preview injects lastActivityAt (default recent/un-paused; lastactivity=70 forces paused)
 v1.3.39 — fix: badge rail/banner regression - computeJourneyBadges now carries colour, stars, iconClass and sublabel through from the stage, restoring gold Master, per-stage stars (1-5) and correct icons (display passthrough only; earn logic, thresholds, weights and decay unchanged)
 v1.3.38 — preview mode injects Graduate/Master longevity query params (appliedLearning, practicePacks, pdfAssignments, activeMonths)
@@ -2802,7 +2803,7 @@ function practitionerRequirementsMet(stats) {
 
     var next = getNextUnearnedBadge(badges);
 
-    if (!next) return badgeKey === "master";
+    if (!next) return false;
 
     var nextIdx = -1;
 
@@ -3721,20 +3722,6 @@ function practitionerRequirementsMet(stats) {
       engagement.hasConverted !== true &&
 
       typeof engagement.daysLeftInTrial === "number" && engagement.daysLeftInTrial > 0;
-
-  }
-
-
-
-  function getNextUnearnedBadge(badges){
-
-    for (var i = 0; i < badges.length; i++) {
-
-      if (!badges[i].earned && badges[i].key !== "master") return badges[i];
-
-    }
-
-    return null;
 
   }
 
