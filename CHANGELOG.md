@@ -22,6 +22,19 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-07] - Strip S 1.3.46: ghostMode flag sync + write-guard invariant
+
+### Fixed
+- **Do-next strip** — `ghostMode` / `ghostMemberId` now stay in sync with `idSource` (`ghost_*` ↔ `ghostMode === true` ↔ `ghostMemberId` set)
+- When `ghost-login` JSON fetch fails, read-only ghost mode is preserved (was clearing `ghostMode` while `resolveMemberId` still returned `ghost_url`)
+- `trackPageView` also checks `doNextRuntime.ghostMode` (defence in depth)
+- Debug hook adds `writesSuppressed: true` in ghost mode
+
+### Paste
+- **Strip S 1.3.46** + **Header H 1.4.15** (stamp only). No Vercel deploy required.
+
+---
+
 ## [2026-06-07] - Strip S 1.3.45: ghost mode member-id resolution
 
 ### Fixed

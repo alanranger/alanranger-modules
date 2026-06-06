@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.46 — ghost mode: sync ghostMode/ghostMemberId with idSource (ghost_* invariant); preserve read-only flags when ghost-login fetch fails; writesSuppressed on debug hook
 v1.3.45 — ghost mode: strip resolves ?ghost= member id (URL + ar_ghost_context_v1); fetches ghost member JSON via ghost-login API; suppresses all writes in ghost mode
 v1.3.44 — CORRECTION: revert badge strip to plain arrow row (S 1.3.42 style); Option-C stepped milestone track moved to progress bar under proximity line
 v1.3.43 — Your Journey badge rail as stepped milestone track (connecting line fill from computeTrackFillPct; target node ring + %; thin bar + proximity retained) [SUPERSEDED — track was on wrong element]
@@ -4978,6 +4979,40 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
+  function isGhostIdSource(src){
+
+    return !!(src && String(src).indexOf("ghost_") === 0);
+
+  }
+
+
+
+  function syncGhostFlagsFromResolved(resolved, ghostCtx, ghostModeIn, ghostMemberIdIn){
+
+    if (isGhostIdSource(resolved && resolved.idSource) && resolved.memberId) {
+
+      return { ghostMode: true, ghostMemberId: String(resolved.memberId) };
+
+    }
+
+    if (ghostCtx && ghostCtx.ghostMode) {
+
+      return {
+
+        ghostMode: true,
+
+        ghostMemberId: ghostMemberIdIn || ghostCtx.ghostMemberId || null
+
+      };
+
+    }
+
+    return { ghostMode: !!ghostModeIn, ghostMemberId: ghostModeIn ? (ghostMemberIdIn || null) : null };
+
+  }
+
+
+
   function resolveGhostContextFromPage(){
 
     var url = readGhostUrlParams();
@@ -5050,9 +5085,15 @@ function computeTrackFillPct(badges, progressPct) {
 
     var ghostCtx = resolveGhostContextFromPage();
 
-    if (ghostCtx.ghostMode && ghostCtx.ghostMemberId) {
+    if (ghostCtx.ghostMode && (ghostCtx.ghostMemberId || ghostCtx.ghostEmail)) {
 
-      return { memberId: String(ghostCtx.ghostMemberId), idSource: ghostCtx.idSource || "ghost" };
+      if (ghostCtx.ghostMemberId) {
+
+        return { memberId: String(ghostCtx.ghostMemberId), idSource: ghostCtx.idSource || "ghost" };
+
+      }
+
+      return { memberId: null, idSource: ghostCtx.idSource || "ghost_email" };
 
     }
 
@@ -5442,7 +5483,7 @@ function computeTrackFillPct(badges, progressPct) {
 
   function trackPageView(memberId, email){
 
-    if (!memberId) return;
+    if (doNextRuntime.ghostMode || !memberId) return;
 
     var key = "ar-pv-dashboard-" + memberId;
 
@@ -5610,9 +5651,9 @@ function computeTrackFillPct(badges, progressPct) {
 
         console.warn("[do-next-strip] ghost mode load failed:", ghostErr);
 
-        ghostMode = false;
+        ghostMode = !!ghostCtx.ghostMode;
 
-        ghostMemberId = null;
+        ghostMemberId = ghostCtx.ghostMemberId || ghostMemberId || null;
 
       }
 
@@ -5662,13 +5703,19 @@ function computeTrackFillPct(badges, progressPct) {
 
     var memberId = resolved.memberId;
 
+    var ghostSync = syncGhostFlagsFromResolved(resolved, ghostCtx, ghostMode, ghostMemberId);
+
+    ghostMode = ghostSync.ghostMode;
+
+    ghostMemberId = ghostSync.ghostMemberId;
+
     doNextRuntime.ms = ms;
 
     doNextRuntime.memberId = memberId || null;
 
     doNextRuntime.ghostMode = ghostMode;
 
-    doNextRuntime.ghostMemberId = ghostMode ? (memberId || null) : null;
+    doNextRuntime.ghostMemberId = ghostMode ? (ghostMemberId || memberId || null) : null;
 
 
 
@@ -5736,7 +5783,9 @@ function computeTrackFillPct(badges, progressPct) {
 
       ghostMode: ghostMode,
 
-      ghostMemberId: ghostMode ? (memberId || null) : null,
+      ghostMemberId: ghostMode ? (ghostMemberId || memberId || null) : null,
+
+      writesSuppressed: !!ghostMode,
 
       source: examInfo.source,
 
