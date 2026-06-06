@@ -4,8 +4,8 @@ For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 
 Snippet versions shown live (update all three when re-pasting blocks):
-  Header H = 1.4.3 | Strip S = 1.3.33 | Dashboard D = 1.3.8
-v1.3.8: Bounce back from false MS login redirect when dashboard session marker valid (B-path fix).
+  Header H = 1.4.3 | Strip S = 1.3.33 | Dashboard D = 1.3.9
+v1.3.9: Bounce back uses confirmed session-cache access (accessConfirmed) not just marker id.
 -->
 
 <style id="ar-academy-header-style">
@@ -411,7 +411,7 @@ v1.3.8: Bounce back from false MS login redirect when dashboard session marker v
       <span
         id="ar-academy-header-snippet-version"
         title="Header / Do-next strip / Dashboard snippet versions"
-      >H 1.4.3 · S 1.3.33 · D 1.3.8</span>
+      >H 1.4.3 · S 1.3.33 · D 1.3.9</span>
     </div>
     <button
       id="ar-academy-header-logout-btn"
@@ -445,6 +445,19 @@ v1.3.8: Bounce back from false MS login redirect when dashboard session marker v
     }
   }
 
+  function hasCachedDashboardAccess() {
+    try {
+      var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.accessConfirmed || !parsed.id || !parsed.at) return false;
+      if (Date.now() - parsed.at >= 4 * 60 * 60 * 1000) return false;
+      return !!(parsed.hasAccess || (parsed.planCount && parsed.planCount > 0));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isIntentionalLoginRedirect() {
     try {
       var raw = sessionStorage.getItem(AUTH_LOGIN_ALLOW_KEY);
@@ -472,7 +485,7 @@ v1.3.8: Bounce back from false MS login redirect when dashboard session marker v
   function bounceBackFromFalseLogin() {
     var normalPath = path.replace(/\/+$/, "") || "/";
     if (normalPath !== "/academy/login") return;
-    if (!hasRecentDashboardSession()) return;
+    if (!hasCachedDashboardAccess() && !hasRecentDashboardSession()) return;
     if (isIntentionalLoginRedirect()) return;
     var qs = (window.location && window.location.search) ? window.location.search : "";
     if (qs.indexOf("reason=timeout") !== -1) return;

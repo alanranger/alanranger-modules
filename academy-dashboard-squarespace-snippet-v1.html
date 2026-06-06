@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.6) — Squarespace Snippet
+Academy Dashboard UI (v1.3.9) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -16,6 +16,7 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
 v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (temporary; for live bounce pin-down).
 v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
 v1.3.8: B-path fix — block external MS network-failure login redirect when session marker valid; whoami-first on fast return; header bounce-back from false login.
+v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
 -->
 
 <script>
@@ -3137,6 +3138,7 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
     var AUTH_TRACE_KEY = "ar-auth-trace";
     var AUTH_LOGIN_ALLOW_KEY = "ar-auth-login-allow-v1";
     var AUTH_TRACE_MAX = 50;
+    var SESSION_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
     var WHOAMI_URL = API_BASE + "/api/exams/whoami";
 
     function allowIntentionalLoginRedirect(reason) {
@@ -3169,28 +3171,97 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
       var target = String(url || "");
       if (target.indexOf("/academy/login") === -1) return false;
       if (isIntentionalLoginRedirect()) return false;
-      return hasRecentDashboardSession();
+      return hasCachedDashboardAccess() || hasRecentDashboardSession();
+    }
+
+    function readDashboardSession() {
+      try {
+        var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function markDashboardSessionConfirmed(member) {
+      if (!member || !member.data) return;
+      var memberId = member.id || member.data.id;
+      if (!memberId) return;
+      var pcs = getPlanConnections(member);
+      try {
+        sessionStorage.setItem(DASHBOARD_SESSION_KEY, JSON.stringify({
+          id: String(memberId),
+          at: Date.now(),
+          accessConfirmed: true,
+          hasAccess: hasAccess(member),
+          planCount: pcs.length,
+          email: getMemberEmail(member) || null
+        }));
+      } catch (e) { /* ignore */ }
     }
 
     function markDashboardSession(memberId) {
       if (!memberId) return;
       try {
+        var prev = readDashboardSession() || {};
         sessionStorage.setItem(DASHBOARD_SESSION_KEY, JSON.stringify({
           id: String(memberId),
-          at: Date.now()
+          at: Date.now(),
+          accessConfirmed: !!prev.accessConfirmed,
+          hasAccess: prev.hasAccess,
+          planCount: prev.planCount,
+          email: prev.email || null
         }));
       } catch (e) { /* ignore */ }
     }
 
     function hasRecentDashboardSession() {
-      try {
-        var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
-        if (!raw) return false;
-        var parsed = JSON.parse(raw);
-        return !!(parsed && parsed.id && parsed.at && (Date.now() - parsed.at < 4 * 60 * 60 * 1000));
-      } catch (e) {
-        return false;
+      var parsed = readDashboardSession();
+      return !!(parsed && parsed.id && parsed.at && (Date.now() - parsed.at < SESSION_CACHE_TTL_MS));
+    }
+
+    function hasCachedDashboardAccess() {
+      var parsed = readDashboardSession();
+      if (!parsed || !parsed.accessConfirmed || !parsed.id || !parsed.at) return false;
+      if (Date.now() - parsed.at >= SESSION_CACHE_TTL_MS) return false;
+      return !!(parsed.hasAccess || (parsed.planCount && parsed.planCount > 0));
+    }
+
+    function getCachedAccessMember() {
+      if (!hasCachedDashboardAccess()) return null;
+      var parsed = readDashboardSession();
+      var planConnections = (parsed.planCount && parsed.planCount > 0)
+        ? [{ status: "active", planId: "cached", payment: { priceId: "cached" } }]
+        : [];
+      return {
+        id: String(parsed.id),
+        data: {
+          id: String(parsed.id),
+          email: parsed.email || null,
+          planConnections: planConnections
+        },
+        __fromSessionCache: true
+      };
+    }
+
+    function scheduleBackgroundMemberHydrate(ms) {
+      function tryRefresh() {
+        var chain = ms
+          ? getMemberExtended(ms)
+          : fetchWhoamiIdentity().then(function(identity) { return memberFromWhoami(identity); });
+        Promise.resolve(chain).then(function(m) {
+          if (!m || !m.data || !memberCanAccessDashboard(m)) return;
+          markDashboardSessionConfirmed(m);
+          if (typeof renderMemberStatus === "function") {
+            try { renderMemberStatus(m, ms); } catch (e) { /* no-op */ }
+          }
+          if (typeof loadExamProgress === "function") {
+            try { loadExamProgress(m); } catch (e) { /* no-op */ }
+          }
+        }).catch(function() { /* non-fatal background hydrate */ });
       }
+      setTimeout(tryRefresh, 250);
+      setTimeout(tryRefresh, 2500);
     }
 
     function fetchWhoamiIdentity() {
@@ -3248,6 +3319,8 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
     }
 
     function resolveDashboardMember(ms) {
+      var cached = getCachedAccessMember();
+      if (cached) return Promise.resolve(cached);
       if (!hasRecentDashboardSession()) {
         return getMemberExtendedWithRetry(ms, 12);
       }
@@ -6337,96 +6410,19 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
       } catch (e) { /* ignore */ }
 
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
-      function runDashboardAccessGuard(ms, preloadedMember) {
-        logAuthRedirect("guard-entry", "runDashboardAccessGuard", preloadedMember || null, null);
-        var memberPromise = preloadedMember
-          ? Promise.resolve(preloadedMember)
-          : resolveDashboardMember(ms);
-        return memberPromise.then(function(m){
-          if (!m || !m.data) {
-            if (deferAuthInsteadOfLogin(ms)) {
-              logAuthRedirect("guard-main", "deferred-hydrate-retry", m, null);
-              return;
-            }
-            safeRedirect(applyRewindEmailToUrl(LOGIN_URL), {
-              stage: "guard-main", reason: "no-member-after-retry", member: m
-            });
-            return;
-          }
+      var __arDashboardBooted = false;
 
-          console.log("[MS] member payload", m);
-          if (forceExpiredTest) {
-            console.warn("[ar-test-expired] Forcing expired-trial locked mode via URL override");
-          }
+      function bootDashboardAfterAccess(m, ms, successStage) {
+        if (__arDashboardBooted || !m || !m.data) return;
+        __arDashboardBooted = true;
+        markDashboardSessionConfirmed(m);
+        if (dashboardEl) dashboardEl.classList.add("is-ready");
+        logAuthSuccess(successStage || "guard-main", m);
+        renderMemberStatus(m, ms);
+        handleUpgradeReturn(ms);
+        maybeShowActiveTrialPrompt(m);
 
-          var pcs = getPlanConnections(m);
-          var hasAnyPlan = pcs.length > 0;
-          var activePlans = pcs.filter(isActivePlanConnection);
-
-          if ((hasAccess(m) || activePlans.length > 0) && !forceExpiredTest) {
-            var memberId = m.id || (m.data && m.data.id);
-            if (memberId) markDashboardSession(memberId);
-            if (dashboardEl) dashboardEl.classList.add("is-ready");
-            logAuthSuccess("guard-main", m);
-            renderMemberStatus(m, ms);
-            handleUpgradeReturn(ms);
-            maybeShowActiveTrialPrompt(m);
-          } else {
-            var mId = (m && (m.id || (m.data && m.data.id))) || null;
-            var bounceAsUnactivated = function(){
-              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
-                logAuthRedirect("guard-bounce", "deferred-session-marker", m, null);
-                return;
-              }
-              try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
-              safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"), {
-                stage: "guard-bounce", reason: "trial-not-activated", member: m
-              });
-            };
-            if (!mId && !forceExpiredTest) { bounceAsUnactivated(); return; }
-            if (!mId && forceExpiredTest) {
-              enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
-              handleUpgradeReturn(ms);
-              return;
-            }
-            return fetchTrialStatus(mId).then(function(status){
-              var finalStatus = status;
-              if (forceExpiredTest && (!finalStatus || !finalStatus.isExpiredTrial)) {
-                finalStatus = synthesizeExpiredStatus();
-              }
-              if (finalStatus && finalStatus.isExpiredTrial) {
-                enterExpiredTrialMode(m, ms, finalStatus);
-                handleUpgradeReturn(ms);
-                return;
-              }
-              if (!hasAnyPlan) { bounceAsUnactivated(); return; }
-              bounceAsUnactivated();
-            }).catch(function(err){
-              console.warn("[expired-trial] status check failed:", err && err.message);
-              if (forceExpiredTest) {
-                enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
-                handleUpgradeReturn(ms);
-                return;
-              }
-              if (hasAccess(m) || activePlans.length > 0) {
-                var okId = m.id || (m.data && m.data.id);
-                if (okId) markDashboardSession(okId);
-                if (dashboardEl) dashboardEl.classList.add("is-ready");
-                logAuthSuccess("guard-trial-catch", m);
-                renderMemberStatus(m, ms);
-                handleUpgradeReturn(ms);
-                maybeShowActiveTrialPrompt(m);
-                return;
-              }
-              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
-                logAuthRedirect("guard-trial-catch", "deferred-session-marker", m, null);
-                return;
-              }
-              bounceAsUnactivated();
-            });
-          }
-          
-          // Inactivity logout (30 minutes of no activity)
+        // Inactivity logout (30 minutes of no activity)
           (function initInactivityLogout(){
             var INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
             var timeoutId = null;
@@ -6561,7 +6557,102 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
               window.history.replaceState({}, "", newUrl);
             }
           }
+      }
+
+      function tryBootFromSessionCache(ms, stage) {
+        var cached = getCachedAccessMember();
+        if (!cached) return false;
+        logAuthRedirect(stage || "guard-entry", "session-cache-render", cached, null);
+        bootDashboardAfterAccess(cached, ms, "session-cache");
+        scheduleBackgroundMemberHydrate(ms);
+        return true;
+      }
+
+      function runDashboardAccessGuard(ms, preloadedMember) {
+        logAuthRedirect("guard-entry", "runDashboardAccessGuard", preloadedMember || null, null);
+        if (!preloadedMember && tryBootFromSessionCache(ms, "guard-entry")) {
+          return Promise.resolve();
+        }
+        var memberPromise = preloadedMember
+          ? Promise.resolve(preloadedMember)
+          : resolveDashboardMember(ms);
+        return memberPromise.then(function(m){
+          if (!m || !m.data) {
+            if (tryBootFromSessionCache(ms, "guard-main")) return;
+            if (deferAuthInsteadOfLogin(ms)) {
+              logAuthRedirect("guard-main", "deferred-hydrate-retry", m, null);
+              return;
+            }
+            safeRedirect(applyRewindEmailToUrl(LOGIN_URL), {
+              stage: "guard-main", reason: "no-member-after-retry", member: m
+            });
+            return;
+          }
+
+          console.log("[MS] member payload", m);
+          if (forceExpiredTest) {
+            console.warn("[ar-test-expired] Forcing expired-trial locked mode via URL override");
+          }
+
+          var pcs = getPlanConnections(m);
+          var hasAnyPlan = pcs.length > 0;
+          var activePlans = pcs.filter(isActivePlanConnection);
+
+          if ((hasAccess(m) || activePlans.length > 0) && !forceExpiredTest) {
+            bootDashboardAfterAccess(m, ms, "guard-main");
+            return;
+          }
+
+          var mId = (m && (m.id || (m.data && m.data.id))) || null;
+          var bounceAsUnactivated = function(){
+            if (tryBootFromSessionCache(ms, "guard-bounce")) return;
+            if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
+              logAuthRedirect("guard-bounce", "deferred-session-marker", m, null);
+              return;
+            }
+            try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
+            safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"), {
+              stage: "guard-bounce", reason: "trial-not-activated", member: m
+            });
+          };
+          if (!mId && !forceExpiredTest) { bounceAsUnactivated(); return; }
+          if (!mId && forceExpiredTest) {
+            enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
+            handleUpgradeReturn(ms);
+            return;
+          }
+          return fetchTrialStatus(mId).then(function(status){
+            var finalStatus = status;
+            if (forceExpiredTest && (!finalStatus || !finalStatus.isExpiredTrial)) {
+              finalStatus = synthesizeExpiredStatus();
+            }
+            if (finalStatus && finalStatus.isExpiredTrial) {
+              enterExpiredTrialMode(m, ms, finalStatus);
+              handleUpgradeReturn(ms);
+              return;
+            }
+            if (!hasAnyPlan) { bounceAsUnactivated(); return; }
+            bounceAsUnactivated();
+          }).catch(function(err){
+            console.warn("[expired-trial] status check failed:", err && err.message);
+            if (forceExpiredTest) {
+              enterExpiredTrialMode(m, ms, synthesizeExpiredStatus());
+              handleUpgradeReturn(ms);
+              return;
+            }
+            if (hasAccess(m) || activePlans.length > 0) {
+              bootDashboardAfterAccess(m, ms, "guard-trial-catch");
+              return;
+            }
+            if (tryBootFromSessionCache(ms, "guard-trial-catch")) return;
+            if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
+              logAuthRedirect("guard-trial-catch", "deferred-session-marker", m, null);
+              return;
+            }
+            bounceAsUnactivated();
+          });
         }).catch(function(){
+          if (tryBootFromSessionCache(ms, "guard-catch")) return;
           if (deferAuthInsteadOfLogin(ms)) {
             logAuthRedirect("guard-main", "deferred-hydrate-retry-catch", null, null);
             return;
@@ -6572,8 +6663,10 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
 
       waitForMemberstack(15000).then(function(ms){
         if (!ms) {
+          if (tryBootFromSessionCache(null, "memberstack-wait-early")) return;
           return waitForMemberstack(12000).then(function(msLate) {
             if (!msLate) {
+              if (tryBootFromSessionCache(null, "memberstack-wait")) return;
               if (hasRecentDashboardSession()) {
                 logAuthRedirect("memberstack-wait", "shell-only-session-marker", null, null);
                 showDashboardShell();
