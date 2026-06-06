@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.43 — Your Journey badge rail as stepped milestone track (connecting line fill from computeTrackFillPct; target node ring + %; thin bar + proximity retained)
 v1.3.42 — badge-aware progress bar + proximity for all six rungs (re-based to next badge; Graduate/Master proximity + counts detail)
 v1.3.41 — fix: remove duplicate getNextUnearnedBadge that excluded master; tile-4 now shows Goal: Master when Graduate earned (earned everything only when all 6 earned)
 v1.3.40 — fix: getCurrentStage carries colour/stars/iconClass to banner badge (gold Master + stars restored in header); preview injects lastActivityAt (default recent/un-paused; lastactivity=70 forces paused)
@@ -1114,7 +1115,64 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-badge-rail__track{
+
+    position:relative;
+
+    width:100%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__track-line,
+  #ar-do-next-strip .ar-do-next-badge-rail__track-fill{
+
+    position:absolute;
+
+    top:29px;
+
+    left:59px;
+
+    right:59px;
+
+    height:3px;
+
+    border-radius:999px;
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__track-line{
+
+    background:rgba(255,255,255,0.12);
+
+    z-index:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__track-fill{
+
+    width:0;
+
+    background:#166534;
+
+    z-index:1;
+
+    transition:width 0.25s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__track-fill--gold{
+
+    background:#b45309;
+
+  }
+
   #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+    position:relative;
+
+    z-index:2;
 
     display:flex;
 
@@ -1134,33 +1192,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   #ar-do-next-strip .ar-do-next-badge-rail__arrow{
 
-    flex:0 0 22px;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    align-self:flex-start;
-
-    margin-top:17px;
-
-    height:24px;
-
-    color:rgba(255,255,255,0.38);
-
-    pointer-events:none;
-
-  }
-
-  #ar-do-next-strip .ar-do-next-badge-rail__arrow svg{
-
-    width:18px;
-
-    height:18px;
-
-    display:block;
+    display:none;
 
   }
 
@@ -1176,7 +1208,8 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     }
 
-    #ar-do-next-strip .ar-do-next-badge-rail__arrow{
+    #ar-do-next-strip .ar-do-next-badge-rail__track-line,
+    #ar-do-next-strip .ar-do-next-badge-rail__track-fill{
 
       display:none;
 
@@ -1222,6 +1255,67 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-badge--target .ar-do-next-badge__circle{
+
+    box-shadow:0 0 0 2px rgba(34,197,94,0.95);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--target.ar-do-next-badge--target-master .ar-do-next-badge__circle{
+
+    box-shadow:0 0 0 2px rgba(245,179,1,0.9);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__target-pct{
+
+    position:absolute;
+
+    top:44px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    font-size:11px;
+
+    font-weight:700;
+
+    line-height:1;
+
+    color:#fff;
+
+    background:rgba(0,0,0,0.55);
+
+    padding:2px 5px;
+
+    border-radius:4px;
+
+    pointer-events:none;
+
+    white-space:nowrap;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle-wrap{
+
+    position:relative;
+
+    width:58px;
+
+    height:58px;
+
+    margin:0 0 6px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle-wrap .ar-do-next-badge__circle{
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle-wrap .ar-do-next-badge__circle,
   #ar-do-next-strip .ar-do-next-badge__circle{
 
     width:58px;
@@ -1245,8 +1339,6 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
     align-items:center;
 
     justify-content:center;
-
-    margin:0 0 6px;
 
     box-sizing:border-box;
 
@@ -2674,6 +2766,20 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
   return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key };
 }
 
+function computeTrackFillPct(badges, progressPct) {
+  if (!badges || !badges.length) return 0;
+  var segmentCount = badges.length - 1;
+  if (segmentCount <= 0) return 100;
+  if (!getNextUnearnedBadge(badges)) return 100;
+  var lastEarnedIdx = -1;
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) lastEarnedIdx = i;
+    else break;
+  }
+  var fillUnits = lastEarnedIdx + safeNum(progressPct, 0) / 100;
+  return Math.min(100, Math.round((fillUnits / segmentCount) * 100));
+}
+
   // END BADGE-GATES-SYNC
 
 
@@ -3144,29 +3250,59 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
 
 
 
-  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext){
+  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext, badges, progress){
 
     wireBadgeTooltipDismiss();
 
-    var badges = computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext);
+    if (!badges) badges = computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext);
 
     var earnedCount = badges.filter(function(b){ return b.earned; }).length;
+
+    var nextTarget = getNextUnearnedBadge(badges);
+
+    var trackFillPct = progress ? computeTrackFillPct(badges, progress.pct) : 0;
+
+    var trackFillGold = !progress || !progress.nextKey ? trackFillPct >= 100 : progress.nextKey === "master";
 
     var rail = document.createElement("div");
 
     rail.className = "ar-do-next-badge-rail";
 
+    var track = document.createElement("div");
+
+    track.className = "ar-do-next-badge-rail__track";
+
+    var trackLine = document.createElement("div");
+
+    trackLine.className = "ar-do-next-badge-rail__track-line";
+
+    trackLine.setAttribute("aria-hidden", "true");
+
+    var trackFill = document.createElement("div");
+
+    trackFill.className = "ar-do-next-badge-rail__track-fill" + (trackFillGold ? " ar-do-next-badge-rail__track-fill--gold" : "");
+
+    trackFill.setAttribute("aria-hidden", "true");
+
+    track.appendChild(trackLine);
+
+    track.appendChild(trackFill);
+
     var row = document.createElement("div");
 
     row.className = "ar-do-next-badge-rail__row";
 
-    badges.forEach(function(badge, idx){
+    badges.forEach(function(badge){
 
-      if (idx > 0) row.appendChild(buildJourneyArrow());
+      var isTarget = nextTarget && badge.key === nextTarget.key;
 
       var item = document.createElement("div");
 
-      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost") + (badge.paused ? " ar-do-next-badge--paused" : "");
+      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost") + (badge.paused ? " ar-do-next-badge--paused" : "") + (isTarget ? " ar-do-next-badge--target" + (badge.key === "master" ? " ar-do-next-badge--target-master" : "") : "");
+
+      var circleWrap = document.createElement("div");
+
+      circleWrap.className = "ar-do-next-badge__circle-wrap";
 
       var circle = document.createElement("div");
 
@@ -3178,7 +3314,31 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
 
       if (isUpcomingBadge(badges, badge.key)) attachBadgeTooltip(item, circle, badge.key, stats, activeDays, engagementDegraded, badges);
 
-      else item.appendChild(circle);
+      else circleWrap.appendChild(circle);
+
+      if (isTarget && progress) {
+
+        var targetPct = document.createElement("span");
+
+        targetPct.className = "ar-do-next-badge__target-pct";
+
+        targetPct.textContent = progress.pct + "%";
+
+        circleWrap.appendChild(targetPct);
+
+      }
+
+      var trigger = item.querySelector(".ar-do-next-badge__trigger");
+
+      if (trigger && trigger.parentNode === item) {
+
+        item.removeChild(trigger);
+
+        circleWrap.insertBefore(trigger, circleWrap.firstChild);
+
+      }
+
+      item.insertBefore(circleWrap, item.firstChild);
 
       var label = document.createElement("p");
 
@@ -3220,7 +3380,19 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
 
     });
 
-    rail.appendChild(row);
+    track.appendChild(row);
+
+    rail.appendChild(track);
+
+    requestAnimationFrame(function(){
+
+      var span = trackLine.offsetWidth;
+
+      if (span > 0) trackFill.style.width = Math.round((trackFillPct / 100) * span) + "px";
+
+      else trackFill.style.width = trackFillPct + "%";
+
+    });
 
     return { rail: rail, badges: badges, badgesEarned: earnedCount };
 
@@ -4332,11 +4504,13 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
 
     var gateContext = buildGateContext(engagement);
 
-    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+    var badges = computeJourneyBadges(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+
+    var progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+
+    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext, badges, progress);
 
     var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
-
-    var progress = computeNextBadgeProgress(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
 
     var pct = progress.pct;
 
@@ -4441,6 +4615,8 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
       coachDebug.progressLabel = progress.label;
 
       coachDebug.progressDegraded = progress.degraded;
+
+      coachDebug.trackFillPct = computeTrackFillPct(badgeRail.badges, pct);
 
       coachDebug.progressNextKey = progress.nextKey;
 

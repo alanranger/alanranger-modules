@@ -38,6 +38,7 @@ const fnNames = [
   "masterRequirementsMet",
   "componentRatio",
   "computeNextBadgeProgress",
+  "computeTrackFillPct",
 ];
 
 function extractFunction(source, name) {

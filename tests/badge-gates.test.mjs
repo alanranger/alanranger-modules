@@ -26,6 +26,7 @@ const {
   graduateRequirementsMet,
   masterRequirementsMet,
   computeNextBadgeProgress,
+  computeTrackFillPct,
 } = gates;
 
 const DAY_MS = 86400000;
@@ -349,4 +350,36 @@ test("24. Foundation stage -> progress to Foundation from modules + active days"
   const progress = computeNextBadgeProgress(result.badges, stats, 2, false, 2, 60);
   assert.equal(progress.label, "67% to Foundation");
   assert.equal(progress.pct, 67);
+});
+
+test("25. track fill matches progress toward Graduate (Certified earned, 63%)", () => {
+  const stats = certifiedFloorStats({
+    appliedLearningOpened: 12,
+    practicePacksOpened: 6,
+    pdfAssignmentsOpened: 3,
+    distinctActiveMonthsAllTime: 2,
+  });
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
+  assert.equal(progress.pct, 63);
+  assert.equal(computeTrackFillPct(result.badges, progress.pct), 73);
+});
+
+test("26. track fill matches progress toward Master (Graduate earned, 73%)", () => {
+  const stats = graduateCountsStats({
+    appliedLearningOpened: 18,
+    practicePacksOpened: 12,
+    pdfAssignmentsOpened: 6,
+    distinctActiveMonthsAllTime: 5,
+  });
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
+  assert.equal(progress.pct, 73);
+  assert.equal(computeTrackFillPct(result.badges, progress.pct), 95);
+});
+
+test("27. all badges earned -> track fill 100%", () => {
+  const stats = masterCountsStats();
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  assert.equal(computeTrackFillPct(result.badges, 100), 100);
 });
