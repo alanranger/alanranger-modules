@@ -1,0 +1,3193 @@
+<!DOCTYPE html>
+<html class="ar-academy">
+<head>
+  <meta charset="utf-8" />
+  <title>Academy dashboard snippet test</title>
+  <style>
+    body { margin: 0; background: #0f1419; font-family: system-ui, sans-serif; }
+    .sqs-layout { max-width: 1400px; margin: 0 auto; padding: 20px; color: #fff; }
+    .tall { height: 2400px; background: linear-gradient(#0f1419, #1a2030); }
+  </style>
+  
+  /* Academy Header Elements - positioned below Squarespace header */
+  /* Make it sticky below the Squarespace header */
+  #ar-academy-header-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 32px;
+    background: #000;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 998;
+    min-height: 80px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  
+  /* Left: Welcome message (+ optional journey badge from block 2) */
+  #ar-academy-header-welcome {
+    grid-column: 1;
+    justify-self: start;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    max-width: 100%;
+    z-index: 3;
+  }
+
+  #ar-academy-header-welcome-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage {
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle {
+    width: 52px;
+    height: 52px;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg {
+    width: 26px;
+    height: 26px;
+  }
+  
+  #ar-academy-header-welcome-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+  }
+  
+  #ar-academy-header-welcome-name {
+    color: #E57200;
+    font-weight: 800;
+    font-size: 22px;
+  }
+  
+  #ar-academy-header-last-login {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.3;
+    font-weight: 500;
+  }
+  
+  /* Center: Academy Dashboard title */
+  #ar-academy-header-center {
+    grid-column: 2;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-width: 0;
+    max-width: min(560px, 100%);
+    text-align: center;
+    z-index: 1;
+  }
+  
+  #ar-academy-header-logo-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  
+  #ar-academy-header-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+  
+  #ar-academy-header-subtitle {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 4px 0 0 0;
+    line-height: 1.3;
+    font-weight: 500;
+  }
+  
+  /* Right: Logo and Logout */
+  #ar-academy-header-right {
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+    z-index: 3;
+  }
+  
+  #ar-academy-header-brand-logo {
+    width: 180px;
+    height: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  
+  #ar-academy-header-logout-btn {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+  
+  #ar-academy-header-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
+  }
+  
+  /* Responsive adjustments - match dashboard breakpoint at 1200px */
+  @media (max-width: 1200px) {
+    #ar-academy-header-container {
+      grid-template-columns: 1fr;
+      row-gap: 10px;
+      padding: 14px 20px;
+      min-height: auto;
+    }
+    
+    #ar-academy-header-welcome {
+      grid-column: 1;
+      justify-self: stretch;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    
+    #ar-academy-header-center {
+      grid-column: 1;
+      justify-self: center;
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      gap: 10px;
+    }
+    
+    #ar-academy-header-right {
+      grid-column: 1;
+      justify-self: stretch;
+      gap: 12px;
+      width: 100%;
+      justify-content: space-between;
+      margin-top: 0;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    #ar-academy-header-container {
+      padding: 12px 16px;
+    }
+    
+    #ar-academy-header-welcome {
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 16px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 18px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 13px;
+    }
+    
+    #ar-academy-header-center {
+      width: 100%;
+      margin: 0;
+      gap: 8px;
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    #ar-academy-header-logo-icon {
+      width: 36px;
+      height: 36px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 20px;
+      margin: 4px 0;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 13px;
+      margin: 2px 0 0 0;
+    }
+    
+    #ar-academy-header-right {
+      width: 100%;
+      margin-top: 0;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 120px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    #ar-academy-header-container {
+      padding: 10px 12px;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 15px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 17px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 12px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 18px;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 12px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 100px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+  }
+
+  
+
+  #ar-do-next-strip{
+
+    display:none;
+
+    position:sticky;
+
+    top:var(--ar-academy-header-height,88px);
+
+    z-index:997;
+
+    width:100vw;
+
+    margin-left:calc(50% - 50vw);
+
+    margin-right:calc(50% - 50vw);
+
+    margin-bottom:14px;
+
+    padding:8px 0 10px;
+
+    background:#0f1419;
+
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip.is-ready{ display:block; }
+
+  body[data-ar-academy-state="expired-trial"] #ar-do-next-strip{
+
+    display:none !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__inner{
+
+    max-width:1400px;
+
+    margin:0 auto;
+
+    padding:0 12px;
+
+    box-sizing:border-box;
+
+  }
+
+  @media (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:352px;
+
+      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+
+      max-width:1400px;
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
+
+  }
+
+  @media (max-width:1600px) and (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:322px;
+
+      width:min(1400px,calc(100vw - var(--arp-dash-gutter)));
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100vw - var(--arp-dash-gutter) - min(1400px,calc(100vw - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+    }
+
+  }
+
+  @media (max-width:1200px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      width:100%;
+
+      max-width:100%;
+
+      margin-left:auto;
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card{
+
+    width:100%;
+
+    background:#0f1115;
+
+    border:0.5px solid rgba(255,255,255,0.08);
+
+    border-radius:14px;
+
+    padding:22px 26px;
+
+    box-sizing:border-box;
+
+    color:#e2e8f0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:10px 16px;
+
+    margin:0 0 14px;
+
+    font-size:15px;
+
+    line-height:1.4;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status-left{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    gap:8px;
+
+    min-width:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    flex-shrink:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--red{ background:#dc2626; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--amber{ background:#d97706; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--green{ background:#16a34a; }
+
+  #ar-do-next-strip .ar-do-next-rag__label{
+
+    font-weight:800;
+
+    color:#f8fafc;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__counts{
+
+    color:#94a3b8;
+
+    font-weight:600;
+
+    font-size:14px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__pct{
+
+    color:#cbd5e1;
+
+    font-weight:700;
+
+    font-size:14px;
+
+    white-space:nowrap;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__bar{
+
+    height:8px;
+
+    border-radius:999px;
+
+    background:rgba(255,255,255,0.09);
+
+    overflow:hidden;
+
+    margin:0 0 18px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__bar-fill{
+
+    height:100%;
+
+    border-radius:999px;
+
+    width:0%;
+
+    transition:width 0.25s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tiles{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:14px;
+
+  }
+
+  @media (max-width:900px){
+
+    #ar-do-next-strip .ar-do-next-strip__tiles{
+
+      grid-template-columns:repeat(2,1fr);
+
+    }
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-strip__tiles{
+
+      grid-template-columns:1fr;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile{
+
+    display:flex;
+
+    flex-direction:column;
+
+    min-height:148px;
+
+    padding:18px 20px;
+
+    border-radius:12px;
+
+    text-decoration:none !important;
+
+    box-sizing:border-box;
+
+    transition:opacity 0.15s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile:hover{ opacity:0.92; }
+
+  #ar-do-next-strip .ar-do-next-tile__eyebrow{
+
+    font-size:18px;
+
+    font-weight:900;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+    margin:0 0 12px;
+
+    opacity:1;
+
+    line-height:1.15;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__action{
+
+    font-size:16px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    color:#f8fafc !important;
+
+    margin:0 0 auto;
+
+    padding-bottom:12px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__why{
+
+    font-size:13px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    margin:0;
+
+    opacity:0.82;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume{
+
+    background:#166534;
+
+    border:0.5px solid #14532d;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why{
+
+    color:#dcfce7 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green{
+
+    background:rgba(22,101,52,0.16);
+
+    border:0.5px solid rgba(22,101,52,0.55);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__why{
+
+    color:#bbf7d0 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber{
+
+    background:rgba(217,119,6,0.12);
+
+    border:0.5px solid rgba(217,119,6,0.45);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__action{
+
+    color:#fde68a !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__why{
+
+    color:#fcd34d !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__badge-rail{
+
+    margin:0 0 18px;
+
+    padding:0 0 18px;
+
+    border-bottom:1px solid rgba(255,255,255,0.08);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__head{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:8px;
+
+    margin:0 0 14px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__title{
+
+    font-size:13px;
+
+    font-weight:700;
+
+    color:#e2e8f0;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__count{
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:#7a8088;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    justify-content:space-between;
+
+    gap:12px 8px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    flex:1 1 0;
+
+    min-width:72px;
+
+    max-width:120px;
+
+    text-align:center;
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-badge{
+
+      flex:0 0 calc(33.333% - 8px);
+
+      min-width:0;
+
+      max-width:none;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle{
+
+    width:46px;
+
+    height:46px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle svg{
+
+    width:22px;
+
+    height:22px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle svg{
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars{
+
+    display:flex;
+
+    gap:2px;
+
+    justify-content:center;
+
+    margin:0 0 3px;
+
+    line-height:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars svg{
+
+    width:13px;
+
+    height:13px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__label{
+
+    font-size:12px;
+
+    font-weight:500;
+
+    line-height:1.25;
+
+    margin:0 0 2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__sublabel{
+
+    font-size:11px;
+
+    font-weight:500;
+
+    line-height:1.25;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-banner-stage{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    margin-top:12px;
+
+    text-align:center;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle{
+
+    width:64px;
+
+    height:64px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg{
+
+    width:30px;
+
+    height:30px;
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__label{
+
+    font-size:15px;
+
+    font-weight:700;
+
+    color:#f8fafc;
+
+    margin:0 0 2px;
+
+    line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__caption{
+
+    font-size:11px;
+
+    font-weight:600;
+
+    color:rgba(255,255,255,0.65);
+
+    margin:0;
+
+    line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars{
+
+    display:flex;
+
+    gap:3px;
+
+    justify-content:center;
+
+    margin:0 0 4px;
+
+    line-height:1;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars svg{
+
+    width:14px;
+
+    height:14px;
+
+    display:block;
+
+  }
+
+
+</head>
+<body>
+  <div id="site-header-mock" style="height:72px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;padding:0 20px;">Sqsp nav mock</div>
+  <!--
+Academy Header Elements — Squarespace Code Block
+For injection into Squarespace Header (Code Injection → Header)
+Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
+-->
+
+
+
+<div id="ar-academy-header-container">
+  <!-- Left: Welcome message -->
+  <div id="ar-academy-header-welcome">
+    <div id="ar-academy-header-welcome-copy">
+      <div id="ar-academy-header-welcome-text">
+        Welcome back, <span id="ar-academy-header-welcome-name">...</span>
+      </div>
+      <div id="ar-academy-header-last-login">Loading...</div>
+    </div>
+  </div>
+  
+  <!-- Center: Academy Dashboard title -->
+  <div id="ar-academy-header-center">
+    <img
+      id="ar-academy-header-logo-icon"
+      src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
+      alt="Academy"
+      loading="eager"
+    />
+    <div>
+      <h1 id="ar-academy-header-title">Your Personal Academy Dashboard</h1>
+      <p id="ar-academy-header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
+    </div>
+  </div>
+  
+  <!-- Right: Logo and Logout -->
+  <div id="ar-academy-header-right">
+    <a
+      id="ar-academy-header-brand-link"
+      href="https://www.alanranger.com/"
+      aria-label="Back to AlanRanger.com homepage"
+    >
+      <img
+        id="ar-academy-header-brand-logo"
+        src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+        alt="Alan Ranger Photography"
+        loading="eager"
+      />
+    </a>
+    <button
+      id="ar-academy-header-logout-btn"
+      type="button"
+      data-ms-action="logout"
+    >
+      Log out
+    </button>
+  </div>
+</div>
+
+
+
+<!--
+END: Academy Header Elements
+-->
+  <!-- ===========================
+
+AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
+
+v1.3.5 — Option 2 badges: green earned + gold Master only + stars (block 2)
+
+=========================== -->
+
+
+
+
+
+
+
+<div id="ar-do-next-strip" aria-hidden="true">
+
+  <div class="ar-do-next-strip__inner">
+
+    <div class="ar-do-next-strip__card">
+
+      <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your journey"></div>
+
+      <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+
+      <div class="ar-do-next-strip__bar" aria-hidden="true">
+
+        <div class="ar-do-next-strip__bar-fill" id="ar-do-next-bar-fill"></div>
+
+      </div>
+
+      <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+<!-- ===========================
+
+END: AR | DASHBOARD "DO THESE NEXT" STRIP
+
+=========================== -->
+  <div class="sqs-layout">
+    <div class="ar-academy-dashboard is-ready" style="opacity:1;min-height:400px;">
+      <p>Dashboard tiles area mock</p>
+    </div>
+    <div class="tall">Scroll test filler</div>
+  </div>
+  <script>
+    window.$memberstackDom = {
+      getCurrentMember: async () => ({
+        id: "mem_test",
+        data: {
+          id: "mem_test",
+          email: "test@example.com",
+          customFields: { "first-name": "Alan", "last-name": "Ranger" }
+        }
+      }),
+      getMemberJSON: async () => ({
+        data: {
+          arAcademy: {
+            modules: {
+              opened: {
+                "/blog-on-photography/what-is-exposure-in-photography": true,
+                "/blog-on-photography/what-is-aperture-in-photography": true
+              }
+            }
+          }
+        }
+      })
+    };
+    history.replaceState({}, "", "/academy/dashboard");
+  </script>
+  <script>
+(function() {
+  // Only run on Academy pages
+  var path = (window.location && window.location.pathname) ? window.location.pathname : "";
+  var isAcademy = (path === "/academy" || path.indexOf("/academy/") === 0);
+  if (!isAcademy) return;
+  
+  // Wait for Memberstack to load
+  function waitForMemberstack() {
+    return new Promise(function(resolve) {
+      var start = Date.now();
+      function check() {
+        if (window.$memberstackDom) {
+          resolve(window.$memberstackDom);
+        } else if (Date.now() - start < 8000) {
+          setTimeout(check, 100);
+        } else {
+          resolve(null);
+        }
+      }
+      check();
+    });
+  }
+  
+  // Get member name from customFields
+  function getMemberName(member) {
+    if (!member || !member.data) return null;
+    var customFields = member.data.customFields || {};
+    var firstName = customFields["first-name"] || customFields.firstName || customFields.first_name || "";
+    var lastName = customFields["last-name"] || customFields.lastName || customFields.last_name || "";
+    if (firstName && lastName) return firstName + " " + lastName;
+    if (firstName) return firstName;
+    if (lastName) return lastName;
+    // Fallback to email if no name
+    var email = member.data.email || "";
+    if (email) return email.split("@")[0];
+    return "Member";
+  }
+  
+  // Format last login date
+  function formatLastLogin(dateStr) {
+    if (!dateStr) return "First visit";
+    try {
+      var date = new Date(dateStr);
+      var day = date.getDate();
+      var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var month = monthNames[date.getMonth()];
+      var year = date.getFullYear();
+      var hours = String(date.getHours()).padStart(2, '0');
+      var minutes = String(date.getMinutes()).padStart(2, '0');
+      return "Last logged in " + day + " " + month + " " + year + " at " + hours + ":" + minutes;
+    } catch (e) {
+      return "Last logged in: " + dateStr;
+    }
+  }
+  
+  // Load member data and update header
+  async function loadHeaderData() {
+    var ms = await waitForMemberstack();
+    if (!ms) {
+      // Hide welcome if Memberstack not available
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+      return;
+    }
+    
+    try {
+      // Check if we're in ghost mode - if dashboard has overridden getCurrentMember, use that
+      // Otherwise, check URL params for ghost mode
+      var ghostMemberId = null;
+      var ghostEmail = null;
+      try {
+        var urlParams = new URLSearchParams(String(window.location && window.location.search || ""));
+        ghostMemberId = urlParams.get("ghost");
+        ghostEmail = urlParams.get("ghostEmail");
+      } catch(e) { /* ignore */ }
+      
+      // If in ghost mode and getCurrentMember has been overridden by dashboard, it will return ghost member
+      // Otherwise, get the normal member (admin)
+      var member = await ms.getCurrentMember();
+      
+      // If we're in ghost mode, check if we got the admin member instead of ghost member
+      // The dashboard script will override getCurrentMember, but header might run first
+      if ((ghostMemberId || ghostEmail) && member) {
+        var memberEmail = (member.data && member.data.email) || (member.data && member.data.auth && member.data.auth.email) || '';
+        var isAdminEmail = memberEmail && (memberEmail.toLowerCase() === 'info@alanranger.com' || memberEmail.toLowerCase() === 'marketing@alanranger.com');
+        
+        // If we got admin member but we're in ghost mode, wait for dashboard to override
+        // Retry up to 5 times (2.5 seconds total)
+        var retryCount = parseInt(sessionStorage.getItem('ar-header-ghost-retry') || '0', 10);
+        if (isAdminEmail && retryCount < 5) {
+          console.log('[Academy Header] Ghost mode detected, waiting for dashboard to override getCurrentMember... (retry ' + (retryCount + 1) + '/5)');
+          sessionStorage.setItem('ar-header-ghost-retry', String(retryCount + 1));
+          setTimeout(loadHeaderData, 500);
+          return;
+        } else if (retryCount >= 5) {
+          // Clear retry count after max retries
+          sessionStorage.removeItem('ar-header-ghost-retry');
+        }
+      } else {
+        // Not in ghost mode or got ghost member - clear retry count
+        sessionStorage.removeItem('ar-header-ghost-retry');
+      }
+      if (!member || !member.data) {
+        // Not logged in - hide welcome
+        var welcomeEl = document.getElementById('ar-academy-header-welcome');
+        if (welcomeEl) welcomeEl.style.display = 'none';
+        return;
+      }
+      
+      // Update welcome name
+      var nameEl = document.getElementById('ar-academy-header-welcome-name');
+      var name = getMemberName(member);
+      if (nameEl && name) {
+        nameEl.textContent = name;
+      }
+      
+      // Get last login - try multiple sources
+      var lastLogin = null;
+      var memberId = member.id || (member.data && member.data.id);
+      var memberEmail = (member.data && member.data.email) || null;
+      
+      // Track login event - simplified and more reliable
+      // Track if we haven't tracked in the last 1 minute (allows re-tracking after logout/login)
+      var now = Date.now();
+      var lastTracked = sessionStorage.getItem('ar-login-tracked-' + memberId);
+      var oneMinuteAgo = 60 * 1000;
+      var shouldTrack = !lastTracked || (now - parseInt(lastTracked, 10)) > oneMinuteAgo;
+      
+      if (memberId && shouldTrack) {
+        console.log('[Academy Header] Tracking login event for member:', memberId, 'email:', memberEmail);
+        
+        // Track login event immediately
+        fetch('https://alanranger-modules.vercel.app/api/academy/track-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            member_id: memberId,
+            email: memberEmail
+          })
+        }).then(function(response) {
+          if (response.ok) {
+            return response.json();
+          } else {
+            return response.text().then(function(text) {
+              throw new Error('HTTP ' + response.status + ': ' + text);
+            });
+          }
+        }).then(function(data) {
+          // Mark as tracked with current timestamp
+          sessionStorage.setItem('ar-login-tracked-' + memberId, String(now));
+          sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
+          console.log('[Academy Header] Login event tracked successfully:', data);
+          
+          // Update last login display with current time immediately
+          var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+          if (lastLoginEl) {
+            lastLoginEl.textContent = formatLastLogin(new Date().toISOString());
+          }
+          
+          // Refresh from API after a short delay to get the recorded time
+          setTimeout(function() {
+            fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId))
+              .then(function(response) {
+                if (response.ok) {
+                  return response.json();
+                }
+                return null;
+              })
+              .then(function(memberData) {
+                if (memberData && memberData.last_login) {
+                  var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+                  if (lastLoginEl) {
+                    lastLoginEl.textContent = formatLastLogin(memberData.last_login);
+                  }
+                }
+              })
+              .catch(function(err) {
+                console.debug('[Academy Header] Error refreshing last login:', err);
+              });
+          }, 2000);
+        }).catch(function(err) {
+          console.error('[Academy Header] Error tracking login event:', err);
+          // Don't mark as tracked if it failed - allow retry
+        });
+      } else if (memberId) {
+        // Not tracking because we recently tracked - update activity timestamp
+        sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
+      }
+      
+      // First, try Memberstack JSON directly (as it worked in previous code block)
+      try {
+        var jsonRes = await ms.getMemberJSON();
+        if (jsonRes) {
+          // Check various possible locations in Memberstack JSON
+          if (jsonRes.lastLogin) {
+            lastLogin = jsonRes.lastLogin;
+          } else if (jsonRes.data && jsonRes.data.lastLogin) {
+            lastLogin = jsonRes.data.lastLogin;
+          } else if (jsonRes.data && jsonRes.data.data && jsonRes.data.data.lastLogin) {
+            lastLogin = jsonRes.data.data.lastLogin;
+          }
+        }
+      } catch (e) {
+        console.debug('[Academy Header] Could not get lastLogin from Memberstack JSON:', e);
+      }
+      
+      // If not found in Memberstack, try API (Supabase)
+      if (!lastLogin && memberId) {
+        try {
+          var response = await fetch('https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId));
+          if (response.ok) {
+            var memberData = await response.json();
+            lastLogin = memberData.last_login || null;
+            
+            // Debug logging
+            console.log('[Academy Header] Member data response:', {
+              memberId: memberId,
+              hasLastLogin: !!lastLogin,
+              lastLogin: lastLogin,
+              memberDataKeys: Object.keys(memberData)
+            });
+          } else {
+            var errorText = await response.text();
+            console.error('[Academy Header] Failed to fetch member data:', response.status, errorText);
+          }
+        } catch (e) {
+          console.error('[Academy Header] Error fetching from API:', e);
+        }
+      }
+      
+      // Update last login display
+      var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+      if (lastLoginEl) {
+        if (lastLogin) {
+          lastLoginEl.textContent = formatLastLogin(lastLogin);
+        } else {
+          lastLoginEl.textContent = "First visit";
+        }
+      }
+      
+      // Wire up logout button
+      var logoutBtn = document.getElementById('ar-academy-header-logout-btn');
+      if (logoutBtn && !logoutBtn.hasAttribute('data-wired')) {
+        logoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Track logout event before logging out
+          // Use sendBeacon for reliable tracking even during page unload
+          if (memberId) {
+            var email = memberEmail || null;
+            
+            // Try to get fresh member data, but don't wait too long
+            if (ms && typeof ms.getCurrentMember === 'function') {
+              var memberPromise = ms.getCurrentMember().catch(function() { return null; });
+              var timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 100); });
+              
+              Promise.race([memberPromise, timeoutPromise]).then(function(currentMember) {
+                if (currentMember && currentMember.data && currentMember.data.email) {
+                  email = currentMember.data.email;
+                }
+                
+                // Use sendBeacon for reliable delivery during navigation
+                var data = JSON.stringify({
+                  member_id: memberId,
+                  email: email
+                });
+                
+                if (navigator.sendBeacon) {
+                  var blob = new Blob([data], { type: 'application/json' });
+                  navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+                  console.log('[Academy Header] Logout event sent via sendBeacon');
+                } else {
+                  // Fallback to fetch with keepalive
+                  fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: data,
+                    keepalive: true
+                  }).catch(function(err) {
+                    console.warn('[Academy Header] Error tracking logout:', err);
+                  });
+                }
+              });
+            } else {
+              // No Memberstack, use what we have
+              var data = JSON.stringify({
+                member_id: memberId,
+                email: email
+              });
+              
+              if (navigator.sendBeacon) {
+                var blob = new Blob([data], { type: 'application/json' });
+                navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+              } else {
+                fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: data,
+                  keepalive: true
+                }).catch(function(err) {
+                  console.warn('[Academy Header] Error tracking logout:', err);
+                });
+              }
+            }
+            
+            // Clear session storage
+            sessionStorage.removeItem('ar-login-tracked-' + memberId);
+            sessionStorage.removeItem('ar-last-activity-' + memberId);
+          }
+          
+          if (ms && typeof ms.logout === 'function') {
+            ms.logout().then(function() {
+              window.location.href = '/academy/login';
+            }).catch(function(err) {
+              console.error('[Academy Header] Logout error:', err);
+              window.location.href = '/academy/login';
+            });
+          } else {
+            window.location.href = '/academy/login';
+          }
+        });
+        logoutBtn.setAttribute('data-wired', 'true');
+      }
+    } catch (err) {
+      console.error('[Academy Header] Error loading member data:', err);
+      // Hide welcome on error
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+    }
+  }
+  
+  var __arPublishingHeaderHeight = false;
+
+  function publishAcademyHeaderHeight() {
+    if (__arPublishingHeaderHeight) return;
+    var el = document.getElementById('ar-academy-header-container');
+    if (!el) return;
+    __arPublishingHeaderHeight = true;
+    try {
+      var h = Math.ceil(el.getBoundingClientRect().height) || 88;
+      document.documentElement.style.setProperty('--ar-academy-header-height', h + 'px');
+      document.dispatchEvent(new CustomEvent('ar-academy-sticky-metrics'));
+    } finally {
+      __arPublishingHeaderHeight = false;
+    }
+  }
+
+  function watchAcademyHeaderHeight() {
+    var el = document.getElementById('ar-academy-header-container');
+    if (!el) return;
+    publishAcademyHeaderHeight();
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(publishAcademyHeaderHeight).observe(el);
+    }
+    window.addEventListener('resize', publishAcademyHeaderHeight);
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      loadHeaderData();
+      watchAcademyHeaderHeight();
+    });
+  } else {
+    loadHeaderData();
+    watchAcademyHeaderHeight();
+  }
+  
+  // Also try after a delay (Memberstack sometimes loads late)
+  setTimeout(loadHeaderData, 1000);
+  setTimeout(loadHeaderData, 2000);
+  setTimeout(publishAcademyHeaderHeight, 100);
+  setTimeout(publishAcademyHeaderHeight, 1000);
+})();
+</script>
+  <script>
+
+(function(){
+
+  if (window.__arDoNextStripInit) return;
+
+  window.__arDoNextStripInit = true;
+
+
+
+  var SITE = "https://www.alanranger.com";
+
+  var API_BASE = "https://alanranger-modules.vercel.app";
+
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+  var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+
+  var MODULES_TOTAL = 60;
+
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+
+  var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
+
+  var CHECKLISTS_URL = SITE + "/35-photography-1-page-field-checklists";
+
+  var FOUNDATION_COURSE_URL = SITE + "/academy/online-photography-course";
+
+
+
+  var ARTICLE_MODULES = [
+
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+
+  ];
+
+
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+
+    "/s/Still-life-photography-assignment.pdf",
+
+    "/s/Street-photography-assignment.pdf",
+
+    "/s/Abstract-photography-Assignment.pdf",
+
+    "/s/Black-and-white-photography-assignment.pdf",
+
+    "/s/Architecture-photography-assignment.pdf",
+
+    "/s/Shadows-photography-Assignment.pdf",
+
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+
+  ]);
+
+
+
+  var EXAM_MODULE_IDS = [
+
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+
+  ];
+
+
+
+  var EXAM_NAMES = {
+
+    "module-01-exposure": "Exposure",
+
+    "module-02-aperture": "Aperture",
+
+    "module-03-shutter": "Shutter",
+
+    "module-04-iso": "ISO",
+
+    "module-05-manual": "Manual",
+
+    "module-06-metering": "Metering",
+
+    "module-07-bracketing": "Bracketing",
+
+    "module-08-focusing": "Focusing",
+
+    "module-09-dof": "DoF",
+
+    "module-10-drange": "DRange",
+
+    "module-11-wb": "WB",
+
+    "module-12-drive": "Drive",
+
+    "module-13-jpeg-raw": "JPEG/RAW",
+
+    "module-14-sensors": "Sensors",
+
+    "module-15-focal": "Focal"
+
+  };
+
+
+
+  var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
+
+
+
+  var JOURNEY_STAGES = [
+
+    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
+
+    { key: "foundation", label: "Foundation", sublabel: "15 camera modules", iconClass: "ti-camera", colour: "green", stars: 1, minModules: 15 },
+
+    { key: "practitioner", label: "Practitioner", sublabel: "All 60 opened", iconClass: "ti-aperture", colour: "green", stars: 2, minModules: 60 },
+
+    { key: "certified", label: "Certified", sublabel: "5 exams passed", iconClass: "ti-certificate", colour: "green", stars: 3, minExams: 5 },
+
+    { key: "graduate", label: "Graduate", sublabel: "All 15 exams", iconClass: "ti-award", colour: "green", stars: 4, minExams: 15 },
+
+    { key: "master", label: "Master", sublabel: "Applied learning", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
+
+  ];
+
+
+
+  var JOURNEY_ICON_SVGS = {
+
+    "ti-school": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M22 9l-10-5-10 5 10 5 10-5z"/><path d="M6 10v6c0 1 2 3 6 3s6-2 6-3v-6"/></svg>',
+
+    "ti-camera": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3"/></svg>',
+
+    "ti-aperture": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>',
+
+    "ti-certificate": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="1"/><path d="M8 20l4-2 4 2v-8H8z"/></svg>',
+
+    "ti-award": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M8.5 14L7 21l5-2 5 2-1.5-7"/></svg>',
+
+    "ti-trophy": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3a4 4 0 01-8 0V4z"/><path d="M6 4H4v1a3 3 0 003 3M18 4h2v1a3 3 0 01-3 3"/><path d="M12 11v3M9 20h6M10 14h4v6h-4z"/></svg>'
+
+  };
+
+
+
+  var BADGE_GREEN = "#166534";
+
+  var BADGE_GREEN_BORDER = "#14532d";
+
+  var BADGE_GOLD = "#b45309";
+
+  var BADGE_GOLD_BORDER = "#92400e";
+
+  var STAR_GOLD = "#f5b301";
+
+
+
+  function badgeEarnedFill(colour){
+
+    return colour === "gold" ? BADGE_GOLD : BADGE_GREEN;
+
+  }
+
+
+
+  function badgeEarnedBorder(colour){
+
+    return colour === "gold" ? BADGE_GOLD_BORDER : BADGE_GREEN_BORDER;
+
+  }
+
+
+
+  function applyBadgeCircleStyle(circle, colour, earned, stageKey){
+
+    var svg = circle.querySelector("svg");
+
+    if (earned) {
+
+      circle.style.background = badgeEarnedFill(colour);
+
+      circle.style.border = "1px solid " + badgeEarnedBorder(colour);
+
+      if (svg) svg.style.stroke = "#fff";
+
+      return;
+
+    }
+
+    circle.style.background = "rgba(255,255,255,0.06)";
+
+    var ring = stageKey === "master" ? "rgba(245,179,1,0.4)" : "rgba(255,255,255,0.2)";
+
+    circle.style.border = "1px dashed " + ring;
+
+    if (svg) svg.style.stroke = "#5a6066";
+
+  }
+
+
+
+  function starSvgMarkup(earned){
+
+    var fill = earned ? STAR_GOLD : "none";
+
+    var opacity = earned ? "1" : "0.35";
+
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" style="opacity:' + opacity + '"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12" fill="' + fill + '" stroke="' + STAR_GOLD + '" stroke-width="1.5"/></svg>';
+
+  }
+
+
+
+  function buildStarRow(count, earned, className){
+
+    var row = document.createElement("div");
+
+    row.className = className;
+
+    for (var i = 0; i < count; i++) {
+
+      row.insertAdjacentHTML("beforeend", starSvgMarkup(earned));
+
+    }
+
+    return row;
+
+  }
+
+
+
+  function earnedSublabelColour(colour){
+
+    return colour === "gold" ? "#fcd34d" : "#7bbf95";
+
+  }
+
+
+
+  function isJourneyStageEarned(stage, modulesOpened, examsPassed){
+
+    if (stage.stageEarned === false) return false;
+
+    if (stage.alwaysEarned) return true;
+
+    if (stage.minModules && modulesOpened >= stage.minModules) return true;
+
+    if (stage.minExams && examsPassed >= stage.minExams) return true;
+
+    return false;
+
+  }
+
+
+
+  function computeJourneyBadges(modulesOpened, examsPassed){
+
+    return JOURNEY_STAGES.map(function(stage){
+
+      return {
+
+        key: stage.key,
+
+        label: stage.label,
+
+        sublabel: stage.sublabel,
+
+        iconClass: stage.iconClass,
+
+        colour: stage.colour,
+
+        stars: stage.stars,
+
+        earned: isJourneyStageEarned(stage, modulesOpened, examsPassed)
+
+      };
+
+    });
+
+  }
+
+
+
+  function getCurrentStage(badges){
+
+    var current = badges[0];
+
+    for (var i = 0; i < badges.length; i++) {
+
+      if (badges[i].earned) current = badges[i];
+
+    }
+
+    return {
+
+      key: current.key,
+
+      label: current.label,
+
+      levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
+
+      levelTotal: JOURNEY_STAGES.length,
+
+      iconClass: current.iconClass,
+
+      colour: current.colour,
+
+      stars: current.stars
+
+    };
+
+  }
+
+
+
+  function journeyIconSvg(iconClass){
+
+    return JOURNEY_ICON_SVGS[iconClass] || JOURNEY_ICON_SVGS["ti-school"];
+
+  }
+
+
+
+  function buildBadgeRail(modulesOpened, examsPassed){
+
+    var badges = computeJourneyBadges(modulesOpened, examsPassed);
+
+    var earnedCount = badges.filter(function(b){ return b.earned; }).length;
+
+    var rail = document.createElement("div");
+
+    var head = document.createElement("div");
+
+    head.className = "ar-do-next-badge-rail__head";
+
+    var title = document.createElement("p");
+
+    title.className = "ar-do-next-badge-rail__title";
+
+    title.textContent = "Your journey";
+
+    var count = document.createElement("p");
+
+    count.className = "ar-do-next-badge-rail__count";
+
+    count.textContent = earnedCount + " of " + badges.length + " earned";
+
+    head.appendChild(title);
+
+    head.appendChild(count);
+
+    var row = document.createElement("div");
+
+    row.className = "ar-do-next-badge-rail__row";
+
+    badges.forEach(function(badge){
+
+      var item = document.createElement("div");
+
+      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost");
+
+      var circle = document.createElement("div");
+
+      circle.className = "ar-do-next-badge__circle";
+
+      circle.innerHTML = journeyIconSvg(badge.iconClass);
+
+      applyBadgeCircleStyle(circle, badge.colour, badge.earned, badge.key);
+
+      var label = document.createElement("p");
+
+      label.className = "ar-do-next-badge__label";
+
+      label.textContent = badge.label;
+
+      label.style.color = badge.earned ? "#fff" : "#cdd2da";
+
+      if (badge.stars > 0) {
+
+        item.appendChild(circle);
+
+        item.appendChild(label);
+
+        item.appendChild(buildStarRow(badge.stars, badge.earned, "ar-do-next-badge__stars"));
+
+      } else {
+
+        item.appendChild(circle);
+
+        item.appendChild(label);
+
+      }
+
+      var sub = document.createElement("p");
+
+      sub.className = "ar-do-next-badge__sublabel";
+
+      sub.textContent = badge.sublabel;
+
+      sub.style.color = badge.earned ? earnedSublabelColour(badge.colour) : "#7a8088";
+
+      item.appendChild(sub);
+
+      row.appendChild(item);
+
+    });
+
+    rail.appendChild(head);
+
+    rail.appendChild(row);
+
+    return { rail: rail, badges: badges, badgesEarned: earnedCount };
+
+  }
+
+
+
+  function injectBannerCurrentStage(badges){
+
+    var welcome = document.getElementById("ar-academy-header-welcome");
+
+    if (!welcome) return;
+
+    var current = getCurrentStage(badges);
+
+    var existing = document.getElementById("ar-do-next-banner-stage");
+
+    if (!existing) {
+
+      existing = document.createElement("div");
+
+      existing.id = "ar-do-next-banner-stage";
+
+      var copy = document.getElementById("ar-academy-header-welcome-copy");
+
+      if (copy && copy.parentNode === welcome) {
+
+        welcome.insertBefore(existing, copy);
+
+      } else {
+
+        welcome.insertBefore(existing, welcome.firstChild);
+
+      }
+
+    }
+
+    existing.innerHTML = "";
+
+    var circle = document.createElement("div");
+
+    circle.className = "ar-do-next-banner-stage__circle";
+
+    circle.innerHTML = journeyIconSvg(current.iconClass);
+
+    applyBadgeCircleStyle(circle, current.colour, true, current.key);
+
+    var label = document.createElement("p");
+
+    label.className = "ar-do-next-banner-stage__label";
+
+    label.textContent = current.label;
+
+    existing.appendChild(circle);
+
+    existing.appendChild(label);
+
+    if (current.stars > 0) {
+
+      existing.appendChild(buildStarRow(current.stars, true, "ar-do-next-banner-stage__stars"));
+
+    }
+
+    var caption = document.createElement("p");
+
+    caption.className = "ar-do-next-banner-stage__caption";
+
+    caption.textContent = "Level " + current.levelIndex + " of " + current.levelTotal;
+
+    existing.appendChild(caption);
+
+    return current;
+
+  }
+
+
+
+  function normalizePath(url){
+
+    if (!url || typeof url !== "string") return "/";
+
+    var path = url;
+
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+
+      try { path = new URL(path).pathname; } catch (e) {
+
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+
+        if (m) path = m[1];
+
+      }
+
+    }
+
+    path = path.split("?")[0].split("#")[0];
+
+    path = path.replace(/\/+$/, "") || "/";
+
+    if (path.charAt(0) !== "/") path = "/" + path;
+
+    return path;
+
+  }
+
+
+
+  function unwrapStoredJson(obj){
+
+    var cur = obj;
+
+    for (var i = 0; i < 10; i++) {
+
+      if (!cur || typeof cur !== "object") break;
+
+      if (!cur.data || typeof cur.data !== "object") break;
+
+      var d = cur.data;
+
+      var looks = (d.history && Array.isArray(d.history)) ||
+
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+
+        (d.arAcademy && typeof d.arAcademy === "object");
+
+      if (looks) { cur = d; continue; }
+
+      break;
+
+    }
+
+    return cur || {};
+
+  }
+
+
+
+  function normalizeMemberJson(jsonRes){
+
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+
+    return unwrapStoredJson(stored);
+
+  }
+
+
+
+  function getOpenedSet(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+
+    var set = new Set();
+
+    Object.keys(opened).forEach(function(key){
+
+      var p = normalizePath(key);
+
+      if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
+
+    });
+
+    return set;
+
+  }
+
+
+
+  function firstUnopenedArticle(openedSet){
+
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { idx: i, mod: ARTICLE_MODULES[i] };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function getMemberId(member){
+
+    if (!member) return "";
+
+    if (member.id) return String(member.id);
+
+    if (member.data && member.data.id) return String(member.data.id);
+
+    return "";
+
+  }
+
+
+
+  function parseExamProgress(progressData){
+
+    var statusMap = {};
+
+    var source = "none";
+
+    var examsPassed = 0;
+
+    var nextExamModuleId = null;
+
+    var hasData = false;
+
+
+
+    EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
+
+
+
+    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+
+      hasData = true;
+
+      progressData.modules.forEach(function(m){
+
+        if (!m || !m.moduleId) return;
+
+        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
+
+        statusMap[m.moduleId] = m.status || "not_taken";
+
+      });
+
+      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      source = "modules-count";
+
+    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+
+      hasData = true;
+
+      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
+
+      source = "summary.passedCount";
+
+    }
+
+
+
+    if (source === "modules-count") {
+
+      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+        if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
+
+          nextExamModuleId = EXAM_MODULE_IDS[i];
+
+          break;
+
+        }
+
+      }
+
+    }
+
+
+
+    return {
+
+      statusMap: statusMap,
+
+      examsPassed: examsPassed,
+
+      nextExamModuleId: nextExamModuleId,
+
+      source: source,
+
+      hasData: hasData,
+
+      hasModuleStatus: source === "modules-count"
+
+    };
+
+  }
+
+
+
+  function firstUnpassedExam(statusMap){
+
+    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+      var id = EXAM_MODULE_IDS[i];
+
+      if (statusMap[id] !== "passed") return { idx: i, id: id };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function shortArticleTitle(t){
+
+    return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
+
+  }
+
+
+
+  function examNum(idx){ return String(idx + 1).padStart(2, "0"); }
+
+
+
+  function computeRagState(openedCount, examsPassed){
+
+    if (openedCount < 3) {
+
+      return { state: "red", label: "Just getting started", color: RAG_COLORS.red };
+
+    }
+
+    if (openedCount >= 30 && examsPassed >= 1) {
+
+      return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
+
+    }
+
+    return { state: "amber", label: "Building momentum", color: RAG_COLORS.amber };
+
+  }
+
+
+
+  function buildResumeTile(openedSet, examInfo, rag){
+
+    var openedCount = openedSet.size;
+
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    var tile = { n: 1, label: "1 - Resume", variant: "resume", why: "Pick up where you left off" };
+
+    if (rag.state === "red") tile.why = "This is the most important step";
+
+    if (nextArt) {
+
+      var prefix = openedCount === 0 ? "Start here:" : "Continue:";
+
+      tile.action = prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192";
+
+      tile.href = SITE + nextArt.mod.p;
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus && examInfo.examsPassed < 15) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take your next exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "Explore practice assignments \u2192";
+
+    tile.href = PRACTICE_URL;
+
+    return tile;
+
+  }
+
+
+
+  function buildTestTile(examInfo){
+
+    var tile = { n: 2, label: "2 - Test yourself", variant: "ghost-green", why: "Earns a certificate" };
+
+    if (examInfo.examsPassed >= 15) {
+
+      tile.action = "Review your certificates \u2192";
+
+      tile.href = EXAM_BASE;
+
+      tile.why = "All 15 exams passed";
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "View exams and certificates \u2192";
+
+    tile.href = EXAM_BASE;
+
+    return tile;
+
+  }
+
+
+
+  function buildPracticeTile(){
+
+    return {
+
+      n: 3,
+
+      label: "3 - Put it into practice",
+
+      action: "Save a field checklist \u2192",
+
+      why: "Take it on your next shoot",
+
+      href: CHECKLISTS_URL,
+
+      variant: "ghost-green"
+
+    };
+
+  }
+
+
+
+  function buildGoalTile(openedCount, examsPassed, nextArt){
+
+    var tile = { n: 4, label: "4 - Goal", variant: "amber" };
+
+    var goalTarget = null;
+
+    var goalRemaining = 0;
+
+    if (openedCount < 30) {
+
+      goalTarget = 30;
+
+      goalRemaining = 30 - openedCount;
+
+      tile.action = "Reach 30 modules \u2192";
+
+      tile.why = goalRemaining + " to your halfway badge";
+
+      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
+
+    } else if (openedCount < 60) {
+
+      goalTarget = 60;
+
+      goalRemaining = 60 - openedCount;
+
+      tile.action = "Reach 60 modules \u2192";
+
+      tile.why = goalRemaining + " to finish the foundations course";
+
+      tile.href = nextArt ? SITE + nextArt.mod.p : FOUNDATION_COURSE_URL;
+
+    } else if (examsPassed < 15) {
+
+      goalTarget = 15;
+
+      goalRemaining = 15 - examsPassed;
+
+      tile.action = "Finish your certificates \u2192";
+
+      tile.why = goalRemaining + " exams to full certification";
+
+      tile.href = EXAM_BASE;
+
+    } else {
+
+      tile.action = "All done - explore practice packs \u2192";
+
+      tile.why = "You have completed the foundations course";
+
+      tile.href = PRACTICE_URL;
+
+    }
+
+    return { tile: tile, goalTarget: goalTarget, goalRemaining: goalRemaining };
+
+  }
+
+
+
+  function buildStage1Tiles(openedSet, examInfo, rag){
+
+    var openedCount = openedSet.size;
+
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    var goal = buildGoalTile(openedCount, examInfo.examsPassed, nextArt);
+
+    return {
+
+      tiles: [
+
+        buildResumeTile(openedSet, examInfo, rag),
+
+        buildTestTile(examInfo),
+
+        buildPracticeTile(),
+
+        goal.tile
+
+      ],
+
+      goalTarget: goal.goalTarget,
+
+      goalRemaining: goal.goalRemaining
+
+    };
+
+  }
+
+
+
+  function renderTile(tile){
+
+    var a = document.createElement("a");
+
+    a.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant;
+
+    a.href = tile.href;
+
+    var eyebrow = document.createElement("span");
+
+    eyebrow.className = "ar-do-next-tile__eyebrow";
+
+    eyebrow.textContent = tile.label;
+
+    var action = document.createElement("span");
+
+    action.className = "ar-do-next-tile__action";
+
+    action.textContent = tile.action;
+
+    var why = document.createElement("span");
+
+    why.className = "ar-do-next-tile__why";
+
+    why.textContent = tile.why;
+
+    a.appendChild(eyebrow);
+
+    a.appendChild(action);
+
+    a.appendChild(why);
+
+    return a;
+
+  }
+
+
+
+  function renderStrip(openedSet, examInfo, coachDebug){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    var badgeRailEl = document.getElementById("ar-do-next-badge-rail");
+
+    var statusEl = document.getElementById("ar-do-next-status");
+
+    var barFill = document.getElementById("ar-do-next-bar-fill");
+
+    var tilesEl = document.getElementById("ar-do-next-tiles");
+
+    if (!strip || !statusEl || !barFill || !tilesEl) return;
+
+
+
+    var openedCount = openedSet.size;
+
+    var examsPassed = examInfo.examsPassed;
+
+    var rag = computeRagState(openedCount, examsPassed);
+
+    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
+
+    var stage = buildStage1Tiles(openedSet, examInfo, rag);
+
+    var badgeRail = buildBadgeRail(openedCount, examsPassed);
+
+    var currentStage = injectBannerCurrentStage(badgeRail.badges);
+
+
+
+    if (badgeRailEl) {
+
+      badgeRailEl.innerHTML = "";
+
+      badgeRailEl.appendChild(badgeRail.rail);
+
+    }
+
+
+
+    statusEl.innerHTML = "";
+
+    var left = document.createElement("div");
+
+    left.className = "ar-do-next-strip__status-left";
+
+    var dot = document.createElement("span");
+
+    dot.className = "ar-do-next-rag__dot ar-do-next-rag__dot--" + rag.state;
+
+    dot.setAttribute("aria-hidden", "true");
+
+    var label = document.createElement("span");
+
+    label.className = "ar-do-next-rag__label";
+
+    label.textContent = rag.label;
+
+    var counts = document.createElement("span");
+
+    counts.className = "ar-do-next-strip__counts";
+
+    counts.textContent = " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
+
+    left.appendChild(dot);
+
+    left.appendChild(label);
+
+    left.appendChild(counts);
+
+    var right = document.createElement("span");
+
+    right.className = "ar-do-next-strip__pct";
+
+    right.textContent = pct + "% of the foundations course";
+
+    statusEl.appendChild(left);
+
+    statusEl.appendChild(right);
+
+
+
+    barFill.style.width = pct + "%";
+
+    barFill.style.background = rag.color;
+
+
+
+    tilesEl.innerHTML = "";
+
+    stage.tiles.forEach(function(tile){ tilesEl.appendChild(renderTile(tile)); });
+
+
+
+    if (coachDebug) {
+
+      coachDebug.ragState = rag.state;
+
+      coachDebug.ragLabel = rag.label;
+
+      coachDebug.modulesOpened = openedCount;
+
+      coachDebug.modulesTotal = MODULES_TOTAL;
+
+      coachDebug.examsPassed = examsPassed;
+
+      coachDebug.examsTotal = 15;
+
+      coachDebug.tiles = stage.tiles.map(function(t){
+
+        return { n: t.n, label: t.label, href: t.href, action: t.action };
+
+      });
+
+      coachDebug.goalTarget = stage.goalTarget;
+
+      coachDebug.goalRemaining = stage.goalRemaining;
+
+      coachDebug.badges = badgeRail.badges.map(function(b){
+
+        return { key: b.key, label: b.label, earned: b.earned, colour: b.colour, stars: b.stars };
+
+      });
+
+      coachDebug.badgesEarned = badgeRail.badgesEarned;
+
+      coachDebug.currentStage = currentStage ? {
+
+        key: currentStage.key,
+
+        label: currentStage.label,
+
+        levelIndex: currentStage.levelIndex,
+
+        levelTotal: currentStage.levelTotal,
+
+        colour: currentStage.colour,
+
+        stars: currentStage.stars
+
+      } : null;
+
+      coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
+
+    }
+
+
+
+    strip.classList.add("is-ready");
+
+    strip.removeAttribute("aria-hidden");
+
+    publishDoNextStripMetrics(true);
+
+  }
+
+
+
+  var __arPublishingStripMetrics = false;
+
+  function publishDoNextStripMetrics(emitEvent){
+
+    if (__arPublishingStripMetrics) return;
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    var root = document.documentElement;
+
+    __arPublishingStripMetrics = true;
+
+    try {
+
+      var h = 0;
+
+      if (strip && strip.classList.contains("is-ready")) {
+
+        h = Math.ceil(strip.getBoundingClientRect().height) || 0;
+
+      }
+
+      root.style.setProperty("--ar-do-next-strip-height", h + "px");
+
+      var headerH = parseInt(getComputedStyle(root).getPropertyValue("--ar-academy-header-height"), 10) || 88;
+
+      root.style.setProperty("--ar-academy-sticky-stack-height", (headerH + h) + "px");
+
+      if (emitEvent !== false) {
+
+        document.dispatchEvent(new CustomEvent("ar-academy-sticky-metrics"));
+
+      }
+
+    } finally {
+
+      __arPublishingStripMetrics = false;
+
+    }
+
+  }
+
+
+
+  function watchDoNextStripMetrics(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+    if (typeof ResizeObserver !== "undefined") {
+
+      new ResizeObserver(function(){ publishDoNextStripMetrics(true); }).observe(strip);
+
+    }
+
+    window.addEventListener("resize", function(){ publishDoNextStripMetrics(true); });
+
+    document.addEventListener("ar-academy-sticky-metrics", function(){
+
+      publishDoNextStripMetrics(false);
+
+    });
+
+  }
+
+
+
+  function isExpiredTrialBody(){
+
+    return document.body && document.body.getAttribute("data-ar-academy-state") === "expired-trial";
+
+  }
+
+
+
+  function waitForMemberstack(maxMs){
+
+    maxMs = typeof maxMs === "number" ? maxMs : 8000;
+
+    return new Promise(function(resolve){
+
+      var start = Date.now();
+
+      (function tick(){
+
+        if (window.$memberstackDom && typeof window.$memberstackDom.getMemberJSON === "function") {
+
+          resolve(window.$memberstackDom);
+
+          return;
+
+        }
+
+        if ((Date.now() - start) > maxMs) { resolve(null); return; }
+
+        setTimeout(tick, 100);
+
+      })();
+
+    });
+
+  }
+
+
+
+  function getMemberEmail(member){
+
+    var d = member && member.data ? member.data : {};
+
+    return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
+
+  }
+
+
+
+  async function fetchWhoami(){
+
+    try {
+
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  async function resolveMemberId(ms, member){
+
+    var memberId = getMemberId(member);
+
+    var idSource = memberId ? "getCurrentMember" : "none";
+
+    if (!memberId && ms && typeof ms.getMemberJSON === "function") {
+
+      try {
+
+        var jsonRes = await ms.getMemberJSON();
+
+        var mj = unwrapMember(jsonRes);
+
+        var mjId = getMemberId(mj);
+
+        if (mjId) { memberId = mjId; idSource = "getMemberJSON"; }
+
+      } catch (e) { /* ignore */ }
+
+    }
+
+    if (!memberId) {
+
+      var identity = await fetchWhoami();
+
+      if (identity && identity.memberstack_id) {
+
+        memberId = String(identity.memberstack_id);
+
+        idSource = "whoami";
+
+      }
+
+    }
+
+    return { memberId: memberId, idSource: idSource };
+
+  }
+
+
+
+  function unwrapMember(res){
+
+    if (!res) return null;
+
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+
+    if (res.data && res.data.data) return res.data;
+
+    return res;
+
+  }
+
+
+
+  async function fetchTrialExpired(memberId){
+
+    if (!memberId) return false;
+
+    try {
+
+      var res = await fetch(TRIAL_STATUS_URL + "?memberId=" + encodeURIComponent(memberId), { credentials: "omit" });
+
+      if (!res.ok) return false;
+
+      var data = await res.json();
+
+      return !!(data && (data.isExpiredTrial || data.state === "expired-trial"));
+
+    } catch (e) { return false; }
+
+  }
+
+
+
+  async function fetchExamProgress(memberId){
+
+    if (!memberId) return null;
+
+    try {
+
+      var res = await fetch(PROGRESS_URL, {
+
+        headers: { "X-Memberstack-Id": memberId },
+
+        credentials: "omit"
+
+      });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  function trackPageView(memberId, email){
+
+    if (!memberId) return;
+
+    var key = "ar-pv-dashboard-" + memberId;
+
+    try {
+
+      if (sessionStorage.getItem(key) === "1") return;
+
+      sessionStorage.setItem(key, "1");
+
+    } catch (e) { /* ignore */ }
+
+
+
+    fetch(TRACK_URL, {
+
+      method: "POST",
+
+      headers: { "Content-Type": "application/json" },
+
+      credentials: "omit",
+
+      body: JSON.stringify({
+
+        member_id: memberId,
+
+        email: email || null,
+
+        path: "/academy/dashboard",
+
+        title: "Academy Dashboard",
+
+        category: "dashboard",
+
+        meta: { source: "do-next-strip", surface: "dashboard" }
+
+      })
+
+    }).catch(function(){ /* non-blocking */ });
+
+  }
+
+
+
+  function watchExpiredTrial(onChange){
+
+    if (!document.body) return;
+
+    if (isExpiredTrialBody()) onChange(true);
+
+    var obs = new MutationObserver(function(){ onChange(isExpiredTrialBody()); });
+
+    obs.observe(document.body, { attributes: true, attributeFilter: ["data-ar-academy-state"] });
+
+    setTimeout(function(){ obs.disconnect(); }, 30000);
+
+  }
+
+
+
+  async function init(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+
+
+    watchExpiredTrial(function(expired){
+
+      if (expired) {
+
+        strip.classList.remove("is-ready");
+
+        strip.setAttribute("aria-hidden", "true");
+
+      }
+
+    });
+
+    if (isExpiredTrialBody()) return;
+
+
+
+    var ms = await waitForMemberstack();
+
+    if (!ms) {
+
+      var statusEl = document.getElementById("ar-do-next-status");
+
+      if (statusEl) statusEl.textContent = "Sign in to see your learning coach.";
+
+      strip.classList.add("is-ready");
+
+      return;
+
+    }
+
+
+
+    var memberRes = null;
+
+    try {
+
+      if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
+
+    } catch (e) { /* ignore */ }
+
+    var member = unwrapMember(memberRes);
+
+    if (member && !member.data && (member.planConnections || member.email)) {
+
+      member = { id: member.id || null, data: member };
+
+    }
+
+    if (member && !member.id && member.data && member.data.id) {
+
+      member.id = String(member.data.id);
+
+    }
+
+    var resolved = await resolveMemberId(ms, member);
+
+    var memberId = resolved.memberId;
+
+
+
+    if (memberId) {
+
+      var expired = await fetchTrialExpired(memberId);
+
+      if (expired || isExpiredTrialBody()) return;
+
+    }
+
+
+
+    var jsonRes = null;
+
+    try { jsonRes = await ms.getMemberJSON(); } catch (e) { jsonRes = null; }
+
+    var normalized = normalizeMemberJson(jsonRes);
+
+    var openedSet = getOpenedSet(normalized);
+
+    var progressData = await fetchExamProgress(memberId);
+
+    var examInfo = parseExamProgress(progressData);
+
+
+
+    var coachDebug = {
+
+      memberId: memberId || null,
+
+      idSource: resolved.idSource,
+
+      source: examInfo.source,
+
+      nextExamModuleId: examInfo.nextExamModuleId,
+
+      stage: "stage1"
+
+    };
+
+    window.__arDoNextStrip = coachDebug;
+
+
+
+    renderStrip(openedSet, examInfo, coachDebug);
+
+    trackPageView(memberId, getMemberEmail(member));
+
+  }
+
+
+
+  watchDoNextStripMetrics();
+
+  if (document.readyState === "loading") {
+
+    document.addEventListener("DOMContentLoaded", init);
+
+  } else {
+
+    init();
+
+  }
+
+})();
+
+</script>
+</body>
+</html>
