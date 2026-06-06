@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.5 Module-open beacon on lesson visit (engagement dashboard) via cached __arMsReader member id
 v1.3.4 Single __arMsReader bundle per article page — stops MS read flood on lesson visit (fast-return bounce fix)
 v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 - Pins widget under the first H1 (or top of main)
@@ -257,6 +258,7 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   var SITE = "https://www.alanranger.com";
   var API_BASE = "https://alanranger-modules.vercel.app";
   var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+  var TRACK_TILE_OPEN_URL = API_BASE + "/api/academy/track-tile-open";
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
   var MODULES_TOTAL = 60;
@@ -771,6 +773,30 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     }).catch(function(){ /* non-blocking */ });
   }
 
+  function trackLessonModuleOpen(memberId, path){
+    if (!memberId || !path) return;
+    var key = "ar-mo-lesson-" + memberId + "-" + path;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch (e) { /* ignore */ }
+
+    fetch(TRACK_TILE_OPEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "omit",
+      keepalive: true,
+      body: JSON.stringify({
+        member_id: memberId,
+        section: "modules",
+        key: path,
+        title: document.title || "",
+        url: SITE + path,
+        category: "lesson"
+      })
+    }).catch(function(){ /* non-blocking */ });
+  }
+
   async function wireMemberStrip(){
     var strip = document.getElementById("ar-lesson-member-strip");
     if (!strip) return;
@@ -806,7 +832,11 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 
     var member = ctx.member || {};
     var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
+    var lessonPath = normalizePath(window.location.pathname);
     trackLessonPageView(memberId, email);
+    if (lessonPath.indexOf("/blog-on-photography/") === 0) {
+      trackLessonModuleOpen(memberId, lessonPath);
+    }
     strip.dataset.wired = "1";
     strip.dataset.wiredFinal = "1";
   }

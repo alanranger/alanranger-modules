@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.10) — Squarespace Snippet
+Academy Dashboard UI (v1.3.11) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -17,6 +17,7 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
 v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
 v1.3.8: B-path fix — block external MS network-failure login redirect when session marker valid; whoami-first on fast return; header bounce-back from false login.
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
+v1.3.11: Open-tracking beacon on module/PDF/pack/checklist cubes — fires after window.open (keepalive before same-tab nav); uses cached openedProgressMemberId only.
 v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
 -->
 
@@ -5182,7 +5183,8 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
           section: section,
           key: key,
           title: linkEl ? (linkEl.getAttribute("title") || "") : "",
-          url: linkEl ? (linkEl.getAttribute("href") || "") : ""
+          url: linkEl ? (linkEl.getAttribute("href") || "") : "",
+          category: linkEl ? (linkEl.getAttribute("data-module-category") || linkEl.getAttribute("data-pack-category") || "") : ""
         };
         fetch("https://alanranger-modules.vercel.app/api/academy/track-tile-open", {
           method: "POST",
@@ -5195,6 +5197,22 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
       } catch (err) {
         // Silent: beacon must never disrupt the click flow.
       }
+    }
+
+    function navigateCubeOpen(opts) {
+      var alreadyOpened = opts.alreadyOpened;
+      var openInNewTab = opts.openInNewTab;
+      var navigateUrl = opts.navigateUrl;
+      var section = opts.section || "modules";
+      var beaconKey = opts.beaconKey;
+      var linkEl = opts.linkEl;
+      if (openInNewTab) {
+        window.open(navigateUrl, "_blank", "noopener,noreferrer");
+        if (!alreadyOpened) sendTileOpenBeacon(section, beaconKey, linkEl);
+        return;
+      }
+      if (!alreadyOpened) sendTileOpenBeacon(section, beaconKey, linkEl);
+      window.location.href = navigateUrl;
     }
 
     function showPaidOnlyAccessMessage() {
@@ -7549,26 +7567,22 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
         // Add click handlers to track module opens (especially for PDFs)
         var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
         moduleCubes.forEach(function(cube) {
-          cube.addEventListener('click', async function(e) {
-            var cubeEl = this; // Capture cube element
+          cube.addEventListener('click', function(e) {
+            var cubeEl = this;
             var moduleUrl = cubeEl.getAttribute('data-module-url');
             var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
             var category = cubeEl.getAttribute('data-module-category');
             var moduleTitle = cubeEl.getAttribute('title') || 'Module';
-            
+            var navigateUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + moduleUrl);
+
             if (!moduleUrl) return;
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
-            
-            // Normalize the URL
+
             var normalizedUrl = normalizePath(moduleUrl);
-            
-            // Check if already opened
             var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
-            var persistPromise = Promise.resolve();
-            
+
             if (!alreadyOpened) {
-              // Mark as opened immediately (optimistic update)
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
                 cat: category,
@@ -7576,36 +7590,24 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                 at: nowIso,
                 lastAt: nowIso
               };
-              
-              // Update the cube visual state
               cubeEl.classList.remove('status-not-opened');
               cubeEl.classList.add('status-opened');
-              
-              // Save to Memberstack asynchronously
-              persistPromise = (async function() {
+
+              (async function() {
                 try {
-                  // Get current member JSON
                   var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
                   var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
-                  
-                  // Ensure arAcademy structure exists
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
                   if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
                   if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
-                  
-                  // Add the new module
                   memberJson.arAcademy.modules.opened[normalizedUrl] = {
                     cat: category,
                     t: moduleTitle,
                     at: nowIso,
                     lastAt: nowIso
                   };
-                  
-                  // Save back to Memberstack
                   await ms.updateMemberJSON({ json: memberJson });
                   globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
-                  
-                  // Update progress count (modules only, unique normalized URLs)
                   var openedMap = memberJson.arAcademy.modules.opened || {};
                   var uniqueOpenedModuleCount = 0;
                   var seenModuleUrls = new Set();
@@ -7620,11 +7622,8 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                   if (progressTitleEl) {
                     progressTitleEl.textContent = uniqueOpenedModuleCount + '/60 opened';
                   }
-                  
-                  console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
-                  // Revert visual state on error
                   cubeEl.classList.remove('status-opened');
                   cubeEl.classList.add('status-not-opened');
                   delete opened[normalizedUrl];
@@ -7632,21 +7631,14 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
               })();
             }
 
-            if (openInNewTab) {
-              window.open(moduleUrl, '_blank', 'noopener,noreferrer');
-              return;
-            }
-
-            if (!alreadyOpened) {
-              try {
-                await Promise.race([
-                  persistPromise,
-                  new Promise(function(resolve) { setTimeout(resolve, 350); })
-                ]);
-              } catch (_) {}
-            }
-
-            window.location.href = moduleUrl;
+            navigateCubeOpen({
+              alreadyOpened: alreadyOpened,
+              openInNewTab: openInNewTab,
+              navigateUrl: navigateUrl,
+              section: "modules",
+              beaconKey: normalizedUrl,
+              linkEl: cubeEl
+            });
           });
         });
       }
@@ -7782,7 +7774,7 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
         // Add click handlers to track practice pack opens (exactly like modules)
         var practicePackCubes = practicePacksMiniGridEl.querySelectorAll('.ar-practice-pack-cube');
         practicePackCubes.forEach(function(cube) {
-          cube.addEventListener('click', async function(e) {
+          cube.addEventListener('click', function(e) {
             var practiceTileEl = document.getElementById('arp-practice-packs-tile');
             var practiceLocked = !!(practiceTileEl && (practiceTileEl.classList.contains('is-disabled') || practiceTileEl.getAttribute('aria-disabled') === 'true'));
             if (practiceLocked) {
@@ -7795,15 +7787,15 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
             var packUrl = cubeEl.getAttribute('data-pack-url');
             var category = cubeEl.getAttribute('data-pack-category');
             var packTitle = cubeEl.getAttribute('title') || 'Practice Pack';
-            
+            var navigateUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + packUrl);
+
             if (!packUrl) return;
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
-            
+
             var normalizedUrl = normalizePath(packUrl);
             var alreadyOpened = !!(opened[packUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
-            var persistPromise = Promise.resolve();
-            
+
             if (!alreadyOpened) {
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
@@ -7812,35 +7804,28 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                 at: nowIso,
                 lastAt: nowIso
               };
-              
               cubeEl.classList.remove('status-not-opened');
               cubeEl.classList.add('status-opened');
-              
-              // Save to Memberstack asynchronously
-              persistPromise = (async function() {
+
+              (async function() {
                 try {
                   var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
                   var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
-                  
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
                   if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
                   if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
-                  
                   memberJson.arAcademy.modules.opened[normalizedUrl] = {
                     cat: category,
                     t: packTitle,
                     at: nowIso,
                     lastAt: nowIso
                   };
-                  
-                  // Also add to history array
                   if (!memberJson.history) memberJson.history = [];
-                  var practicePackFullUrl = 'https://www.alanranger.com' + packUrl;
                   memberJson.history = memberJson.history.filter(function(item) {
-                    return item && item.url !== practicePackFullUrl && item.url !== packUrl && item.url !== normalizedUrl;
+                    return item && item.url !== navigateUrl && item.url !== packUrl && item.url !== normalizedUrl;
                   });
                   memberJson.history.unshift({
-                    url: practicePackFullUrl,
+                    url: navigateUrl,
                     title: packTitle,
                     timestamp: nowIso,
                     date: nowIso
@@ -7848,31 +7833,20 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                   if (memberJson.history.length > 20) {
                     memberJson.history = memberJson.history.slice(0, 20);
                   }
-                  
                   await ms.updateMemberJSON({ json: memberJson });
                   globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
-                  
-                  // Update practice packs progress count (recalculate from updated memberJson)
                   var practicePacksOpenedCount = 0;
-                  var openedModules = memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened ? memberJson.arAcademy.modules.opened : {};
-                  PRACTICE_PACK_URLS.forEach(function(packUrl) {
-                    if (!packUrl) return;
-                    var normalizedPackUrl = normalizePath(packUrl);
-                    if (openedModules[packUrl] || openedModules[normalizedPackUrl]) {
-                      practicePacksOpenedCount++;
-                    }
+                  var openedModules = memberJson.arAcademy.modules.opened || {};
+                  PRACTICE_PACK_URLS.forEach(function(url) {
+                    if (!url) return;
+                    var normalizedPackUrl = normalizePath(url);
+                    if (openedModules[url] || openedModules[normalizedPackUrl]) practicePacksOpenedCount++;
                   });
-                  
                   var practicePacksProgressTitleEl = document.getElementById('ar-practice-packs-progress-title');
                   if (practicePacksProgressTitleEl) {
-                    if (practicePacksOpenedCount > 0) {
-                      practicePacksProgressTitleEl.textContent = practicePacksOpenedCount + '/30 opened';
-                    } else {
-                      practicePacksProgressTitleEl.textContent = '';
-                    }
+                    practicePacksProgressTitleEl.textContent = practicePacksOpenedCount > 0
+                      ? practicePacksOpenedCount + '/30 opened' : '';
                   }
-                  
-                  console.log('[Practice Packs] Saved practice pack to Memberstack:', normalizedUrl);
                 } catch (err) {
                   console.error('[Practice Packs] Failed to save practice pack to Memberstack:', err);
                   cubeEl.classList.remove('status-opened');
@@ -7882,21 +7856,14 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
               })();
             }
 
-            if (openInNewTab) {
-              window.open(packUrl, '_blank', 'noopener,noreferrer');
-              return;
-            }
-
-            if (!alreadyOpened) {
-              try {
-                await Promise.race([
-                  persistPromise,
-                  new Promise(function(resolve) { setTimeout(resolve, 350); })
-                ]);
-              } catch (_) {}
-            }
-
-            window.location.href = packUrl;
+            navigateCubeOpen({
+              alreadyOpened: alreadyOpened,
+              openInNewTab: openInNewTab,
+              navigateUrl: navigateUrl,
+              section: "modules",
+              beaconKey: normalizedUrl,
+              linkEl: cubeEl
+            });
           });
         });
       }
@@ -8030,7 +7997,7 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
           // Add click handlers to track checklist opens (open PDFs in new tab)
           var checklistCubes = checklistsMiniGridEl.querySelectorAll('.ar-checklist-cube');
           checklistCubes.forEach(function(cube) {
-            cube.addEventListener('click', async function(e) {
+            cube.addEventListener('click', function(e) {
               var checklistsTileEl = document.getElementById('arp-checklists-tile');
               var checklistsLocked = !!(checklistsTileEl && (checklistsTileEl.classList.contains('is-disabled') || checklistsTileEl.getAttribute('aria-disabled') === 'true'));
               if (checklistsLocked) {
@@ -8043,15 +8010,15 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
               var checklistUrl = cubeEl.getAttribute('data-checklist-url');
               var category = cubeEl.getAttribute('data-checklist-category');
               var checklistTitle = cubeEl.getAttribute('title') || 'Checklist';
-              
+              var navigateUrl = cubeEl.getAttribute('href') || ('https://www.alanranger.com' + checklistUrl);
+
               if (!checklistUrl) return;
               if (e && typeof e.preventDefault === 'function') e.preventDefault();
-              
+
               var normalizedUrl = normalizePath(checklistUrl);
               var alreadyOpened = !!(opened[checklistUrl] || opened[normalizedUrl]);
               var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
-              var persistPromise = Promise.resolve();
-              
+
               if (!alreadyOpened) {
                 var nowIso = new Date().toISOString();
                 opened[normalizedUrl] = {
@@ -8060,41 +8027,32 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                   at: nowIso,
                   lastAt: nowIso
                 };
-                
                 cubeEl.classList.remove('status-not-opened');
                 cubeEl.classList.add('status-opened');
-                
-                // Update progress count immediately
                 checklistsOpened++;
                 if (checklistsProgressTitleEl) {
                   checklistsProgressTitleEl.textContent = checklistsOpened + '/35 opened';
                 }
-                
-                // Save to Memberstack asynchronously
-                persistPromise = (async function() {
+
+                (async function() {
                   try {
                     var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
                     var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
-                    
                     if (!memberJson.arAcademy) memberJson.arAcademy = {};
                     if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
                     if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
-                    
                     memberJson.arAcademy.modules.opened[normalizedUrl] = {
                       cat: category,
                       t: checklistTitle,
                       at: nowIso,
                       lastAt: nowIso
                     };
-                    
-                    // Also add to history array
                     if (!memberJson.history) memberJson.history = [];
-                    var checklistFullUrl = 'https://www.alanranger.com' + checklistUrl;
                     memberJson.history = memberJson.history.filter(function(item) {
-                      return item && item.url !== checklistFullUrl && item.url !== checklistUrl && item.url !== normalizedUrl;
+                      return item && item.url !== navigateUrl && item.url !== checklistUrl && item.url !== normalizedUrl;
                     });
                     memberJson.history.unshift({
-                      url: checklistFullUrl,
+                      url: navigateUrl,
                       title: checklistTitle,
                       timestamp: nowIso,
                       date: nowIso
@@ -8102,17 +8060,13 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                     if (memberJson.history.length > 20) {
                       memberJson.history = memberJson.history.slice(0, 20);
                     }
-                    
                     await ms.updateMemberJSON({ json: memberJson });
                     globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
-                    
-                    console.log('[Checklists] Saved checklist to Memberstack:', normalizedUrl);
                   } catch (err) {
                     console.error('[Checklists] Failed to save checklist to Memberstack:', err);
                     cubeEl.classList.remove('status-opened');
                     cubeEl.classList.add('status-not-opened');
                     delete opened[normalizedUrl];
-                    // Revert progress count
                     checklistsOpened--;
                     if (checklistsProgressTitleEl) {
                       checklistsProgressTitleEl.textContent = checklistsOpened > 0 ? checklistsOpened + '/35 opened' : '';
@@ -8121,21 +8075,14 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
                 })();
               }
 
-              if (openInNewTab) {
-                window.open(checklistUrl, '_blank', 'noopener,noreferrer');
-                return;
-              }
-
-              if (!alreadyOpened) {
-                try {
-                  await Promise.race([
-                    persistPromise,
-                    new Promise(function(resolve) { setTimeout(resolve, 350); })
-                  ]);
-                } catch (_) {}
-              }
-
-              window.location.href = checklistUrl;
+              navigateCubeOpen({
+                alreadyOpened: alreadyOpened,
+                openInNewTab: openInNewTab,
+                navigateUrl: navigateUrl,
+                section: "modules",
+                beaconKey: normalizedUrl,
+                linkEl: cubeEl
+              });
             });
           });
         }

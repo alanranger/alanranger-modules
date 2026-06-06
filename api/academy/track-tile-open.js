@@ -13,6 +13,7 @@
 // (they only affect tile-opened progress visuals) and auditable via Memberstack.
 
 const memberstackAdmin = require("@memberstack/admin");
+const { createClient } = require("@supabase/supabase-js");
 const { setCorsHeaders, handlePreflight } = require("../exams/_cors");
 
 const VALID_SECTIONS = new Set(["appliedLearning", "rps", "modules"]);
@@ -94,6 +95,31 @@ function buildMergedJson(currentJson, payload) {
   return next;
 }
 
+async function upsertModuleOpenEvent(parsed) {
+  if (parsed.section !== "modules") return;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+
+  const supabase = createClient(url, key);
+  const nowIso = new Date().toISOString();
+  const { error } = await supabase.from("academy_events").upsert(
+    [
+      {
+        event_type: "module_open",
+        member_id: parsed.member_id,
+        path: parsed.key,
+        title: parsed.title || null,
+        category: parsed.category || null,
+        meta: { source: "track-tile-open", last_opened_at: nowIso },
+        created_at: nowIso,
+      },
+    ],
+    { onConflict: "member_id,event_type,path" }
+  );
+  if (error) console.warn("[track-tile-open] academy_events upsert:", error.message);
+}
+
 async function handler(req, res) {
   if (handlePreflight(req, res)) return;
   setCorsHeaders(res);
@@ -126,6 +152,11 @@ async function handler(req, res) {
       id: parsed.member_id,
       data: { json: nextJson },
     });
+    try {
+      await upsertModuleOpenEvent(parsed);
+    } catch (eventErr) {
+      console.warn("[track-tile-open] academy_events failed:", eventErr?.message || eventErr);
+    }
     const openedCount = Object.keys(nextJson.arAcademy[parsed.section].opened).length;
     console.log(
       `[track-tile-open] OK member=${parsed.member_id} section=${parsed.section} key=${parsed.key} count=${openedCount}`

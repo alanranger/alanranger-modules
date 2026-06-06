@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.35 — tile-open beacon fires after window.open (assignment PDFs); cached member id only
 v1.3.34 — __arMsReader shared bundle (one MS read pair per page; assignment persist uses cache)
 v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
@@ -3183,7 +3184,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     a.setAttribute("data-wired-module-track", "true");
 
-    a.addEventListener("click", async function(e){
+    a.addEventListener("click", function(e){
 
       e.preventDefault();
 
@@ -3193,7 +3194,11 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       var memberId = doNextRuntime.memberId;
 
-      if (ms && memberId && globalThis.__arMsReader) {
+      window.open(tile.href, "_blank", "noopener,noreferrer");
+
+      if (!ms || !memberId || !globalThis.__arMsReader) return;
+
+      (async function(){
 
         try {
 
@@ -3221,9 +3226,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         }
 
-      }
-
-      window.open(tile.href, "_blank", "noopener,noreferrer");
+      })();
 
     });
 
