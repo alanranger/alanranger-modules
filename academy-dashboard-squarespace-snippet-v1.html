@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.11) — Squarespace Snippet
+Academy Dashboard UI (v1.3.12) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -19,6 +19,7 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
 v1.3.11: Open-tracking beacon on module/PDF/pack/checklist cubes — fires after window.open (keepalive before same-tab nav); uses cached openedProgressMemberId only.
 v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
+v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 live baseline. Beacon logic unchanged (fire-and-forget keepalive AFTER open; cached __arMsReader member id only; sendModuleProgressBeacon stays in the module-progress IIFE). Fresh version stamp so post-restore live verification is unambiguous; corrects the stale header stamp that still read D 1.3.10.
 -->
 
 <script>
