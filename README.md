@@ -16,19 +16,26 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 ## Files
 
 ### Squarespace Code Blocks
+
+**Current live versions (2026-06-06 baseline):** H 1.4.4 · S 1.3.34 · D 1.3.10 · B 1.3.4  
+See `RESTORE_POINT_2026-06-06-D-1.3.10.md` and `docs/handoff/` for paste instructions.
+
+- **`academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init)
+- **`academy-do-next-strip-squarespace-snippet-v1.html`** - Dashboard "Do These Next" strip (code block 1)
 - **`squarespace-v2.2.html`** - Exams & Certification page code block
   - Main exam interface with grid view and quiz functionality
   - Includes debug panel (hidden by default, press Ctrl+Shift+D to show)
   - Auto-refreshes grid when navigating back to page
   - Auto-saves exam results after submission
 
-- **`academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block
+- **`academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block (code block 2)
   - Displays exam progress summary on academy dashboard
+  - Session-cached access + shared `__arMsReader` (D 1.3.9 / D 1.3.10)
   - Auto-refreshes every 30 seconds and on page visibility change
   - **Inactivity logout** - Automatically logs out users after 30 minutes of inactivity
   - Tracks user activity (clicks, mouse, keyboard, scroll, touch, focus) to reset timer
 
-- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages
+- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages (B 1.3.4)
   - Adds "Bookmark this page", "Back to Modules", and "Back to Dashboard" buttons
   - Appears on blog posts with the "Sign up to free online photography course" snippet
   - Auto-positions after first H1 or at top of main content

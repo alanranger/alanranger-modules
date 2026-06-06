@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-06] - Dashboard bounce fix baseline (D 1.3.9 + D 1.3.10)
+
+### Fixed
+- **B3 login bounce** — fast return from module article to dashboard no longer lands on `/academy/login`
+- **Memberstack read flood** — ~78 paired `getCurrentMember`/`getMemberJSON` calls per dashboard load reduced to ~1–2 via `globalThis.__arMsReader`
+- **Article page MS hammering** — bookmark/lesson widget stopped retry/mutation loops that triggered MS Network Errors
+
+### Added
+- **D 1.3.9** session-cached access (`accessConfirmed` in `ar-dashboard-session-v1`, 4h TTL)
+- **D 1.3.10** shared MS reader bundle across header, dashboard, strip, and bookmark snippets
+- **Restore point** — `RESTORE_POINT_2026-06-06-D-1.3.10.md`, handoff docs in `docs/handoff/`
+- **Regression tests** — `scripts/test-dashboard-bounce-scenarios.mjs`, `scripts/test-dashboard-cube-clicks.mjs`
+
+### Live snippet versions
+- Header **H 1.4.4** · Strip **S 1.3.34** · Dashboard **D 1.3.10** · Bookmark **B 1.3.4**
+
+### Git commits
+- `0387920` D 1.3.9 · `5e000d5`/`7b0fc0b` D 1.3.10 · `9f7fed1` baseline assets
+
 ## [2026-01-20] - Conversion Detection & Revenue Metrics Fixes
 
 ### Fixed
