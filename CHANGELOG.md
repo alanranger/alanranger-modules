@@ -22,6 +22,22 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-07] - Strip S 1.3.47 + Dashboard D 1.3.13: ghost module-count sync + grid ghost-awareness
+
+### Fixed
+- **Do-next strip** — `modulesOpened` status line now matches `gateStats.totalModulesOpened` (both use the same 60-module `getOpenedSet` filter; stray non-module keys no longer inflate gateStats)
+- **Dashboard modules grid** — ghost mode invalidates stale `__arMsReader` admin cache and prefetches ghost member bundle before `run()` / `renderModuleProgress()`; grid cubes and "X/60 opened" reflect the ghosted member
+- **Dashboard write guards** — `dashboardGhostMode` suppresses cube/pack/checklist beacons, Memberstack persists, and history-backfill saves in ghost mode
+- **Checklists** — fixed typo `navigateCubeOpen` → `navigateModuleCubeOpen` (checklist clicks were no-ops)
+
+### Builds on
+- S 1.3.46 `ghostMode` / `idSource` invariant (all three ghost paths)
+
+### Paste
+- **Strip S 1.3.47** + **Dashboard D 1.3.13** + **Header H 1.4.16** (stamp). No Vercel deploy required.
+
+---
+
 ## [2026-06-07] - Strip S 1.3.46: ghostMode flag sync + write-guard invariant
 
 ### Fixed
