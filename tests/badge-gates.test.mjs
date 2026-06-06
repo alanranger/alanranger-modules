@@ -21,6 +21,7 @@ const {
   JOURNEY_STAGES,
   evaluateBadges,
   computeLongevityPoints,
+  getCurrentStage,
 } = gates;
 
 const DAY_MS = 86400000;
@@ -244,4 +245,24 @@ test("15. badge objects carry display fields (colour/stars/iconClass) for rail +
   result.badges.forEach((badge) => {
     assert.equal(badge.stars, expectedStars[badge.key]);
   });
+});
+
+test("16. getCurrentStage carries display fields for banner current-stage badge", () => {
+  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
+  const current = getCurrentStage(result.badges);
+  assert.equal(current.key, "master");
+  assert.equal(current.colour, "gold");
+  assert.equal(current.stars, 5);
+  assert.equal(current.iconClass, "ti-trophy");
+  assert.equal(current.levelIndex, 6);
+  assert.equal(current.paused, false);
+});
+
+test("17. getCurrentStage carries paused when summit badge is idle 60+ days", () => {
+  const stale = new Date(Date.now() - (KEEPALIVE_DECAY_DAYS + 2) * DAY_MS).toISOString();
+  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext(stale));
+  const current = getCurrentStage(result.badges);
+  assert.equal(current.key, "master");
+  assert.equal(current.colour, "gold");
+  assert.equal(current.paused, true);
 });

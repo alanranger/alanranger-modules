@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.40 — fix: getCurrentStage carries colour/stars/iconClass to banner badge (gold Master + stars restored in header); preview injects lastActivityAt (default recent/un-paused; lastactivity=70 forces paused)
 v1.3.39 — fix: badge rail/banner regression - computeJourneyBadges now carries colour, stars, iconClass and sublabel through from the stage, restoring gold Master, per-stage stars (1-5) and correct icons (display passthrough only; earn logic, thresholds, weights and decay unchanged)
 v1.3.38 — preview mode injects Graduate/Master longevity query params (appliedLearning, practicePacks, pdfAssignments, activeMonths)
 v1.3.37 — Graduate + Master points-layer gates, keep-alive decay, tooltips, tile-4 checklists (on Certified floor)
@@ -1468,6 +1469,15 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__circle{
+    opacity:0.45;
+  }
+
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__label,
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__caption{
+    opacity:0.7;
+  }
+
 </style>
 
 
@@ -2545,6 +2555,11 @@ function getCurrentStage(badges) {
     label: current.label,
     levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
     levelTotal: JOURNEY_STAGES.length,
+    colour: current.colour,
+    stars: current.stars,
+    iconClass: current.iconClass,
+    sublabel: current.sublabel,
+    paused: current.paused === true,
   };
 }
 
@@ -3158,6 +3173,8 @@ function practitionerRequirementsMet(stats) {
     }
 
     existing.innerHTML = "";
+
+    existing.className = "ar-do-next-banner-stage" + (current.paused ? " ar-do-next-banner-stage--paused" : "");
 
     var circle = document.createElement("div");
 
@@ -4581,6 +4598,28 @@ function practitionerRequirementsMet(stats) {
 
 
 
+  function resolvePreviewLastActivityAt(params){
+
+    var raw = params.get("lastactivity") || params.get("lastActivity");
+
+    var nowMs = Date.now();
+
+    if (raw === null || raw === "") return new Date(nowMs).toISOString();
+
+    var lower = String(raw).toLowerCase();
+
+    if (lower === "today" || lower === "0") return new Date(nowMs).toISOString();
+
+    var days = parseInt(raw, 10);
+
+    if (!isNaN(days)) return new Date(nowMs - days * 86400000).toISOString();
+
+    return new Date(nowMs).toISOString();
+
+  }
+
+
+
   function parsePreviewConfig(memberId, email){
 
     if (!isAdminPreviewUser(memberId, email)) return null;
@@ -4633,7 +4672,9 @@ function practitionerRequirementsMet(stats) {
 
         pdfAssignments: isNaN(pdfAssignments) ? 0 : pdfAssignments,
 
-        activeMonths: isNaN(activeMonths) ? 0 : activeMonths
+        activeMonths: isNaN(activeMonths) ? 0 : activeMonths,
+
+        lastActivityAt: resolvePreviewLastActivityAt(params)
 
       };
 
@@ -4703,7 +4744,9 @@ function practitionerRequirementsMet(stats) {
 
         daysLeftInTrial: null,
 
-        distinctActiveDaysFirst14d: preview.activeDays
+        distinctActiveDaysFirst14d: preview.activeDays,
+
+        lastActivityAt: preview.lastActivityAt
 
       }, longevity);
 
@@ -4719,7 +4762,9 @@ function practitionerRequirementsMet(stats) {
 
         daysLeftInTrial: null,
 
-        distinctActiveDaysFirst14d: preview.activeDays
+        distinctActiveDaysFirst14d: preview.activeDays,
+
+        lastActivityAt: preview.lastActivityAt
 
       }, longevity);
 
@@ -4733,7 +4778,9 @@ function practitionerRequirementsMet(stats) {
 
       daysLeftInTrial: preview.trialDaysLeft,
 
-      distinctActiveDaysFirst14d: preview.activeDays
+      distinctActiveDaysFirst14d: preview.activeDays,
+
+      lastActivityAt: preview.lastActivityAt
 
     }, longevity);
 
