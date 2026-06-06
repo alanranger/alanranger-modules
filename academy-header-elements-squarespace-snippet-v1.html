@@ -4,7 +4,8 @@ For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 
 Snippet versions shown live (update all three when re-pasting blocks):
-  Header H = 1.4.3 | Strip S = 1.3.33 | Dashboard D = 1.3.7.2
+  Header H = 1.4.3 | Strip S = 1.3.33 | Dashboard D = 1.3.8
+v1.3.8: Bounce back from false MS login redirect when dashboard session marker valid (B-path fix).
 -->
 
 <style id="ar-academy-header-style">
@@ -410,7 +411,7 @@ Snippet versions shown live (update all three when re-pasting blocks):
       <span
         id="ar-academy-header-snippet-version"
         title="Header / Do-next strip / Dashboard snippet versions"
-      >H 1.4.3 · S 1.3.33 · D 1.3.7.2</span>
+      >H 1.4.3 · S 1.3.33 · D 1.3.8</span>
     </div>
     <button
       id="ar-academy-header-logout-btn"
@@ -428,6 +429,64 @@ Snippet versions shown live (update all three when re-pasting blocks):
   var path = (window.location && window.location.pathname) ? window.location.pathname : "";
   var isAcademy = (path === "/academy" || path.indexOf("/academy/") === 0);
   if (!isAcademy) return;
+
+  var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
+  var AUTH_LOGIN_ALLOW_KEY = "ar-auth-login-allow-v1";
+  var AUTH_TRACE_KEY = "ar-auth-trace";
+
+  function hasRecentDashboardSession() {
+    try {
+      var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && parsed.id && parsed.at && (Date.now() - parsed.at < 4 * 60 * 60 * 1000));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isIntentionalLoginRedirect() {
+    try {
+      var raw = sessionStorage.getItem(AUTH_LOGIN_ALLOW_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && parsed.at && (Date.now() - parsed.at < 4000));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function appendAuthTraceHeader(record) {
+    try {
+      var raw = sessionStorage.getItem(AUTH_TRACE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      var entry = record || {};
+      if (!entry.ts) entry.ts = new Date().toISOString();
+      arr.push(entry);
+      if (arr.length > 50) arr = arr.slice(-50);
+      sessionStorage.setItem(AUTH_TRACE_KEY, JSON.stringify(arr));
+    } catch (e) { /* no-op */ }
+  }
+
+  function bounceBackFromFalseLogin() {
+    var normalPath = path.replace(/\/+$/, "") || "/";
+    if (normalPath !== "/academy/login") return;
+    if (!hasRecentDashboardSession()) return;
+    if (isIntentionalLoginRedirect()) return;
+    var qs = (window.location && window.location.search) ? window.location.search : "";
+    if (qs.indexOf("reason=timeout") !== -1) return;
+    if (qs.indexOf("trial=not-activated") !== -1) return;
+    appendAuthTraceHeader({
+      tag: "login-bounce-back",
+      stage: "header",
+      reason: "ms-false-login-redirect",
+      sessionMarkerPresent: true
+    });
+    window.location.replace("/academy/dashboard");
+  }
+
+  bounceBackFromFalseLogin();
   
   // Wait for Memberstack to load
   function waitForMemberstack() {
@@ -793,8 +852,16 @@ Snippet versions shown live (update all three when re-pasting blocks):
             // Clear session storage
             sessionStorage.removeItem('ar-login-tracked-' + memberId);
             sessionStorage.removeItem('ar-last-activity-' + memberId);
+            sessionStorage.removeItem(DASHBOARD_SESSION_KEY);
             clearLastLoginCache(memberId);
           }
+
+          try {
+            sessionStorage.setItem(AUTH_LOGIN_ALLOW_KEY, JSON.stringify({
+              reason: "user-click",
+              at: Date.now()
+            }));
+          } catch (e) { /* ignore */ }
           
           if (ms && typeof ms.logout === 'function') {
             ms.logout().then(function() {

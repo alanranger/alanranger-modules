@@ -15,6 +15,7 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
       Tile header icons use HTML entities (UTF-8 safe paste). Abstract assignment cube 56 points to PDF.
 v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (temporary; for live bounce pin-down).
 v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
+v1.3.8: B-path fix — block external MS network-failure login redirect when session marker valid; whoami-first on fast return; header bounce-back from false login.
 -->
 
 <script>
@@ -3134,8 +3135,42 @@ v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect)
 
     var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
     var AUTH_TRACE_KEY = "ar-auth-trace";
+    var AUTH_LOGIN_ALLOW_KEY = "ar-auth-login-allow-v1";
     var AUTH_TRACE_MAX = 50;
     var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+    function allowIntentionalLoginRedirect(reason) {
+      try {
+        sessionStorage.setItem(AUTH_LOGIN_ALLOW_KEY, JSON.stringify({
+          reason: reason || "intentional",
+          at: Date.now()
+        }));
+      } catch (e) { /* no-op */ }
+    }
+
+    function isIntentionalLoginRedirect() {
+      try {
+        var raw = sessionStorage.getItem(AUTH_LOGIN_ALLOW_KEY);
+        if (!raw) return false;
+        var parsed = JSON.parse(raw);
+        return !!(parsed && parsed.at && (Date.now() - parsed.at < 4000));
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function isMsNetworkRejection(reason) {
+      var msg = (reason && reason.message) ? String(reason.message) : String(reason || "");
+      if (msg.indexOf("Network Error") !== -1) return true;
+      return !!(reason && (reason.code === "network-error" || reason.message === "Network Error"));
+    }
+
+    function isBlockedLoginNav(url) {
+      var target = String(url || "");
+      if (target.indexOf("/academy/login") === -1) return false;
+      if (isIntentionalLoginRedirect()) return false;
+      return hasRecentDashboardSession();
+    }
 
     function markDashboardSession(memberId) {
       if (!memberId) return;
@@ -3213,7 +3248,16 @@ v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect)
     }
 
     function resolveDashboardMember(ms) {
-      return getMemberExtendedWithRetry(ms, 12);
+      if (!hasRecentDashboardSession()) {
+        return getMemberExtendedWithRetry(ms, 12);
+      }
+      return fetchWhoamiIdentity().then(function(identity) {
+        var whoamiMember = memberFromWhoami(identity);
+        if (whoamiMember && memberCanAccessDashboard(whoamiMember)) {
+          return whoamiMember;
+        }
+        return getMemberExtendedWithRetry(ms, 12);
+      });
     }
 
     function showDashboardShell() {
@@ -3279,16 +3323,62 @@ v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect)
       appendAuthTrace({ ts: new Date().toISOString(), tag: "ms-error", msg: String(msg || "") });
     }
 
+    function installLoginNavigationShield() {
+      if (globalThis.__arLoginNavShieldInstalled) return;
+      globalThis.__arLoginNavShieldInstalled = true;
+      var loc = globalThis.location;
+      if (!loc || !loc.assign || !loc.replace) return;
+      var nativeAssign = loc.assign.bind(loc);
+      var nativeReplace = loc.replace.bind(loc);
+      loc.assign = function(url) {
+        if (isBlockedLoginNav(url)) {
+          appendAuthTrace({
+            tag: "nav-shielded",
+            stage: "navigation-shield",
+            reason: "blocked-ms-login-assign",
+            aboutToRedirectTo: String(url)
+          });
+          showDashboardShell();
+          return;
+        }
+        return nativeAssign(url);
+      };
+      loc.replace = function(url) {
+        if (isBlockedLoginNav(url)) {
+          appendAuthTrace({
+            tag: "nav-shielded",
+            stage: "navigation-shield",
+            reason: "blocked-ms-login-replace",
+            aboutToRedirectTo: String(url)
+          });
+          showDashboardShell();
+          return;
+        }
+        return nativeReplace(url);
+      };
+    }
+
     function installAuthTraceErrorListeners() {
       if (globalThis.__arAuthTraceErrorsInstalled) return;
       globalThis.__arAuthTraceErrorsInstalled = true;
+      installLoginNavigationShield();
       globalThis.addEventListener("error", function(ev) {
         var m = (ev && ev.message) || (ev && ev.error && ev.error.message) || "unknown error";
         persistMsError(m);
       });
       globalThis.addEventListener("unhandledrejection", function(ev) {
         var r = ev && ev.reason;
-        persistMsError((r && r.message) || String(r || "unhandled rejection"));
+        var msg = (r && r.message) || String(r || "unhandled rejection");
+        persistMsError(msg);
+        if (isMsNetworkRejection(r) && hasRecentDashboardSession()) {
+          try { ev.preventDefault(); } catch (e) { /* no-op */ }
+          appendAuthTrace({
+            tag: "ms-shielded",
+            stage: "network-shield",
+            reason: "swallowed-ms-network-rejection",
+            msg: msg
+          });
+        }
       });
     }
 
@@ -5397,8 +5487,21 @@ v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect)
     function safeRedirect(url, traceCtx){
       // Never redirect in editor
       if (inSquarespaceEditor()) return;
-      if (traceCtx && url && String(url).indexOf("/academy/login") !== -1) {
-        logAuthRedirect(traceCtx.stage, traceCtx.reason, traceCtx.member, url);
+      if (url && String(url).indexOf("/academy/login") !== -1) {
+        if (traceCtx) {
+          logAuthRedirect(traceCtx.stage, traceCtx.reason, traceCtx.member, url);
+        }
+        allowIntentionalLoginRedirect(traceCtx && traceCtx.reason);
+        if (isBlockedLoginNav(url)) {
+          appendAuthTrace({
+            tag: "nav-shielded",
+            stage: "safeRedirect",
+            reason: "blocked-own-login-redirect",
+            aboutToRedirectTo: String(url)
+          });
+          showDashboardShell();
+          return;
+        }
       }
       try { globalThis.location.href = url; } catch(e) {}
     }
@@ -6491,6 +6594,7 @@ v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect)
       var btn = document.getElementById("arp-logout-btn");
       if (btn) {
         btn.addEventListener("click", function(){
+          try { sessionStorage.removeItem(DASHBOARD_SESSION_KEY); } catch (e) { /* no-op */ }
           if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.logout === "function") {
             try { globalThis.$memberstackDom.logout(); } catch (e) { /* no-op */ }
           }
