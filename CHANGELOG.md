@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+### Changed
+- **Shared `AdminSessionCacheProvider`** wraps all `/academy/admin/*` routes — in-memory + sessionStorage (5 min) survives tab switches without refetch spinner
+- Ghost + Members directory hydrate instantly when returning to a tab; background revalidate still runs
+- Server members API cache TTL increased to 5 minutes
+
+---
+
 ## [2026-06-07] - Ghost admin: fast member directory load
 
 ### Fixed

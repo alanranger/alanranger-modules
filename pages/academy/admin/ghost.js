@@ -1,10 +1,11 @@
 // /pages/academy/admin/ghost.js
 // Ghost Login - View any member's dashboard as they see it
-// v1.2.0 — faster Ghost load: client cache + stale-while-revalidate
+// v1.2.0 — faster Ghost load: shared admin session cache + stale-while-revalidate
 
 import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
+import { useAdminSessionCache } from '../../../components/admin/AdminSessionCacheProvider';
 
 function GateRow({ label, met, children }) {
   return (
@@ -96,8 +97,11 @@ function BadgeBreakdownPanel({ memberId, breakdown, badge, loading, error }) {
 }
 
 export default function GhostLogin() {
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cache = useAdminSessionCache();
+  const cachedList = Array.isArray(cache?.getGhost?.()) ? cache.getGhost() : [];
+
+  const [members, setMembers] = useState(cachedList);
+  const [loading, setLoading] = useState(cachedList.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [sortConfig, setSortConfig] = useState({ field: 'updated_at', direction: 'desc' });
@@ -186,24 +190,14 @@ export default function GhostLogin() {
   }
 
   async function fetchMembers() {
-    const cacheKey = 'ar-admin-ghost-members-v1';
-    const cacheTtlMs = 120000;
-    let showedCache = false;
-
-    try {
-      const raw = sessionStorage.getItem(cacheKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.at && Date.now() - parsed.at < cacheTtlMs && Array.isArray(parsed.members)) {
-          setMembers(parsed.members);
-          setFilteredMembers(parsed.members);
-          setLoading(false);
-          showedCache = true;
-        }
-      }
-    } catch (e) { /* ignore */ }
-
-    if (!showedCache) setLoading(true);
+    const cached = cache?.getGhost?.();
+    const hasCache = Array.isArray(cached) && cached.length > 0;
+    if (hasCache) {
+      setMembers(cached);
+      setLoading(false);
+    } else if (!members.length) {
+      setLoading(true);
+    }
 
     try {
       const res = await fetch('/api/admin/members?for_ghost=1&limit=2500');
@@ -212,13 +206,10 @@ export default function GhostLogin() {
       const data = await res.json();
       const list = data.members || [];
       setMembers(list);
-      setFilteredMembers(list);
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), members: list }));
-      } catch (e) { /* ignore */ }
+      cache?.setGhost?.(list);
     } catch (error) {
       console.error('Failed to fetch members:', error);
-      if (!showedCache) alert('Failed to load members: ' + error.message);
+      if (!hasCache) alert('Failed to load members: ' + error.message);
     } finally {
       setLoading(false);
     }

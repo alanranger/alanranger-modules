@@ -5,6 +5,55 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import BadgeLevelCell from '../../../../components/admin/BadgeLevelCell';
+import { useAdminSessionCache } from '../../../../components/admin/AdminSessionCacheProvider';
+
+function buildMembersParamsKey({
+  pagination,
+  planFilter,
+  statusFilter,
+  searchQuery,
+  lastSeenFilter,
+  activeNowFilter,
+  tileFilter,
+  sortConfig,
+}) {
+  const params = new URLSearchParams();
+  params.append('page', String(pagination.page));
+  params.append('limit', String(pagination.limit));
+  if (planFilter) params.append('plan', planFilter);
+  if (statusFilter) params.append('status', statusFilter);
+  if (searchQuery) params.append('search', searchQuery);
+  if (lastSeenFilter) params.append('last_seen', lastSeenFilter);
+  if (activeNowFilter) params.append('active_now', 'true');
+  if (tileFilter) params.append('filter', tileFilter);
+  if (sortConfig.field) {
+    params.append('sort', sortConfig.field);
+    params.append('order', sortConfig.direction);
+  }
+  return params.toString();
+}
+
+function readMembersBootCache(cache, router) {
+  if (!cache?.getMembers || !router.isReady) return null;
+  const q = router.query;
+  const key = buildMembersParamsKey({
+    pagination: {
+      page: Number.parseInt(q.page, 10) || 1,
+      limit: Number.parseInt(q.limit, 10) || 50,
+    },
+    planFilter: q.plan || '',
+    statusFilter: q.status || '',
+    searchQuery: q.search || '',
+    lastSeenFilter: q.last_seen || '',
+    activeNowFilter: q.active_now === 'true',
+    tileFilter: q.filter || '',
+    sortConfig: {
+      field: q.sort || 'updated_at',
+      direction: q.order || 'desc',
+    },
+  });
+  return cache.getMembers(key);
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Never';
@@ -35,10 +84,15 @@ const getStatusBadgeStyle = (status) => {
 
 export default function MembersDirectory() {
   const router = useRouter();
+  const cache = useAdminSessionCache();
   const { sort = 'updated_at', order = 'desc' } = router.query;
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
+  const boot = readMembersBootCache(cache, router);
+
+  const [members, setMembers] = useState(boot?.members || []);
+  const [loading, setLoading] = useState(!(boot?.members?.length));
+  const [pagination, setPagination] = useState(
+    boot?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 }
+  );
   const [sortConfig, setSortConfig] = useState({ field: sort, direction: order });
   
   // Active Now Count
@@ -126,31 +180,40 @@ export default function MembersDirectory() {
 
   async function fetchMembers() {
     const requestId = ++latestRequestId.current;
-    setLoading(true);
+    const paramsKey = buildMembersParamsKey({
+      pagination,
+      planFilter,
+      statusFilter,
+      searchQuery,
+      lastSeenFilter,
+      activeNowFilter,
+      tileFilter,
+      sortConfig,
+    });
+    const cached = cache?.getMembers?.(paramsKey);
+    const hasCache = !!(cached?.members?.length);
+    if (hasCache) {
+      setMembers(cached.members);
+      setPagination(cached.pagination || pagination);
+      setLoading(false);
+    } else if (!members.length) {
+      setLoading(true);
+    }
+
     try {
-      const params = new URLSearchParams();
-      params.append('page', pagination.page);
-      params.append('limit', pagination.limit);
-      if (planFilter) params.append('plan', planFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (searchQuery) params.append('search', searchQuery);
-      if (lastSeenFilter) params.append('last_seen', lastSeenFilter);
-      if (activeNowFilter) params.append('active_now', 'true');
-      if (tileFilter) params.append('filter', tileFilter);
-      // Add sort parameters for server-side sorting
-      if (sortConfig.field) {
-        params.append('sort', sortConfig.field);
-        params.append('order', sortConfig.direction);
-      }
+      const params = new URLSearchParams(paramsKey);
 
       const res = await fetch(`/api/admin/members?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
+
       const data = await res.json();
       if (requestId === latestRequestId.current) {
-        // Members are already sorted on the server, no need for client-side sorting
         setMembers(data.members || []);
         setPagination(data.pagination || pagination);
+        cache?.setMembers?.(paramsKey, {
+          members: data.members || [],
+          pagination: data.pagination || pagination,
+        });
       }
     } catch (error) {
       if (requestId === latestRequestId.current) {

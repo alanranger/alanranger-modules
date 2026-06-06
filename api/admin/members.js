@@ -29,7 +29,7 @@ const HISTORY_FILTER_KEYS = new Set([
 ]);
 
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-const MEMBERS_CACHE_TTL_MS = 120 * 1000;
+const MEMBERS_CACHE_TTL_MS = 300 * 1000;
 const MEMBERS_CACHE_MAX_ENTRIES = 200;
 const STRIPE_TOTALS_CACHE_TTL_MS = 10 * 60 * 1000;
 const membersResponseCache = new Map();
