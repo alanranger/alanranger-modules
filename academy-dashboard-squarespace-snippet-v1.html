@@ -13,6 +13,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
       behaviour redirected logged-out users to /academy/login — fixed.)
 v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false login bounce on article return.
       Tile header icons use HTML entities (UTF-8 safe paste). Abstract assignment cube 56 points to PDF.
+v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (temporary; for live bounce pin-down).
 -->
 
 <script>
@@ -3243,6 +3244,31 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
       return true;
     }
 
+    function authTracePayload(stage, reason, member, aboutToRedirectTo) {
+      var pcs = (member && member.data) ? getPlanConnections(member) : [];
+      var marker = false;
+      try { marker = !!sessionStorage.getItem(DASHBOARD_SESSION_KEY); } catch (e) {}
+      return {
+        stage: stage || "unknown",
+        reason: reason || "unknown",
+        hasMember: !!(member && member.data),
+        planConnections: pcs ? pcs.length : null,
+        hasAccess: member ? hasAccess(member) : false,
+        sessionMarkerPresent: marker,
+        aboutToRedirectTo: aboutToRedirectTo || null
+      };
+    }
+
+    function logAuthRedirect(stage, reason, member, url) {
+      console.log("[AR-AUTH]", authTracePayload(stage, reason, member, url));
+    }
+
+    function logAuthSuccess(stage, member) {
+      var payload = authTracePayload(stage, "dashboard-render", member, null);
+      delete payload.aboutToRedirectTo;
+      console.log("[AR-AUTH] dashboard render, no redirect", payload);
+    }
+
     function pickFirstString(arr){
       for (var i = 0; i < arr.length; i++) {
         var v = arr[i];
@@ -5330,9 +5356,12 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
       if (dashboardEl) dashboardEl.classList.add("is-ready");
     }
   
-    function safeRedirect(url){
+    function safeRedirect(url, traceCtx){
       // Never redirect in editor
       if (inSquarespaceEditor()) return;
+      if (traceCtx && url && String(url).indexOf("/academy/login") !== -1) {
+        logAuthRedirect(traceCtx.stage, traceCtx.reason, traceCtx.member, url);
+      }
       try { globalThis.location.href = url; } catch(e) {}
     }
   
@@ -5491,14 +5520,20 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
         var params = new URLSearchParams(String(globalThis.location && globalThis.location.search || ""));
         if (params.get("arpPortal") === "1") {
           waitForMemberstack(8000).then(function(ms){
-            if (!ms || typeof ms.getCurrentMember !== "function") { safeRedirect(LOGIN_URL); return; }
+            if (!ms || typeof ms.getCurrentMember !== "function") {
+              safeRedirect(LOGIN_URL, { stage: "portal-guard", reason: "no-memberstack", member: null });
+              return;
+            }
             getMemberExtended(ms).then(function(m){
-              if (!m || !m.data) { safeRedirect(LOGIN_URL); return; }
+              if (!m || !m.data) {
+                safeRedirect(LOGIN_URL, { stage: "portal-guard", reason: "no-member-data", member: m });
+                return;
+              }
               if (typeof ms.launchStripeCustomerPortal !== "function") return;
               ms.launchStripeCustomerPortal();
               if (dashboardEl) dashboardEl.classList.add("is-ready");
             }).catch(function(){
-              safeRedirect(LOGIN_URL);
+              safeRedirect(LOGIN_URL, { stage: "portal-guard", reason: "getMemberExtended-catch", member: null });
             });
             // Best-effort cleanup if portal opens in a new window instead of navigating this tab.
             setTimeout(function(){
@@ -5694,7 +5729,9 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
                 // If it's an admin access error, redirect to login after 3 seconds
                 if (error.message.includes('Admin access required')) {
                   setTimeout(function() {
-                    safeRedirect(LOGIN_URL + '?error=admin-login-required');
+                    safeRedirect(LOGIN_URL + '?error=admin-login-required', {
+                      stage: "ghost-login", reason: "admin-access-required", member: null
+                    });
                   }, 3000);
                 } else {
                   // For other errors, remove ghost parameters and reload after 3 seconds
@@ -6158,13 +6195,19 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
 
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       function runDashboardAccessGuard(ms, preloadedMember) {
+        console.log("[AR-AUTH]", authTracePayload("guard-entry", "runDashboardAccessGuard", preloadedMember || null, null));
         var memberPromise = preloadedMember
           ? Promise.resolve(preloadedMember)
           : resolveDashboardMember(ms);
         return memberPromise.then(function(m){
           if (!m || !m.data) {
-            if (deferAuthInsteadOfLogin(ms)) return;
-            safeRedirect(applyRewindEmailToUrl(LOGIN_URL));
+            if (deferAuthInsteadOfLogin(ms)) {
+              logAuthRedirect("guard-main", "deferred-hydrate-retry", m, null);
+              return;
+            }
+            safeRedirect(applyRewindEmailToUrl(LOGIN_URL), {
+              stage: "guard-main", reason: "no-member-after-retry", member: m
+            });
             return;
           }
 
@@ -6181,15 +6224,21 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
             var memberId = m.id || (m.data && m.data.id);
             if (memberId) markDashboardSession(memberId);
             if (dashboardEl) dashboardEl.classList.add("is-ready");
+            logAuthSuccess("guard-main", m);
             renderMemberStatus(m, ms);
             handleUpgradeReturn(ms);
             maybeShowActiveTrialPrompt(m);
           } else {
             var mId = (m && (m.id || (m.data && m.data.id))) || null;
             var bounceAsUnactivated = function(){
-              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) return;
+              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
+                logAuthRedirect("guard-bounce", "deferred-session-marker", m, null);
+                return;
+              }
               try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
-              safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"));
+              safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"), {
+                stage: "guard-bounce", reason: "trial-not-activated", member: m
+              });
             };
             if (!mId && !forceExpiredTest) { bounceAsUnactivated(); return; }
             if (!mId && forceExpiredTest) {
@@ -6220,12 +6269,16 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
                 var okId = m.id || (m.data && m.data.id);
                 if (okId) markDashboardSession(okId);
                 if (dashboardEl) dashboardEl.classList.add("is-ready");
+                logAuthSuccess("guard-trial-catch", m);
                 renderMemberStatus(m, ms);
                 handleUpgradeReturn(ms);
                 maybeShowActiveTrialPrompt(m);
                 return;
               }
-              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) return;
+              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) {
+                logAuthRedirect("guard-trial-catch", "deferred-session-marker", m, null);
+                return;
+              }
               bounceAsUnactivated();
             });
           }
@@ -6244,7 +6297,9 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
                   ms.logout();
                 }
               } catch (e) { /* no-op */ }
-              safeRedirect("/academy/login?reason=timeout");
+              safeRedirect("/academy/login?reason=timeout", {
+                stage: "inactivity-logout", reason: "timeout", member: m
+              });
             }
 
             function resetTimer() {
@@ -6364,8 +6419,11 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
             }
           }
         }).catch(function(){
-          if (deferAuthInsteadOfLogin(ms)) return;
-          safeRedirect(LOGIN_URL);
+          if (deferAuthInsteadOfLogin(ms)) {
+            logAuthRedirect("guard-main", "deferred-hydrate-retry-catch", null, null);
+            return;
+          }
+          safeRedirect(LOGIN_URL, { stage: "guard-main", reason: "memberPromise-catch", member: null });
         });
       }
 
@@ -6374,10 +6432,13 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
           return waitForMemberstack(12000).then(function(msLate) {
             if (!msLate) {
               if (hasRecentDashboardSession()) {
+                console.log("[AR-AUTH]", authTracePayload("memberstack-wait", "shell-only-session-marker", null, null));
                 showDashboardShell();
                 return;
               }
-              safeRedirect(applyRewindEmailToUrl(LOGIN_URL));
+              safeRedirect(applyRewindEmailToUrl(LOGIN_URL), {
+                stage: "memberstack-wait", reason: "no-ms-after-27s", member: null
+              });
               return;
             }
             return runDashboardAccessGuard(msLate);
@@ -6393,7 +6454,9 @@ v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false 
           if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.logout === "function") {
             try { globalThis.$memberstackDom.logout(); } catch (e) { /* no-op */ }
           }
-          setTimeout(function(){ safeRedirect(LOGIN_URL); }, 600);
+          setTimeout(function(){
+            safeRedirect(LOGIN_URL, { stage: "logout-button", reason: "user-click", member: null });
+          }, 600);
         });
       }
     });
