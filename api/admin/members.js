@@ -1662,7 +1662,7 @@ async function handleMembers(req, res) {
         ? preferredRefundTotal
         : (refundsTotal ?? preferredRefundTotal ?? null);
 
-      return {
+      const enriched = {
         member_id: memberId,
         email: member.email,
         name: member.name,
@@ -1690,6 +1690,19 @@ async function handleMembers(req, res) {
         current_amount: currentAmount,
         refunds_total: resolvedRefundsTotal
       };
+
+      if (forGhostList) {
+        const { evaluateTableBadge } = require("../../lib/admin-gate-stats");
+        const badge = evaluateTableBadge(
+          raw,
+          enriched.exams_passed,
+          enriched.is_paid,
+          enriched.last_seen
+        );
+        Object.assign(enriched, badge);
+      }
+
+      return enriched;
     }) || [];
 
     // Apply revenue filter post-enrichment

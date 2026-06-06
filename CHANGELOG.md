@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-07] - Admin Ghost badge level column + gate breakdown
+
+### Added
+- **Ghost admin (`/academy/admin/ghost` v1.1.0)** — sortable **Badge level** column (Enrolled → Master, gold ★ for Master)
+- **Per-member gate breakdown** — expand any row for Foundation / Practitioner / Certified / Graduate / Master inputs (read-only)
+- **`lib/admin-gate-stats.js`** — reuses `lib/academy-badge-gates.js` (single source of truth)
+- **`/api/admin/member-badge-breakdown`** — full breakdown via `engagement-summary?window=all` fields + gate logic
+
+### Performance
+- Table badge: Memberstack JSON + exams only (`engagementDegraded` for Foundation active-days); full breakdown on row expand only
+
 ## [2026-06-06] - Dashboard bounce fix baseline (D 1.3.9 + D 1.3.10)
 
 ### Fixed

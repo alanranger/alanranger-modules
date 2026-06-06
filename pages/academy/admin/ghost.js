@@ -1,17 +1,107 @@
 // /pages/academy/admin/ghost.js
 // Ghost Login - View any member's dashboard as they see it
+// v1.1.0 — badge level column + per-member 4-gate breakdown (admin read-only)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+
+function GateRow({ label, met, children }) {
+  return (
+    <div style={{
+      border: '1px solid var(--ar-border)',
+      borderRadius: '8px',
+      padding: '12px',
+      marginBottom: '10px',
+      background: met ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.02)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <strong style={{ color: 'var(--ar-text)' }}>{label}</strong>
+        <span style={{
+          fontSize: '12px',
+          fontWeight: 700,
+          color: met ? '#22c55e' : '#f59e0b',
+        }}>
+          {met ? 'Met' : 'Not met'}
+        </span>
+      </div>
+      <div style={{ fontSize: '13px', color: 'var(--ar-text-muted)', lineHeight: 1.6 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BadgeBreakdownPanel({ memberId, breakdown, badge, loading, error }) {
+  if (loading) {
+    return (
+      <div style={{ padding: '16px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
+        Loading full gate breakdown…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ padding: '16px', color: '#f87171', fontSize: '13px' }}>
+        {error}
+      </div>
+    );
+  }
+  if (!breakdown) return null;
+
+  const b = breakdown;
+  return (
+    <div style={{ padding: '16px 20px', background: 'rgba(0,0,0,0.15)', borderTop: '1px solid var(--ar-border)' }}>
+      <div style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--ar-text-muted)' }}>
+        Full breakdown via <code>engagement-summary?window=all</code> + <code>lib/academy-badge-gates.js</code>.
+        {' '}Current level: <strong style={{ color: 'var(--ar-text)' }}>{badge?.label || '—'}</strong>
+        {badge?.paused ? ' (paused — 60-day decay)' : ''}.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+        <GateRow label="Foundation" met={b.foundation.met}>
+          Modules opened: {b.foundation.modulesOpened} / {b.foundation.modulesTarget}<br />
+          Active days (first 14): {b.foundation.activeDaysDegraded ? 'degraded' : b.foundation.activeDaysFirst14} / {b.foundation.activeDaysTarget}
+        </GateRow>
+        <GateRow label="Practitioner" met={b.practitioner.met}>
+          Camera: {b.practitioner.cameraOpened} / {b.practitioner.cameraTarget}<br />
+          Composition: {b.practitioner.compositionOpened} / {b.practitioner.compositionTarget}<br />
+          PDF assignments: {b.practitioner.pdfAssignmentsOpened} / {b.practitioner.pdfAssignmentsTarget}<br />
+          Exams passed: {b.practitioner.examsPassed} / {b.practitioner.examsPassedTarget}
+        </GateRow>
+        <GateRow label="Certified" met={b.certified.met}>
+          Exams passed: {b.certified.examsPassed} / {b.certified.examsPassedTarget}<br />
+          Total modules: {b.certified.totalModulesOpened} / {b.certified.totalModulesTarget}
+        </GateRow>
+        <GateRow label="Graduate" met={b.graduate.met}>
+          Applied learning: {b.graduate.appliedLearningOpened ?? '—'}<br />
+          Practice packs: {b.graduate.practicePacksOpened ?? '—'}<br />
+          PDF assignments: {b.graduate.pdfAssignmentsOpened ?? '—'}<br />
+          Active months: {b.graduate.distinctActiveMonthsAllTime ?? '—'}<br />
+          Points: {b.graduate.points ?? '—'} / {b.graduate.pointsTarget}
+          {b.graduate.requiresConversion ? ' (requires conversion)' : ''}
+          {b.graduate.paused ? ' · paused' : ''}
+        </GateRow>
+        <GateRow label="Master" met={b.master.met}>
+          Applied learning: {b.master.appliedLearningOpened ?? '—'}<br />
+          Practice packs: {b.master.practicePacksOpened ?? '—'}<br />
+          PDF assignments: {b.master.pdfAssignmentsOpened ?? '—'}<br />
+          Active months: {b.master.distinctActiveMonthsAllTime ?? '—'}<br />
+          Points: {b.master.points ?? '—'} / {b.master.pointsTarget}
+          {b.master.requiresGraduate ? ' (requires Graduate)' : ''}
+          {b.master.paused ? ' · paused' : ''}
+        </GateRow>
+      </div>
+    </div>
+  );
+}
 
 export default function GhostLogin() {
-  const router = useRouter();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [sortConfig, setSortConfig] = useState({ field: 'updated_at', direction: 'desc' });
+  const [expandedId, setExpandedId] = useState(null);
+  const [breakdownById, setBreakdownById] = useState({});
 
   useEffect(() => {
     fetchMembers();
@@ -47,6 +137,9 @@ export default function GhostLogin() {
       } else if (sortConfig.field === 'last_seen') {
         aVal = a.last_seen || '';
         bVal = b.last_seen || '';
+      } else if (sortConfig.field === 'badge_level') {
+        aVal = a.badge_label || 'Enrolled';
+        bVal = b.badge_label || 'Enrolled';
       }
       
       // Handle null/undefined
@@ -118,6 +211,55 @@ export default function GhostLogin() {
     }
     const dashboardUrl = `https://www.alanranger.com/academy/dashboard?${params.toString()}`;
     window.open(dashboardUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function toggleBreakdown(member) {
+    const id = member.member_id;
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (breakdownById[id]?.breakdown || breakdownById[id]?.loading) return;
+
+    setBreakdownById((prev) => ({
+      ...prev,
+      [id]: { loading: true, error: null, breakdown: null, badge: null },
+    }));
+
+    try {
+      const res = await fetch(`/api/admin/member-badge-breakdown?memberId=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setBreakdownById((prev) => ({
+        ...prev,
+        [id]: {
+          loading: false,
+          error: null,
+          breakdown: data.breakdown,
+          badge: data.badge,
+        },
+      }));
+    } catch (err) {
+      setBreakdownById((prev) => ({
+        ...prev,
+        [id]: { loading: false, error: err.message, breakdown: null, badge: null },
+      }));
+    }
+  }
+
+  function renderBadgeLevel(member) {
+    const label = member.badge_label || 'Enrolled';
+    const isMaster = member.badge_is_master || member.badge_key === 'master';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        {isMaster ? <span title="Master" style={{ color: '#fbbf24' }}>★</span> : null}
+        <span style={{ fontWeight: 600, color: 'var(--ar-text)' }}>{label}</span>
+        {member.badge_paused ? (
+          <span style={{ fontSize: '11px', color: '#f59e0b' }}>(paused)</span>
+        ) : null}
+      </span>
+    );
   }
 
   return (
@@ -266,7 +408,8 @@ export default function GhostLogin() {
       ) : (
         <>
           <div style={{ marginBottom: '16px', color: 'var(--ar-text-muted)', fontSize: '14px' }}>
-            Showing {filteredMembers.length} of {members.length} members
+            Showing {filteredMembers.length} of {members.length} members.
+            {' '}Badge column uses Memberstack JSON + exams (Foundation active-days degraded for speed; expand a row for full breakdown).
           </div>
 
           {/* Members Table */}
@@ -325,6 +468,16 @@ export default function GhostLogin() {
                     }} onClick={() => handleSort('plan')}>
                       Plan {getSortIcon('plan')}
                     </th>
+                    <th style={{
+                      padding: '12px 16px',
+                      textAlign: 'left',
+                      fontWeight: 700,
+                      color: 'var(--ar-text)',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }} onClick={() => handleSort('badge_level')}>
+                      Badge level {getSortIcon('badge_level')}
+                    </th>
                     <th style={{ 
                       padding: '12px 16px', 
                       textAlign: 'right', 
@@ -338,87 +491,110 @@ export default function GhostLogin() {
                 <tbody>
                   {filteredMembers.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--ar-text-muted)' }}>
                         {searchQuery ? 'No members found matching your search.' : 'No members found.'}
                       </td>
                     </tr>
                   ) : (
-                    filteredMembers.map((member) => (
-                      <tr
-                        key={member.member_id}
-                        style={{
-                          borderBottom: '1px solid var(--ar-border)',
-                          transition: 'background 0.2s ease',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(229, 114, 0, 0.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <td style={{ padding: '12px 16px', color: 'var(--ar-text)', fontWeight: 600 }}>
-                          {member.name || 'No name'}
-                        </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '14px' }}>
-                          {member.email || 'No email'}
-                        </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
-                          {formatDate(member.last_login)}
-                        </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
-                          {formatDate(member.last_seen)}
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          {member.plan_type || member.plan_name || member.status ? (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              textTransform: 'capitalize',
-                              background: member.plan_type === 'annual' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                              color: member.plan_type === 'annual' ? '#22c55e' : '#f59e0b'
-                            }}>
-                              {(member.plan_type || member.plan_name || 'Unknown')} • {(member.status || 'Unknown')}
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--ar-text-muted)', fontSize: '13px' }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleGhostLogin(member);
-                            }}
+                    filteredMembers.map((member) => {
+                      const isExpanded = expandedId === member.member_id;
+                      const detail = breakdownById[member.member_id];
+                      return (
+                        <Fragment key={member.member_id}>
+                          <tr
                             style={{
-                              padding: '6px 12px',
-                              background: 'var(--ar-brand)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: 700,
+                              borderBottom: isExpanded ? 'none' : '1px solid var(--ar-border)',
+                              transition: 'background 0.2s ease',
                               cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                              transition: 'all 0.2s ease'
+                              background: isExpanded ? 'rgba(229, 114, 0, 0.06)' : 'transparent',
                             }}
+                            onClick={() => toggleBreakdown(member)}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#ff8c42';
-                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              if (!isExpanded) e.currentTarget.style.background = 'rgba(229, 114, 0, 0.05)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'var(--ar-brand)';
-                              e.currentTarget.style.transform = 'translateY(0)';
+                              if (!isExpanded) e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            👻 View Dashboard
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                            <td style={{ padding: '12px 16px', color: 'var(--ar-text)', fontWeight: 600 }}>
+                              {member.name || 'No name'}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '14px' }}>
+                              {member.email || 'No email'}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
+                              {formatDate(member.last_login)}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
+                              {formatDate(member.last_seen)}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              {member.plan_type || member.plan_name || member.status ? (
+                                <span style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  textTransform: 'capitalize',
+                                  background: member.plan_type === 'annual' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                  color: member.plan_type === 'annual' ? '#22c55e' : '#f59e0b'
+                                }}>
+                                  {(member.plan_type || member.plan_name || 'Unknown')} • {(member.status || 'Unknown')}
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--ar-text-muted)', fontSize: '13px' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              {renderBadgeLevel(member)}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGhostLogin(member);
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: 'var(--ar-brand)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#ff8c42';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'var(--ar-brand)';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                👻 View Dashboard
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded ? (
+                            <tr key={`${member.member_id}-detail`}>
+                              <td colSpan="7" style={{ padding: 0, borderBottom: '1px solid var(--ar-border)' }}>
+                                <BadgeBreakdownPanel
+                                  memberId={member.member_id}
+                                  breakdown={detail?.breakdown}
+                                  badge={detail?.badge}
+                                  loading={detail?.loading}
+                                  error={detail?.error}
+                                />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
