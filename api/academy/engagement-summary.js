@@ -10,6 +10,10 @@ const {
   getMemberstackMemberId,
 } = require("../exams/_cors");
 const { isFoundationPath } = require("../../lib/foundation-module-paths");
+const {
+  countBreadthFromMemberJson,
+  countDistinctActiveMonths,
+} = require("../../lib/academy-longevity-stats");
 
 const WINDOW_DAYS = 14;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -187,6 +191,51 @@ async function fetchWindowEvents(supabase, memberId, startIso, endIso) {
   return data || [];
 }
 
+async function fetchAllActivityEvents(supabase, memberId) {
+  const pageSize = 1000;
+  let from = 0;
+  const rows = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("academy_events")
+      .select("event_type, created_at")
+      .eq("member_id", memberId)
+      .in("event_type", ACTIVITY_TYPES)
+      .order("created_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return rows;
+}
+
+async function fetchMemberJsonRaw(supabase, memberId) {
+  const { data, error } = await supabase
+    .from("ms_members_cache")
+    .select("raw")
+    .eq("member_id", memberId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.raw?.json || null;
+}
+
+async function fetchLongevityFields(supabase, memberId) {
+  const [events, memberJson] = await Promise.all([
+    fetchAllActivityEvents(supabase, memberId),
+    fetchMemberJsonRaw(supabase, memberId),
+  ]);
+  const breadth = countBreadthFromMemberJson(memberJson || {});
+  return {
+    distinctActiveMonthsAllTime: countDistinctActiveMonths(events),
+    appliedLearningOpened: breadth.appliedLearningOpened,
+    practicePacksOpened: breadth.practicePacksOpened,
+    pdfAssignmentsOpened: breadth.pdfAssignmentsOpened,
+  };
+}
+
 async function fetchLastActivityAt(supabase, memberId) {
   const { data, error } = await supabase
     .from("academy_events")
@@ -243,7 +292,7 @@ function summariseEvents(events) {
   };
 }
 
-async function buildSummary(supabase, memberId) {
+async function buildSummary(supabase, memberId, includeLongevity) {
   const trialWindow = await fetchTrialWindow(supabase, memberId);
   const trialStatus = deriveTrialStatus(trialWindow);
   const { trialStartAt, trialEndAt } = trialWindow;
@@ -252,7 +301,10 @@ async function buildSummary(supabase, memberId) {
   const daysSinceSignup = start ? Math.floor((now - start.getTime()) / DAY_MS) : null;
 
   if (!start) {
-    const lastActivityAt = await fetchLastActivityAt(supabase, memberId);
+    const [lastActivityAt, longevity] = await Promise.all([
+      fetchLastActivityAt(supabase, memberId),
+      includeLongevity ? fetchLongevityFields(supabase, memberId) : null,
+    ]);
     return {
       trialStartAt: null,
       trialEndAt: trialEndAt || null,
@@ -265,6 +317,7 @@ async function buildSummary(supabase, memberId) {
       distinctActiveDaysFirst14d: 0,
       lastActivityAt,
       ...trialStatus,
+      ...(includeLongevity ? longevity : {}),
     };
   }
 
@@ -272,11 +325,17 @@ async function buildSummary(supabase, memberId) {
   const startIso = start.toISOString();
   const endIso = windowEnd.toISOString();
 
-  const [events, examStats, lastActivityAt] = await Promise.all([
+  const fetches = [
     fetchWindowEvents(supabase, memberId, startIso, endIso),
     fetchExamStats(supabase, memberId, startIso, endIso),
     fetchLastActivityAt(supabase, memberId),
-  ]);
+  ];
+  if (includeLongevity) fetches.push(fetchLongevityFields(supabase, memberId));
+  const results = await Promise.all(fetches);
+  const events = results[0];
+  const examStats = results[1];
+  const lastActivityAt = results[2];
+  const longevity = includeLongevity ? results[3] : null;
 
   const eventStats = summariseEvents(events);
   return {
@@ -291,6 +350,7 @@ async function buildSummary(supabase, memberId) {
     distinctActiveDaysFirst14d: eventStats.distinctActiveDaysFirst14d,
     lastActivityAt: lastActivityAt || eventStats.lastInWindow,
     ...trialStatus,
+    ...(includeLongevity ? longevity : {}),
   };
 }
 
@@ -322,7 +382,9 @@ module.exports = async (req, res) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const summary = await buildSummary(supabase, memberId);
+    const windowMode = String(req.query?.window || "").toLowerCase();
+    const includeLongevity = windowMode === "all";
+    const summary = await buildSummary(supabase, memberId, includeLongevity);
     setCached(memberId, summary);
     return res.status(200).json({ ...summary, cached: false });
   } catch (e) {

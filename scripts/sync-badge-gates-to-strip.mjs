@@ -21,6 +21,13 @@ const fnNames = [
   "isFoundationGateEarned",
   "isPractitionerGateEarned",
   "isCertifiedGateEarned",
+  "isLongevityDegraded",
+  "computeLongevityPoints",
+  "warnLongevityDegraded",
+  "isGraduateGateEarned",
+  "isMasterGateEarned",
+  "daysSinceActivity",
+  "isSummitBadgePaused",
   "isStageConditionsMet",
   "computeJourneyBadges",
   "getHighestConsecutiveEarned",
@@ -51,27 +58,48 @@ function toStripFn(fnBody) {
   return fnBody
     .replace(/\bconst\b/g, "var")
     .replace(/\blet\b/g, "var")
-    .replace(/=>/g, "function")
-    .replace(/for \(var (\w+) = 0; (\w+) < ([^;]+); (\w+) \+= 1\)/g, "for (var $1 = 0; $1 < $3; $1++)")
-    .replace(/\.forEach\(\(badge\) => \{/g, ".forEach(function(badge){")
-    .replace(/\.findIndex\(\(s\) => s\.key === current\.key\)/g, 'function(s){ return s.key === current.key; })')
+    .replace(/86_400_000/g, "86400000")
     .replace(/JOURNEY_STAGES\.map\(\(stage\) => \{/g, "JOURNEY_STAGES.map(function(stage){")
+    .replace(/\.forEach\(\(badge\) => \{/g, ".forEach(function(badge){")
+    .replace(/\.forEach\(\(row\) => \{/g, ".forEach(function(row){")
+    .replace(/\.filter\(\(b\) => b\.earned\)/g, ".filter(function(b){ return b.earned; })")
+    .replace(/\.findIndex\(\(s\) => s\.key === current\.key\)/g, ".findIndex(function(s){ return s.key === current.key; })")
     .replace(/\) => \{/g, "function(){")
-    .replace(/\)\s*=>/g, "function")
-    .replace(/\.filter\(\(b\) => b\.earned\)/g, 'function(b){ return b.earned; }')
-    .replace(/\.findIndex\(\(s\) => s\.key === current\.key\) \+ 1/g, 'function(s){ return s.key === current.key; }) + 1');
+    .replace(/\((\w+)\) =>/g, "function($1)")
+    .replace(/typeof console !== "undefined" && console\.warn/g, "console.warn");
 }
 
 function extractConstBlock(source, name) {
-  const re = new RegExp(`const ${name} = ([\\s\\S]*?);\\n`);
-  const match = source.match(re);
-  if (!match) throw new Error(`Missing const ${name}`);
-  return `var ${name} = ${match[1]};`;
+  const start = source.indexOf(`const ${name} = `);
+  if (start < 0) throw new Error(`Missing const ${name}`);
+  let depth = 0;
+  let started = false;
+  for (let i = start; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === "{") {
+      depth += 1;
+      started = true;
+    } else if (ch === "}") {
+      depth -= 1;
+    } else if (ch === ";" && (!started || depth === 0)) {
+      const body = source.slice(start + `const ${name} = `.length, i);
+      return `var ${name} = ${body};`;
+    }
+  }
+  throw new Error(`Unclosed const ${name}`);
 }
 
-const gateConsts = ["FOUNDATION_GATE", "PRACTITIONER_GATE", "CERTIFIED_GATE"].map((name) =>
-  extractConstBlock(lib, name)
-);
+const gateConsts = [
+  "FOUNDATION_GATE",
+  "PRACTITIONER_GATE",
+  "CERTIFIED_GATE",
+  "POINTS_WEIGHTS",
+  "GRADUATE_GATE",
+  "MASTER_GATE",
+  "GRADUATE_TARGETS",
+  "MASTER_TARGETS",
+  "KEEPALIVE_DECAY_DAYS",
+].map((name) => extractConstBlock(lib, name));
 
 const injected = [
   BEGIN,

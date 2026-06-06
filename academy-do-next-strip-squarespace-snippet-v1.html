@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.37 — Graduate + Master points-layer gates, keep-alive decay, tooltips, tile-4 checklists (on Certified floor)
 v1.3.36 — re-ship of the S 1.3.35 tile-open beacon on the restored baseline (logic unchanged); version stamp sync with D 1.3.12 / B 1.3.6 for post-restore verification
 v1.3.35 — tile-open beacon fires after window.open (assignment PDFs); cached member id only
 v1.3.34 — __arMsReader shared bundle (one MS read pair per page; assignment persist uses cache)
@@ -1258,6 +1259,15 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__circle{
+    opacity:0.45;
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__label,
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__sublabel{
+    opacity:0.7;
+  }
+
   #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle svg{
 
     stroke:#fff;
@@ -1756,7 +1766,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
 
-  var ENGAGEMENT_URL = API_BASE + "/api/academy/engagement-summary";
+  var ENGAGEMENT_URL = API_BASE + "/api/academy/engagement-summary?window=all";
 
   var MODULES_TOTAL = 60;
 
@@ -1922,6 +1932,40 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   var PDF_ASSIGNMENT_PATHS = FOUNDATION_MODULE_PATHS.slice(45, 60);
 
+  // SYNC: lib/academy-module-paths.js (PRACTICE_PACK_URLS)
+  var PRACTICE_PACK_URLS = [
+    "/blog-on-photography/handheld-vs-tripod-stability-photography-assignment",
+    "/blog-on-photography/filters-mastery-nd-gnd-photography",
+    "/blog-on-photography/histogram-and-exposure-review",
+    "/blog-on-photography/white-balance-and-colour-photography",
+    "/blog-on-photography/focus-modes-and-tracking",
+    "/blog-on-photography/light-metering-modes-practice-photography-assignment",
+    "/blog-on-photography/iso-and-noise-control-practice-assignment",
+    "/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment",
+    "/blog-on-photography/aperture-and-depth-of-field-assignment",
+    "/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment",
+    "/blog-on-photography/movement-and-intentional-blur-photography-assignment",
+    "/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment",
+    "/blog-on-photography/lines-shapes-and-geometry-photography-assignment",
+    "/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment",
+    "/blog-on-photography/colour-theory-in-photography-practise-assignment",
+    "/blog-on-photography/storytelling-narrative-photography-assignment",
+    "/blog-on-photography/shadows-and-contrast-photography-practice-assignment",
+    "/blog-on-photography/abstract-photography-practice-assignment-free-lesson",
+    "/blog-on-photography/minimalism-photography-assignment",
+    "/blog-on-photography/visual-weight-and-flow-practice-assignment",
+    "/blog-on-photography/wildlife-photography-practice-assignment-free-lesson",
+    "/blog-on-photography/triptych-project-photography-assignment-free-lesson",
+    "/blog-on-photography/landscapes-photography-practise-assignment",
+    "/blog-on-photography/closeup-macro-photography-practice-assignment",
+    "/blog-on-photography/seasons-nature-photography-assignment",
+    "/blog-on-photography/architecture-photography-practice-assignment",
+    "/blog-on-photography/still-life-photography-practice-assignment",
+    "/blog-on-photography/street-photography-practice-assignment",
+    "/blog-on-photography/portrait-photography-practice-assignment",
+    "/blog-on-photography/black-and-white-photography-practise-assignment"
+  ];
+
 
 
   var EXAM_MODULE_IDS = [
@@ -2026,9 +2070,9 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
 
-    { key: "graduate", label: "Graduate", sublabel: "All modules + sustained activity", iconClass: "ti-award", colour: "green", stars: 4, stageEarned: false },
+    { key: "graduate", label: "Graduate", sublabel: "Applied breadth + 4 active months", iconClass: "ti-award", colour: "green", stars: 4, graduateGate: true },
 
-    { key: "master", label: "Master", sublabel: "Long-term applied mastery", iconClass: "ti-trophy", colour: "gold", stars: 5, stageEarned: false }
+    { key: "master", label: "Master", sublabel: "Deeper breadth + 7 active months", iconClass: "ti-trophy", colour: "gold", stars: 5, masterGate: true }
 
   ];
 
@@ -2182,6 +2226,80 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
+  function countAppliedLearningOpened(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.appliedLearning && normalized.arAcademy.appliedLearning.opened) || {};
+
+    return Object.keys(opened).filter(Boolean).length;
+
+  }
+
+
+
+  function mergeLongevityIntoStats(stats, normalized, foundationOpenedSet, engagement){
+
+    var merged = {
+
+      foundationModulesOpened: stats.foundationModulesOpened,
+
+      cameraOpened: stats.cameraOpened,
+
+      compositionOpened: stats.compositionOpened,
+
+      pdfAssignmentsOpened: stats.pdfAssignmentsOpened,
+
+      totalModulesOpened: stats.totalModulesOpened,
+
+      examsPassed: stats.examsPassed,
+
+      appliedLearningOpened: null,
+
+      practicePacksOpened: null,
+
+      distinctActiveMonthsAllTime: null
+
+    };
+
+    if (engagement && typeof engagement.appliedLearningOpened === "number") {
+
+      merged.appliedLearningOpened = engagement.appliedLearningOpened;
+
+      merged.practicePacksOpened = engagement.practicePacksOpened;
+
+      merged.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
+
+      if (typeof engagement.pdfAssignmentsOpened === "number") merged.pdfAssignmentsOpened = engagement.pdfAssignmentsOpened;
+
+    } else {
+
+      merged.appliedLearningOpened = countAppliedLearningOpened(normalized);
+
+      merged.practicePacksOpened = countOpenedInList(foundationOpenedSet, PRACTICE_PACK_URLS);
+
+    }
+
+    return merged;
+
+  }
+
+
+
+  function buildGateContext(engagement){
+
+    return {
+
+      hasConverted: !!(engagement && engagement.hasConverted === true),
+
+      lastActivityAt: engagement ? engagement.lastActivityAt : null,
+
+      nowMs: Date.now()
+
+    };
+
+  }
+
+
+
   function computeGateStats(normalized, foundationOpenedSet, examInfo, preview){
 
     var stats = {
@@ -2207,189 +2325,247 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
   // BEGIN BADGE-GATES-SYNC
+
   // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-strip.mjs)
 
-  function safeNum(value, fallback){
+var FOUNDATION_GATE = {
+  minModules: 3,
+  minActiveDays: 3,
+  bonusModules: 6,
+  bonusActiveDays: 5,
+};
 
-    return (typeof value === "number" && !isNaN(value)) ? value : fallback;
+var PRACTITIONER_GATE = {
+  requireAllCamera: true,
+  requireAllComposition: true,
+  minPdfAssignments: 3,
+  minExamsPassed: 8,
+};
 
-  }
+var CERTIFIED_GATE = {
+  requireAllExamsPassed: true,
+  minModulesOpened: 30,
+};
 
+var POINTS_WEIGHTS = {
+  appliedLearning: 2,
+  practicePack: 2,
+  pdfAssignment: 4,
+  activeMonth: 7,
+};
 
+var GRADUATE_GATE = { minPoints: 98 };
 
-  function normaliseStats(raw){
+var MASTER_GATE = { minPoints: 163 };
 
-    var stats = raw || {};
+var GRADUATE_TARGETS = {
+  appliedLearning: 15,
+  practicePacks: 10,
+  pdfAssignments: 5,
+  activeMonths: 4,
+};
 
-    return {
+var MASTER_TARGETS = {
+  appliedLearning: 22,
+  practicePacks: 17,
+  pdfAssignments: 9,
+  activeMonths: 7,
+};
 
-      foundationModulesOpened: safeNum(stats.foundationModulesOpened, 0),
-
-      cameraOpened: safeNum(stats.cameraOpened, 0),
-
-      compositionOpened: safeNum(stats.compositionOpened, 0),
-
-      pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
-
-      totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
-
-      examsPassed: safeNum(stats.examsPassed, 0)
-
-    };
-
-  }
-
-
-
-  function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded){
-
-    if (modulesOpened < FOUNDATION_GATE.minModules) return false;
-
-    if (engagementDegraded) return true;
-
-    return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
-
-  }
-
-
-
-  function isPractitionerGateEarned(stats){
-
-    if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) return false;
-
-    if (PRACTITIONER_GATE.requireAllComposition && stats.compositionOpened < COMPOSITION_MODULE_PATHS.length) return false;
-
-    if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
-
-    if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
-
-    return true;
-
-  }
+var KEEPALIVE_DECAY_DAYS = 60;
 
 
 
-  function isCertifiedGateEarned(stats){
+function safeNum(value, fallback) {
+  return typeof value === "number" && !Number.isNaN(value) ? value : fallback;
+}
 
-    if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
+function normaliseStats(raw) {
+  var stats = raw || {};
+  return {
+    foundationModulesOpened: safeNum(stats.foundationModulesOpened, 0),
+    cameraOpened: safeNum(stats.cameraOpened, 0),
+    compositionOpened: safeNum(stats.compositionOpened, 0),
+    pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
+    totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
+    examsPassed: safeNum(stats.examsPassed, 0),
+    appliedLearningOpened: stats.appliedLearningOpened == null ? null : safeNum(stats.appliedLearningOpened, 0),
+    practicePacksOpened: stats.practicePacksOpened == null ? null : safeNum(stats.practicePacksOpened, 0),
+    distinctActiveMonthsAllTime:
+      stats.distinctActiveMonthsAllTime == null ? null : safeNum(stats.distinctActiveMonthsAllTime, 0),
+  };
+}
 
-    if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded) {
+  if (modulesOpened < FOUNDATION_GATE.minModules) return false;
+  if (engagementDegraded) return true;
+  return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
+}
 
-    // TODO(points-layer): AND memberMeetsCertifiedPointsThreshold(stats) when longevity engine ships
-
-    return true;
-
-  }
-
-
-
-  function isStageConditionsMet(stage, stats, activeDays, engagementDegraded){
-
-    if (stage.stageEarned === false) return false;
-
-    if (stage.alwaysEarned) return true;
-
-    if (stage.foundationGate) return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
-
-    if (stage.practitionerGate) return isPractitionerGateEarned(stats);
-
-    if (stage.certifiedGate) return isCertifiedGateEarned(stats);
-
-    if (stage.minExams && stats.examsPassed >= stage.minExams) return true;
-
+function isPractitionerGateEarned(stats) {
+  if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) {
     return false;
-
   }
-
-
-
-  function computeJourneyBadges(stats, activeDays, engagementDegraded){
-
-    var safeStats = normaliseStats(stats);
-
-    var safeDays = safeNum(activeDays, 0);
-
-    var degraded = engagementDegraded === true;
-
-    var canEarnHigher = true;
-
-    return JOURNEY_STAGES.map(function(stage){
-
-      var earned = false;
-
-      if (canEarnHigher) {
-
-        earned = isStageConditionsMet(stage, safeStats, safeDays, degraded);
-
-        if (!earned) canEarnHigher = false;
-
-      }
-
-      return {
-
-        key: stage.key,
-
-        label: stage.label,
-
-        sublabel: stage.sublabel,
-
-        iconClass: stage.iconClass,
-
-        colour: stage.colour,
-
-        stars: stage.stars,
-
-        earned: earned
-
-      };
-
-    });
-
+  if (
+    PRACTITIONER_GATE.requireAllComposition &&
+    stats.compositionOpened < COMPOSITION_MODULE_PATHS.length
+  ) {
+    return false;
   }
+  if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
+  if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
+  return true;
+}
 
+function isCertifiedGateEarned(stats) {
+  if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
+  if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+  return true;
+}
 
+function isLongevityDegraded(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened == null ||
+    safe.practicePacksOpened == null ||
+    safe.distinctActiveMonthsAllTime == null
+  );
+}
 
-  function getHighestConsecutiveEarned(badges){
+function computeLongevityPoints(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened * POINTS_WEIGHTS.appliedLearning +
+    safe.practicePacksOpened * POINTS_WEIGHTS.practicePack +
+    safe.pdfAssignmentsOpened * POINTS_WEIGHTS.pdfAssignment +
+    safe.distinctActiveMonthsAllTime * POINTS_WEIGHTS.activeMonth
+  );
+}
 
-    var current = badges[0];
+function warnLongevityDegraded() {
+  if (console.warn) {
+    console.warn("[badge-gates] engagementDegraded: Graduate/Master blocked (longevity fields missing)");
+  }
+}
 
-    for (var i = 0; i < badges.length; i++) {
+function isGraduateGateEarned(stats, hasConverted, engagementDegraded) {
+  if (!hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= GRADUATE_GATE.minPoints;
+}
 
-      if (badges[i].earned) current = badges[i];
+function isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded) {
+  if (!graduateEarned || !hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= MASTER_GATE.minPoints;
+}
 
-      else break;
+function daysSinceActivity(lastActivityAt, nowMs) {
+  if (!lastActivityAt) return Infinity;
+  var t = new Date(lastActivityAt).getTime();
+  if (Number.isNaN(t)) return Infinity;
+  var DAY_MS_LOCAL = 86400000;
+  return Math.floor((nowMs - t) / DAY_MS_LOCAL);
+}
 
+function isSummitBadgePaused(earned, badgeKey, lastActivityAt, nowMs) {
+  if (!earned || (badgeKey !== "graduate" && badgeKey !== "master")) return false;
+  return daysSinceActivity(lastActivityAt, nowMs) >= KEEPALIVE_DECAY_DAYS;
+}
+
+function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gateContext) {
+  var ctx = gateContext || {};
+  var hasConverted = ctx.hasConverted === true;
+  var graduateEarned = ctx.graduateEarned === true;
+
+  if (stage.alwaysEarned) return true;
+  if (stage.foundationGate) {
+    return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
+  }
+  if (stage.practitionerGate) return isPractitionerGateEarned(stats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(stats);
+  if (stage.graduateGate) return isGraduateGateEarned(stats, hasConverted, engagementDegraded);
+  if (stage.masterGate) return isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded);
+  if (stage.minExams) return stats.examsPassed >= stage.minExams;
+  return false;
+}
+
+function computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext) {
+  var safeStats = normaliseStats(stats);
+  var safeDays = safeNum(activeDays, 0);
+  var degraded = engagementDegraded === true;
+  var ctx = gateContext || {};
+  var nowMs = typeof ctx.nowMs === "number" ? ctx.nowMs : Date.now();
+  var canEarnHigher = true;
+  var graduateEarned = false;
+
+  return JOURNEY_STAGES.map(function(stage){
+    var earned = false;
+    var stageCtx = Object.assign({}, ctx, { graduateEarned });
+    if (canEarnHigher) {
+      earned = isStageConditionsMet(stage, safeStats, safeDays, degraded, stageCtx);
+      if (!earned) canEarnHigher = false;
     }
-
-    return current;
-
-  }
-
-
-
-  function getCurrentStage(badges){
-
-    var current = getHighestConsecutiveEarned(badges);
-
+    if (stage.key === "graduate" && earned) graduateEarned = true;
+    var paused = isSummitBadgePaused(earned, stage.key, ctx.lastActivityAt, nowMs);
     return {
-
-      key: current.key,
-
-      label: current.label,
-
-      levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
-
-      levelTotal: JOURNEY_STAGES.length,
-
-      iconClass: current.iconClass,
-
-      colour: current.colour,
-
-      stars: current.stars
-
+      key: stage.key,
+      label: stage.label,
+      earned,
+      paused: paused === true,
     };
+  });
+}
 
+function getHighestConsecutiveEarned(badges) {
+  var current = badges[0];
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) current = badges[i];
+    else break;
   }
+  return current;
+}
+
+function getCurrentStage(badges) {
+  var current = getHighestConsecutiveEarned(badges);
+  return {
+    key: current.key,
+    label: current.label,
+    levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
+    levelTotal: JOURNEY_STAGES.length,
+  };
+}
+
+function getNextUnearnedBadge(badges) {
+  for (var i = 0; i < badges.length; i += 1) {
+    if (!badges[i].earned) return badges[i];
+  }
+  return null;
+}
+
+function practitionerRequirementsMet(stats) {
+  var safeStats = normaliseStats(stats);
+  var total = 4;
+  var met = 0;
+  if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) {
+    met += 1;
+  }
+  if (
+    !PRACTITIONER_GATE.requireAllComposition ||
+    safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length
+  ) {
+    met += 1;
+  }
+  if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met += 1;
+  if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met += 1;
+  return { met, total };
+}
 
   // END BADGE-GATES-SYNC
 
@@ -2453,9 +2629,49 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     if (stageKey === "enrolled") return { type: "soft", text: "Joined - automatic" };
 
-    if (stageKey === "graduate") return { type: "soft", text: "All modules + sustained activity (full criteria coming soon)" };
+    if (stageKey === "graduate") {
 
-    if (stageKey === "master") return { type: "soft", text: "Long-term applied mastery (full criteria coming soon)" };
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Applied Learning", current: stats.appliedLearningOpened == null ? 0 : stats.appliedLearningOpened, target: GRADUATE_TARGETS.appliedLearning, met: stats.appliedLearningOpened != null && stats.appliedLearningOpened >= GRADUATE_TARGETS.appliedLearning },
+
+          { label: "Practice packs", current: stats.practicePacksOpened == null ? 0 : stats.practicePacksOpened, target: GRADUATE_TARGETS.practicePacks, met: stats.practicePacksOpened != null && stats.practicePacksOpened >= GRADUATE_TARGETS.practicePacks },
+
+          { label: "PDF assignments", current: stats.pdfAssignmentsOpened, target: GRADUATE_TARGETS.pdfAssignments, met: stats.pdfAssignmentsOpened >= GRADUATE_TARGETS.pdfAssignments },
+
+          { label: "Active months", current: stats.distinctActiveMonthsAllTime == null ? 0 : stats.distinctActiveMonthsAllTime, target: GRADUATE_TARGETS.activeMonths, met: stats.distinctActiveMonthsAllTime != null && stats.distinctActiveMonthsAllTime >= GRADUATE_TARGETS.activeMonths }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "master") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Applied Learning", current: stats.appliedLearningOpened == null ? 0 : stats.appliedLearningOpened, target: MASTER_TARGETS.appliedLearning, met: stats.appliedLearningOpened != null && stats.appliedLearningOpened >= MASTER_TARGETS.appliedLearning },
+
+          { label: "Practice packs", current: stats.practicePacksOpened == null ? 0 : stats.practicePacksOpened, target: MASTER_TARGETS.practicePacks, met: stats.practicePacksOpened != null && stats.practicePacksOpened >= MASTER_TARGETS.practicePacks },
+
+          { label: "PDF assignments", current: stats.pdfAssignmentsOpened, target: MASTER_TARGETS.pdfAssignments, met: stats.pdfAssignmentsOpened >= MASTER_TARGETS.pdfAssignments },
+
+          { label: "Active months", current: stats.distinctActiveMonthsAllTime == null ? 0 : stats.distinctActiveMonthsAllTime, target: MASTER_TARGETS.activeMonths, met: stats.distinctActiveMonthsAllTime != null && stats.distinctActiveMonthsAllTime >= MASTER_TARGETS.activeMonths }
+
+        ]
+
+      };
+
+    }
 
     if (stageKey === "foundation") {
 
@@ -2821,11 +3037,11 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
-  function buildBadgeRail(stats, activeDays, engagementDegraded){
+  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext){
 
     wireBadgeTooltipDismiss();
 
-    var badges = computeJourneyBadges(stats, activeDays, engagementDegraded);
+    var badges = computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext);
 
     var earnedCount = badges.filter(function(b){ return b.earned; }).length;
 
@@ -2843,7 +3059,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       var item = document.createElement("div");
 
-      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost");
+      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost") + (badge.paused ? " ar-do-next-badge--paused" : "");
 
       var circle = document.createElement("div");
 
@@ -2887,7 +3103,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       sub.className = "ar-do-next-badge__sublabel";
 
-      sub.textContent = badge.sublabel;
+      sub.textContent = badge.paused ? "Paused - log in to reactivate" : (JOURNEY_STAGES.filter(function(s){ return s.key === badge.key; })[0] || {}).sublabel || "";
 
       sub.style.color = badge.earned ? earnedSublabelColour(badge.colour) : "#7a8088";
 
@@ -3949,13 +4165,17 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     var engagementDegraded = !engagement;
 
-    var badgeRail = buildBadgeRail(gateStats, activeDays, engagementDegraded);
+    var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, openedSet, engagement);
 
-    var rag = computeMomentumRag(badgeRail.badges, gateStats, activeDays, engagementDegraded);
+    var gateContext = buildGateContext(engagement);
+
+    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+
+    var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
 
     var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
 
-    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges, gateStats, activeDays, engagementDegraded);
+    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
 
     var currentStage = injectBannerCurrentStage(badgeRail.badges);
 
