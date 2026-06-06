@@ -14,6 +14,7 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false login bounce on article return.
       Tile header icons use HTML entities (UTF-8 safe paste). Abstract assignment cube 56 points to PDF.
 v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (temporary; for live bounce pin-down).
+v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
 -->
 
 <script>
@@ -3132,6 +3133,8 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
     }
 
     var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
+    var AUTH_TRACE_KEY = "ar-auth-trace";
+    var AUTH_TRACE_MAX = 50;
     var WHOAMI_URL = API_BASE + "/api/exams/whoami";
 
     function markDashboardSession(memberId) {
@@ -3259,14 +3262,49 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
       };
     }
 
+    function appendAuthTrace(record) {
+      try {
+        var raw = sessionStorage.getItem(AUTH_TRACE_KEY);
+        var arr = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(arr)) arr = [];
+        var entry = record || {};
+        if (!entry.ts) entry.ts = new Date().toISOString();
+        arr.push(entry);
+        if (arr.length > AUTH_TRACE_MAX) arr = arr.slice(-AUTH_TRACE_MAX);
+        sessionStorage.setItem(AUTH_TRACE_KEY, JSON.stringify(arr));
+      } catch (e) { /* no-op */ }
+    }
+
+    function persistMsError(msg) {
+      appendAuthTrace({ ts: new Date().toISOString(), tag: "ms-error", msg: String(msg || "") });
+    }
+
+    function installAuthTraceErrorListeners() {
+      if (globalThis.__arAuthTraceErrorsInstalled) return;
+      globalThis.__arAuthTraceErrorsInstalled = true;
+      globalThis.addEventListener("error", function(ev) {
+        var m = (ev && ev.message) || (ev && ev.error && ev.error.message) || "unknown error";
+        persistMsError(m);
+      });
+      globalThis.addEventListener("unhandledrejection", function(ev) {
+        var r = ev && ev.reason;
+        persistMsError((r && r.message) || String(r || "unhandled rejection"));
+      });
+    }
+
     function logAuthRedirect(stage, reason, member, url) {
-      console.log("[AR-AUTH]", authTracePayload(stage, reason, member, url));
+      var payload = authTracePayload(stage, reason, member, url);
+      console.log("[AR-AUTH]", payload);
+      payload.ts = new Date().toISOString();
+      appendAuthTrace(payload);
     }
 
     function logAuthSuccess(stage, member) {
-      var payload = authTracePayload(stage, "dashboard-render", member, null);
+      var payload = authTracePayload("render-no-redirect", "dashboard-render", member, null);
       delete payload.aboutToRedirectTo;
       console.log("[AR-AUTH] dashboard render, no redirect", payload);
+      payload.ts = new Date().toISOString();
+      appendAuthTrace(payload);
     }
 
     function pickFirstString(arr){
@@ -5459,6 +5497,8 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
         : "/";
       if (arPath !== "/academy/dashboard") return;
 
+      installAuthTraceErrorListeners();
+
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.remove("is-ready");
       
@@ -6195,7 +6235,7 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
 
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
       function runDashboardAccessGuard(ms, preloadedMember) {
-        console.log("[AR-AUTH]", authTracePayload("guard-entry", "runDashboardAccessGuard", preloadedMember || null, null));
+        logAuthRedirect("guard-entry", "runDashboardAccessGuard", preloadedMember || null, null);
         var memberPromise = preloadedMember
           ? Promise.resolve(preloadedMember)
           : resolveDashboardMember(ms);
@@ -6432,7 +6472,7 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
           return waitForMemberstack(12000).then(function(msLate) {
             if (!msLate) {
               if (hasRecentDashboardSession()) {
-                console.log("[AR-AUTH]", authTracePayload("memberstack-wait", "shell-only-session-marker", null, null));
+                logAuthRedirect("memberstack-wait", "shell-only-session-marker", null, null);
                 showDashboardShell();
                 return;
               }
