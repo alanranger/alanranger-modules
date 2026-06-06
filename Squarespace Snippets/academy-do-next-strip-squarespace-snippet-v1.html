@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.48 — ghost session lifecycle: URL-param-driven only; clear ar_ghost_context_v1 on plain dashboard load (fixes stale ghost leak into admin's own view)
 v1.3.47 — ghost mode: modulesOpened aligns with gateStats.totalModulesOpened (same 60-module filter); builds on S 1.3.46 ghostMode/idSource invariant
 v1.3.46 — ghost mode: sync ghostMode/ghostMemberId with idSource (ghost_* invariant); preserve read-only flags when ghost-login fetch fails; writesSuppressed on debug hook
 v1.3.45 — ghost mode: strip resolves ?ghost= member id (URL + ar_ghost_context_v1); fetches ghost member JSON via ghost-login API; suppresses all writes in ghost mode
@@ -4944,25 +4945,29 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-  function getGhostSessionContext(){
+  function setGhostSessionContext(memberId, email){
 
     try {
 
-      var raw = sessionStorage.getItem(GHOST_CONTEXT_KEY);
+      sessionStorage.setItem(GHOST_CONTEXT_KEY, JSON.stringify({
 
-      if (!raw) return null;
+        memberId: memberId || null,
 
-      var parsed = JSON.parse(raw);
+        email: email || null,
 
-      if (!parsed || (!parsed.memberId && !parsed.email)) return null;
+        setAt: Date.now()
 
-      return parsed;
+      }));
 
-    } catch (e) {
+    } catch (e) { /* ignore */ }
 
-      return null;
+  }
 
-    }
+
+
+  function clearGhostSessionContext(){
+
+    try { sessionStorage.removeItem(GHOST_CONTEXT_KEY); } catch (e) { /* ignore */ }
 
   }
 
@@ -5006,25 +5011,25 @@ function computeTrackFillPct(badges, progressPct) {
 
     var url = readGhostUrlParams();
 
-    var session = getGhostSessionContext();
+    if (!url.ghostMemberId && !url.ghostEmail) {
 
-    var ghostMemberId = url.ghostMemberId || (session && session.memberId) || null;
+      clearGhostSessionContext();
 
-    var ghostEmail = url.ghostEmail || (session && session.email) || null;
+      return { ghostMode: false };
 
-    if (!ghostMemberId && !ghostEmail) return { ghostMode: false };
+    }
 
-    var idSource = url.ghostMemberId ? "ghost_url" : (session && session.memberId ? "ghost_session" : "ghost_email");
+    setGhostSessionContext(url.ghostMemberId, url.ghostEmail);
 
     return {
 
       ghostMode: true,
 
-      ghostMemberId: ghostMemberId,
+      ghostMemberId: url.ghostMemberId || null,
 
-      ghostEmail: ghostEmail,
+      ghostEmail: url.ghostEmail || null,
 
-      idSource: idSource
+      idSource: url.ghostMemberId ? "ghost_url" : "ghost_email"
 
     };
 

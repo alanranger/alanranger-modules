@@ -22,6 +22,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-07] - Strip S 1.3.48 + Dashboard D 1.3.14: ghost session lifecycle (regression fix)
+
+### Fixed
+- **Stale ghost leak** — `ar_ghost_context_v1` no longer activates ghost mode on a plain `/academy/dashboard` load (no `?ghost=` / `?ghostEmail=`)
+- **Strip** — ghost is URL-param-driven; session key cleared when URL has no ghost params; set only while params present (for exam cross-links via `buildExamPageUrl`)
+- **Dashboard** — `clearGhostSessionContext()` on normal load path
+
+### Lifecycle rule
+- **Ghost begins:** admin opens `?ghost=` or `?ghostEmail=` (View Dashboard / ghost login)
+- **Ghost persists:** session key holds context for same-tab links (exams) that append params from session
+- **Ghost ends:** dashboard loads without ghost URL params → session cleared → normal `getCurrentMember`
+
+### Paste
+- **Strip S 1.3.48** + **Dashboard D 1.3.14** + **Header H 1.4.17** (stamp). No Vercel deploy required.
+
+---
+
 ## [2026-06-07] - Strip S 1.3.47 + Dashboard D 1.3.13: ghost module-count sync + grid ghost-awareness
 
 ### Fixed
