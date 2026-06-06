@@ -17,7 +17,8 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 
 ### Squarespace Code Blocks
 
-**Current live versions (2026-06-06 baseline):** H 1.4.4 · S 1.3.34 · D 1.3.10 · B 1.3.4  
+**Current live versions (2026-06-06 baseline):** H 1.4.4 · S 1.3.35 · D 1.3.11 · B 1.3.5  
+**New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md` first (also mirrored in Google Drive `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).  
 See `RESTORE_POINT_2026-06-06-D-1.3.10.md` and `docs/handoff/` for paste instructions.
 
 - **`academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init)
@@ -35,7 +36,7 @@ See `RESTORE_POINT_2026-06-06-D-1.3.10.md` and `docs/handoff/` for paste instruc
   - **Inactivity logout** - Automatically logs out users after 30 minutes of inactivity
   - Tracks user activity (clicks, mouse, keyboard, scroll, touch, focus) to reset timer
 
-- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages (B 1.3.4)
+- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages (B 1.3.5)
   - Adds "Bookmark this page", "Back to Modules", and "Back to Dashboard" buttons
   - Appears on blog posts with the "Sign up to free online photography course" snippet
   - Auto-positions after first H1 or at top of main content

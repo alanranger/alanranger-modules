@@ -3,10 +3,13 @@
 **Last updated:** 2026-06-06  
 **Repo:** `G:/Dropbox/alan ranger photography/Website Code/Academy/alanranger-academy-assesment`  
 **GitHub remote:** `https://github.com/alanranger/alanranger-modules.git` (branch `main`)  
-**Latest commit at handover:** `7eb5a6a` — `fix: D 1.3.11 beacon helpers in module-progress IIFE scope`  
+**Latest commit at handover:** `afc7ef9` — `Docs: comprehensive Cursor agent handover for Academy dashboard continuity`  
+**Prior feature commit:** `7eb5a6a` — `fix: D 1.3.11 beacon helpers in module-progress IIFE scope`  
 **Alan confirmation:** **B3 login bounce FIXED** after D 1.3.10 paste (fast return × 5+ passes).
 
 Read this file **first**. Then read the Google Drive docs listed in §2.
+
+**Google Drive mirror:** `C:/Users/alan/Google Drive/Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md` (summary) — keep in sync with this file on major updates.
 
 ---
 
@@ -31,10 +34,13 @@ Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Ve
 |------|---------|
 | `_CLAUDE-CURSOR-WORKFLOW-2026-06-05.md` | **The loop** — how QUESTION/RESPONSE works, hard-won lessons |
 | `_ACADEMY-DASHBOARD-DEFINITIVE-TEST-PLAN.md` | 3-stage test protocol (Cursor → Claude live → Alan) |
-| `Claude Questions for Cursor/` | **INBOX** — Claude posts `QUESTION-YYYY-MM-DD-slug.md` |
-| `Cursor Outputs for Claude/` | **OUTBOX** — Cursor posts `RESPONSE-<id>-LATEST.md` |
+| `Claude Questions for Cursor/` | **INBOX** — Claude posts `QUESTION-YYYY-MM-DD-slug.md` (Drive folder id `1ErwYYRWT2VmWcfJZmBMZjuDKe2jpi-Ay`) |
+| `Cursor Outputs for Claude/` | **OUTBOX** — Cursor posts `RESPONSE-<id>-LATEST.md` (Drive folder id `11K49OcIfO-iQoREWnAglOEMq7XgPdCuE`) |
 | `RESPONSE-2026-06-06-claude-AvsB-RESOLVED-it-is-memberstack-network-redirect.md` | Decisive B-path diagnosis |
+| STATUS file (Drive id `1H8YSsQAMDNDMly5-0uBeEWb3V515xvKW`) | **Lags** — trust actual RESPONSE files + live page, not STATUS alone |
 | `docs/handoff/` (in repo) | Mirror of major RESPONSE files + this handover |
+
+**Finding RESPONSE files:** Drive search title contains `RESPONSE-<question-id>`. Real answers have `answered_by: cursor`, commit hash, `status: complete`. Brief echo of question text can appear before sync — re-read if unsure.
 
 ### The magic phrases (Alan uses these)
 
@@ -43,6 +49,12 @@ Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Ve
 | **`check claude`** (in **Cursor**) | Cursor agent | Poll/read **INBOX** (`Claude Questions for Cursor/`), do the work, commit+push, write **RESPONSE** to OUTBOX |
 | **`check claude`** (to **Claude** in claude.ai) | Claude | Read **OUTBOX** (`Cursor Outputs for Claude/`), verify live in browser, update test plan |
 | **`export to google`** / **`export for claude`** | Cursor (AI GEO Audit repo only) | `npm run export:claude` — **not** in Academy repo; Academy uses manual RESPONSE `.md` files |
+
+**Cursor polling:** Cursor may poll INBOX ~every 15 min, but Alan's explicit **"check claude"** in Cursor is the reliable trigger.
+
+**Diagnosis-only questions:** Claude titles like `Request for analysis and Diagnosis by D0 AI: ...` with body lines `DIAGNOSIS ONLY. No file changes.` and `DO NOT return any edit file: blocks.` — analyse only, no repo edits.
+
+**Superseded questions:** New QUESTION files may include `supersedes: <old-id>` — never assume an old pending question was picked up; trust RESPONSE files.
 
 **CRITICAL:** A git push is **not** live for Squarespace snippets. Alan must **re-paste** HTML into Squarespace after every snippet change. Claude must **not** report "live" until browser-verified.
 
@@ -143,9 +155,30 @@ From definitive test plan + conversation — **verify live status with Alan befo
 
 **Deferred intentionally during bounce fix:** full cube-tracking admin verification until B3 passed (now passed).
 
+**Test plan context note:** `_ACADEMY-DASHBOARD-DEFINITIVE-TEST-PLAN.md` still lists bounce fix as "active change" and defers beacons — update that file when starting the next verification pass (G3, D4, C/beacons). B3 is now **PASS** per Alan.
+
 ---
 
-## 6. Cursor agent rules (mandatory)
+## 6. Strip / gates / live verification (Claude uses these)
+
+**Live gate state (do-next strip):** `window.__arDoNextStrip.gateStats` on `/academy/dashboard` — Claude verifies proximity counts here, not just RESPONSE text (miscounts have happened).
+
+**Gate config objects (strip):** `FOUNDATION_GATE`, `PRACTITIONER_GATE`, `CERTIFIED_GATE` — thresholds live in named config; never hardcode duplicates.
+
+**Journey data:** single `JOURNEY_STAGES` array in strip snippet.
+
+**Module paths:** `lib/academy-module-paths.js` — synced into strip via `// SYNC:` comments.
+
+**Admin preview mode (writes nothing):**  
+`https://www.alanranger.com/academy/dashboard?ar_preview=1&state=trial|annual&trialdays=&modules=&activedays=&exams=`
+
+**Claude live verification:** Chrome tools on `https://www.alanranger.com/academy/dashboard` — Alan must be logged in; if on `/academy/login`, ask Alan to log back in. Session times out.
+
+**change_log discipline:** only add `activation_change_log` rows after Alan verifies member-facing change live and signs off.
+
+---
+
+## 7. Cursor agent rules (mandatory)
 
 1. **Every snippet change** = bump version in file header comment + changelog line + update header stamp (H/S/D/B) when relevant.
 2. **`git commit` + `git push`** to `alanranger-modules` `main` after each logical fix (one version = one commit).
@@ -160,7 +193,7 @@ From definitive test plan + conversation — **verify live status with Alan befo
 
 ---
 
-## 7. Testing
+## 8. Testing
 
 ### Stage 1 — Cursor (pre-paste, in repo)
 
@@ -192,7 +225,7 @@ See test plan § STAGE 3 (AL1–AL7).
 
 ---
 
-## 8. Repo layout (high-signal paths)
+## 9. Repo layout (high-signal paths)
 
 ```
 alanranger-academy-assesment/
@@ -218,7 +251,7 @@ alanranger-academy-assesment/
 
 ---
 
-## 9. API endpoints (tracking)
+## 10. API endpoints (tracking)
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -229,9 +262,10 @@ alanranger-academy-assesment/
 
 ---
 
-## 10. Git commit history (bounce-fix arc)
+## 11. Git commit history (bounce-fix arc)
 
 ```
+afc7ef9 Docs: comprehensive Cursor agent handover
 7eb5a6a fix: D 1.3.11 beacon helpers in module-progress IIFE scope
 0d2369d Add test:tile-open-beacon script
 de125c3 Dashboard D 1.3.11: cube open-tracking beacons + track-tile-open API
@@ -245,7 +279,7 @@ ff545e3 Docs: restore point + handoff MDs + changelog
 
 ---
 
-## 11. Pitfalls (do not repeat)
+## 12. Pitfalls (do not repeat)
 
 1. **Assuming git push = live** — always give Alan a paste table.
 2. **Flooding Memberstack** — never loop `getMemberJSON()` per cube/tile/timer; use `__arMsReader`.
@@ -257,7 +291,7 @@ ff545e3 Docs: restore point + handoff MDs + changelog
 
 ---
 
-## 12. First actions for a new Cursor agent
+## 13. First actions for a new Cursor agent
 
 When Alan says **"check claude"**:
 
@@ -277,7 +311,7 @@ When Alan gives a direct build request (no Claude question):
 
 ---
 
-## 13. Contact / ownership
+## 14. Contact / ownership
 
 - **Alan** — pastes snippets, runs Stage 3, confirms live
 - **Claude (claude.ai)** — live verification, QUESTION files, engagement dashboard specs
