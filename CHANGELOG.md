@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-07] - Strip S 1.3.45: ghost mode member-id resolution
+
+### Fixed
+- **Do-next strip** honours `?ghost=` / `?ghostEmail=` and `sessionStorage` key `ar_ghost_context_v1` (same as dashboard)
+- Ghost mode loads member JSON via existing `/api/admin/ghost-login` (admin `X-Memberstack-Id` guard unchanged)
+- `window.__arDoNextStrip.memberId` equals ghost id; exposes `ghostMode` + `ghostMemberId`
+- All writes suppressed in ghost mode: page-view, tile-open beacon, assignment persist
+
+### Paste
+- **Strip S 1.3.45** + **Header H 1.4.14** (stamp only). No Vercel deploy required.
+
+---
+
 ## [2026-06-07] - Admin badge level on all member tables
 
 ### Added
