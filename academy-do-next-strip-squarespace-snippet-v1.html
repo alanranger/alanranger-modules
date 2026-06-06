@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.38 — preview mode injects Graduate/Master longevity query params (appliedLearning, practicePacks, pdfAssignments, activeMonths)
 v1.3.37 — Graduate + Master points-layer gates, keep-alive decay, tooltips, tile-4 checklists (on Certified floor)
 v1.3.36 — re-ship of the S 1.3.35 tile-open beacon on the restored baseline (logic unchanged); version stamp sync with D 1.3.12 / B 1.3.6 for post-restore verification
 v1.3.35 — tile-open beacon fires after window.open (assignment PDFs); cached member id only
@@ -4275,7 +4276,7 @@ function practitionerRequirementsMet(stats) {
 
       coachDebug.modulesTotal = MODULES_TOTAL;
 
-      coachDebug.gateStats = gateStats;
+      coachDebug.gateStats = gateStatsWithLongevity;
 
       coachDebug.examsPassed = examsPassed;
 
@@ -4595,6 +4596,14 @@ function practitionerRequirementsMet(stats) {
 
       var exams = parseInt(params.get("exams") || params.get("examspassed") || "0", 10);
 
+      var appliedLearning = parseInt(params.get("appliedlearning") || params.get("appliedLearning") || "0", 10);
+
+      var practicePacks = parseInt(params.get("practicepacks") || params.get("practicePacks") || "0", 10);
+
+      var pdfAssignments = parseInt(params.get("pdfassignments") || params.get("pdfAssignments") || "0", 10);
+
+      var activeMonths = parseInt(params.get("activemonths") || params.get("activeMonths") || "0", 10);
+
       if (state === "annual" && !params.has("modules")) modules = 20;
 
       if (state === "annual" && !params.has("activedays")) activeDays = 7;
@@ -4611,7 +4620,15 @@ function practitionerRequirementsMet(stats) {
 
         activeDays: isNaN(activeDays) ? 0 : activeDays,
 
-        examsPassed: isNaN(exams) ? 0 : exams
+        examsPassed: isNaN(exams) ? 0 : exams,
+
+        appliedLearning: isNaN(appliedLearning) ? 0 : appliedLearning,
+
+        practicePacks: isNaN(practicePacks) ? 0 : practicePacks,
+
+        pdfAssignments: isNaN(pdfAssignments) ? 0 : pdfAssignments,
+
+        activeMonths: isNaN(activeMonths) ? 0 : activeMonths
 
       };
 
@@ -4659,9 +4676,21 @@ function practitionerRequirementsMet(stats) {
 
   function buildPreviewEngagement(preview){
 
+    var longevity = {
+
+      appliedLearningOpened: preview.appliedLearning,
+
+      practicePacksOpened: preview.practicePacks,
+
+      pdfAssignmentsOpened: preview.pdfAssignments,
+
+      distinctActiveMonthsAllTime: preview.activeMonths
+
+    };
+
     if (preview.state === "annual") {
 
-      return {
+      return Object.assign({
 
         isTrial: false,
 
@@ -4671,13 +4700,13 @@ function practitionerRequirementsMet(stats) {
 
         distinctActiveDaysFirst14d: preview.activeDays
 
-      };
+      }, longevity);
 
     }
 
     if (preview.state === "expired") {
 
-      return {
+      return Object.assign({
 
         isTrial: false,
 
@@ -4687,11 +4716,11 @@ function practitionerRequirementsMet(stats) {
 
         distinctActiveDaysFirst14d: preview.activeDays
 
-      };
+      }, longevity);
 
     }
 
-    return {
+    return Object.assign({
 
       isTrial: true,
 
@@ -4701,7 +4730,7 @@ function practitionerRequirementsMet(stats) {
 
       distinctActiveDaysFirst14d: preview.activeDays
 
-    };
+    }, longevity);
 
   }
 
