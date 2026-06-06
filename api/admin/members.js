@@ -1270,6 +1270,115 @@ const loadHistoryMembers = async (supabase, baseMembers, needsHistory) => {
   return { baseMembers, trialHistoryRows, annualHistoryRows };
 };
 
+const GHOST_ACTIVITY_DAYS = 90;
+const GHOST_LOGIN_TYPES = new Set(["login", "member_login"]);
+const GHOST_ID_CHUNK = 200;
+
+async function fetchExamsPassedMap(supabase, memberIds) {
+  const map = new Map();
+  if (!memberIds.length) return map;
+  const chunkSize = 300;
+  for (let i = 0; i < memberIds.length; i += chunkSize) {
+    const chunk = memberIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("module_results_ms")
+      .select("memberstack_id, passed")
+      .in("memberstack_id", chunk)
+      .eq("passed", true);
+    if (error) throw error;
+    (data || []).forEach((row) => {
+      if (!row.memberstack_id) return;
+      map.set(row.memberstack_id, (map.get(row.memberstack_id) || 0) + 1);
+    });
+  }
+  return map;
+}
+
+async function fetchGhostActivityMaps(supabase, memberIds) {
+  const lastSeenMap = {};
+  const lastLoginMap = {};
+  if (!memberIds.length) return { lastSeenMap, lastLoginMap };
+  const cutoff = new Date(Date.now() - GHOST_ACTIVITY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  for (let i = 0; i < memberIds.length; i += GHOST_ID_CHUNK) {
+    const chunk = memberIds.slice(i, i + GHOST_ID_CHUNK);
+    const { data, error } = await supabase
+      .from("academy_events")
+      .select("member_id, event_type, created_at")
+      .in("member_id", chunk)
+      .gte("created_at", cutoff)
+      .order("created_at", { ascending: false })
+      .limit(8000);
+    if (error) throw error;
+    (data || []).forEach((row) => {
+      const id = row.member_id;
+      if (!id) return;
+      if (!lastSeenMap[id]) lastSeenMap[id] = row.created_at;
+      if (GHOST_LOGIN_TYPES.has(row.event_type) && !lastLoginMap[id]) {
+        lastLoginMap[id] = row.created_at;
+      }
+    });
+  }
+  return { lastSeenMap, lastLoginMap };
+}
+
+async function buildGhostMembersList(supabase, req) {
+  const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+  const limit = Math.min(Number.parseInt(req.query.limit, 10) || 2500, 2500);
+  const sortField = req.query.sort || "updated_at";
+  const sortOrder = req.query.order || "desc";
+
+  const { data: members, error } = await supabase
+    .from("ms_members_cache")
+    .select("member_id, email, name, plan_summary, raw, created_at, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  const rows = members || [];
+  const memberIds = rows.map((m) => m.member_id);
+  const [examsPassedMap, activityMaps] = await Promise.all([
+    fetchExamsPassedMap(supabase, memberIds),
+    fetchGhostActivityMaps(supabase, memberIds),
+  ]);
+  const { lastSeenMap, lastLoginMap } = activityMaps;
+
+  let enriched = rows.map((member) => {
+    const plan = member.plan_summary || {};
+    const raw = member.raw || {};
+    const memberId = member.member_id;
+    const examsPassed = examsPassedMap.get(memberId) || 0;
+    const lastSeen = lastSeenMap[memberId] || member.updated_at || null;
+    const item = {
+      member_id: memberId,
+      email: member.email,
+      name: member.name,
+      plan_name: plan.plan_name || "No Plan",
+      plan_type: plan.plan_type || null,
+      status: plan.status || "unknown",
+      is_trial: !!plan.is_trial,
+      is_paid: !!plan.is_paid,
+      signed_up: member.created_at,
+      last_seen: lastSeen,
+      last_login: lastLoginMap[memberId] || null,
+      updated_at: member.updated_at,
+    };
+    attachTableBadgeFields(item, raw, examsPassed, item.is_paid, lastSeen);
+    return item;
+  });
+
+  enriched = sortMembers(enriched, sortField, sortOrder);
+
+  return {
+    members: enriched,
+    pagination: {
+      page: 1,
+      limit,
+      total: enriched.length,
+      totalPages: 1,
+    },
+  };
+}
+
 async function handleMembers(req, res) {
   try {
     if (req.method !== "GET") {
@@ -1289,7 +1398,7 @@ async function handleMembers(req, res) {
       }
     }
 
-    const cachedResponse = forGhostList ? null : getCachedMembersResponse(req);
+    const cachedResponse = getCachedMembersResponse(req);
     if (cachedResponse) {
       return res.status(200).json(cachedResponse);
     }
@@ -1299,7 +1408,13 @@ async function handleMembers(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Parse query params
+    if (forGhostList) {
+      const payload = await buildGhostMembersList(supabase, req);
+      setCachedMembersResponse(req, payload);
+      return res.status(200).json(payload);
+    }
+
+    // Parse query params — full members directory (non-ghost)
     const fetchCap = forGhostList ? 2500 : 1000;
     let page = Number.parseInt(req.query.page, 10) || 1;
     let limit = Number.parseInt(req.query.limit, 10) || 50;

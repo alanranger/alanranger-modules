@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-07] - Ghost admin: fast member directory load
+
+### Fixed
+- **`/api/admin/members?for_ghost=1`** — dedicated fast path (skips full event scan, Stripe, hue, bookmarks pipeline)
+- Loads slim cache rows + chunked exam-pass counts + 90-day activity window only
+- Server response cache enabled for ghost list (120s, same as members API)
+- **Ghost UI** — sessionStorage stale-while-revalidate (2 min) for instant repeat tab visits
+
+### Deploy
+- Vercel auto-deploy from `main` — no Squarespace paste
+
+---
+
 ## [2026-06-07] - Strip S 1.3.45: ghost mode member-id resolution
 
 ### Fixed

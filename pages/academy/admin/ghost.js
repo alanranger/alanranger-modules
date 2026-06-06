@@ -1,6 +1,6 @@
 // /pages/academy/admin/ghost.js
 // Ghost Login - View any member's dashboard as they see it
-// v1.1.1 — badge level column (shared with all admin member tables)
+// v1.2.0 — faster Ghost load: client cache + stale-while-revalidate
 
 import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
@@ -186,18 +186,39 @@ export default function GhostLogin() {
   }
 
   async function fetchMembers() {
-    setLoading(true);
+    const cacheKey = 'ar-admin-ghost-members-v1';
+    const cacheTtlMs = 120000;
+    let showedCache = false;
+
     try {
-      // Fetch all members (we'll paginate in the UI)
-      const res = await fetch("/api/admin/members?for_ghost=1&limit=2500");
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.at && Date.now() - parsed.at < cacheTtlMs && Array.isArray(parsed.members)) {
+          setMembers(parsed.members);
+          setFilteredMembers(parsed.members);
+          setLoading(false);
+          showedCache = true;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    if (!showedCache) setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/members?for_ghost=1&limit=2500');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
+
       const data = await res.json();
-      setMembers(data.members || []);
-      setFilteredMembers(data.members || []);
+      const list = data.members || [];
+      setMembers(list);
+      setFilteredMembers(list);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), members: list }));
+      } catch (e) { /* ignore */ }
     } catch (error) {
       console.error('Failed to fetch members:', error);
-      alert('Failed to load members: ' + error.message);
+      if (!showedCache) alert('Failed to load members: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -394,7 +415,10 @@ export default function GhostLogin() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ar-text-muted)' }}>
-          Loading members...
+          Loading member directory…
+          <div style={{ fontSize: '13px', marginTop: '8px', opacity: 0.85 }}>
+            First load builds the searchable list (up to 2500). Repeat visits use a 2-minute cache.
+          </div>
         </div>
       ) : (
         <>
