@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.11) — Squarespace Snippet
+Academy Dashboard UI (v1.3.6) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -9,13 +9,10 @@ v1.3.3: Help note above tile grid — hover to reveal topic and link.
 v1.3.4: Large CTA under help text → /academy/online-photography-course/
 v1.3.5: Course CTA — high-contrast green, chevrons, stronger shadow; help intro slightly larger.
 v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, row layout, JS ensureCourseCta fallback.
-v1.3.7: Remove outer 100vw full-bleed (fixes horizontal scroll on dashboard body).
-v1.3.8: overflow-x hidden on dashboard shell; inner gutter calcs use 100% not 100vw; #academy-activity clamped.
-v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab open.
-v1.3.10: PDF cube click — open per-cube URL from data-module-url (fix fullUrl loop-closure bug).
-v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after async await); Abstract assignment -> PDF.
       (If this script is present on other Academy pages e.g. /academy/upgrade, the old
       behaviour redirected logged-out users to /academy/login — fixed.)
+v1.3.7: Auth guard retries slow Memberstack hydrate + whoami fallback; no false login bounce on article return.
+      Tile header icons use HTML entities (UTF-8 safe paste). Abstract assignment cube 56 points to PDF.
 -->
 
 <script>
@@ -70,12 +67,9 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
       radial-gradient(900px 500px at 85% 20%, rgba(245,158,11,0.10), transparent 55%),
       var(--ar-bg);
     color: var(--ar-text);
-    width: 100%;
-    max-width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-    overflow-x: hidden;
-    box-sizing: border-box;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
     padding: 20px 0 56px; /* Normal padding - Academy header is sticky */
     min-height: 100vh;
   
@@ -100,11 +94,11 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   @media (min-width: 1201px) {
     html.ar-academy .ar-academy-dashboard__inner {
       --arp-dash-gutter: 352px; /* 320px sidebar + gap */
-      width: min(1400px, calc(100% - var(--arp-dash-gutter)));
-      max-width: min(1400px, calc(100% - var(--arp-dash-gutter)));
+      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
+      max-width: 1400px;
       margin-left: calc(
         var(--arp-dash-gutter) +
-        (100% - var(--arp-dash-gutter) - min(1400px, calc(100% - var(--arp-dash-gutter)))) /
+        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
           2
       );
       margin-right: auto;
@@ -115,21 +109,6 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   
   html.ar-academy .ar-academy-dashboard__main {
     width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    box-sizing: border-box;
-  }
-
-  html.ar-academy #academy-activity {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    box-sizing: border-box;
-  }
-
-  html.ar-academy #academy-activity [data-academy-activity-grid] {
-    max-width: 100%;
-    box-sizing: border-box;
   }
   
   html.ar-academy .ar-academy-dashboard__sidebar {
@@ -150,11 +129,10 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
 
     html.ar-academy .ar-academy-dashboard__inner {
       --arp-dash-gutter: 322px; /* 300px sidebar + gap */
-      width: min(1400px, calc(100% - var(--arp-dash-gutter)));
-      max-width: min(1400px, calc(100% - var(--arp-dash-gutter)));
+      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
       margin-left: calc(
         var(--arp-dash-gutter) +
-        (100% - var(--arp-dash-gutter) - min(1400px, calc(100% - var(--arp-dash-gutter)))) /
+        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
           2
       );
     }
@@ -2144,7 +2122,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div class="ar-tile__title" style="margin-bottom:0;">
-              <span class="ar-tile__icon">📚</span>
+              <span class="ar-tile__icon">&#x1F4DA;</span>
               <span>Modules</span>
               <span id="ar-modules-progress-title" class="ar-tile__progress"></span>
             </div>
@@ -2163,7 +2141,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
           <a id="ar-exams-tile-link" href="https://www.alanranger.com/academy/photography-exams-certification" style="display:block; text-decoration:none; color:inherit;">
             <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Track progress</div>
             <div class="ar-tile__title">
-              <span class="ar-tile__icon">🎓</span>
+              <span class="ar-tile__icon">&#x1F393;</span>
               <span>Exams & Certificates</span>
               <span id="ar-exams-progress-title" class="ar-tile__progress"></span>
             </div>
@@ -2175,7 +2153,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
           </a>
           <!-- Details button to open drawer (outside <a> tag to prevent navigation) -->
           <button id="ar-exams-details-btn" onclick="event.preventDefault(); event.stopPropagation(); if(window.openExamDrawer) { window.openExamDrawer(); }" style="display:none; margin-top:12px; margin-left:0; margin-right:0; padding:8px 16px; font-size:13px; background:var(--ar-orange); border:1px solid var(--ar-orange); border-radius:6px; color:#fff; cursor:pointer; font-weight:600; transition:all 0.15s ease; width:calc(100% - 28px); position:relative; z-index:20;">View Details</button>
-          <button id="ar-exams-refresh" onclick="if(window.refreshExamProgress) { event.stopPropagation(); window.refreshExamProgress(); }" style="position:absolute; bottom:12px; right:14px; z-index:10; padding:6px 10px; font-size:11px; background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.3); border-radius:6px; color:var(--ar-text); cursor:pointer; font-weight:600; transition:all 0.15s ease;">🔄 Refresh</button>
+          <button id="ar-exams-refresh" onclick="if(window.refreshExamProgress) { event.stopPropagation(); window.refreshExamProgress(); }" style="position:absolute; bottom:12px; right:14px; z-index:10; padding:6px 10px; font-size:11px; background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.3); border-radius:6px; color:var(--ar-text); cursor:pointer; font-weight:600; transition:all 0.15s ease;">&#x1F504; Refresh</button>
         </div>
         
         <!-- Exam Progress Drawer -->
@@ -2190,13 +2168,13 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   
         <div class="ar-tile-group ar-tile-group--premium">
           <div class="ar-tile-group__label">
-            Paid Members Only <span class="pill-muted">— Resources</span>
+            Paid Members Only <span class="pill-muted">&#8212; Resources</span>
           </div>
           <div class="ar-tile-group__grid">
             <div id="arp-practice-packs-tile" class="ar-tile ar-span-4">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                 <div class="ar-tile__title" style="margin-bottom:0;">
-                  <span class="ar-tile__icon">📦</span>
+                  <span class="ar-tile__icon">&#x1F4E6;</span>
                   <span>Practice Packs</span>
                   <span id="ar-practice-packs-progress-title" class="ar-tile__progress"></span>
                 </div>
@@ -2215,7 +2193,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             <div id="arp-checklists-tile" class="ar-tile ar-span-4">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                 <div class="ar-tile__title" style="margin-bottom:0;">
-                  <span class="ar-tile__icon">✅</span>
+                  <span class="ar-tile__icon">&#x2705;</span>
                   <span>1-Page Field Checklists</span>
                   <span id="ar-checklists-progress-title" class="ar-tile__progress"></span>
                 </div>
@@ -2233,13 +2211,13 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   
             <div class="ar-resource-stack">
               <a id="arp-ebook-tile" class="ar-tile ar-resource-tile--compact" href="/academy/ebook">
-                <div class="ar-tile__title"><span class="ar-tile__icon">📖</span>eBook</div>
+                <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F4D6;</span>eBook</div>
                 <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
                 <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
               </a>
 
               <div id="arp-asset-care-tile" class="ar-tile ar-resource-tile--asset-care" aria-disabled="false">
-                <div class="ar-tile__title"><span class="ar-tile__icon">🛡️</span>Your Gear, Files &amp; Rights</div>
+                <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F6E1;&#xFE0F;</span>Your Gear, Files &amp; Rights</div>
                 <div class="ar-tile__desc">Backups, maintenance, image copyright online, and your rights when shooting in the UK.</div>
                 <ul class="ar-asset-care-list">
                   <li><a data-asset-link="backup" href="https://www.alanranger.com/blog-on-photography/how-to-back-up-photos" target="_blank" rel="noopener noreferrer">Backing up photos</a></li>
@@ -2255,7 +2233,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             <div class="ar-tile ar-span-8 ar-applied-library" id="arp-applied-learning-library-tile">
               <div class="ar-applied-library__header">
                 <div class="ar-tile__title ar-applied-library__title">
-                  <span class="ar-tile__icon">🗂️</span>
+                  <span class="ar-tile__icon">&#x1F5C2;&#xFE0F;</span>
                   <span>Applied Learning Library</span>
                   <span id="ar-applied-learning-progress-title" class="ar-tile__progress" data-total="40">0/40 opened</span>
                 </div>
@@ -2357,7 +2335,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             <div class="ar-tile ar-span-4 ar-rps-tile" id="arp-rps-accreditation-tile">
               <div class="ar-rps-head">
                 <div class="ar-tile__title ar-rps-title">
-                  <span class="ar-tile__icon">🏅</span>
+                  <span class="ar-tile__icon">&#x1F3C5;</span>
                   <span>Royal Photographic Society - Accreditation</span>
                   <span id="ar-rps-progress-title" class="ar-tile__progress" data-total="10">0/10 opened</span>
                 </div>
@@ -2385,17 +2363,17 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   
         <div class="ar-tile-group">
           <div class="ar-tile-group__label">
-            Need Help <span class="pill-muted">— Support</span>
+            Need Help <span class="pill-muted">&#8212; Support</span>
           </div>
           <div class="ar-tile-group__grid">
             <a class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-course-feedback">
-              <div class="ar-tile__title"><span class="ar-tile__icon">💬</span>Course Feedback</div>
+              <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F4AC;</span>Course Feedback</div>
               <div class="ar-tile__desc">Submit questions, share progress, and get help moving forward.</div>
               <div class="ar-tile__tip">Send a question or share your results for feedback.</div>
             </a>
   
             <a class="ar-tile ar-span-4" href="https://www.alanranger.com/academy/photography-questions-answers" id="qa-tile">
-              <div class="ar-tile__title"><span class="ar-tile__icon">❓</span>Your Questions &amp; Answers</div>
+              <div class="ar-tile__title"><span class="ar-tile__icon">&#x2753;</span>Your Questions &amp; Answers</div>
               <div class="ar-tile__desc">Quick answers to common questions, issues, and next steps.</div>
               <div id="qa-counts" style="margin-top: 12px; font-size: 13px; color: var(--ar-text-muted);">
                 <div style="display: flex; gap: 16px; flex-wrap: wrap;">
@@ -2408,7 +2386,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             </a>
 
             <a class="ar-tile ar-span-4" href="/academy-robo-ranger">
-              <div class="ar-tile__title"><span class="ar-tile__icon">🤖</span>Robo-Ranger Chat</div>
+              <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F916;</span>Robo-Ranger Chat</div>
               <div class="ar-tile__desc">Alan's AI assistant. Ask about workshops, tuition, or photography.</div>
               <div class="ar-tile__tip">Get instant answers from Alan's AI assistant.</div>
             </a>
@@ -2417,7 +2395,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
   
         <div id="arp-ms-tile" class="ar-tile ar-span-4">
           <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
-          <div class="ar-tile__title"><span class="ar-tile__icon">👤</span>Membership Status</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F464;</span>Membership Status</div>
           <div id="arp-ms-status">Loading membership status…</div>
           <button id="arp-ms-manage" type="button">Manage subscription</button>
           <button id="arp-upgrade-membership" type="button" style="display:none;">Upgrade Membership</button>
@@ -2427,7 +2405,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
         <div id="arp-tools-tile" class="ar-tile ar-span-4">
           <div class="ar-tile__kicker"><span class="ar-dot"></span>Tools</div>
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-            <div class="ar-tile__title"><span class="ar-tile__icon">📏</span>Exposure Calculator</div>
+            <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F4CF;</span>Exposure Calculator</div>
             <button
               type="button"
               onclick="window.location.href='https://www.alanranger.com/outdoor-photography-exposure-calculator';"
@@ -2510,7 +2488,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
         <!-- Bookmarks & Recent Activity Tile (LIVE MINI LISTS) -->
         <div id="arp-bookmarks-tile" class="ar-tile ar-span-4">
           <div class="ar-tile__kicker"><span class="ar-dot"></span>Account</div>
-          <div class="ar-tile__title"><span class="ar-tile__icon">⭐</span>Bookmarks &amp; Recent Activity</div>
+          <div class="ar-tile__title"><span class="ar-tile__icon">&#x2B50;</span>Bookmarks &amp; Recent Activity</div>
 
           <div class="ar-tile__desc" style="margin-top:8px;">
             <div style="color:#E57200;font-weight:900;margin-bottom:6px;">
@@ -3150,6 +3128,119 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
           return m;
         });
       });
+    }
+
+    var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
+    var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+    function markDashboardSession(memberId) {
+      if (!memberId) return;
+      try {
+        sessionStorage.setItem(DASHBOARD_SESSION_KEY, JSON.stringify({
+          id: String(memberId),
+          at: Date.now()
+        }));
+      } catch (e) { /* ignore */ }
+    }
+
+    function hasRecentDashboardSession() {
+      try {
+        var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+        if (!raw) return false;
+        var parsed = JSON.parse(raw);
+        return !!(parsed && parsed.id && parsed.at && (Date.now() - parsed.at < 4 * 60 * 60 * 1000));
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function fetchWhoamiIdentity() {
+      return fetch(WHOAMI_URL, { credentials: "include" })
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .catch(function() { return null; });
+    }
+
+    function memberFromWhoami(identity) {
+      if (!identity || !identity.memberstack_id) return null;
+      return {
+        id: String(identity.memberstack_id),
+        data: {
+          id: String(identity.memberstack_id),
+          email: identity.email || null,
+          planConnections: identity.planConnections || []
+        }
+      };
+    }
+
+    function mergeWhoamiIntoMember(m, wm) {
+      if (!wm || !wm.data) return m;
+      if (!m || !m.data) return wm;
+      if (!m.id && wm.id) m.id = wm.id;
+      if (!m.data.id && wm.data.id) m.data.id = wm.data.id;
+      mergeMissingFields(m.data, wm.data);
+      if (!getPlanConnections(m).length && getPlanConnections(wm).length) {
+        m.data.planConnections = wm.data.planConnections;
+      }
+      return m;
+    }
+
+    function memberCanAccessDashboard(member) {
+      if (!member || !member.data) return false;
+      if (hasAccess(member)) return true;
+      return getPlanConnections(member).filter(isActivePlanConnection).length > 0;
+    }
+
+    function getMemberExtendedWithRetry(ms, attempts) {
+      attempts = typeof attempts === "number" ? attempts : 12;
+      function tryOnce(left) {
+        return getMemberExtended(ms).then(function(m) {
+          if (m && m.data && memberCanAccessDashboard(m)) return m;
+          if (left <= 1) return m;
+          return new Promise(function(done) {
+            setTimeout(function() { done(tryOnce(left - 1)); }, 500);
+          });
+        });
+      }
+      return tryOnce(attempts).then(function(m) {
+        return fetchWhoamiIdentity().then(function(identity) {
+          return mergeWhoamiIntoMember(m, memberFromWhoami(identity));
+        });
+      });
+    }
+
+    function resolveDashboardMember(ms) {
+      return getMemberExtendedWithRetry(ms, 12);
+    }
+
+    function showDashboardShell() {
+      var dashEl = document.querySelector(".ar-academy-dashboard");
+      if (dashEl) dashEl.classList.add("is-ready");
+    }
+
+    function scheduleAuthHydrateRetry(ms, onReady) {
+      var tries = 0;
+      showDashboardShell();
+      function tick() {
+        tries++;
+        resolveDashboardMember(ms).then(function(m) {
+          if (m && m.data && memberCanAccessDashboard(m)) {
+            onReady(m);
+            return;
+          }
+          if (tries < 30) setTimeout(tick, 500);
+        }).catch(function() {
+          if (tries < 30) setTimeout(tick, 500);
+        });
+      }
+      setTimeout(tick, 300);
+    }
+
+    function deferAuthInsteadOfLogin(ms) {
+      if (!ms) return false;
+      scheduleAuthHydrateRetry(ms, function(retryMember) {
+        runDashboardAccessGuard(ms, retryMember);
+      });
+      return true;
     }
 
     function pickFirstString(arr){
@@ -5373,7 +5464,6 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
       });
 
       document.addEventListener('ar-academy-sticky-metrics', positionMembersGuide);
-      document.addEventListener('ar-academy-layout-sync', positionMembersGuide);
       
       // Also re-position after delays to ensure header is fully rendered
       setTimeout(positionMembersGuide, 200);
@@ -5915,9 +6005,6 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
         console.log("[expired-trial] entering locked dashboard mode", status);
         document.body.setAttribute("data-ar-academy-state", "expired-trial");
         if (dashboardEl) dashboardEl.classList.add("is-ready");
-        try {
-          document.dispatchEvent(new CustomEvent("ar-academy-member-ready", { detail: { member: member } }));
-        } catch (e) { /* ignore */ }
         var modal = document.getElementById("ar-upgrade-modal");
         if (modal) modal.setAttribute("data-ar-locked", "true");
         populateUpgradeModal(status);
@@ -6070,43 +6157,37 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
       } catch (e) { /* ignore */ }
 
       // Live site: Guard access (no flash) - Normal flow when NOT in ghost mode
-      waitForMemberstack(8000).then(function(ms){
-        if (!ms) { safeRedirect(applyRewindEmailToUrl(LOGIN_URL)); return; }
-        return getMemberExtended(ms).then(function(m){
-          if (!m || !m.data) { safeRedirect(applyRewindEmailToUrl(LOGIN_URL)); return; }
-          
-          // Normal dashboard flow (ghost mode already handled above)
-          
-          // Debug logging: log full member payload
+      function runDashboardAccessGuard(ms, preloadedMember) {
+        var memberPromise = preloadedMember
+          ? Promise.resolve(preloadedMember)
+          : resolveDashboardMember(ms);
+        return memberPromise.then(function(m){
+          if (!m || !m.data) {
+            if (deferAuthInsteadOfLogin(ms)) return;
+            safeRedirect(applyRewindEmailToUrl(LOGIN_URL));
+            return;
+          }
+
           console.log("[MS] member payload", m);
           if (forceExpiredTest) {
             console.warn("[ar-test-expired] Forcing expired-trial locked mode via URL override");
           }
-          
-          // planConnections = the key difference between "abandoned checkout" vs "expired"
-          var pcs = (m && m.data && Array.isArray(m.data.planConnections)) ? m.data.planConnections : [];
-          var hasAnyPlan = pcs.length > 0;
 
-          // Member has active access — normal dashboard flow.
-          if (hasAccess(m) && !forceExpiredTest) {
+          var pcs = getPlanConnections(m);
+          var hasAnyPlan = pcs.length > 0;
+          var activePlans = pcs.filter(isActivePlanConnection);
+
+          if ((hasAccess(m) || activePlans.length > 0) && !forceExpiredTest) {
+            var memberId = m.id || (m.data && m.data.id);
+            if (memberId) markDashboardSession(memberId);
             if (dashboardEl) dashboardEl.classList.add("is-ready");
-            try {
-              document.dispatchEvent(new CustomEvent("ar-academy-member-ready", { detail: { member: m } }));
-            } catch (e) { /* ignore */ }
             renderMemberStatus(m, ms);
             handleUpgradeReturn(ms);
             maybeShowActiveTrialPrompt(m);
           } else {
-            // No active access. Two cases:
-            //   (a) Expired trial — Supabase academy_trial_history still has the trial row.
-            //       Keep them on the dashboard in LOCKED mode and show the upgrade modal.
-            //   (b) Never really a member (abandoned checkout / orphan account) — log out
-            //       and bounce to the login page with a helpful hint.
-            // Note: we no longer redirect to /academy/trial-expired. The locked dashboard
-            // preserves the member's authenticated session so Stripe Checkout + Memberstack
-            // plan attachment can work end-to-end.
             var mId = (m && (m.id || (m.data && m.data.id))) || null;
             var bounceAsUnactivated = function(){
+              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) return;
               try { if (ms && typeof ms.logout === "function") { ms.logout(); } } catch(e) {}
               safeRedirect(applyRewindEmailToUrl("/academy/login?trial=not-activated"));
             };
@@ -6135,6 +6216,16 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
                 handleUpgradeReturn(ms);
                 return;
               }
+              if (hasAccess(m) || activePlans.length > 0) {
+                var okId = m.id || (m.data && m.data.id);
+                if (okId) markDashboardSession(okId);
+                if (dashboardEl) dashboardEl.classList.add("is-ready");
+                renderMemberStatus(m, ms);
+                handleUpgradeReturn(ms);
+                maybeShowActiveTrialPrompt(m);
+                return;
+              }
+              if (hasRecentDashboardSession() && deferAuthInsteadOfLogin(ms)) return;
               bounceAsUnactivated();
             });
           }
@@ -6273,8 +6364,26 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             }
           }
         }).catch(function(){
+          if (deferAuthInsteadOfLogin(ms)) return;
           safeRedirect(LOGIN_URL);
         });
+      }
+
+      waitForMemberstack(15000).then(function(ms){
+        if (!ms) {
+          return waitForMemberstack(12000).then(function(msLate) {
+            if (!msLate) {
+              if (hasRecentDashboardSession()) {
+                showDashboardShell();
+                return;
+              }
+              safeRedirect(applyRewindEmailToUrl(LOGIN_URL));
+              return;
+            }
+            return runDashboardAccessGuard(msLate);
+          });
+        }
+        return runDashboardAccessGuard(ms);
       });
   
       // Logout button (attribute + JS fallback)
@@ -7028,8 +7137,8 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
         // Add click handlers to track module opens (especially for PDFs)
         var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
         moduleCubes.forEach(function(cube) {
-          cube.addEventListener('click', function(e) {
-            var cubeEl = this;
+          cube.addEventListener('click', async function(e) {
+            var cubeEl = this; // Capture cube element
             var moduleUrl = cubeEl.getAttribute('data-module-url');
             var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
             var category = cubeEl.getAttribute('data-module-category');
@@ -7038,19 +7147,16 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
             if (!moduleUrl) return;
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
             
+            // Normalize the URL
             var normalizedUrl = normalizePath(moduleUrl);
+            
+            // Check if already opened
             var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
-            var cubeFullUrl = 'https://www.alanranger.com' + moduleUrl;
-            
-            // Open new tab synchronously while user gesture is active (popup blockers).
-            if (openInNewTab) {
-              window.open(cubeFullUrl, '_blank', 'noopener,noreferrer');
-            }
+            var persistPromise = Promise.resolve();
             
             if (!alreadyOpened) {
-              sendTileOpenBeacon("modules", normalizedUrl, cubeEl);
-
+              // Mark as opened immediately (optimistic update)
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
                 cat: category,
@@ -7059,18 +7165,23 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
                 lastAt: nowIso
               };
               
+              // Update the cube visual state
               cubeEl.classList.remove('status-not-opened');
               cubeEl.classList.add('status-opened');
               
-              (async function() {
+              // Save to Memberstack asynchronously
+              persistPromise = (async function() {
                 try {
+                  // Get current member JSON
                   var jsonRes = await ms.getMemberJSON();
                   var memberJson = normalizeMemberJson(jsonRes);
                   
+                  // Ensure arAcademy structure exists
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
                   if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
                   if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
                   
+                  // Add the new module
                   memberJson.arAcademy.modules.opened[normalizedUrl] = {
                     cat: category,
                     t: moduleTitle,
@@ -7078,8 +7189,10 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
                     lastAt: nowIso
                   };
                   
+                  // Save back to Memberstack
                   await ms.updateMemberJSON({ json: memberJson });
                   
+                  // Update progress count (modules only, unique normalized URLs)
                   var openedMap = memberJson.arAcademy.modules.opened || {};
                   var uniqueOpenedModuleCount = 0;
                   var seenModuleUrls = new Set();
@@ -7098,6 +7211,7 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
                   console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
+                  // Revert visual state on error
                   cubeEl.classList.remove('status-opened');
                   cubeEl.classList.add('status-not-opened');
                   delete opened[normalizedUrl];
@@ -7105,9 +7219,21 @@ v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after asyn
               })();
             }
 
-            if (!openInNewTab) {
-              window.location.href = moduleUrl;
+            if (openInNewTab) {
+              window.open(moduleUrl, '_blank', 'noopener,noreferrer');
+              return;
             }
+
+            if (!alreadyOpened) {
+              try {
+                await Promise.race([
+                  persistPromise,
+                  new Promise(function(resolve) { setTimeout(resolve, 350); })
+                ]);
+              } catch (_) {}
+            }
+
+            window.location.href = moduleUrl;
           });
         });
       }

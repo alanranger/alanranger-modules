@@ -14,7 +14,8 @@
     "test:gates": "node --test tests/badge-gates.test.mjs",
     "test:modules": "node --test tests/academy-module-integrity.test.mjs",
     "verify:module-paths": "node scripts/verify-academy-module-paths.mjs",
-    "audit:module-cubes": "node scripts/audit-module-cube-topic-url.mjs"
+    "audit:module-cubes": "node scripts/audit-module-cube-topic-url.mjs",
+    "test:auth-hydrate": "node scripts/test-dashboard-auth-hydrate.mjs"
   },
   "dependencies": {
     "@memberstack/admin": "^1.0.0",
