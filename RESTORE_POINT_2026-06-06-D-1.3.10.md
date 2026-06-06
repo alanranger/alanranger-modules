@@ -1,15 +1,17 @@
 # Restore point — D 1.3.10 bounce fix (2026-06-06)
 
-**Git baseline:** `9f7fed1` on `main` (`alanranger-modules`)
+**Git baseline:** `7eb5a6a` on `main` (`alanranger-modules`) — bounce fix confirmed live by Alan
 
 ## Live snippet versions (paste set)
 
 | Block | Version | File |
 |-------|---------|------|
 | Header | H 1.4.4 | `academy-header-elements-squarespace-snippet-v1.html` |
-| Strip | S 1.3.34 | `academy-do-next-strip-squarespace-snippet-v1.html` |
-| Dashboard | D 1.3.10 | `academy-dashboard-squarespace-snippet-v1.html` |
-| Bookmark | B 1.3.4 | `academy-bookmark-buttons-squarespace-snippet-v1.html` |
+| Strip | S 1.3.35 | `academy-do-next-strip-squarespace-snippet-v1.html` |
+| Dashboard | D 1.3.11 | `academy-dashboard-squarespace-snippet-v1.html` |
+| Bookmark | B 1.3.5 | `academy-bookmark-buttons-squarespace-snippet-v1.html` |
+
+**New agent onboarding:** read `docs/handoff/CURSOR-AGENT-HANDOVER.md` first.
 
 ## What this baseline fixes
 
