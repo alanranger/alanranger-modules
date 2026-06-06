@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.9) — Squarespace Snippet
+Academy Dashboard UI (v1.3.11) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -12,6 +12,8 @@ v1.3.6: CTA survives SS — absolute URL, flat link markup, !important styles, r
 v1.3.7: Remove outer 100vw full-bleed (fixes horizontal scroll on dashboard body).
 v1.3.8: overflow-x hidden on dashboard shell; inner gutter calcs use 100% not 100vw; #academy-activity clamped.
 v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab open.
+v1.3.10: PDF cube click — open per-cube URL from data-module-url (fix fullUrl loop-closure bug).
+v1.3.11: PDF cubes — open synchronously on click (fix popup blocker after async await); Abstract assignment -> PDF.
       (If this script is present on other Academy pages e.g. /academy/upgrade, the old
       behaviour redirected logged-out users to /academy/login — fixed.)
 -->
@@ -6440,7 +6442,7 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
         '/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf',
         '/s/Still-life-photography-assignment.pdf',
         '/s/Street-photography-assignment.pdf',
-        '/blogs/mastering-abstract-photography',
+        '/s/Abstract-photography-Assignment.pdf',
         '/s/Black-and-white-photography-assignment.pdf',
         '/s/Architecture-photography-assignment.pdf',
         '/s/Shadows-photography-Assignment.pdf',
@@ -6509,7 +6511,7 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
         '/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf': 'assignment',
         '/s/Still-life-photography-assignment.pdf': 'assignment',
         '/s/Street-photography-assignment.pdf': 'assignment',
-        '/blogs/mastering-abstract-photography': 'assignment',
+        '/s/Abstract-photography-Assignment.pdf': 'assignment',
         '/s/Black-and-white-photography-assignment.pdf': 'assignment',
         '/s/Architecture-photography-assignment.pdf': 'assignment',
         '/s/Shadows-photography-Assignment.pdf': 'assignment',
@@ -7026,8 +7028,8 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
         // Add click handlers to track module opens (especially for PDFs)
         var moduleCubes = miniGridEl.querySelectorAll('.ar-module-cube');
         moduleCubes.forEach(function(cube) {
-          cube.addEventListener('click', async function(e) {
-            var cubeEl = this; // Capture cube element
+          cube.addEventListener('click', function(e) {
+            var cubeEl = this;
             var moduleUrl = cubeEl.getAttribute('data-module-url');
             var isPdf = cubeEl.getAttribute('data-is-pdf') === 'true';
             var category = cubeEl.getAttribute('data-module-category');
@@ -7036,18 +7038,19 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
             if (!moduleUrl) return;
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
             
-            // Normalize the URL
             var normalizedUrl = normalizePath(moduleUrl);
-            
-            // Check if already opened
             var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
-            var persistPromise = Promise.resolve();
+            var cubeFullUrl = 'https://www.alanranger.com' + moduleUrl;
+            
+            // Open new tab synchronously while user gesture is active (popup blockers).
+            if (openInNewTab) {
+              window.open(cubeFullUrl, '_blank', 'noopener,noreferrer');
+            }
             
             if (!alreadyOpened) {
               sendTileOpenBeacon("modules", normalizedUrl, cubeEl);
 
-              // Mark as opened immediately (optimistic update)
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
                 cat: category,
@@ -7056,23 +7059,18 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
                 lastAt: nowIso
               };
               
-              // Update the cube visual state
               cubeEl.classList.remove('status-not-opened');
               cubeEl.classList.add('status-opened');
               
-              // Save to Memberstack asynchronously
-              persistPromise = (async function() {
+              (async function() {
                 try {
-                  // Get current member JSON
                   var jsonRes = await ms.getMemberJSON();
                   var memberJson = normalizeMemberJson(jsonRes);
                   
-                  // Ensure arAcademy structure exists
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
                   if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
                   if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
                   
-                  // Add the new module
                   memberJson.arAcademy.modules.opened[normalizedUrl] = {
                     cat: category,
                     t: moduleTitle,
@@ -7080,10 +7078,8 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
                     lastAt: nowIso
                   };
                   
-                  // Save back to Memberstack
                   await ms.updateMemberJSON({ json: memberJson });
                   
-                  // Update progress count (modules only, unique normalized URLs)
                   var openedMap = memberJson.arAcademy.modules.opened || {};
                   var uniqueOpenedModuleCount = 0;
                   var seenModuleUrls = new Set();
@@ -7102,7 +7098,6 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
                   console.log('[Module Progress] Saved module to Memberstack:', normalizedUrl);
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
-                  // Revert visual state on error
                   cubeEl.classList.remove('status-opened');
                   cubeEl.classList.add('status-not-opened');
                   delete opened[normalizedUrl];
@@ -7110,29 +7105,9 @@ v1.3.9: PDF assignment cubes — await persist + keepalive beacon before new-tab
               })();
             }
 
-            if (openInNewTab) {
-              if (!alreadyOpened) {
-                try {
-                  await Promise.race([
-                    persistPromise,
-                    new Promise(function(resolve) { setTimeout(resolve, 500); })
-                  ]);
-                } catch (_) {}
-              }
-              window.open(fullUrl, '_blank', 'noopener,noreferrer');
-              return;
+            if (!openInNewTab) {
+              window.location.href = moduleUrl;
             }
-
-            if (!alreadyOpened) {
-              try {
-                await Promise.race([
-                  persistPromise,
-                  new Promise(function(resolve) { setTimeout(resolve, 350); })
-                ]);
-              } catch (_) {}
-            }
-
-            window.location.href = moduleUrl;
           });
         });
       }

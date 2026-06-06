@@ -11,7 +11,10 @@
     "test:qa": "node test-qa-api.js",
     "test:qa-functionality": "node test-qa-functionality.js",
     "test:qa-comprehensive": "node test-qa-comprehensive.js",
-    "test:gates": "node --test tests/badge-gates.test.mjs"
+    "test:gates": "node --test tests/badge-gates.test.mjs",
+    "test:modules": "node --test tests/academy-module-integrity.test.mjs",
+    "verify:module-paths": "node scripts/verify-academy-module-paths.mjs",
+    "audit:module-cubes": "node scripts/audit-module-cube-topic-url.mjs"
   },
   "dependencies": {
     "@memberstack/admin": "^1.0.0",
