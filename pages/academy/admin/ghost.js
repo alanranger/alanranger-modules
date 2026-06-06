@@ -1,9 +1,10 @@
 // /pages/academy/admin/ghost.js
 // Ghost Login - View any member's dashboard as they see it
-// v1.1.0 — badge level column + per-member 4-gate breakdown (admin read-only)
+// v1.1.1 — badge level column (shared with all admin member tables)
 
 import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
+import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
 
 function GateRow({ label, met, children }) {
   return (
@@ -249,17 +250,7 @@ export default function GhostLogin() {
   }
 
   function renderBadgeLevel(member) {
-    const label = member.badge_label || 'Enrolled';
-    const isMaster = member.badge_is_master || member.badge_key === 'master';
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-        {isMaster ? <span title="Master" style={{ color: '#fbbf24' }}>★</span> : null}
-        <span style={{ fontWeight: 600, color: 'var(--ar-text)' }}>{label}</span>
-        {member.badge_paused ? (
-          <span style={{ fontSize: '11px', color: '#f59e0b' }}>(paused)</span>
-        ) : null}
-      </span>
-    );
+    return <BadgeLevelCell member={member} />;
   }
 
   return (

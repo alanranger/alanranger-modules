@@ -876,8 +876,13 @@ const normalizeSortValue = (value, sortField) => {
 
 const sortMembers = (members, sortField, sortOrder) => {
   if (!sortField) return members;
+  const { compareBadgeSortRank } = require("../../lib/admin-gate-stats");
   const sorted = [...members];
   sorted.sort((a, b) => {
+    if (sortField === "badge_level") {
+      const cmp = compareBadgeSortRank(a.badge_key, b.badge_key);
+      return sortOrder === "asc" ? cmp : -cmp;
+    }
     const aVal = normalizeSortValue(a[sortField], sortField);
     const bVal = normalizeSortValue(b[sortField], sortField);
     return compareSortValues(aVal, bVal, sortOrder);
@@ -1691,16 +1696,14 @@ async function handleMembers(req, res) {
         refunds_total: resolvedRefundsTotal
       };
 
-      if (forGhostList) {
-        const { evaluateTableBadge } = require("../../lib/admin-gate-stats");
-        const badge = evaluateTableBadge(
-          raw,
-          enriched.exams_passed,
-          enriched.is_paid,
-          enriched.last_seen
-        );
-        Object.assign(enriched, badge);
-      }
+      const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+      attachTableBadgeFields(
+        enriched,
+        raw,
+        enriched.exams_passed,
+        enriched.is_paid,
+        enriched.last_seen
+      );
 
       return enriched;
     }) || [];

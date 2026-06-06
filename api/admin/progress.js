@@ -3,6 +3,7 @@
 // Aggregates module_results_ms into member-level progress with module breakdown
 
 const { createClient } = require("@supabase/supabase-js");
+const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
 
 // All 15 modules in order
 const ALL_MODULES = [
@@ -60,11 +61,13 @@ module.exports = async (req, res) => {
     // Filter out test accounts and members without valid plans
     const { data: membersCache } = await supabase
       .from('ms_members_cache')
-      .select('member_id, email, name, plan_summary');
+      .select('member_id, email, name, plan_summary, raw');
 
     // Build maps and filter to only valid members (trial or annual plans)
     const memberNameMap = {};
     const memberEmailMap = {};
+    const memberRawMap = {};
+    const memberPaidMap = {};
     const validMemberIds = new Set();
     
     membersCache?.forEach(m => {
@@ -83,6 +86,8 @@ module.exports = async (req, res) => {
         validMemberIds.add(m.member_id);
         memberNameMap[m.member_id] = m.name;
         memberEmailMap[m.member_id] = m.email;
+        memberRawMap[m.member_id] = m.raw;
+        memberPaidMap[m.member_id] = !!plan.is_paid;
       }
     });
 
@@ -241,7 +246,7 @@ module.exports = async (req, res) => {
         };
       });
       
-      return {
+      const row = {
         member_id: member.member_id,
         name: member.name,
         email: member.email,
@@ -253,6 +258,14 @@ module.exports = async (req, res) => {
         lastModulePassed: member.lastModulePassed,
         modules: modulesArray
       };
+      attachTableBadgeFields(
+        row,
+        memberRawMap[member.member_id],
+        member.passedCount,
+        memberPaidMap[member.member_id],
+        member.lastExamAt
+      );
+      return row;
     });
 
     // Apply search filter

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState(null);
@@ -1370,6 +1371,7 @@ function TopMembersList({ refreshTrigger }) {
           >
             Member <SortIcon column="email" />
           </th>
+          <th style={{ userSelect: 'none' }}>Badge level</th>
           <th 
             onClick={() => handleSort('login_days_30d')}
             style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -1412,6 +1414,7 @@ function TopMembersList({ refreshTrigger }) {
         {sortedMembers.map((member, idx) => (
           <tr key={idx}>
             <td>{member.name || member.email || member.member_id || 'Unknown'}</td>
+            <td><BadgeLevelCell member={member} compact /></td>
             <td>{member.login_days_30d || 0}</td>
             <td>{member.login_days_alltime || 0}</td>
             <td>{formatDate(member.last_login)}</td>

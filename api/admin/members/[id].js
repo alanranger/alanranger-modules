@@ -183,6 +183,15 @@ async function getMemberDetailPayload(supabase, memberId, query) {
     .order("created_at", { ascending: false })
     .range(activityOffset, activityOffset + activityLimit - 1);
 
+  const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+  const badgeFields = attachTableBadgeFields(
+    {},
+    member.raw,
+    examStatsResult.passed,
+    plan.is_paid || false,
+    lastActivity?.created_at || null
+  );
+
   return {
     member_id: member.member_id,
     email: member.email,
@@ -192,6 +201,7 @@ async function getMemberDetailPayload(supabase, memberId, query) {
     status: plan.status || "unknown",
     is_trial: plan.is_trial || false,
     is_paid: plan.is_paid || false,
+    ...badgeFields,
     signed_up: member.created_at,
     last_seen: lastActivity?.created_at || null,
     photography_style: member.photography_style || null,

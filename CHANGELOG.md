@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-07] - Admin badge level on all member tables
+
+### Added
+- **Badge level column** on all admin tabs that list members: **Members**, **Ghost**, **Exams**, **Engagement** (top engaged), **Overview** (top members), plus member detail and active-now strip
+- **`components/admin/BadgeLevelCell.js`** — shared read-only badge pill (gold ★ for Master, paused hint)
+- **`/api/admin/members`** — badge fields on every list response (not Ghost-only); sortable via `badge_level`
+
+### Changed
+- **`/api/admin/progress`**, **`/api/admin/engagement`**, **`/api/admin/top-members`**, **`/api/admin/members-active-now`**, **`/api/admin/members/[id]`** — attach degraded table badge via `attachTableBadgeFields`
+
+---
+
 ## [2026-06-07] - Admin Ghost badge level column + gate breakdown
 
 ### Added

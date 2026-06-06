@@ -146,11 +146,13 @@ function computeMemberDistribution(perMember) {
   };
 }
 
-function buildTopMembers(perMember, memberMeta) {
+function buildTopMembers(perMember, memberMeta, passedByMember) {
+  const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
   const arr = [];
   perMember.forEach((m, id) => {
     const meta = memberMeta.get(id) || {};
-    arr.push({
+    const lastSeen = m.last_seen_ts ? new Date(m.last_seen_ts).toISOString() : null;
+    const row = {
       member_id: id,
       email: meta.email || null,
       name: meta.name || null,
@@ -160,8 +162,16 @@ function buildTopMembers(perMember, memberMeta) {
       active_days: m.unique_days.size,
       modules_opened: m.unique_paths.size,
       total_opens: m.module_opens,
-      last_seen: m.last_seen_ts ? new Date(m.last_seen_ts).toISOString() : null,
-    });
+      last_seen: lastSeen,
+    };
+    attachTableBadgeFields(
+      row,
+      meta.raw,
+      passedByMember.get(id) || 0,
+      meta.is_paid,
+      lastSeen
+    );
+    arr.push(row);
   });
   arr.sort((a, b) => b.modules_opened - a.modules_opened || b.sessions - a.sessions);
   return arr.slice(0, 25);
@@ -189,6 +199,7 @@ async function fetchMemberMeta(supabase) {
         plan_name: plan.plan_name || null,
         is_trial: !!plan.is_trial,
         is_paid: !!plan.is_paid,
+        raw: row.raw,
         applied_count: Object.keys(applied).length,
         rps_count: Object.keys(rps).length,
         modules_json_count: Object.keys(arAcademy?.modules?.opened || {}).length,
@@ -208,6 +219,7 @@ async function fetchExamStats(supabase) {
   if (error) throw error;
   const byModule = new Map();
   const byMember = new Map();
+  const passedByMember = new Map();
   let totalAttempts = 0;
   let totalPassed = 0;
   let totalScore = 0;
@@ -222,6 +234,9 @@ async function fetchExamStats(supabase) {
     if (row.score_percent != null) { m.score_sum += row.score_percent; m.score_count++; }
     byModule.set(row.module_id, m);
     if (row.memberstack_id) byMember.set(row.memberstack_id, (byMember.get(row.memberstack_id) || 0) + 1);
+    if (row.passed && row.memberstack_id) {
+      passedByMember.set(row.memberstack_id, (passedByMember.get(row.memberstack_id) || 0) + 1);
+    }
   });
   const topModules = Array.from(byModule.values())
     .map(m => ({
@@ -237,6 +252,7 @@ async function fetchExamStats(supabase) {
     totalAttempts,
     totalPassed,
     uniqueMembers: byMember.size,
+    passedByMember,
     avgScore: totalAttempts ? Math.round((totalScore / totalAttempts) * 10) / 10 : null,
     topModules,
   };
@@ -402,7 +418,7 @@ async function handleEngagement(req, res) {
 
     const agg = aggregateEvents(rows);
     const memberStats = computeMemberDistribution(agg.perMember);
-    const topMembers = buildTopMembers(agg.perMember, memberMeta);
+    const topMembers = buildTopMembers(agg.perMember, memberMeta, examStats.passedByMember);
 
     const categories = Array.from(agg.categories.entries())
       .map(([category, opens]) => ({ category, opens }))

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
 
 export default function ExamsPage() {
   const router = useRouter();
@@ -301,6 +302,9 @@ export default function ExamsPage() {
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
                   Email
                 </th>
+                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>
+                  Badge level
+                </th>
                 <th 
                   onClick={() => handleSort('progress_asc')}
                   style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
@@ -338,6 +342,9 @@ export default function ExamsPage() {
                   </td>
                   <td style={{ padding: '12px', color: 'var(--ar-text)', fontSize: '13px' }}>
                     {member.email || '-'}
+                  </td>
+                  <td style={{ padding: '12px' }}>
+                    <BadgeLevelCell member={member} />
                   </td>
                   <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

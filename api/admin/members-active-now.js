@@ -4,6 +4,7 @@
 // A member is "logged in" if their most recent login is after their most recent logout (or they have no logout)
 
 const { createClient } = require("@supabase/supabase-js");
+const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
 
 module.exports = async (req, res) => {
   // Log incoming request for debugging
@@ -110,19 +111,42 @@ module.exports = async (req, res) => {
     if (ids.length > 0) {
       const { data: profiles, error: profileError } = await supabase
         .from('ms_members_cache')
-        .select('member_id, email, name')
+        .select('member_id, email, name, raw, plan_summary')
         .in('member_id', ids);
       if (profileError) throw profileError;
+
+      const passedByMember = {};
+      const { data: examRows } = await supabase
+        .from('module_results_ms')
+        .select('memberstack_id, passed')
+        .in('memberstack_id', ids);
+      (examRows || []).forEach((row) => {
+        if (row.passed && row.memberstack_id) {
+          passedByMember[row.memberstack_id] = (passedByMember[row.memberstack_id] || 0) + 1;
+        }
+      });
+
       const byId = new Map((profiles || []).map((r) => [r.member_id, r]));
       memberRows = ids
         .map((id) => {
           const profile = byId.get(id);
-          return {
+          const plan = profile?.plan_summary || {};
+          const row = {
             member_id: id,
             email: profile?.email || null,
             name: profile?.name || null,
             last_activity_at: latestActivityByMember.get(id) || null,
           };
+          if (profile) {
+            attachTableBadgeFields(
+              row,
+              profile.raw,
+              passedByMember[id] || 0,
+              !!plan.is_paid,
+              row.last_activity_at
+            );
+          }
+          return row;
         })
         .sort((a, b) => {
           const ta = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;

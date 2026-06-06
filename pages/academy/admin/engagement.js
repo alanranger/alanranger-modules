@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
 
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
@@ -662,6 +663,7 @@ export default function EngagementPage() {
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Badge level</th>
                   <th>Plan</th>
                   <th>Sessions</th>
                   <th>Active Days</th>
@@ -676,6 +678,7 @@ export default function EngagementPage() {
                   <tr key={m.member_id}>
                     <td>{m.name || '-'}</td>
                     <td>{m.email || '-'}</td>
+                    <td><BadgeLevelCell member={m} compact /></td>
                     <td>{m.plan_name || '-'}</td>
                     <td>{formatNumber(m.sessions)}</td>
                     <td>{formatNumber(m.active_days)}</td>

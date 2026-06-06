@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import BadgeLevelCell from '../../../../components/admin/BadgeLevelCell';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Never';
@@ -488,6 +489,12 @@ export default function MembersDirectory() {
                       · <span style={{ opacity: 0.9 }}>{m.email}</span>
                     </>
                   ) : null}
+                  {m.badge_label ? (
+                    <>
+                      {' '}
+                      · <BadgeLevelCell member={m} compact />
+                    </>
+                  ) : null}
                   {m.last_activity_at ? (
                     <span style={{ color: 'var(--ar-text-muted)', marginLeft: 8 }}>
                       last event {formatDate(m.last_activity_at)}
@@ -680,6 +687,12 @@ export default function MembersDirectory() {
                       Email {getSortIcon('email')}
                     </th>
                     <th 
+                      onClick={() => handleSort('badge_level')}
+                      style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      Badge level {getSortIcon('badge_level')}
+                    </th>
+                    <th 
                       onClick={() => handleSort('plan_name')}
                       style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
                     >
@@ -776,7 +789,7 @@ export default function MembersDirectory() {
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="17" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
+                      <td colSpan="18" style={{ padding: '24px', textAlign: 'center', color: 'var(--ar-text-muted)' }}>
                         No members found
                       </td>
                     </tr>
@@ -798,6 +811,9 @@ export default function MembersDirectory() {
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>
                           {member.email || member.member_id || '—'}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <BadgeLevelCell member={member} />
                         </td>
                         <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{member.plan_name}</td>
                         <td style={{ padding: '12px' }}>

@@ -2,6 +2,7 @@
 // Returns most active members
 
 const { createClient } = require("@supabase/supabase-js");
+const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
 
 module.exports = async (req, res) => {
   try {
@@ -104,14 +105,14 @@ module.exports = async (req, res) => {
 
     // Enrich with cached name/email (prefer Memberstack profile)
     const memberIds = Object.keys(memberMap);
+    const profileMap = {};
     if (memberIds.length > 0) {
       const { data: memberProfiles, error: memberError } = await supabase
         .from('ms_members_cache')
-        .select('member_id, name, email')
+        .select('member_id, name, email, raw, plan_summary')
         .in('member_id', memberIds);
 
       if (!memberError && memberProfiles) {
-        const profileMap = {};
         memberProfiles.forEach(profile => {
           profileMap[profile.member_id] = profile;
         });
@@ -160,8 +161,37 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Exam passes per member (for badge level column)
+    const passedByMember = {};
+    if (memberIds.length > 0) {
+      const { data: examRows, error: examErr } = await supabase
+        .from('module_results_ms')
+        .select('memberstack_id, passed')
+        .in('memberstack_id', memberIds);
+      if (!examErr && examRows) {
+        examRows.forEach((row) => {
+          if (row.passed && row.memberstack_id) {
+            passedByMember[row.memberstack_id] = (passedByMember[row.memberstack_id] || 0) + 1;
+          }
+        });
+      }
+    }
+
     // Convert to array
-    const members = Object.values(memberMap);
+    const members = Object.values(memberMap).map((row) => {
+      const profile = profileMap[row.member_id];
+      if (profile) {
+        const plan = profile.plan_summary || {};
+        attachTableBadgeFields(
+          row,
+          profile.raw,
+          passedByMember[row.member_id] || 0,
+          !!plan.is_paid,
+          row.last_login
+        );
+      }
+      return row;
+    });
 
     // Sort by event_count descending
     members.sort((a, b) => b.event_count - a.event_count);

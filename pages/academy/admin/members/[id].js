@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import BadgeLevelCell from '../../../../components/admin/BadgeLevelCell';
 
 export default function MemberDetail() {
   const router = useRouter();
@@ -191,6 +192,10 @@ export default function MemberDetail() {
             <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', fontFamily: 'monospace' }}>
               {member.member_id}
             </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginBottom: '4px' }}>Badge level</div>
+            <BadgeLevelCell member={member} />
           </div>
           <div>
             <div style={{ fontSize: '12px', color: 'var(--ar-text-muted)', marginBottom: '4px' }}>Plan</div>
