@@ -5199,22 +5199,6 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
       }
     }
 
-    function navigateCubeOpen(opts) {
-      var alreadyOpened = opts.alreadyOpened;
-      var openInNewTab = opts.openInNewTab;
-      var navigateUrl = opts.navigateUrl;
-      var section = opts.section || "modules";
-      var beaconKey = opts.beaconKey;
-      var linkEl = opts.linkEl;
-      if (openInNewTab) {
-        window.open(navigateUrl, "_blank", "noopener,noreferrer");
-        if (!alreadyOpened) sendTileOpenBeacon(section, beaconKey, linkEl);
-        return;
-      }
-      if (!alreadyOpened) sendTileOpenBeacon(section, beaconKey, linkEl);
-      window.location.href = navigateUrl;
-    }
-
     function showPaidOnlyAccessMessage() {
       try {
         globalThis.alert("Paid membership only: upgrade to access this content.");
@@ -6841,6 +6825,46 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
       : "/";
     if (arPathBm !== "/academy/dashboard") return;
 
+    var moduleProgressBeaconMemberId = "";
+
+    function sendModuleProgressBeacon(section, key, linkEl) {
+      try {
+        if (!moduleProgressBeaconMemberId || !section || !key) return;
+        if (typeof fetch !== "function") return;
+        fetch("https://alanranger-modules.vercel.app/api/academy/track-tile-open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            member_id: moduleProgressBeaconMemberId,
+            section: section,
+            key: key,
+            title: linkEl ? (linkEl.getAttribute("title") || "") : "",
+            url: linkEl ? (linkEl.getAttribute("href") || "") : "",
+            category: linkEl ? (linkEl.getAttribute("data-module-category") || linkEl.getAttribute("data-pack-category") || "") : ""
+          }),
+          keepalive: true,
+          credentials: "omit",
+          mode: "cors"
+        }).catch(function() { /* best-effort */ });
+      } catch (err) { /* silent */ }
+    }
+
+    function navigateModuleCubeOpen(opts) {
+      var alreadyOpened = opts.alreadyOpened;
+      var openInNewTab = opts.openInNewTab;
+      var navigateUrl = opts.navigateUrl;
+      var section = opts.section || "modules";
+      var beaconKey = opts.beaconKey;
+      var linkEl = opts.linkEl;
+      if (openInNewTab) {
+        window.open(navigateUrl, "_blank", "noopener,noreferrer");
+        if (!alreadyOpened) sendModuleProgressBeacon(section, beaconKey, linkEl);
+        return;
+      }
+      if (!alreadyOpened) sendModuleProgressBeacon(section, beaconKey, linkEl);
+      window.location.href = navigateUrl;
+    }
+
     async function waitForMS(){
       for(let i=0;i<80;i++){
         if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === "function") return window.$memberstackDom;
@@ -6916,6 +6940,11 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
         if (!ms) return;
       }
       if (!globalThis.__arMsReader) return;
+      
+      var initBundle = await globalThis.__arMsReader.fetchBundle(ms);
+      moduleProgressBeaconMemberId = initBundle.member && initBundle.member.id
+        ? String(initBundle.member.id)
+        : "";
       
       // Definitive list of all 60 module URLs
       // Only URLs in this list will be counted as modules
@@ -7631,7 +7660,7 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
               })();
             }
 
-            navigateCubeOpen({
+            navigateModuleCubeOpen({
               alreadyOpened: alreadyOpened,
               openInNewTab: openInNewTab,
               navigateUrl: navigateUrl,
@@ -7856,7 +7885,7 @@ v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMemb
               })();
             }
 
-            navigateCubeOpen({
+            navigateModuleCubeOpen({
               alreadyOpened: alreadyOpened,
               openInNewTab: openInNewTab,
               navigateUrl: navigateUrl,
