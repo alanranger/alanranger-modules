@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.34 — __arMsReader shared bundle (one MS read pair per page; assignment persist uses cache)
 v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 =========================== -->
@@ -3138,11 +3139,16 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
-  async function persistModuleOpen(ms, modulePath, title, category){
+  async function persistModuleOpen(ms, modulePath, title, category, memberJsonIn){
 
-    var jsonRes = await ms.getMemberJSON();
-
-    var memberJson = normalizeMemberJson(jsonRes);
+    var memberJson = memberJsonIn;
+    var rawJson = null;
+    if (!memberJson && globalThis.__arMsReader) {
+      var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      rawJson = bundle.rawJson;
+      memberJson = normalizeMemberJson(bundle.rawJson);
+    }
+    if (!memberJson) memberJson = {};
 
     if (!memberJson.arAcademy) memberJson.arAcademy = {};
 
@@ -3165,6 +3171,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
     };
 
     await ms.updateMemberJSON({ json: memberJson });
+    if (globalThis.__arMsReader) globalThis.__arMsReader.patchJson(memberJson, rawJson);
 
   }
 
@@ -3186,13 +3193,13 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       var memberId = doNextRuntime.memberId;
 
-      if (ms && memberId) {
+      if (ms && memberId && globalThis.__arMsReader) {
 
         try {
 
-          var jsonRes = await ms.getMemberJSON();
+          var bundle = await globalThis.__arMsReader.fetchBundle(ms);
 
-          var memberJson = normalizeMemberJson(jsonRes);
+          var memberJson = normalizeMemberJson(bundle.rawJson);
 
           var openedMap = (memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened) || {};
 
@@ -3202,7 +3209,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
             sendModuleOpenBeacon(memberId, path, a);
 
-            await persistModuleOpen(ms, path, tile.action, "assignment");
+            await persistModuleOpen(ms, path, tile.action, "assignment", memberJson);
 
             setTimeout(init, 300);
 
@@ -4190,22 +4197,6 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     var idSource = memberId ? "getCurrentMember" : "none";
 
-    if (!memberId && ms && typeof ms.getMemberJSON === "function") {
-
-      try {
-
-        var jsonRes = await ms.getMemberJSON();
-
-        var mj = unwrapMember(jsonRes);
-
-        var mjId = getMemberId(mj);
-
-        if (mjId) { memberId = mjId; idSource = "getMemberJSON"; }
-
-      } catch (e) { /* ignore */ }
-
-    }
-
     if (!memberId) {
 
       var identity = await fetchWhoami();
@@ -4654,15 +4645,27 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
-    var memberRes = null;
+    var member = null;
 
-    try {
+    var jsonRes = null;
 
-      if (typeof ms.getCurrentMember === "function") memberRes = await ms.getCurrentMember();
+    var normalized = {};
 
-    } catch (e) { /* ignore */ }
+    if (globalThis.__arMsReader) {
 
-    var member = unwrapMember(memberRes);
+      try {
+
+        var msBundle = await globalThis.__arMsReader.fetchBundle(ms);
+
+        member = msBundle.member;
+
+        jsonRes = msBundle.rawJson;
+
+        normalized = normalizeMemberJson(jsonRes);
+
+      } catch (e) { /* ignore */ }
+
+    }
 
     if (member && !member.data && (member.planConnections || member.email)) {
 
@@ -4703,14 +4706,6 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
       }
 
     }
-
-
-
-    var jsonRes = null;
-
-    try { jsonRes = await ms.getMemberJSON(); } catch (e) { jsonRes = null; }
-
-    var normalized = normalizeMemberJson(jsonRes);
 
     var memberEmail = getMemberEmail(member);
 

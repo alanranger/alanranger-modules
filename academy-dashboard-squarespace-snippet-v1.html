@@ -17,7 +17,7 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
 v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
 v1.3.8: B-path fix — block external MS network-failure login redirect when session marker valid; whoami-first on fast return; header bounce-back from false login.
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
-v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; all tile/module paths use cache (writes invalidate/patch).
+v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
 -->
 
 <script>

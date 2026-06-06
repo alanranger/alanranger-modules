@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.4 Single __arMsReader bundle per article page — stops MS read flood on lesson visit (fast-return bounce fix)
 v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 - Pins widget under the first H1 (or top of main)
 - Forces visibility (prevents Sqsp fade/opacity hiding)
@@ -152,6 +153,82 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   </div>
 </div>
 
+<script>
+(function initArMemberstackReader(){
+  if (globalThis.__arMsReader) return;
+  var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+  function unwrapMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+  function normalizeMemberJsonPayload(jsonRes) {
+    var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+    if (raw && raw.json && typeof raw.json === "object") return raw.json;
+    return raw || {};
+  }
+  function mergeMemberWithJson(member, jsonRes) {
+    var m = unwrapMember(member);
+    if (!m || !m.data || !jsonRes) return m;
+    var mj = unwrapMember(jsonRes);
+    if (!mj) return m;
+    if (!m.id && mj.id) m.id = mj.id;
+    if (!m.data) m.data = {};
+    if (mj.data) mergeMissingFields(m.data, mj.data);
+    mergeMissingFields(m.data, mj);
+    return m;
+  }
+  globalThis.__arMsReader = {
+    invalidate: function() {
+      state.member = null; state.rawJson = null; state.memberJson = null;
+      state.inflight = null; state.at = 0;
+    },
+    patchJson: function(memberJson, rawJson) {
+      if (memberJson) state.memberJson = memberJson;
+      if (rawJson) state.rawJson = rawJson;
+      state.at = Date.now();
+    },
+    fetchBundle: function(ms, opts) {
+      opts = opts || {};
+      if (!ms) return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+      if (!opts.force && state.at && state.rawJson) {
+        return Promise.resolve({ member: state.member, rawJson: state.rawJson, memberJson: state.memberJson });
+      }
+      if (!opts.force && state.inflight) return state.inflight;
+      var memberCall = (typeof ms.getCurrentMember === "function")
+        ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+        : Promise.resolve(null);
+      state.inflight = Promise.resolve(memberCall).then(function(res) {
+        var m = unwrapMember(res);
+        if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        }
+        return ms.getMemberJSON().then(function(jsonRes) {
+          var merged = mergeMemberWithJson(m, jsonRes);
+          state.member = merged; state.rawJson = jsonRes;
+          state.memberJson = normalizeMemberJsonPayload(jsonRes);
+          state.at = Date.now(); state.inflight = null;
+          return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+        }).catch(function() {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        });
+      }).catch(function(err) { state.inflight = null; throw err; });
+      return state.inflight;
+    }
+  };
+})();
+</script>
 <script>
 (function(){
   // Prevent multiple runs if snippet is injected more than once
@@ -390,37 +467,33 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 
   async function resolveMemberIdentity(ms){
     var out = { member: null, memberId: "", idSource: "none", normalized: {} };
-    var jsonRes = null;
-    if (ms && typeof ms.getMemberJSON === "function") {
+    if (ms && globalThis.__arMsReader) {
       try {
-        jsonRes = await ms.getMemberJSON();
-        out.normalized = normalizeMemberJson(jsonRes);
-        var mj = unwrapMember(jsonRes);
-        var mjId = getMemberId(mj);
-        if (mjId) {
-          out.memberId = mjId;
-          out.idSource = "getMemberJSON";
-          out.member = mj;
-        } else if (mj) {
-          out.member = mj;
+        var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+        if (bundle && bundle.rawJson) {
+          out.normalized = normalizeMemberJson(bundle.rawJson);
+          out.member = bundle.member || unwrapMember(bundle.rawJson);
+          var bundleId = getMemberId(out.member);
+          if (bundleId) {
+            out.memberId = bundleId;
+            out.idSource = "ms-bundle";
+          }
         }
       } catch (e) { /* ignore */ }
     }
-    if (!out.memberId && ms && typeof ms.getCurrentMember === "function") {
-      for (var i = 0; i < 5 && !out.memberId; i++) {
-        try {
-          var cm = await getMemberExtended(ms);
-          var cmId = getMemberId(cm);
-          if (cmId) {
-            out.memberId = cmId;
-            out.idSource = "getCurrentMember";
-            out.member = cm;
-            break;
+    if (!out.memberId && ms && globalThis.__arMsReader) {
+      try {
+        var retryBundle = await globalThis.__arMsReader.fetchBundle(ms, { force: true });
+        if (retryBundle && retryBundle.member) {
+          out.member = retryBundle.member;
+          var retryId = getMemberId(retryBundle.member);
+          if (retryId) {
+            out.memberId = retryId;
+            out.idSource = "ms-bundle-retry";
+            if (retryBundle.rawJson) out.normalized = normalizeMemberJson(retryBundle.rawJson);
           }
-          if (cm && !out.member) out.member = cm;
-        } catch (e) { /* ignore */ }
-        if (!out.memberId && i < 4) await new Promise(function(r){ setTimeout(r, 400 * (i + 1)); });
-      }
+        }
+      } catch (e) { /* ignore */ }
     }
     if (!out.memberId) {
       var identity = await fetchWhoami();
@@ -458,29 +531,6 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     if (member.id) return String(member.id);
     if (member.data && member.data.id) return String(member.data.id);
     return "";
-  }
-
-  function getMemberExtended(ms){
-    return ms.getCurrentMember().then(function(res){
-      var m = unwrapMember(res);
-      if (!m) return m;
-      if (!m.data && (m.planConnections || m.email)) {
-        m = { id: m.id || null, data: m };
-      }
-      if (!m.data) return m;
-      if (!m.id && m.data.id) m.id = String(m.data.id);
-      if (typeof ms.getMemberJSON !== "function") return m;
-      return ms.getMemberJSON().then(function(json){
-        var mj = unwrapMember(json);
-        if (!mj) return m;
-        if (!m.id && mj.id) m.id = String(mj.id);
-        if (!m.id && mj.data && mj.data.id) m.id = String(mj.data.id);
-        if (!m.data) m.data = {};
-        if (mj.data) mergeMissingFields(m.data, mj.data);
-        mergeMissingFields(m.data, mj);
-        return m;
-      }).catch(function(){ return m; });
-    });
   }
 
   function unwrapStoredJson(obj){
@@ -762,9 +812,13 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   }
 
   function kickMemberStrip(){
+    var strip = document.getElementById("ar-lesson-member-strip");
+    if (strip && strip.dataset.wiredFinal === "1") return;
     wireMemberStrip();
-    setTimeout(wireMemberStrip, 600);
-    setTimeout(wireMemberStrip, 1500);
+    setTimeout(function() {
+      var s = document.getElementById("ar-lesson-member-strip");
+      if (s && s.dataset.wiredFinal !== "1") wireMemberStrip();
+    }, 1500);
   }
 
   async function wireBookmark(){
@@ -778,7 +832,8 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
       if (!ms) { btn.querySelector('span').textContent = "Try again"; return; }
 
       // Memberstack JSON is sometimes nested; handle both shapes safely
-      const mj = await ms.getMemberJSON();
+      const bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      const mj = bundle.rawJson;
       const root = (mj && typeof mj === "object" && mj.data) ? mj.data : mj;
       const memberJson = (root && root.data && typeof root.data === "object") ? root.data : (root || {});
 
@@ -796,6 +851,7 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
         if (root && root.data && typeof root.data === "object") root.data = memberJson;
 
         await ms.updateMemberJSON({ json: (mj && mj.data) ? mj : memberJson });
+        globalThis.__arMsReader.patchJson(memberJson, mj);
 
         btn.style.background = "#28a745";
         btn.querySelector('span').textContent = "Bookmarked!";
@@ -818,7 +874,8 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
       moveWidgetOnce();
       wireBookmark();
       wireNextModuleButtons();
-      kickMemberStrip();
+      var strip = document.getElementById("ar-lesson-member-strip");
+      if (!strip || strip.dataset.wiredFinal !== "1") kickMemberStrip();
     });
 
     obs.observe(document.documentElement, { childList:true, subtree:true });

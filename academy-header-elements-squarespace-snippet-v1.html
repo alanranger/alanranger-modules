@@ -4,9 +4,86 @@ For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 
 Snippet versions shown live (update all three when re-pasting blocks):
-  Header H = 1.4.3 | Strip S = 1.3.33 | Dashboard D = 1.3.10
-v1.3.10: Dashboard stamp only — shared Memberstack read cache (D 1.3.10).
+  Header H = 1.4.4 | Strip S = 1.3.34 | Dashboard D = 1.3.10 | Bookmark B = 1.3.4
+v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundle per page (Academy + articles).
 -->
+
+<script>
+(function initArMemberstackReader() {
+  if (globalThis.__arMsReader) return;
+  var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+  function unwrapMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+  function normalizeMemberJsonPayload(jsonRes) {
+    var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+    if (raw && raw.json && typeof raw.json === "object") return raw.json;
+    return raw || {};
+  }
+  function mergeMemberWithJson(member, jsonRes) {
+    var m = unwrapMember(member);
+    if (!m || !m.data || !jsonRes) return m;
+    var mj = unwrapMember(jsonRes);
+    if (!mj) return m;
+    if (!m.id && mj.id) m.id = mj.id;
+    if (!m.data) m.data = {};
+    if (mj.data) mergeMissingFields(m.data, mj.data);
+    mergeMissingFields(m.data, mj);
+    return m;
+  }
+  globalThis.__arMsReader = {
+    invalidate: function() {
+      state.member = null; state.rawJson = null; state.memberJson = null;
+      state.inflight = null; state.at = 0;
+    },
+    patchJson: function(memberJson, rawJson) {
+      if (memberJson) state.memberJson = memberJson;
+      if (rawJson) state.rawJson = rawJson;
+      state.at = Date.now();
+    },
+    fetchBundle: function(ms, opts) {
+      opts = opts || {};
+      if (!ms) return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+      if (!opts.force && state.at && state.rawJson) {
+        return Promise.resolve({ member: state.member, rawJson: state.rawJson, memberJson: state.memberJson });
+      }
+      if (!opts.force && state.inflight) return state.inflight;
+      var memberCall = (typeof ms.getCurrentMember === "function")
+        ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+        : Promise.resolve(null);
+      state.inflight = Promise.resolve(memberCall).then(function(res) {
+        var m = unwrapMember(res);
+        if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        }
+        return ms.getMemberJSON().then(function(jsonRes) {
+          var merged = mergeMemberWithJson(m, jsonRes);
+          state.member = merged; state.rawJson = jsonRes;
+          state.memberJson = normalizeMemberJsonPayload(jsonRes);
+          state.at = Date.now(); state.inflight = null;
+          return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+        }).catch(function() {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        });
+      }).catch(function(err) { state.inflight = null; throw err; });
+      return state.inflight;
+    }
+  };
+})();
+</script>
 
 <style id="ar-academy-header-style">
   /* No horizontal scroll on Academy pages (100vw bleed elsewhere is banned) */
@@ -411,7 +488,7 @@ v1.3.10: Dashboard stamp only — shared Memberstack read cache (D 1.3.10).
       <span
         id="ar-academy-header-snippet-version"
         title="Header / Do-next strip / Dashboard snippet versions"
-      >H 1.4.3 · S 1.3.33 · D 1.3.10</span>
+      >H 1.4.4 · S 1.3.34 · D 1.3.10 · B 1.3.4</span>
     </div>
     <button
       id="ar-academy-header-logout-btn"
