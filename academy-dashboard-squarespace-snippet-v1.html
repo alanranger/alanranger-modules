@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.9) — Squarespace Snippet
+Academy Dashboard UI (v1.3.10) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -17,6 +17,7 @@ v1.3.7.1: Diagnostic [AR-AUTH] console trace on every login redirect branch (tem
 v1.3.7.2: Persistent [AR-AUTH] trace in sessionStorage (survives login redirect); ms-error listeners for hypothesis A vs B.
 v1.3.8: B-path fix — block external MS network-failure login redirect when session marker valid; whoami-first on fast return; header bounce-back from false login.
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
+v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; all tile/module paths use cache (writes invalidate/patch).
 -->
 
 <script>
@@ -27,6 +28,111 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       if (!isAcademy) return;
       document.documentElement.classList.add("ar-academy");
     } catch (e) { /* no-op */ }
+  })();
+  </script>
+
+  <script>
+  (function initArMemberstackReader() {
+    if (globalThis.__arMsReader) return;
+    var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+
+    function unwrapMember(res) {
+      if (!res) return null;
+      if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+      if (res.email || res.planConnections) return { id: res.id || null, data: res };
+      if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+      return res;
+    }
+
+    function mergeMissingFields(target, source) {
+      if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+      for (var k in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+        if (target[k] == null) target[k] = source[k];
+      }
+    }
+
+    function normalizeMemberJsonPayload(jsonRes) {
+      var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+      if (raw && raw.json && typeof raw.json === "object") return raw.json;
+      return raw || {};
+    }
+
+    function mergeMemberWithJson(member, jsonRes) {
+      var m = unwrapMember(member);
+      if (!m || !m.data || !jsonRes) return m;
+      var mj = unwrapMember(jsonRes);
+      if (!mj) return m;
+      if (!m.id && mj.id) m.id = mj.id;
+      if (!m.data) m.data = {};
+      if (mj.data) mergeMissingFields(m.data, mj.data);
+      mergeMissingFields(m.data, mj);
+      return m;
+    }
+
+    globalThis.__arMsReader = {
+      invalidate: function() {
+        state.member = null;
+        state.rawJson = null;
+        state.memberJson = null;
+        state.inflight = null;
+        state.at = 0;
+      },
+      patchJson: function(memberJson, rawJson) {
+        if (memberJson) state.memberJson = memberJson;
+        if (rawJson) state.rawJson = rawJson;
+        state.at = Date.now();
+      },
+      fetchBundle: function(ms, opts) {
+        opts = opts || {};
+        if (!ms) {
+          return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+        }
+        if (!opts.force && state.at && state.rawJson) {
+          return Promise.resolve({
+            member: state.member,
+            rawJson: state.rawJson,
+            memberJson: state.memberJson
+          });
+        }
+        if (!opts.force && state.inflight) return state.inflight;
+
+        var memberCall = (typeof ms.getCurrentMember === "function")
+          ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+          : Promise.resolve(null);
+
+        state.inflight = Promise.resolve(memberCall).then(function(res) {
+          var m = unwrapMember(res);
+          if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+            state.member = m;
+            state.rawJson = state.rawJson || null;
+            state.memberJson = state.memberJson || null;
+            state.at = Date.now();
+            state.inflight = null;
+            return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+          }
+          return ms.getMemberJSON().then(function(jsonRes) {
+            var merged = mergeMemberWithJson(m, jsonRes);
+            state.member = merged;
+            state.rawJson = jsonRes;
+            state.memberJson = normalizeMemberJsonPayload(jsonRes);
+            state.at = Date.now();
+            state.inflight = null;
+            return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+          }).catch(function() {
+            state.member = m;
+            state.at = Date.now();
+            state.inflight = null;
+            return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+          });
+        }).catch(function(err) {
+          state.inflight = null;
+          throw err;
+        });
+
+        return state.inflight;
+      }
+    };
   })();
   </script>
   
@@ -3113,24 +3219,9 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
     }
 
     function getMemberExtended(ms){
-      return ms.getCurrentMember().then(function(res){
-        var m = unwrapMember(res);
-        if (!m || !m.data) return m;
-        if (typeof ms.getMemberJSON !== "function") return m;
-        return ms.getMemberJSON().then(function(json){
-          var mj = unwrapMember(json);
-          if (!mj) return m;
-          if (!m.id && mj.id) m.id = mj.id;
-          if (!m.data) m.data = {};
-          // Merge both shapes:
-          // - mj.data (common)
-          // - mj (some wrappers return the raw member object directly)
-          if (mj.data) mergeMissingFields(m.data, mj.data);
-          mergeMissingFields(m.data, mj);
-          return m;
-        }).catch(function(){
-          return m;
-        });
+      if (!globalThis.__arMsReader) return Promise.resolve(null);
+      return globalThis.__arMsReader.fetchBundle(ms).then(function(bundle) {
+        return bundle ? bundle.member : null;
       });
     }
 
@@ -3245,11 +3336,10 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
     }
 
     function scheduleBackgroundMemberHydrate(ms) {
-      function tryRefresh() {
-        var chain = ms
-          ? getMemberExtended(ms)
-          : fetchWhoamiIdentity().then(function(identity) { return memberFromWhoami(identity); });
-        Promise.resolve(chain).then(function(m) {
+      setTimeout(function() {
+        if (!ms || !globalThis.__arMsReader) return;
+        globalThis.__arMsReader.fetchBundle(ms, { force: true, useCache: false }).then(function(bundle) {
+          var m = bundle ? bundle.member : null;
           if (!m || !m.data || !memberCanAccessDashboard(m)) return;
           markDashboardSessionConfirmed(m);
           if (typeof renderMemberStatus === "function") {
@@ -3259,9 +3349,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
             try { loadExamProgress(m); } catch (e) { /* no-op */ }
           }
         }).catch(function() { /* non-fatal background hydrate */ });
-      }
-      setTimeout(tryRefresh, 250);
-      setTimeout(tryRefresh, 2500);
+      }, 2500);
     }
 
     function fetchWhoamiIdentity() {
@@ -3302,16 +3390,37 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
 
     function getMemberExtendedWithRetry(ms, attempts) {
       attempts = typeof attempts === "number" ? attempts : 12;
+      var bundleRef = null;
       function tryOnce(left) {
-        return getMemberExtended(ms).then(function(m) {
+        if (left === attempts) {
+          return globalThis.__arMsReader.fetchBundle(ms).then(function(bundle) {
+            bundleRef = bundle;
+            return bundle ? bundle.member : null;
+          });
+        }
+        if (!ms || typeof ms.getCurrentMember !== "function") {
+          return Promise.resolve(bundleRef ? bundleRef.member : null);
+        }
+        return ms.getCurrentMember().then(function(res) {
+          var m = unwrapMember(res);
+          if (m && m.data && bundleRef && bundleRef.memberJson) {
+            mergeMissingFields(m.data, bundleRef.memberJson);
+          }
+          return m;
+        }).catch(function() {
+          return bundleRef ? bundleRef.member : null;
+        });
+      }
+      function poll(left) {
+        return tryOnce(left).then(function(m) {
           if (m && m.data && memberCanAccessDashboard(m)) return m;
           if (left <= 1) return m;
           return new Promise(function(done) {
-            setTimeout(function() { done(tryOnce(left - 1)); }, 500);
+            setTimeout(function() { done(poll(left - 1)); }, 500);
           });
         });
       }
-      return tryOnce(attempts).then(function(m) {
+      return poll(attempts).then(function(m) {
         return fetchWhoamiIdentity().then(function(identity) {
           return mergeWhoamiIntoMember(m, memberFromWhoami(identity));
         });
@@ -4325,12 +4434,12 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       }
 
       try {
-        if (!ms || typeof ms.getMemberJSON !== "function") {
+        if (!ms || !globalThis.__arMsReader) {
           renderMembershipQuickStats(null);
           return;
         }
-        var jsonRes = await ms.getMemberJSON();
-        var memberJson = normalizeMemberJson(jsonRes);
+        var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+        var memberJson = bundle.memberJson || normalizeMemberJson(bundle.rawJson);
         renderMembershipQuickStats(memberJson);
         setTimeout(function() { renderMembershipQuickStats(memberJson); }, 1500);
         setTimeout(function() { renderMembershipQuickStats(memberJson); }, 3000);
@@ -4974,11 +5083,11 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
 
     async function hydrateOpenedProgressFromMemberJson() {
       try {
-        if (!openedProgressMs || typeof openedProgressMs.getMemberJSON !== "function") return;
+        if (!openedProgressMs || !globalThis.__arMsReader) return;
         if (!openedProgressMemberId) return;
         if (openedProgressHydratedMemberId === openedProgressMemberId) return;
-        var jsonRes = await openedProgressMs.getMemberJSON();
-        var memberJson = normalizeMemberJson(jsonRes);
+        var bundle = await globalThis.__arMsReader.fetchBundle(openedProgressMs);
+        var memberJson = bundle.memberJson || normalizeMemberJson(bundle.rawJson);
         var appliedSet = getMemberJsonOpenedSet(memberJson, "appliedLearning");
         var rpsSet = getMemberJsonOpenedSet(memberJson, "rps");
         setAppliedLearningOpenedSet(appliedSet);
@@ -4993,15 +5102,16 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
 
     async function persistOpenedProgressToMemberJson(sectionKey, openedSet, selector, keyAttr) {
       try {
-        if (!openedProgressMs || typeof openedProgressMs.getMemberJSON !== "function" || typeof openedProgressMs.updateMemberJSON !== "function") return;
+        if (!openedProgressMs || typeof openedProgressMs.updateMemberJSON !== "function" || !globalThis.__arMsReader) return;
         if (!openedProgressMemberId) return;
-        var jsonRes = await openedProgressMs.getMemberJSON();
-        var memberJson = normalizeMemberJson(jsonRes);
+        var bundle = await globalThis.__arMsReader.fetchBundle(openedProgressMs);
+        var memberJson = bundle.memberJson || normalizeMemberJson(bundle.rawJson);
         if (!memberJson.arAcademy) memberJson.arAcademy = {};
         if (!memberJson.arAcademy[sectionKey]) memberJson.arAcademy[sectionKey] = {};
         var links = Array.from(document.querySelectorAll(selector));
         memberJson.arAcademy[sectionKey].opened = buildOpenedMapFromSet(openedSet, links, keyAttr);
         await openedProgressMs.updateMemberJSON({ json: memberJson });
+        globalThis.__arMsReader.patchJson(memberJson, bundle.rawJson);
       } catch (err) {
         return;
       }
@@ -6321,8 +6431,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
         try {
           var params = new URLSearchParams(window.location.search);
           if (params.get("upgraded") !== "1") return;
-          if (ms && typeof ms.getCurrentMember === "function") {
-            ms.getCurrentMember({ useCache: false }).catch(function(){});
+          if (ms && globalThis.__arMsReader) {
+            globalThis.__arMsReader.fetchBundle(ms, { force: true, useCache: false }).catch(function(){});
           }
           var banner = document.getElementById("ar-upgrade-banner");
           if (banner) {
@@ -6538,10 +6648,10 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
             if (upgradeStatus === "success") {
               // Refresh member data to show updated status
               setTimeout(function() {
-                if (ms && typeof ms.getCurrentMember === "function") {
-                  ms.getCurrentMember().then(function(updatedMember) {
-                    if (updatedMember) {
-                      renderMemberStatus(updatedMember, ms);
+                if (ms && globalThis.__arMsReader) {
+                  globalThis.__arMsReader.fetchBundle(ms, { force: true }).then(function(bundle) {
+                    if (bundle && bundle.member) {
+                      renderMemberStatus(bundle.member, ms);
                     }
                   }).catch(function(err) {
                     console.error("Error refreshing member after upgrade:", err);
@@ -6688,6 +6798,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       if (btn) {
         btn.addEventListener("click", function(){
           try { sessionStorage.removeItem(DASHBOARD_SESSION_KEY); } catch (e) { /* no-op */ }
+          if (globalThis.__arMsReader) globalThis.__arMsReader.invalidate();
           if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.logout === "function") {
             try { globalThis.$memberstackDom.logout(); } catch (e) { /* no-op */ }
           }
@@ -6780,13 +6891,13 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
     }
 
     async function renderModuleProgress(msInstance){
-      // Re-fetch fresh Memberstack JSON each time to get latest opened modules
-      // msInstance is the Memberstack instance, or null to fetch it
+      // Uses shared __arMsReader bundle (one getCurrentMember+getMemberJSON per page load)
       let ms = msInstance;
       if (!ms) {
         ms = await waitForMS();
         if (!ms) return;
       }
+      if (!globalThis.__arMsReader) return;
       
       // Definitive list of all 60 module URLs
       // Only URLs in this list will be counted as modules
@@ -6927,8 +7038,9 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
         '/s/THE-SEASONS-photography-Assignment.pdf': 'assignment'
       };
       
-      const jsonRes = await ms.getMemberJSON();
-      const memberJson = normalizeMemberJson(jsonRes);
+      const bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      const jsonRes = bundle.rawJson;
+      const memberJson = bundle.memberJson || normalizeMemberJson(jsonRes);
       const rawResponse = jsonRes;
       
       // URL normalizer helper - converts any URL form to canonical path for module tracking
@@ -7473,8 +7585,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
               persistPromise = (async function() {
                 try {
                   // Get current member JSON
-                  var jsonRes = await ms.getMemberJSON();
-                  var memberJson = normalizeMemberJson(jsonRes);
+                  var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
+                  var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
                   
                   // Ensure arAcademy structure exists
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
@@ -7491,6 +7603,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
                   
                   // Save back to Memberstack
                   await ms.updateMemberJSON({ json: memberJson });
+                  globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
                   
                   // Update progress count (modules only, unique normalized URLs)
                   var openedMap = memberJson.arAcademy.modules.opened || {};
@@ -7706,8 +7819,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
               // Save to Memberstack asynchronously
               persistPromise = (async function() {
                 try {
-                  var jsonRes = await ms.getMemberJSON();
-                  var memberJson = normalizeMemberJson(jsonRes);
+                  var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
+                  var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
                   
                   if (!memberJson.arAcademy) memberJson.arAcademy = {};
                   if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
@@ -7737,6 +7850,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
                   }
                   
                   await ms.updateMemberJSON({ json: memberJson });
+                  globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
                   
                   // Update practice packs progress count (recalculate from updated memberJson)
                   var practicePacksOpenedCount = 0;
@@ -7959,8 +8073,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
                 // Save to Memberstack asynchronously
                 persistPromise = (async function() {
                   try {
-                    var jsonRes = await ms.getMemberJSON();
-                    var memberJson = normalizeMemberJson(jsonRes);
+                    var persistBundle = await globalThis.__arMsReader.fetchBundle(ms);
+                    var memberJson = persistBundle.memberJson || normalizeMemberJson(persistBundle.rawJson);
                     
                     if (!memberJson.arAcademy) memberJson.arAcademy = {};
                     if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
@@ -7990,6 +8104,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
                     }
                     
                     await ms.updateMemberJSON({ json: memberJson });
+                    globalThis.__arMsReader.patchJson(memberJson, persistBundle.rawJson);
                     
                     console.log('[Checklists] Saved checklist to Memberstack:', normalizedUrl);
                   } catch (err) {
@@ -8287,16 +8402,17 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
 
     async function run(){
       const ms = await waitForMS();
-      if(!ms) return;
+      if(!ms || !globalThis.__arMsReader) return;
 
-      const who = await ms.getCurrentMember();
+      const bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      const who = bundle.member;
       if(!who || !who.data) return;
 
-      const jsonRes = await ms.getMemberJSON();
+      const jsonRes = bundle.rawJson;
       // Debug: Log raw response to see structure
       console.log('[Dashboard] Raw getMemberJSON() response:', jsonRes);
       console.log('[Dashboard] Response keys:', jsonRes ? Object.keys(jsonRes) : 'null');
-      const memberJson = normalizeMemberJson(jsonRes);
+      const memberJson = bundle.memberJson || normalizeMemberJson(jsonRes);
       // Also preserve raw response for root-level history access
       const rawResponse = jsonRes;
 
@@ -8355,13 +8471,9 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       
       const bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks : [];
 
-      // Render module progress - run multiple times to ensure it runs after tracking script
-      // Tracking script runs at DOMContentLoaded + 1500ms, so we run at multiple intervals
-      // Pass ms instance so it can re-fetch fresh data each time
+      // Render module progress — uses shared MS bundle (no extra network per call)
       renderModuleProgress(ms);
       setTimeout(function() { renderModuleProgress(ms); }, 2000);
-      setTimeout(function() { renderModuleProgress(ms); }, 3000);
-      setTimeout(function() { renderModuleProgress(ms); }, 4000);
       
 
       // Full section lists
@@ -8479,9 +8591,11 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       if (clear) {
         clear.addEventListener('click', async (e) => {
           e.preventDefault();
-          const jsonRes2 = await ms.getMemberJSON();
-          const memberJson2 = normalizeMemberJson(jsonRes2);
-          await ms.updateMemberJSON({ json: { ...memberJson2, bookmarks: [] } });
+          const bundle2 = await globalThis.__arMsReader.fetchBundle(ms);
+          const memberJson2 = bundle2.memberJson || normalizeMemberJson(bundle2.rawJson);
+          const cleared = { ...memberJson2, bookmarks: [] };
+          await ms.updateMemberJSON({ json: cleared });
+          globalThis.__arMsReader.patchJson(cleared, bundle2.rawJson);
 
           if (bookmarksList) bookmarksList.innerHTML = emptyLi("No bookmarks yet.");
           if (bookmarksMini) bookmarksMini.innerHTML = emptyLi("No bookmarks yet.");
@@ -8493,8 +8607,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       if (clearHistory) {
         clearHistory.addEventListener('click', async (e) => {
           e.preventDefault();
-          const jsonRes2 = await ms.getMemberJSON();
-          const memberJson2 = normalizeMemberJson(jsonRes2);
+          const bundle2 = await globalThis.__arMsReader.fetchBundle(ms);
+          const memberJson2 = bundle2.memberJson || normalizeMemberJson(bundle2.rawJson);
           
           // Clear history arrays (root level and in data)
           const updatedJson = { ...memberJson2 };
@@ -8522,6 +8636,7 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
           }
           
           await ms.updateMemberJSON({ json: updatedJson });
+          globalThis.__arMsReader.patchJson(updatedJson, bundle2.rawJson);
 
           if (historyList) historyList.innerHTML = emptyLi("No recent activity yet.");
           if (historyMini) historyMini.innerHTML = emptyLi("No recent activity yet.");
@@ -8530,9 +8645,8 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
     }
 
     function kick(){
-      // Run now, and again shortly after (Memberstack sometimes hydrates late)
+      // Run now, and once more after MS late-hydrate (shared bundle = no duplicate network)
       run();
-      setTimeout(run, 600);
       setTimeout(run, 1500);
     }
 
@@ -8549,10 +8663,9 @@ v1.3.9: Session-cached access — confirm once per session; subsequent loads ren
       if (document.visibilityState === "visible" && window.location.pathname === "/academy/dashboard") {
         setTimeout(async function() {
           const ms = await waitForMS();
-          if (!ms) return;
-          const who = await ms.getCurrentMember();
-          if (!who || !who.data) return;
-          // Pass ms instance so it re-fetches fresh data
+          if (!ms || !globalThis.__arMsReader) return;
+          const bundle = await globalThis.__arMsReader.fetchBundle(ms);
+          if (!bundle.member || !bundle.member.data) return;
           renderModuleProgress(ms);
         }, 500);
       }
