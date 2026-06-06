@@ -1,0 +1,5651 @@
+<!-- ===========================
+
+AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
+
+v1.3.44 — CORRECTION: revert badge strip to plain arrow row (S 1.3.42 style); Option-C stepped milestone track moved to progress bar under proximity line
+v1.3.43 — Your Journey badge rail as stepped milestone track (connecting line fill from computeTrackFillPct; target node ring + %; thin bar + proximity retained) [SUPERSEDED — track was on wrong element]
+v1.3.42 — badge-aware progress bar + proximity for all six rungs (re-based to next badge; Graduate/Master proximity + counts detail)
+v1.3.41 — fix: remove duplicate getNextUnearnedBadge that excluded master; tile-4 now shows Goal: Master when Graduate earned (earned everything only when all 6 earned)
+v1.3.40 — fix: getCurrentStage carries colour/stars/iconClass to banner badge (gold Master + stars restored in header); preview injects lastActivityAt (default recent/un-paused; lastactivity=70 forces paused)
+v1.3.39 — fix: badge rail/banner regression - computeJourneyBadges now carries colour, stars, iconClass and sublabel through from the stage, restoring gold Master, per-stage stars (1-5) and correct icons (display passthrough only; earn logic, thresholds, weights and decay unchanged)
+v1.3.38 — preview mode injects Graduate/Master longevity query params (appliedLearning, practicePacks, pdfAssignments, activeMonths)
+v1.3.37 — Graduate + Master points-layer gates, keep-alive decay, tooltips, tile-4 checklists (on Certified floor)
+v1.3.36 — re-ship of the S 1.3.35 tile-open beacon on the restored baseline (logic unchanged); version stamp sync with D 1.3.12 / B 1.3.6 for post-restore verification
+v1.3.35 — tile-open beacon fires after window.open (assignment PDFs); cached member id only
+v1.3.34 — __arMsReader shared bundle (one MS read pair per page; assignment persist uses cache)
+v1.3.33 — badge prerequisite-order gating + shared gate test harness
+
+=========================== -->
+
+
+
+<style id="ar-do-next-strip-style">
+
+  #ar-do-next-strip{
+
+    display:none;
+
+    position:relative;
+
+    z-index:997;
+
+    width:100%;
+
+    max-width:100%;
+
+    margin-left:0;
+
+    margin-right:0;
+
+    margin-bottom:14px;
+
+    padding:8px 0 10px;
+
+    background:#0f1419;
+
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);
+
+    outline:none;
+
+    box-sizing:border-box;
+
+    contain:layout style;
+
+    overflow-x:hidden;
+
+  }
+
+  html.ar-dashboard-pin-stack #ar-do-next-strip.is-ready{
+
+    position:fixed !important;
+
+    top:calc(var(--ar-sqsp-nav-offset, 0px) + var(--ar-academy-header-height, 88px)) !important;
+
+    left:0;
+
+    right:0;
+
+    width:100%;
+
+    margin-left:0;
+
+    margin-right:0;
+
+    z-index:997;
+
+    height:auto;
+
+    max-height:none;
+
+  }
+
+  #ar-do-next-strip.is-ready{ display:block; }
+
+  body[data-ar-academy-state="expired-trial"] #ar-do-next-strip{
+
+    display:none !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__inner{
+
+    max-width:1400px;
+
+    margin:0 auto;
+
+    padding:0 12px;
+
+    box-sizing:border-box;
+
+  }
+
+  @media (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:352px;
+
+      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
+
+      max-width:1400px;
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
+
+  }
+
+  @media (max-width:1600px) and (min-width:1201px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      --arp-dash-gutter:322px;
+
+      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
+
+      margin-left:calc(
+
+        var(--arp-dash-gutter) +
+
+        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
+
+          2
+
+      );
+
+    }
+
+  }
+
+  @media (max-width:1200px){
+
+    #ar-do-next-strip .ar-do-next-strip__inner{
+
+      width:100%;
+
+      max-width:100%;
+
+      margin-left:auto;
+
+      margin-right:auto;
+
+      padding:0 12px;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card{
+
+    width:100%;
+
+    background:#0f1115;
+
+    border:0.5px solid rgba(255,255,255,0.08);
+
+    border-radius:14px;
+
+    padding:22px 26px;
+
+    box-sizing:border-box;
+
+    color:#e2e8f0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:10px 16px;
+
+    margin:0 0 18px;
+
+    font-size:16px;
+
+    line-height:1.4;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__status-left{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    gap:8px;
+
+    min-width:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    flex-shrink:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--red{ background:#dc2626; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--amber{ background:#d97706; }
+
+  #ar-do-next-strip .ar-do-next-rag__dot--green{ background:#16a34a; }
+
+  #ar-do-next-strip .ar-do-next-rag__label{
+
+    font-weight:800;
+
+    font-size:16px;
+
+    color:#f8fafc;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__counts{
+
+    color:#94a3b8;
+
+    font-weight:600;
+
+    font-size:14px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__pct{
+
+    color:#94a3b8;
+
+    font-weight:600;
+
+    font-size:12px;
+
+    white-space:nowrap;
+
+    opacity:0.92;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__bar{
+
+    position:relative;
+
+    height:auto;
+
+    min-height:52px;
+
+    margin:0 0 18px;
+
+    padding:6px 0 0;
+
+    background:transparent;
+
+    overflow:visible;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track{
+
+    position:relative;
+
+    width:100%;
+
+    padding:0 6px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track__line,
+  #ar-do-next-strip .ar-do-next-milestone-track__fill{
+
+    position:absolute;
+
+    top:11px;
+
+    left:24px;
+
+    right:24px;
+
+    height:3px;
+
+    border-radius:999px;
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track__line{
+
+    background:rgba(255,255,255,0.12);
+
+    z-index:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track__fill{
+
+    width:0;
+
+    background:#166534;
+
+    z-index:1;
+
+    transition:width 0.25s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track__fill--gold{
+
+    background:#b45309;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-track__nodes{
+
+    position:relative;
+
+    z-index:2;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+    gap:2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node{
+
+    flex:1 1 0;
+
+    min-width:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    text-align:center;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node__marker{
+
+    width:22px;
+
+    height:22px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    box-sizing:border-box;
+
+    margin:0 0 4px;
+
+    overflow:hidden;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node__marker svg{
+
+    width:12px;
+
+    height:12px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node--target .ar-do-next-milestone-node__marker{
+
+    box-shadow:0 0 0 2px rgba(34,197,94,0.95);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node--target-master .ar-do-next-milestone-node__marker{
+
+    box-shadow:0 0 0 2px rgba(245,179,1,0.9);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node--paused .ar-do-next-milestone-node__marker,
+  #ar-do-next-strip .ar-do-next-milestone-node--paused .ar-do-next-milestone-node__label{
+
+    opacity:0.45;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node__pct{
+
+    font-size:11px;
+
+    font-weight:700;
+
+    color:#fff;
+
+    line-height:1;
+
+    margin:0 0 2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node__label{
+
+    font-size:11px;
+
+    line-height:1.15;
+
+    color:#94a3b8;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-milestone-node--earned .ar-do-next-milestone-node__label{
+
+    color:#d1d5db;
+
+  }
+
+  @media (max-width:900px){
+
+    #ar-do-next-strip .ar-do-next-milestone-track__nodes{
+
+      flex-wrap:wrap;
+
+      justify-content:center;
+
+      row-gap:10px;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-milestone-node{
+
+      flex:0 1 30%;
+
+      max-width:32%;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-milestone-track__line,
+    #ar-do-next-strip .ar-do-next-milestone-track__fill{
+
+      display:none;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tiles{
+
+    display:flex;
+
+    flex-direction:row;
+
+    align-items:stretch;
+
+    gap:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tile-arrow{
+
+    flex:0 0 28px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    align-self:center;
+
+    color:rgba(255,255,255,0.38);
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__tile-arrow svg{
+
+    width:20px;
+
+    height:20px;
+
+    display:block;
+
+  }
+
+  @media (max-width:900px){
+
+    #ar-do-next-strip .ar-do-next-strip__tiles{
+
+      flex-wrap:wrap;
+
+      gap:14px;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-strip__tile-arrow{
+
+      display:none;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-tile{
+
+      flex:1 1 calc(50% - 7px);
+
+    }
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-tile{
+
+      flex:1 1 100%;
+
+    }
+
+  }
+
+  @keyframes ar-do-next-tile-wobble{
+
+    0%, 100%{ transform:rotate(0deg) scale(1); }
+
+    15%{ transform:rotate(-1.1deg) scale(1.015); }
+
+    30%{ transform:rotate(0.9deg) scale(1.015); }
+
+    45%{ transform:rotate(-0.7deg) scale(1.01); }
+
+    60%{ transform:rotate(0.5deg) scale(1.008); }
+
+    75%{ transform:rotate(-0.25deg) scale(1.004); }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile{
+
+    display:flex;
+
+    flex-direction:column;
+
+    flex:1 1 0;
+
+    min-width:0;
+
+    min-height:148px;
+
+    padding:18px 20px;
+
+    border-radius:12px;
+
+    text-decoration:none !important;
+
+    box-sizing:border-box;
+
+    transform-origin:center center;
+
+    transition:opacity 0.15s ease, transform 0.15s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile:hover{
+
+    opacity:0.96;
+
+    animation:ar-do-next-tile-wobble 0.55s ease-in-out;
+
+  }
+
+  @media (prefers-reduced-motion: reduce){
+
+    #ar-do-next-strip .ar-do-next-tile:hover{
+
+      animation:none;
+
+      opacity:0.92;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__eyebrow{
+
+    font-size:18px;
+
+    font-weight:900;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+    margin:0 0 12px;
+
+    line-height:1.15;
+
+    opacity:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__action{
+
+    font-size:16px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    color:#f8fafc !important;
+
+    margin:0 0 auto;
+
+    padding-bottom:12px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__why{
+
+    font-size:13px;
+
+    font-weight:600;
+
+    line-height:1.4;
+
+    margin:0;
+
+    opacity:0.82;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green{
+
+    background:#166534;
+
+    border:0.5px solid #14532d;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--resume .ar-do-next-tile__why,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--ghost-green .ar-do-next-tile__why{
+
+    color:#dcfce7 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber{
+
+    background:#b45309;
+
+    border:0.5px solid #92400e;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__action{
+
+    color:#fde68a !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__eyebrow,
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__why{
+
+    color:#fcd34d !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile__trial-line{
+
+    font-size:11px;
+
+    font-weight:500;
+
+    line-height:1.35;
+
+    margin:6px 0 0;
+
+    opacity:0.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--amber .ar-do-next-tile__trial-line{
+
+    color:#fcd34d !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist{
+
+    cursor:default;
+
+    text-decoration:none;
+
+    min-height:148px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-list{
+
+    list-style:none;
+
+    margin:8px 0 0;
+
+    padding:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    width:100%;
+
+    max-width:100%;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:6px;
+
+    font-size:12px;
+
+    line-height:1.35;
+
+    color:#d6d3d1;
+
+    max-width:100%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row--met{
+
+    color:#ecfdf5;
+
+    font-weight:600;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row--unmet{
+
+    color:rgba(255,255,255,0.72);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--met{
+
+    color:#fff;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet,
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row--unmet span{
+
+    color:#f1f5f9 !important;
+
+    font-weight:500;
+
+    opacity:1 !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-icon--unmet circle{
+
+    stroke:#f8fafc !important;
+
+    stroke-width:1.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon{
+
+    flex:0 0 16px;
+
+    width:16px;
+
+    height:16px;
+
+    margin-top:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--met circle{
+
+    fill:#36c98a;
+
+    stroke:#1f9d55;
+
+    stroke-width:1.5;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--met path{
+
+    stroke:#fff;
+
+    fill:none;
+
+    stroke-width:2.2;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-icon--unmet circle{
+
+    fill:none;
+
+    stroke:rgba(255,255,255,0.42);
+
+    stroke-width:1.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip .ar-do-next-criteria-row--met{
+
+    color:#d1fae5;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip .ar-do-next-criteria-row--unmet{
+
+    color:#cbd5e1;
+
+    opacity:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-soft{
+
+    margin:8px 0 0;
+
+    font-size:12px;
+
+    line-height:1.4;
+
+    color:#d6d3d1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__trigger{
+
+    border:none;
+
+    background:transparent;
+
+    padding:0;
+
+    margin:0 0 6px;
+
+    cursor:pointer;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:50%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__trigger:focus-visible{
+
+    outline:2px solid #e57200;
+
+    outline-offset:2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip,
+
+  .ar-do-next-badge__tooltip--fixed{
+
+    display:none;
+
+    position:fixed;
+
+    z-index:1001;
+
+    min-width:200px;
+
+    max-width:min(260px,calc(100vw - 24px));
+
+    padding:10px 12px;
+
+    background:#1a1f2e;
+
+    border:1px solid rgba(255,255,255,0.12);
+
+    border-radius:10px;
+
+    box-shadow:0 8px 20px rgba(0,0,0,0.35);
+
+    text-align:left;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__tooltip.is-open,
+
+  .ar-do-next-badge__tooltip--fixed.is-open{
+
+    display:block;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed:not(.is-open){
+
+    display:none !important;
+
+    pointer-events:none;
+
+    visibility:hidden;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-list{
+
+    list-style:none;
+
+    margin:8px 0 0;
+
+    padding:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    width:100%;
+
+    max-width:100%;
+
+    box-sizing:border-box;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:6px;
+
+    font-size:12px;
+
+    line-height:1.35;
+
+    color:#d6d3d1;
+
+    max-width:100%;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row--met{
+
+    color:#d1fae5;
+
+    font-weight:600;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-row--unmet{
+
+    color:#cbd5e1;
+
+    opacity:1;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon{
+
+    flex:0 0 16px;
+
+    width:16px;
+
+    height:16px;
+
+    margin-top:0;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--met circle{
+
+    fill:#36c98a;
+
+    stroke:#1f9d55;
+
+    stroke-width:1.5;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--met path{
+
+    stroke:#fff;
+
+    fill:none;
+
+    stroke-width:2.2;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-icon--unmet circle{
+
+    fill:none;
+
+    stroke:rgba(255,255,255,0.42);
+
+    stroke-width:1.75;
+
+  }
+
+  .ar-do-next-badge__tooltip--fixed .ar-do-next-criteria-soft{
+
+    margin:8px 0 0;
+
+    font-size:12px;
+
+    line-height:1.4;
+
+    color:#d6d3d1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--has-tooltip{
+
+    position:relative;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-preview-ribbon{
+
+    display:inline-block;
+
+    margin:0 0 8px;
+
+    padding:4px 10px;
+
+    border:1px solid rgba(251,191,36,0.35);
+
+    border-radius:4px;
+
+    background:rgba(251,191,36,0.12);
+
+    color:#fbbf24;
+
+    font-size:11px;
+
+    font-weight:700;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-head{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:12px;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card.is-journey-expanded .ar-do-next-strip__journey-head{
+
+    margin-bottom:18px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    border:none;
+
+    background:transparent;
+
+    padding:0;
+
+    cursor:pointer;
+
+    font:inherit;
+
+    color:inherit;
+
+    text-align:left;
+
+    position:relative;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:focus-visible{
+
+    outline:2px solid #e57200;
+
+    outline-offset:2px;
+
+    border-radius:6px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle::after{
+
+    content:attr(data-tip);
+
+    position:absolute;
+
+    left:0;
+
+    bottom:calc(100% + 8px);
+
+    background:#1a1f2e;
+
+    color:#f8fafc;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    line-height:1.3;
+
+    padding:8px 10px;
+
+    border-radius:8px;
+
+    border:1px solid rgba(229,114,0,0.45);
+
+    white-space:nowrap;
+
+    opacity:0;
+
+    pointer-events:none;
+
+    transition:opacity 0.15s ease;
+
+    z-index:2;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:hover::after,
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:focus-visible::after{
+
+    opacity:1;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-chevron{
+
+    flex-shrink:0;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    width:32px;
+
+    height:32px;
+
+    color:#e57200;
+
+    border-radius:6px;
+
+    transition:background 0.15s ease, transform 0.2s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle:hover .ar-do-next-strip__journey-chevron{
+
+    background:rgba(229,114,0,0.14);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-chevron svg{
+
+    width:22px;
+
+    height:22px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card:not(.is-journey-expanded) .ar-do-next-strip__journey-chevron{
+
+    transform:rotate(180deg);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-title{
+
+    font-size:18px;
+
+    font-weight:800;
+
+    color:#f8fafc;
+
+    margin:0;
+
+    letter-spacing:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-count{
+
+    font-size:13px;
+
+    font-weight:700;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+    color:#cbd5e1;
+
+    margin:0;
+
+    white-space:nowrap;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__card:not(.is-journey-expanded) .ar-do-next-strip__journey-panel{
+
+    display:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__badge-rail{
+
+    margin:0 0 18px;
+
+    padding:0 0 18px;
+
+    border-bottom:1px solid rgba(255,255,255,0.08);
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+    display:flex;
+
+    flex-wrap:nowrap;
+
+    flex-direction:row;
+
+    align-items:flex-start;
+
+    align-content:flex-start;
+
+    justify-content:center;
+
+    gap:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__arrow{
+
+    flex:0 0 22px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    align-self:flex-start;
+
+    margin-top:17px;
+
+    height:24px;
+
+    color:rgba(255,255,255,0.38);
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__arrow svg{
+
+    width:18px;
+
+    height:18px;
+
+    display:block;
+
+  }
+
+  @media (max-width:900px){
+
+    #ar-do-next-strip .ar-do-next-badge-rail__row{
+
+      flex-wrap:wrap;
+
+      justify-content:center;
+
+      gap:8px 4px;
+
+    }
+
+    #ar-do-next-strip .ar-do-next-badge-rail__arrow{
+
+      display:none;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    flex:0 0 118px;
+
+    width:118px;
+
+    min-width:96px;
+
+    max-width:140px;
+
+    height:auto;
+
+    align-self:flex-start;
+
+    text-align:center;
+
+  }
+
+  @media (max-width:520px){
+
+    #ar-do-next-strip .ar-do-next-badge{
+
+      flex:0 0 calc(33.333% - 8px);
+
+      min-width:0;
+
+      max-width:none;
+
+    }
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle{
+
+    width:58px;
+
+    height:58px;
+
+    min-width:58px;
+
+    min-height:58px;
+
+    max-width:58px;
+
+    max-height:58px;
+
+    flex:0 0 58px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+    box-sizing:border-box;
+
+    overflow:hidden;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__circle svg{
+
+    width:28px;
+
+    height:28px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__circle{
+    opacity:0.45;
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__label,
+  #ar-do-next-strip .ar-do-next-badge--earned.ar-do-next-badge--paused .ar-do-next-badge__sublabel{
+    opacity:0.7;
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--earned .ar-do-next-badge__circle svg{
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
+
+    fill:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars{
+
+    display:flex;
+
+    flex:0 0 auto;
+
+    gap:2px;
+
+    justify-content:center;
+
+    align-items:center;
+
+    margin:0 0 3px;
+
+    line-height:1;
+
+    height:18px;
+
+    min-height:18px;
+
+    max-height:18px;
+
+    overflow:hidden;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars--spacer{
+
+    visibility:hidden;
+
+    pointer-events:none;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__stars svg{
+
+    width:11px;
+
+    height:11px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__label{
+
+    font-size:14px;
+
+    font-weight:700;
+
+    line-height:1.2;
+
+    margin:0 0 4px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge__sublabel{
+
+    font-size:12px;
+
+    font-weight:600;
+
+    line-height:1.25;
+
+    margin:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row .ar-do-next-badge:last-child.ar-do-next-badge--ghost .ar-do-next-badge__circle{
+
+    border-color:rgba(245,179,1,0.55) !important;
+
+    border-style:dashed !important;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-badge-rail__row .ar-do-next-badge:last-child.ar-do-next-badge--ghost .ar-do-next-badge__circle svg{
+
+    stroke:#f5b301 !important;
+
+  }
+
+  #ar-do-next-banner-stage{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    margin-top:12px;
+
+    text-align:center;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle{
+
+    width:64px;
+
+    height:64px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin:0 0 6px;
+
+    box-sizing:border-box;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg{
+
+    width:30px;
+
+    height:30px;
+
+    stroke:#fff;
+
+    fill:none;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__label{
+
+    font-size:15px;
+
+    font-weight:700;
+
+    color:#f8fafc;
+
+    margin:0 0 2px;
+
+    line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__caption{
+
+    font-size:11px;
+
+    font-weight:600;
+
+    letter-spacing:0.04em;
+
+    text-transform:uppercase;
+
+    color:rgba(255,255,255,0.65);
+
+    margin:0;
+
+    line-height:1.2;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars{
+
+    display:flex;
+
+    gap:3px;
+
+    justify-content:center;
+
+    margin:0 0 4px;
+
+    line-height:1;
+
+  }
+
+  #ar-do-next-banner-stage .ar-do-next-banner-stage__stars svg{
+
+    width:14px;
+
+    height:14px;
+
+    display:block;
+
+  }
+
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__circle{
+    opacity:0.45;
+  }
+
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__label,
+  #ar-do-next-banner-stage.ar-do-next-banner-stage--paused .ar-do-next-banner-stage__caption{
+    opacity:0.7;
+  }
+
+</style>
+
+
+
+<div id="ar-do-next-strip" aria-hidden="true">
+
+  <div class="ar-do-next-strip__inner">
+
+    <div class="ar-do-next-strip__card is-journey-expanded">
+
+      <div class="ar-do-next-strip__journey-head">
+
+        <button type="button" id="ar-do-next-journey-toggle" class="ar-do-next-strip__journey-toggle" aria-expanded="true" aria-controls="ar-do-next-journey-panel" data-tip="Collapse Your Journey coach panel">
+
+          <span class="ar-do-next-strip__journey-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></span>
+
+          <span class="ar-do-next-strip__journey-title">Your Journey</span>
+
+        </button>
+
+        <p class="ar-do-next-strip__journey-count" id="ar-do-next-journey-count"></p>
+
+      </div>
+
+      <div class="ar-do-next-strip__journey-panel" id="ar-do-next-journey-panel">
+
+        <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your Journey badges"></div>
+
+        <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+
+        <div class="ar-do-next-strip__bar" id="ar-do-next-milestone-bar" aria-label="Journey milestone progress"></div>
+
+        <div class="ar-do-next-strip__tiles" id="ar-do-next-tiles"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+(function(){
+
+  if (window.__arDoNextStripInit) return;
+
+  window.__arDoNextStripInit = true;
+
+
+
+  function isDashboardPath(){
+
+    var p = (window.location && window.location.pathname) ? window.location.pathname : "";
+
+    p = p.replace(/\/+$/, "") || "/";
+
+    return p === "/academy/dashboard";
+
+  }
+
+
+
+  function getSqspNavOffset(){
+
+    var selectors = ["#header", "header.header", ".header-nav-wrapper", ".sqs-site-header"];
+
+    for (var i = 0; i < selectors.length; i++) {
+
+      var el = document.querySelector(selectors[i]);
+
+      if (!el || el.contains(document.getElementById("ar-academy-header-container"))) continue;
+
+      var h = Math.ceil(el.getBoundingClientRect().height) || Math.ceil(el.offsetHeight) || 0;
+
+      if (h >= 40 && h <= 240) return h;
+
+    }
+
+    return 71;
+
+  }
+
+
+
+  function ensureAcademyLayout(){
+
+    if (window.__arAcademyLayout && window.__arAcademyLayout.pinVersion === 2) {
+
+      return window.__arAcademyLayout;
+
+    }
+
+    var state = { busy: false, raf: 0 };
+
+    function ensureSpacer(id, anchor, height){
+
+      if (!anchor) return;
+
+      var spacer = document.getElementById(id);
+
+      if (!height) {
+
+        if (spacer) spacer.style.height = "0px";
+
+        return;
+
+      }
+
+      if (!spacer) {
+
+        spacer = document.createElement("div");
+
+        spacer.id = id;
+
+        spacer.setAttribute("aria-hidden", "true");
+
+        anchor.insertAdjacentElement("afterend", spacer);
+
+      }
+
+      spacer.style.height = height + "px";
+
+    }
+
+    function measureStripHeight(strip){
+
+      if (!strip || !strip.classList.contains("is-ready")) return 0;
+
+      var inner = strip.querySelector(".ar-do-next-strip__inner") || strip;
+
+      var h = Math.ceil(inner.offsetHeight) || 0;
+
+      if (h > 0 && h < 2000) return h;
+
+      var card = strip.querySelector(".ar-do-next-strip__card");
+
+      if (card) {
+
+        h = Math.ceil(card.offsetHeight) || 0;
+
+        if (h > 0 && h < 2000) return h;
+
+      }
+
+      return 0;
+
+    }
+
+    function syncLayout(){
+
+      if (state.busy) return;
+
+      if (!isDashboardPath()) {
+
+        document.documentElement.classList.remove("ar-dashboard-pin-stack");
+
+        return;
+
+      }
+
+      var header = document.getElementById("ar-academy-header-container");
+
+      if (!header) return;
+
+      var strip = document.getElementById("ar-do-next-strip");
+
+      var sqspTop = getSqspNavOffset();
+
+      state.busy = true;
+
+      try {
+
+        var headerH = Math.ceil(header.offsetHeight) || 88;
+
+        var stripH = measureStripHeight(strip);
+
+        var root = document.documentElement;
+
+        root.style.setProperty("--ar-sqsp-nav-offset", sqspTop + "px");
+
+        root.style.setProperty("--ar-academy-header-height", headerH + "px");
+
+        root.style.setProperty("--ar-do-next-strip-height", stripH + "px");
+
+        root.style.setProperty("--ar-academy-sticky-stack-height", (sqspTop + headerH + stripH) + "px");
+
+        root.classList.add("ar-dashboard-pin-stack");
+
+        header.style.setProperty("position", "fixed", "important");
+
+        header.style.setProperty("top", sqspTop + "px", "important");
+
+        header.style.setProperty("left", "0", "important");
+
+        header.style.setProperty("right", "0", "important");
+
+        header.style.setProperty("width", "100%", "important");
+
+        header.style.setProperty("max-width", "100%", "important");
+
+        header.style.setProperty("margin-top", "0", "important");
+
+        header.style.setProperty("z-index", "998", "important");
+
+        if (strip && strip.classList.contains("is-ready")) {
+
+          strip.style.setProperty("position", "fixed", "important");
+
+          strip.style.setProperty("top", (sqspTop + headerH) + "px", "important");
+
+          strip.style.setProperty("left", "0", "important");
+
+          strip.style.setProperty("right", "0", "important");
+
+          strip.style.setProperty("width", "100%", "important");
+
+          strip.style.setProperty("max-width", "100%", "important");
+
+          strip.style.setProperty("margin-left", "0", "important");
+
+          strip.style.setProperty("margin-right", "0", "important");
+
+          strip.style.setProperty("z-index", "997", "important");
+
+        }
+
+        ensureSpacer("ar-academy-header-spacer", header, 0);
+
+        if (strip) ensureSpacer("ar-do-next-strip-spacer", strip, stripH);
+
+      } finally {
+
+        state.busy = false;
+
+      }
+
+      document.dispatchEvent(new CustomEvent("ar-academy-layout-sync"));
+
+    }
+
+    window.__arAcademyLayout = {
+
+      pinVersion: 2,
+
+      schedule: function(){
+
+        if (state.raf) return;
+
+        state.raf = requestAnimationFrame(function(){
+
+          state.raf = 0;
+
+          syncLayout();
+
+        });
+
+      },
+
+      sync: syncLayout
+
+    };
+
+    return window.__arAcademyLayout;
+
+  }
+
+
+
+  function scheduleLayout(){
+
+    ensureAcademyLayout().schedule();
+
+  }
+
+
+
+  var SITE = "https://www.alanranger.com";
+
+  var API_BASE = "https://alanranger-modules.vercel.app";
+
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+
+  var TRACK_TILE_OPEN_URL = API_BASE + "/api/academy/track-tile-open";
+
+  var doNextRuntime = { ms: null, memberId: null };
+
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+  var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
+
+  var ENGAGEMENT_URL = API_BASE + "/api/academy/engagement-summary?window=all";
+
+  var MODULES_TOTAL = 60;
+
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+
+  var PRACTICE_URL = SITE + "/academy/photography-practice-packs";
+
+  var CHECKLISTS_URL = SITE + "/35-photography-1-page-field-checklists";
+
+  var FOUNDATION_COURSE_URL = SITE + "/academy/online-photography-course";
+
+  var ADMIN_MEMBER_IDS = { "mem_cmjyljfkm0hxg0sntegon6ghi": true };
+
+  var ADMIN_EMAILS = {
+
+    "info@alanranger.com": true,
+
+    "marketing@alanranger.com": true,
+
+    "algenon@hotmail.com": true
+
+  };
+
+
+
+  var ARTICLE_MODULES = [
+
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+
+  ];
+
+
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+
+    "/s/Still-life-photography-assignment.pdf",
+
+    "/s/Street-photography-assignment.pdf",
+
+    "/s/Abstract-photography-Assignment.pdf",
+
+    "/s/Black-and-white-photography-assignment.pdf",
+
+    "/s/Architecture-photography-assignment.pdf",
+
+    "/s/Shadows-photography-Assignment.pdf",
+
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+
+  ]);
+
+
+
+  // SYNC: lib/academy-module-paths.js (CAMERA 0-14, COMPOSITION 25-34, PDF assignments 45-59)
+
+  var CAMERA_MODULE_PATHS = ARTICLE_MODULES.slice(0, 15).map(function(m){ return m.p; });
+
+  var COMPOSITION_MODULE_PATHS = ARTICLE_MODULES.slice(25, 35).map(function(m){ return m.p; });
+
+  var PDF_ASSIGNMENT_PATHS = FOUNDATION_MODULE_PATHS.slice(45, 60);
+
+  // SYNC: lib/academy-module-paths.js (PRACTICE_PACK_URLS)
+  var PRACTICE_PACK_URLS = [
+    "/blog-on-photography/handheld-vs-tripod-stability-photography-assignment",
+    "/blog-on-photography/filters-mastery-nd-gnd-photography",
+    "/blog-on-photography/histogram-and-exposure-review",
+    "/blog-on-photography/white-balance-and-colour-photography",
+    "/blog-on-photography/focus-modes-and-tracking",
+    "/blog-on-photography/light-metering-modes-practice-photography-assignment",
+    "/blog-on-photography/iso-and-noise-control-practice-assignment",
+    "/blog-on-photography/shutter-speed-and-motion-photography-practice-assignment",
+    "/blog-on-photography/aperture-and-depth-of-field-assignment",
+    "/blog-on-photography/exposure-triangle-mastery-photography-practice-assignment",
+    "/blog-on-photography/movement-and-intentional-blur-photography-assignment",
+    "/blog-on-photography/dice-roll-serendipity-awareness-photography-assignment",
+    "/blog-on-photography/lines-shapes-and-geometry-photography-assignment",
+    "/blog-on-photography/patterns-rhythm-and-repetition-photography-assignment",
+    "/blog-on-photography/colour-theory-in-photography-practise-assignment",
+    "/blog-on-photography/storytelling-narrative-photography-assignment",
+    "/blog-on-photography/shadows-and-contrast-photography-practice-assignment",
+    "/blog-on-photography/abstract-photography-practice-assignment-free-lesson",
+    "/blog-on-photography/minimalism-photography-assignment",
+    "/blog-on-photography/visual-weight-and-flow-practice-assignment",
+    "/blog-on-photography/wildlife-photography-practice-assignment-free-lesson",
+    "/blog-on-photography/triptych-project-photography-assignment-free-lesson",
+    "/blog-on-photography/landscapes-photography-practise-assignment",
+    "/blog-on-photography/closeup-macro-photography-practice-assignment",
+    "/blog-on-photography/seasons-nature-photography-assignment",
+    "/blog-on-photography/architecture-photography-practice-assignment",
+    "/blog-on-photography/still-life-photography-practice-assignment",
+    "/blog-on-photography/street-photography-practice-assignment",
+    "/blog-on-photography/portrait-photography-practice-assignment",
+    "/blog-on-photography/black-and-white-photography-practise-assignment"
+  ];
+
+
+
+  var EXAM_MODULE_IDS = [
+
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+
+  ];
+
+
+
+  var EXAM_NAMES = {
+
+    "module-01-exposure": "Exposure",
+
+    "module-02-aperture": "Aperture",
+
+    "module-03-shutter": "Shutter",
+
+    "module-04-iso": "ISO",
+
+    "module-05-manual": "Manual",
+
+    "module-06-metering": "Metering",
+
+    "module-07-bracketing": "Bracketing",
+
+    "module-08-focusing": "Focusing",
+
+    "module-09-dof": "DoF",
+
+    "module-10-drange": "DRange",
+
+    "module-11-wb": "WB",
+
+    "module-12-drive": "Drive",
+
+    "module-13-jpeg-raw": "JPEG/RAW",
+
+    "module-14-sensors": "Sensors",
+
+    "module-15-focal": "Focal"
+
+  };
+
+
+
+  var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
+
+
+
+  var FOUNDATION_GATE = {
+
+    minModules: 3,
+
+    minActiveDays: 3,
+
+    bonusModules: 6,
+
+    bonusActiveDays: 5
+
+  };
+
+
+
+  var PRACTITIONER_GATE = {
+
+    requireAllCamera: true,
+
+    requireAllComposition: true,
+
+    minPdfAssignments: 3,
+
+    minExamsPassed: 8
+
+  };
+
+
+
+  var CERTIFIED_GATE = {
+
+    requireAllExamsPassed: true,
+
+    minModulesOpened: 30
+
+  };
+
+
+
+  var JOURNEY_STAGES = [
+
+    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
+
+    { key: "foundation", label: "Foundation", sublabel: "3 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
+
+    { key: "practitioner", label: "Practitioner", sublabel: "Camera + composition, 3 assignments, 8 exams", iconClass: "ti-aperture", colour: "green", stars: 2, practitionerGate: true },
+
+    { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
+
+    { key: "graduate", label: "Graduate", sublabel: "Applied breadth + 4 active months", iconClass: "ti-award", colour: "green", stars: 4, graduateGate: true },
+
+    { key: "master", label: "Master", sublabel: "Deeper breadth + 7 active months", iconClass: "ti-trophy", colour: "gold", stars: 5, masterGate: true }
+
+  ];
+
+
+
+  var JOURNEY_ICON_SVGS = {
+
+    "ti-school": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M22 9l-10-5-10 5 10 5 10-5z"/><path d="M6 10v6c0 1 2 3 6 3s6-2 6-3v-6"/></svg>',
+
+    "ti-camera": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3"/></svg>',
+
+    "ti-aperture": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>',
+
+    "ti-certificate": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="1"/><path d="M8 20l4-2 4 2v-8H8z"/></svg>',
+
+    "ti-award": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M8.5 14L7 21l5-2 5 2-1.5-7"/></svg>',
+
+    "ti-trophy": '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3a4 4 0 01-8 0V4z"/><path d="M6 4H4v1a3 3 0 003 3M18 4h2v1a3 3 0 01-3 3"/><path d="M12 11v3M9 20h6M10 14h4v6h-4z"/></svg>'
+
+  };
+
+
+
+  var BADGE_GREEN = "#166534";
+
+  var BADGE_GREEN_BORDER = "#14532d";
+
+  var BADGE_GOLD = "#b45309";
+
+  var BADGE_GOLD_BORDER = "#92400e";
+
+  var STAR_GOLD = "#f5b301";
+
+
+
+  function badgeEarnedFill(colour){
+
+    return colour === "gold" ? BADGE_GOLD : BADGE_GREEN;
+
+  }
+
+
+
+  function badgeEarnedBorder(colour){
+
+    return colour === "gold" ? BADGE_GOLD_BORDER : BADGE_GREEN_BORDER;
+
+  }
+
+
+
+  function applyBadgeCircleStyle(circle, colour, earned, stageKey){
+
+    var svg = circle.querySelector("svg");
+
+    if (earned) {
+
+      circle.style.background = badgeEarnedFill(colour);
+
+      circle.style.border = "1px solid " + badgeEarnedBorder(colour);
+
+      if (svg) svg.style.stroke = "#fff";
+
+      return;
+
+    }
+
+    circle.style.background = "rgba(255,255,255,0.06)";
+
+    var ring = stageKey === "master" ? "rgba(245,179,1,0.4)" : "rgba(255,255,255,0.2)";
+
+    circle.style.border = "1px dashed " + ring;
+
+    if (svg) svg.style.stroke = "#5a6066";
+
+  }
+
+
+
+  function applyMilestoneMarkerStyle(marker, colour, earned, stageKey){
+
+    var svg = marker.querySelector("svg");
+
+    if (earned) {
+
+      marker.style.background = badgeEarnedFill(colour);
+
+      marker.style.border = "1px solid " + badgeEarnedBorder(colour);
+
+      if (svg) svg.style.stroke = "#fff";
+
+      return;
+
+    }
+
+    marker.style.background = "rgba(255,255,255,0.06)";
+
+    var ring = stageKey === "master" ? "rgba(245,179,1,0.4)" : "rgba(255,255,255,0.2)";
+
+    marker.style.border = "1px dashed " + ring;
+
+    if (svg) svg.style.stroke = "#5a6066";
+
+  }
+
+
+
+  function buildProgressMilestoneTrack(badges, progress){
+
+    var track = document.createElement("div");
+
+    track.className = "ar-do-next-milestone-track";
+
+    var line = document.createElement("div");
+
+    line.className = "ar-do-next-milestone-track__line";
+
+    line.setAttribute("aria-hidden", "true");
+
+    var fill = document.createElement("div");
+
+    fill.className = "ar-do-next-milestone-track__fill";
+
+    var fillPct = computeTrackFillPct(badges, progress.pct);
+
+    var fillGold = !progress.nextKey ? fillPct >= 100 : progress.nextKey === "master";
+
+    if (fillGold) fill.className += " ar-do-next-milestone-track__fill--gold";
+
+    var nextTarget = getNextUnearnedBadge(badges);
+
+    var nodes = document.createElement("div");
+
+    nodes.className = "ar-do-next-milestone-track__nodes";
+
+    badges.forEach(function(badge){
+
+      var isTarget = nextTarget && badge.key === nextTarget.key;
+
+      var node = document.createElement("div");
+
+      node.className = "ar-do-next-milestone-node" +
+
+        (badge.earned ? " ar-do-next-milestone-node--earned" : "") +
+
+        (badge.paused ? " ar-do-next-milestone-node--paused" : "") +
+
+        (isTarget ? " ar-do-next-milestone-node--target" + (badge.key === "master" ? " ar-do-next-milestone-node--target-master" : "") : "");
+
+      var marker = document.createElement("div");
+
+      marker.className = "ar-do-next-milestone-node__marker";
+
+      marker.innerHTML = journeyIconSvg(badge.iconClass);
+
+      applyMilestoneMarkerStyle(marker, badge.colour, badge.earned, badge.key);
+
+      node.appendChild(marker);
+
+      if (isTarget) {
+
+        var pctEl = document.createElement("span");
+
+        pctEl.className = "ar-do-next-milestone-node__pct";
+
+        pctEl.textContent = progress.pct + "%";
+
+        node.appendChild(pctEl);
+
+      }
+
+      var lbl = document.createElement("span");
+
+      lbl.className = "ar-do-next-milestone-node__label";
+
+      lbl.textContent = badge.label;
+
+      node.appendChild(lbl);
+
+      nodes.appendChild(node);
+
+    });
+
+    track.appendChild(line);
+
+    track.appendChild(fill);
+
+    track.appendChild(nodes);
+
+    requestAnimationFrame(function(){
+
+      var span = line.offsetWidth;
+
+      if (span > 0) fill.style.width = Math.round((fillPct / 100) * span) + "px";
+
+      else fill.style.width = fillPct + "%";
+
+    });
+
+    return track;
+
+  }
+
+
+
+  function starSvgMarkup(earned){
+
+    var fill = earned ? STAR_GOLD : "none";
+
+    var opacity = earned ? "1" : "0.35";
+
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" style="opacity:' + opacity + '"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12" fill="' + fill + '" stroke="' + STAR_GOLD + '" stroke-width="1.5"/></svg>';
+
+  }
+
+
+
+  function buildStarRow(count, earned, className){
+
+    var row = document.createElement("div");
+
+    row.className = className;
+
+    for (var i = 0; i < count; i++) {
+
+      row.insertAdjacentHTML("beforeend", starSvgMarkup(earned));
+
+    }
+
+    return row;
+
+  }
+
+
+
+  function earnedSublabelColour(colour){
+
+    return colour === "gold" ? "#fcd34d" : "#7bbf95";
+
+  }
+
+
+
+  function countOpenedInList(openedSet, paths){
+
+    var n = 0;
+
+    for (var i = 0; i < paths.length; i++) {
+
+      if (openedSet.has(paths[i])) n++;
+
+    }
+
+    return n;
+
+  }
+
+
+
+  function getAllModulesOpenedCount(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+
+    var seen = new Set();
+
+    Object.keys(opened).forEach(function(key){
+
+      var p = normalizePath(key);
+
+      if (p) seen.add(p);
+
+    });
+
+    return seen.size;
+
+  }
+
+
+
+  function countAppliedLearningOpened(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.appliedLearning && normalized.arAcademy.appliedLearning.opened) || {};
+
+    return Object.keys(opened).filter(Boolean).length;
+
+  }
+
+
+
+  function mergeLongevityIntoStats(stats, normalized, foundationOpenedSet, engagement){
+
+    var merged = {
+
+      foundationModulesOpened: stats.foundationModulesOpened,
+
+      cameraOpened: stats.cameraOpened,
+
+      compositionOpened: stats.compositionOpened,
+
+      pdfAssignmentsOpened: stats.pdfAssignmentsOpened,
+
+      totalModulesOpened: stats.totalModulesOpened,
+
+      examsPassed: stats.examsPassed,
+
+      appliedLearningOpened: null,
+
+      practicePacksOpened: null,
+
+      distinctActiveMonthsAllTime: null
+
+    };
+
+    if (engagement && typeof engagement.appliedLearningOpened === "number") {
+
+      merged.appliedLearningOpened = engagement.appliedLearningOpened;
+
+      merged.practicePacksOpened = engagement.practicePacksOpened;
+
+      merged.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
+
+      if (typeof engagement.pdfAssignmentsOpened === "number") merged.pdfAssignmentsOpened = engagement.pdfAssignmentsOpened;
+
+    } else {
+
+      merged.appliedLearningOpened = countAppliedLearningOpened(normalized);
+
+      merged.practicePacksOpened = countOpenedInList(foundationOpenedSet, PRACTICE_PACK_URLS);
+
+    }
+
+    return merged;
+
+  }
+
+
+
+  function buildGateContext(engagement){
+
+    return {
+
+      hasConverted: !!(engagement && engagement.hasConverted === true),
+
+      lastActivityAt: engagement ? engagement.lastActivityAt : null,
+
+      nowMs: Date.now()
+
+    };
+
+  }
+
+
+
+  function computeGateStats(normalized, foundationOpenedSet, examInfo, preview){
+
+    var stats = {
+
+      foundationModulesOpened: foundationOpenedSet.size,
+
+      cameraOpened: countOpenedInList(foundationOpenedSet, CAMERA_MODULE_PATHS),
+
+      compositionOpened: countOpenedInList(foundationOpenedSet, COMPOSITION_MODULE_PATHS),
+
+      pdfAssignmentsOpened: countOpenedInList(foundationOpenedSet, PDF_ASSIGNMENT_PATHS),
+
+      totalModulesOpened: preview ? preview.modulesOpened : getAllModulesOpenedCount(normalized),
+
+      examsPassed: examInfo.examsPassed || 0
+
+    };
+
+    return stats;
+
+  }
+
+
+
+  // BEGIN BADGE-GATES-SYNC
+
+  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-strip.mjs)
+
+var FOUNDATION_GATE = {
+  minModules: 3,
+  minActiveDays: 3,
+  bonusModules: 6,
+  bonusActiveDays: 5,
+};
+
+var PRACTITIONER_GATE = {
+  requireAllCamera: true,
+  requireAllComposition: true,
+  minPdfAssignments: 3,
+  minExamsPassed: 8,
+};
+
+var CERTIFIED_GATE = {
+  requireAllExamsPassed: true,
+  minModulesOpened: 30,
+};
+
+var POINTS_WEIGHTS = {
+  appliedLearning: 2,
+  practicePack: 2,
+  pdfAssignment: 4,
+  activeMonth: 7,
+};
+
+var GRADUATE_GATE = { minPoints: 98 };
+
+var MASTER_GATE = { minPoints: 163 };
+
+var GRADUATE_TARGETS = {
+  appliedLearning: 15,
+  practicePacks: 10,
+  pdfAssignments: 5,
+  activeMonths: 4,
+};
+
+var MASTER_TARGETS = {
+  appliedLearning: 22,
+  practicePacks: 17,
+  pdfAssignments: 9,
+  activeMonths: 7,
+};
+
+var KEEPALIVE_DECAY_DAYS = 60;
+
+
+
+function safeNum(value, fallback) {
+  return typeof value === "number" && !Number.isNaN(value) ? value : fallback;
+}
+
+function normaliseStats(raw) {
+  var stats = raw || {};
+  return {
+    foundationModulesOpened: safeNum(stats.foundationModulesOpened, 0),
+    cameraOpened: safeNum(stats.cameraOpened, 0),
+    compositionOpened: safeNum(stats.compositionOpened, 0),
+    pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
+    totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
+    examsPassed: safeNum(stats.examsPassed, 0),
+    appliedLearningOpened: stats.appliedLearningOpened == null ? null : safeNum(stats.appliedLearningOpened, 0),
+    practicePacksOpened: stats.practicePacksOpened == null ? null : safeNum(stats.practicePacksOpened, 0),
+    distinctActiveMonthsAllTime:
+      stats.distinctActiveMonthsAllTime == null ? null : safeNum(stats.distinctActiveMonthsAllTime, 0),
+  };
+}
+
+function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded) {
+  if (modulesOpened < FOUNDATION_GATE.minModules) return false;
+  if (engagementDegraded) return true;
+  return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
+}
+
+function isPractitionerGateEarned(stats) {
+  if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) {
+    return false;
+  }
+  if (
+    PRACTITIONER_GATE.requireAllComposition &&
+    stats.compositionOpened < COMPOSITION_MODULE_PATHS.length
+  ) {
+    return false;
+  }
+  if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
+  if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
+  return true;
+}
+
+function isCertifiedGateEarned(stats) {
+  if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
+  if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+  return true;
+}
+
+function isLongevityDegraded(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened == null ||
+    safe.practicePacksOpened == null ||
+    safe.distinctActiveMonthsAllTime == null
+  );
+}
+
+function computeLongevityPoints(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened * POINTS_WEIGHTS.appliedLearning +
+    safe.practicePacksOpened * POINTS_WEIGHTS.practicePack +
+    safe.pdfAssignmentsOpened * POINTS_WEIGHTS.pdfAssignment +
+    safe.distinctActiveMonthsAllTime * POINTS_WEIGHTS.activeMonth
+  );
+}
+
+function warnLongevityDegraded() {
+  if (console.warn) {
+    console.warn("[badge-gates] engagementDegraded: Graduate/Master blocked (longevity fields missing)");
+  }
+}
+
+function isGraduateGateEarned(stats, hasConverted, engagementDegraded) {
+  if (!hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= GRADUATE_GATE.minPoints;
+}
+
+function isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded) {
+  if (!graduateEarned || !hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= MASTER_GATE.minPoints;
+}
+
+function daysSinceActivity(lastActivityAt, nowMs) {
+  if (!lastActivityAt) return Infinity;
+  var t = new Date(lastActivityAt).getTime();
+  if (Number.isNaN(t)) return Infinity;
+  var DAY_MS_LOCAL = 86400000;
+  return Math.floor((nowMs - t) / DAY_MS_LOCAL);
+}
+
+function isSummitBadgePaused(earned, badgeKey, lastActivityAt, nowMs) {
+  if (!earned || (badgeKey !== "graduate" && badgeKey !== "master")) return false;
+  return daysSinceActivity(lastActivityAt, nowMs) >= KEEPALIVE_DECAY_DAYS;
+}
+
+function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gateContext) {
+  var ctx = gateContext || {};
+  var hasConverted = ctx.hasConverted === true;
+  var graduateEarned = ctx.graduateEarned === true;
+
+  if (stage.alwaysEarned) return true;
+  if (stage.foundationGate) {
+    return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
+  }
+  if (stage.practitionerGate) return isPractitionerGateEarned(stats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(stats);
+  if (stage.graduateGate) return isGraduateGateEarned(stats, hasConverted, engagementDegraded);
+  if (stage.masterGate) return isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded);
+  if (stage.minExams) return stats.examsPassed >= stage.minExams;
+  return false;
+}
+
+function computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext) {
+  var safeStats = normaliseStats(stats);
+  var safeDays = safeNum(activeDays, 0);
+  var degraded = engagementDegraded === true;
+  var ctx = gateContext || {};
+  var nowMs = typeof ctx.nowMs === "number" ? ctx.nowMs : Date.now();
+  var canEarnHigher = true;
+  var graduateEarned = false;
+
+  return JOURNEY_STAGES.map(function(stage){
+    var earned = false;
+    var stageCtx = Object.assign({}, ctx, { graduateEarned });
+    if (canEarnHigher) {
+      earned = isStageConditionsMet(stage, safeStats, safeDays, degraded, stageCtx);
+      if (!earned) canEarnHigher = false;
+    }
+    if (stage.key === "graduate" && earned) graduateEarned = true;
+    var paused = isSummitBadgePaused(earned, stage.key, ctx.lastActivityAt, nowMs);
+    return {
+      key: stage.key,
+      label: stage.label,
+      earned,
+      paused: paused === true,
+      colour: stage.colour,
+      stars: stage.stars,
+      iconClass: stage.iconClass,
+      sublabel: stage.sublabel,
+    };
+  });
+}
+
+function getHighestConsecutiveEarned(badges) {
+  var current = badges[0];
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) current = badges[i];
+    else break;
+  }
+  return current;
+}
+
+function getCurrentStage(badges) {
+  var current = getHighestConsecutiveEarned(badges);
+  return {
+    key: current.key,
+    label: current.label,
+    levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
+    levelTotal: JOURNEY_STAGES.length,
+    colour: current.colour,
+    stars: current.stars,
+    iconClass: current.iconClass,
+    sublabel: current.sublabel,
+    paused: current.paused === true,
+  };
+}
+
+function getNextUnearnedBadge(badges) {
+  for (var i = 0; i < badges.length; i += 1) {
+    if (!badges[i].earned) return badges[i];
+  }
+  return null;
+}
+
+function practitionerRequirementsMet(stats) {
+  var safeStats = normaliseStats(stats);
+  var total = 4;
+  var met = 0;
+  if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) {
+    met += 1;
+  }
+  if (
+    !PRACTITIONER_GATE.requireAllComposition ||
+    safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length
+  ) {
+    met += 1;
+  }
+  if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met += 1;
+  if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met += 1;
+  return { met, total };
+}
+
+function graduateRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = GRADUATE_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function masterRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = MASTER_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function componentRatio(current, target) {
+  if (target <= 0) return 100;
+  var val = current == null ? 0 : current;
+  return Math.min(100, (val / target) * 100);
+}
+
+function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+  var safe = normaliseStats(stats);
+  var next = getNextUnearnedBadge(badges);
+  var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
+
+  if (!next) {
+    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null };
+  }
+
+  if ((next.key === "graduate" || next.key === "master") && isLongevityDegraded(stats)) {
+    var pct = Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+    return { pct, label: `${pct}% of the foundations course`, degraded: true, nextKey: next.key };
+  }
+
+  var ratios = [];
+  if (next.key === "foundation") {
+    ratios.push(componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules));
+    if (!engagementDegraded) {
+      ratios.push(componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays));
+    }
+  } else if (next.key === "practitioner") {
+    ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
+    ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minExamsPassed));
+  } else if (next.key === "certified") {
+    ratios.push(componentRatio(safe.examsPassed, 15));
+    ratios.push(componentRatio(safe.totalModulesOpened, CERTIFIED_GATE.minModulesOpened));
+  } else if (next.key === "graduate") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, GRADUATE_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, GRADUATE_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, GRADUATE_TARGETS.activeMonths));
+  } else if (next.key === "master") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, MASTER_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, MASTER_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, MASTER_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, MASTER_TARGETS.activeMonths));
+  }
+
+  var pct = ratios.length
+    ? Math.round(ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length)
+    : Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+  return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key };
+}
+
+function computeTrackFillPct(badges, progressPct) {
+  if (!badges || !badges.length) return 0;
+  var segmentCount = badges.length - 1;
+  if (segmentCount <= 0) return 100;
+  if (!getNextUnearnedBadge(badges)) return 100;
+  var lastEarnedIdx = -1;
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) lastEarnedIdx = i;
+    else break;
+  }
+  var fillUnits = lastEarnedIdx + safeNum(progressPct, 0) / 100;
+  return Math.min(100, Math.round((fillUnits / segmentCount) * 100));
+}
+
+  // END BADGE-GATES-SYNC
+
+
+
+  function journeyIconSvg(iconClass){
+
+    return JOURNEY_ICON_SVGS[iconClass] || JOURNEY_ICON_SVGS["ti-school"];
+
+  }
+
+
+
+  var TILE_ARROW_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+
+  var CHEVRON_TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
+
+
+
+  function buildTileArrow(){
+
+    var el = document.createElement("div");
+
+    el.className = "ar-do-next-strip__tile-arrow";
+
+    el.setAttribute("aria-hidden", "true");
+
+    el.innerHTML = TILE_ARROW_SVG;
+
+    return el;
+
+  }
+
+
+
+  function buildJourneyArrow(){
+
+    var el = document.createElement("div");
+
+    el.className = "ar-do-next-badge-rail__arrow";
+
+    el.setAttribute("aria-hidden", "true");
+
+    el.innerHTML = TILE_ARROW_SVG;
+
+    return el;
+
+  }
+
+
+
+  var CRITERIA_CHECK_SVG = '<svg class="ar-do-next-criteria-icon ar-do-next-criteria-icon--met" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
+
+  var CRITERIA_EMPTY_SVG = '<svg class="ar-do-next-criteria-icon ar-do-next-criteria-icon--unmet" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>';
+
+  var activeBadgeTooltipBtn = null;
+
+
+
+  function buildBadgeCriteriaContent(stageKey, stats, activeDays, engagementDegraded){
+
+    if (stageKey === "enrolled") return { type: "soft", text: "Joined - automatic" };
+
+    if (stageKey === "graduate") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Applied Learning", current: stats.appliedLearningOpened == null ? 0 : stats.appliedLearningOpened, target: GRADUATE_TARGETS.appliedLearning, met: stats.appliedLearningOpened != null && stats.appliedLearningOpened >= GRADUATE_TARGETS.appliedLearning },
+
+          { label: "Practice packs", current: stats.practicePacksOpened == null ? 0 : stats.practicePacksOpened, target: GRADUATE_TARGETS.practicePacks, met: stats.practicePacksOpened != null && stats.practicePacksOpened >= GRADUATE_TARGETS.practicePacks },
+
+          { label: "PDF assignments", current: stats.pdfAssignmentsOpened, target: GRADUATE_TARGETS.pdfAssignments, met: stats.pdfAssignmentsOpened >= GRADUATE_TARGETS.pdfAssignments },
+
+          { label: "Active months", current: stats.distinctActiveMonthsAllTime == null ? 0 : stats.distinctActiveMonthsAllTime, target: GRADUATE_TARGETS.activeMonths, met: stats.distinctActiveMonthsAllTime != null && stats.distinctActiveMonthsAllTime >= GRADUATE_TARGETS.activeMonths }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "master") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Applied Learning", current: stats.appliedLearningOpened == null ? 0 : stats.appliedLearningOpened, target: MASTER_TARGETS.appliedLearning, met: stats.appliedLearningOpened != null && stats.appliedLearningOpened >= MASTER_TARGETS.appliedLearning },
+
+          { label: "Practice packs", current: stats.practicePacksOpened == null ? 0 : stats.practicePacksOpened, target: MASTER_TARGETS.practicePacks, met: stats.practicePacksOpened != null && stats.practicePacksOpened >= MASTER_TARGETS.practicePacks },
+
+          { label: "PDF assignments", current: stats.pdfAssignmentsOpened, target: MASTER_TARGETS.pdfAssignments, met: stats.pdfAssignmentsOpened >= MASTER_TARGETS.pdfAssignments },
+
+          { label: "Active months", current: stats.distinctActiveMonthsAllTime == null ? 0 : stats.distinctActiveMonthsAllTime, target: MASTER_TARGETS.activeMonths, met: stats.distinctActiveMonthsAllTime != null && stats.distinctActiveMonthsAllTime >= MASTER_TARGETS.activeMonths }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "foundation") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Modules opened", current: stats.foundationModulesOpened, target: FOUNDATION_GATE.minModules, met: stats.foundationModulesOpened >= FOUNDATION_GATE.minModules },
+
+          { label: "Active days", current: engagementDegraded ? 0 : activeDays, target: FOUNDATION_GATE.minActiveDays, met: engagementDegraded || activeDays >= FOUNDATION_GATE.minActiveDays }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "practitioner") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Camera modules", current: stats.cameraOpened, target: CAMERA_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllCamera || stats.cameraOpened >= CAMERA_MODULE_PATHS.length },
+
+          { label: "Composition modules", current: stats.compositionOpened, target: COMPOSITION_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllComposition || stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length },
+
+          { label: "Assignments", current: stats.pdfAssignmentsOpened, target: PRACTITIONER_GATE.minPdfAssignments, met: stats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments },
+
+          { label: "Exams passed", current: stats.examsPassed, target: PRACTITIONER_GATE.minExamsPassed, met: stats.examsPassed >= PRACTITIONER_GATE.minExamsPassed }
+
+        ]
+
+      };
+
+    }
+
+    if (stageKey === "certified") {
+
+      return {
+
+        type: "rows",
+
+        rows: [
+
+          { label: "Exams passed", current: stats.examsPassed, target: 15, met: !CERTIFIED_GATE.requireAllExamsPassed || stats.examsPassed >= 15 },
+
+          { label: "Modules opened", current: stats.totalModulesOpened, target: CERTIFIED_GATE.minModulesOpened, met: stats.totalModulesOpened >= CERTIFIED_GATE.minModulesOpened }
+
+        ]
+
+      };
+
+    }
+
+    return { type: "soft", text: "" };
+
+  }
+
+
+
+  function appendCriteriaContent(parent, criteria){
+
+    if (!criteria || criteria.type === "soft") {
+
+      var soft = document.createElement("p");
+
+      soft.className = "ar-do-next-criteria-soft";
+
+      soft.textContent = criteria && criteria.text ? criteria.text : "";
+
+      parent.appendChild(soft);
+
+      return;
+
+    }
+
+    var list = document.createElement("ul");
+
+    list.className = "ar-do-next-criteria-list";
+
+    criteria.rows.forEach(function(row){
+
+      var li = document.createElement("li");
+
+      li.className = "ar-do-next-criteria-row " + (row.met ? "ar-do-next-criteria-row--met" : "ar-do-next-criteria-row--unmet");
+
+      li.innerHTML = (row.met ? CRITERIA_CHECK_SVG : CRITERIA_EMPTY_SVG) +
+
+        '<span>' + row.label + " (" + row.current + "/" + row.target + ")</span>";
+
+      list.appendChild(li);
+
+    });
+
+    parent.appendChild(list);
+
+  }
+
+
+
+  function isUpcomingBadge(badges, badgeKey){
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) return false;
+
+    var nextIdx = -1;
+
+    var keyIdx = -1;
+
+    for (var i = 0; i < JOURNEY_STAGES.length; i++) {
+
+      if (JOURNEY_STAGES[i].key === next.key) nextIdx = i;
+
+      if (JOURNEY_STAGES[i].key === badgeKey) keyIdx = i;
+
+    }
+
+    return keyIdx >= nextIdx && keyIdx >= 0;
+
+  }
+
+
+
+  function resetBadgeTooltipStyles(tooltip){
+
+    if (!tooltip) return;
+
+    tooltip.classList.remove("is-open");
+
+    tooltip.style.display = "";
+
+    tooltip.style.visibility = "";
+
+    tooltip.style.top = "";
+
+    tooltip.style.left = "";
+
+  }
+
+
+
+  function hideAllBadgeTooltips(except){
+
+    document.querySelectorAll(".ar-do-next-badge__tooltip--fixed").forEach(function(tip){
+
+      if (except && tip === except) return;
+
+      resetBadgeTooltipStyles(tip);
+
+    });
+
+  }
+
+
+
+  function positionBadgeTooltip(trigger, tooltip){
+
+    tooltip.style.visibility = "hidden";
+
+    tooltip.style.display = "block";
+
+    var rect = trigger.getBoundingClientRect();
+
+    var tipW = tooltip.offsetWidth || 220;
+
+    var tipH = tooltip.offsetHeight || 120;
+
+    var gap = 8;
+
+    var top = rect.bottom + gap;
+
+    if (top + tipH > window.innerHeight - gap && rect.top - tipH - gap >= gap) top = rect.top - tipH - gap;
+
+    var left = tooltip.classList.contains("ar-do-next-badge__tooltip--left")
+
+      ? rect.right - tipW
+
+      : rect.left + rect.width / 2 - tipW / 2;
+
+    left = Math.max(gap, Math.min(left, window.innerWidth - tipW - gap));
+
+    tooltip.style.top = Math.round(top) + "px";
+
+    tooltip.style.left = Math.round(left) + "px";
+
+    tooltip.style.visibility = "";
+
+    tooltip.style.display = "";
+
+  }
+
+
+
+  function openBadgeTooltip(trigger, tooltip){
+
+    hideAllBadgeTooltips(tooltip);
+
+    positionBadgeTooltip(trigger, tooltip);
+
+    tooltip.classList.add("is-open");
+
+  }
+
+
+
+  function setBadgeTooltipOpen(trigger, tooltip, open){
+
+    if (open) {
+
+      if (activeBadgeTooltipBtn && activeBadgeTooltipBtn !== trigger) closeBadgeTooltip();
+
+      openBadgeTooltip(trigger, tooltip);
+
+      return;
+
+    }
+
+    if (activeBadgeTooltipBtn === trigger) return;
+
+    resetBadgeTooltipStyles(tooltip);
+
+  }
+
+
+
+  function closeBadgeTooltip(){
+
+    if (!activeBadgeTooltipBtn) return;
+
+    activeBadgeTooltipBtn.setAttribute("aria-expanded", "false");
+
+    resetBadgeTooltipStyles(activeBadgeTooltipBtn._arTooltip);
+
+    activeBadgeTooltipBtn = null;
+
+  }
+
+
+
+  function wireBadgeTooltipDismiss(){
+
+    if (window.__arBadgeTooltipDismissWired) return;
+
+    window.__arBadgeTooltipDismissWired = true;
+
+    document.addEventListener("click", function(e){
+
+      if (e.target.closest(".ar-do-next-badge__trigger")) return;
+
+      closeBadgeTooltip();
+
+      hideAllBadgeTooltips();
+
+    });
+
+    document.addEventListener("keydown", function(e){
+
+      if (e.key === "Escape") { closeBadgeTooltip(); hideAllBadgeTooltips(); }
+
+    });
+
+  }
+
+
+
+  function attachBadgeTooltip(item, circle, badgeKey, stats, activeDays, engagementDegraded, badges){
+
+    var criteria = buildBadgeCriteriaContent(badgeKey, stats, activeDays, engagementDegraded);
+
+    var trigger = document.createElement("button");
+
+    trigger.type = "button";
+
+    trigger.className = "ar-do-next-badge__trigger";
+
+    trigger.setAttribute("aria-expanded", "false");
+
+    trigger.setAttribute("aria-label", JOURNEY_STAGES.filter(function(s){ return s.key === badgeKey; })[0].label + " requirements");
+
+    trigger.appendChild(circle);
+
+    var tooltip = document.createElement("div");
+
+    tooltip.className = "ar-do-next-badge__tooltip ar-do-next-badge__tooltip--fixed" +
+
+      (badgeKey === "master" ? " ar-do-next-badge__tooltip--left" : "");
+
+    tooltip.setAttribute("role", "tooltip");
+
+    appendCriteriaContent(tooltip, criteria);
+
+    item.classList.add("ar-do-next-badge--has-tooltip");
+
+    item.insertBefore(trigger, item.firstChild);
+
+    document.body.appendChild(tooltip);
+
+    trigger._arTooltip = tooltip;
+
+    trigger.addEventListener("mouseenter", function(){ setBadgeTooltipOpen(trigger, tooltip, true); });
+
+    trigger.addEventListener("mouseleave", function(){ setBadgeTooltipOpen(trigger, tooltip, false); });
+
+    trigger.addEventListener("focus", function(){ setBadgeTooltipOpen(trigger, tooltip, true); });
+
+    trigger.addEventListener("blur", function(){ setBadgeTooltipOpen(trigger, tooltip, false); });
+
+    trigger.addEventListener("click", function(e){
+
+      e.stopPropagation();
+
+      if (activeBadgeTooltipBtn === trigger) { closeBadgeTooltip(); return; }
+
+      closeBadgeTooltip();
+
+      trigger.setAttribute("aria-expanded", "true");
+
+      openBadgeTooltip(trigger, tooltip);
+
+      activeBadgeTooltipBtn = trigger;
+
+    });
+
+  }
+
+
+
+  function wireJourneyToggle(){
+
+    var toggle = document.getElementById("ar-do-next-journey-toggle");
+
+    var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
+
+    if (!toggle || !card || toggle.getAttribute("data-wired")) return;
+
+    toggle.setAttribute("data-wired", "true");
+
+    toggle.addEventListener("click", function(){
+
+      var expanded = card.classList.toggle("is-journey-expanded");
+
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+      toggle.setAttribute(
+
+        "data-tip",
+
+        expanded ? "Collapse Your Journey coach panel" : "Expand Your Journey coach panel"
+
+      );
+
+      scheduleLayout();
+
+    });
+
+  }
+
+
+
+  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext, badges){
+
+    wireBadgeTooltipDismiss();
+
+    if (!badges) badges = computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext);
+
+    var earnedCount = badges.filter(function(b){ return b.earned; }).length;
+
+    var rail = document.createElement("div");
+
+    rail.className = "ar-do-next-badge-rail";
+
+    var row = document.createElement("div");
+
+    row.className = "ar-do-next-badge-rail__row";
+
+    badges.forEach(function(badge, idx){
+
+      if (idx > 0) row.appendChild(buildJourneyArrow());
+
+      var item = document.createElement("div");
+
+      item.className = "ar-do-next-badge " + (badge.earned ? "ar-do-next-badge--earned" : "ar-do-next-badge--ghost") + (badge.paused ? " ar-do-next-badge--paused" : "");
+
+      var circle = document.createElement("div");
+
+      circle.className = "ar-do-next-badge__circle";
+
+      circle.innerHTML = journeyIconSvg(badge.iconClass);
+
+      applyBadgeCircleStyle(circle, badge.colour, badge.earned, badge.key);
+
+      if (isUpcomingBadge(badges, badge.key)) attachBadgeTooltip(item, circle, badge.key, stats, activeDays, engagementDegraded, badges);
+
+      else item.appendChild(circle);
+
+      var label = document.createElement("p");
+
+      label.className = "ar-do-next-badge__label";
+
+      label.textContent = badge.label;
+
+      label.style.color = badge.earned ? "#fff" : "#cdd2da";
+
+      item.appendChild(label);
+
+      if (badge.stars > 0) {
+
+        item.appendChild(buildStarRow(badge.stars, badge.earned, "ar-do-next-badge__stars"));
+
+      } else {
+
+        var starSpacer = document.createElement("div");
+
+        starSpacer.className = "ar-do-next-badge__stars ar-do-next-badge__stars--spacer";
+
+        starSpacer.setAttribute("aria-hidden", "true");
+
+        item.appendChild(starSpacer);
+
+      }
+
+      var sub = document.createElement("p");
+
+      sub.className = "ar-do-next-badge__sublabel";
+
+      sub.textContent = badge.paused ? "Paused - log in to reactivate" : (JOURNEY_STAGES.filter(function(s){ return s.key === badge.key; })[0] || {}).sublabel || "";
+
+      sub.style.color = badge.earned ? earnedSublabelColour(badge.colour) : "#7a8088";
+
+      item.appendChild(sub);
+
+      row.appendChild(item);
+
+    });
+
+    rail.appendChild(row);
+
+    return { rail: rail, badges: badges, badgesEarned: earnedCount };
+
+  }
+
+
+
+  function injectBannerCurrentStage(badges){
+
+    var welcome = document.getElementById("ar-academy-header-welcome");
+
+    if (!welcome) return;
+
+    var current = getCurrentStage(badges);
+
+    var existing = document.getElementById("ar-do-next-banner-stage");
+
+    if (!existing) {
+
+      existing = document.createElement("div");
+
+      existing.id = "ar-do-next-banner-stage";
+
+      var copy = document.getElementById("ar-academy-header-welcome-copy");
+
+      if (copy && copy.parentNode === welcome) {
+
+        welcome.insertBefore(existing, copy);
+
+      } else {
+
+        welcome.insertBefore(existing, welcome.firstChild);
+
+      }
+
+    }
+
+    existing.innerHTML = "";
+
+    existing.className = "ar-do-next-banner-stage" + (current.paused ? " ar-do-next-banner-stage--paused" : "");
+
+    var circle = document.createElement("div");
+
+    circle.className = "ar-do-next-banner-stage__circle";
+
+    circle.innerHTML = journeyIconSvg(current.iconClass);
+
+    applyBadgeCircleStyle(circle, current.colour, true, current.key);
+
+    var label = document.createElement("p");
+
+    label.className = "ar-do-next-banner-stage__label";
+
+    label.textContent = current.label;
+
+    existing.appendChild(circle);
+
+    existing.appendChild(label);
+
+    if (current.stars > 0) {
+
+      existing.appendChild(buildStarRow(current.stars, true, "ar-do-next-banner-stage__stars"));
+
+    }
+
+    var caption = document.createElement("p");
+
+    caption.className = "ar-do-next-banner-stage__caption";
+
+    caption.textContent = "Level " + current.levelIndex + " of " + current.levelTotal;
+
+    existing.appendChild(caption);
+
+    return current;
+
+  }
+
+
+
+  function normalizePath(url){
+
+    if (!url || typeof url !== "string") return "/";
+
+    var path = url;
+
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+
+      try { path = new URL(path).pathname; } catch (e) {
+
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+
+        if (m) path = m[1];
+
+      }
+
+    }
+
+    path = path.split("?")[0].split("#")[0];
+
+    path = path.replace(/\/+$/, "") || "/";
+
+    if (path.charAt(0) !== "/") path = "/" + path;
+
+    return path;
+
+  }
+
+
+
+  function unwrapStoredJson(obj){
+
+    var cur = obj;
+
+    for (var i = 0; i < 10; i++) {
+
+      if (!cur || typeof cur !== "object") break;
+
+      if (!cur.data || typeof cur.data !== "object") break;
+
+      var d = cur.data;
+
+      var looks = (d.history && Array.isArray(d.history)) ||
+
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+
+        (d.arAcademy && typeof d.arAcademy === "object");
+
+      if (looks) { cur = d; continue; }
+
+      break;
+
+    }
+
+    return cur || {};
+
+  }
+
+
+
+  function normalizeMemberJson(jsonRes){
+
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+
+    return unwrapStoredJson(stored);
+
+  }
+
+
+
+  function getOpenedSet(normalized){
+
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+
+    var set = new Set();
+
+    Object.keys(opened).forEach(function(key){
+
+      var p = normalizePath(key);
+
+      if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
+
+    });
+
+    return set;
+
+  }
+
+
+
+  function firstUnopenedArticle(openedSet){
+
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { idx: i, mod: ARTICLE_MODULES[i] };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function firstUnopenedAssignment(openedSet){
+
+    for (var i = 0; i < PDF_ASSIGNMENT_PATHS.length; i++) {
+
+      if (!openedSet.has(PDF_ASSIGNMENT_PATHS[i])) return { idx: i, path: PDF_ASSIGNMENT_PATHS[i] };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function assignmentNum(idx){ return String(idx + 1).padStart(2, "0"); }
+
+
+
+  function sendModuleOpenBeacon(memberId, modulePath, linkEl){
+
+    try {
+
+      if (!memberId || !modulePath || typeof fetch !== "function") return;
+
+      fetch(TRACK_TILE_OPEN_URL, {
+
+        method: "POST",
+
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({
+
+          member_id: memberId,
+
+          section: "modules",
+
+          key: modulePath,
+
+          title: linkEl ? (linkEl.getAttribute("title") || "") : "",
+
+          url: linkEl ? (linkEl.getAttribute("href") || "") : "",
+
+          category: "assignment"
+
+        }),
+
+        keepalive: true,
+
+        credentials: "omit",
+
+        mode: "cors"
+
+      }).catch(function(){ /* best-effort */ });
+
+    } catch (e) { /* ignore */ }
+
+  }
+
+
+
+  async function persistModuleOpen(ms, modulePath, title, category, memberJsonIn){
+
+    var memberJson = memberJsonIn;
+    var rawJson = null;
+    if (!memberJson && globalThis.__arMsReader) {
+      var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      rawJson = bundle.rawJson;
+      memberJson = normalizeMemberJson(bundle.rawJson);
+    }
+    if (!memberJson) memberJson = {};
+
+    if (!memberJson.arAcademy) memberJson.arAcademy = {};
+
+    if (!memberJson.arAcademy.modules) memberJson.arAcademy.modules = {};
+
+    if (!memberJson.arAcademy.modules.opened) memberJson.arAcademy.modules.opened = {};
+
+    var nowIso = new Date().toISOString();
+
+    memberJson.arAcademy.modules.opened[modulePath] = {
+
+      cat: category,
+
+      t: title,
+
+      at: nowIso,
+
+      lastAt: nowIso
+
+    };
+
+    await ms.updateMemberJSON({ json: memberJson });
+    if (globalThis.__arMsReader) globalThis.__arMsReader.patchJson(memberJson, rawJson);
+
+  }
+
+
+
+  function wirePracticeAssignmentLink(a, tile){
+
+    if (!tile.trackPath || a.getAttribute("data-wired-module-track") === "true") return;
+
+    a.setAttribute("data-wired-module-track", "true");
+
+    a.addEventListener("click", function(e){
+
+      e.preventDefault();
+
+      var path = normalizePath(tile.trackPath);
+
+      var ms = doNextRuntime.ms;
+
+      var memberId = doNextRuntime.memberId;
+
+      window.open(tile.href, "_blank", "noopener,noreferrer");
+
+      if (!ms || !memberId || !globalThis.__arMsReader) return;
+
+      (async function(){
+
+        try {
+
+          var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+
+          var memberJson = normalizeMemberJson(bundle.rawJson);
+
+          var openedMap = (memberJson.arAcademy && memberJson.arAcademy.modules && memberJson.arAcademy.modules.opened) || {};
+
+          var already = !!(openedMap[path] || openedMap[tile.trackPath]);
+
+          if (!already) {
+
+            sendModuleOpenBeacon(memberId, path, a);
+
+            await persistModuleOpen(ms, path, tile.action, "assignment", memberJson);
+
+            setTimeout(init, 300);
+
+          }
+
+        } catch (err) {
+
+          console.warn("[do-next] assignment track failed:", err);
+
+        }
+
+      })();
+
+    });
+
+  }
+
+
+
+  function getMemberId(member){
+
+    if (!member) return "";
+
+    if (member.id) return String(member.id);
+
+    if (member.data && member.data.id) return String(member.data.id);
+
+    return "";
+
+  }
+
+
+
+  function parseExamProgress(progressData){
+
+    var statusMap = {};
+
+    var source = "none";
+
+    var examsPassed = 0;
+
+    var nextExamModuleId = null;
+
+    var hasData = false;
+
+
+
+    EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
+
+
+
+    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+
+      hasData = true;
+
+      progressData.modules.forEach(function(m){
+
+        if (!m || !m.moduleId) return;
+
+        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
+
+        statusMap[m.moduleId] = m.status || "not_taken";
+
+      });
+
+      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      source = "modules-count";
+
+    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+
+      hasData = true;
+
+      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
+
+      source = "summary.passedCount";
+
+    }
+
+
+
+    if (source === "modules-count") {
+
+      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+        if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
+
+          nextExamModuleId = EXAM_MODULE_IDS[i];
+
+          break;
+
+        }
+
+      }
+
+    }
+
+
+
+    return {
+
+      statusMap: statusMap,
+
+      examsPassed: examsPassed,
+
+      nextExamModuleId: nextExamModuleId,
+
+      source: source,
+
+      hasData: hasData,
+
+      hasModuleStatus: source === "modules-count"
+
+    };
+
+  }
+
+
+
+  function firstUnpassedExam(statusMap){
+
+    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
+
+      var id = EXAM_MODULE_IDS[i];
+
+      if (statusMap[id] !== "passed") return { idx: i, id: id };
+
+    }
+
+    return null;
+
+  }
+
+
+
+  function shortArticleTitle(t){
+
+    return String(t || "").replace(/^(\d{2})\s+/, "$1 ");
+
+  }
+
+
+
+  function examNum(idx){ return String(idx + 1).padStart(2, "0"); }
+
+
+
+  function pluralWord(n, singular, plural){
+
+    return n === 1 ? singular : plural;
+
+  }
+
+
+
+  function formatFoundationProximity(modulesOpened, activeDays, engagementDegraded){
+
+    var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+
+    if (engagementDegraded) {
+
+      if (!modShort) return "";
+
+      return modShort === 1 ? "Open 1 more module to earn Foundation" : "Open " + modShort + " more modules to earn Foundation";
+
+    }
+
+    var dayShort = Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+    if (!modShort && !dayShort) return "";
+
+    if (modShort && dayShort) {
+
+      return "You're " + dayShort + " " + pluralWord(dayShort, "day", "days") +
+
+        " and " + modShort + " " + pluralWord(modShort, "module", "modules") +
+
+        " from your Foundation badge";
+
+    }
+
+    if (modShort) {
+
+      return modShort === 1 ? "Open 1 more module to earn Foundation" : "Open " + modShort + " more modules to earn Foundation";
+
+    }
+
+    return dayShort === 1 ? "1 more active day to earn Foundation" : dayShort + " more active days to earn Foundation";
+
+  }
+
+
+
+  function formatPractitionerProximity(stats){
+
+    var r = practitionerRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Practitioner";
+
+    return r.met + " of " + r.total + " requirements complete for Practitioner";
+
+  }
+
+
+
+  function formatGraduateProximity(stats){
+
+    var r = graduateRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Graduate";
+
+    return r.met + " of " + r.total + " requirements complete for Graduate";
+
+  }
+
+
+
+  function formatMasterProximity(stats){
+
+    var r = masterRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Master";
+
+    return r.met + " of " + r.total + " requirements complete for Master";
+
+  }
+
+
+
+  function formatCertifiedProximity(stats){
+
+    var parts = [];
+
+    if (stats.examsPassed < 15) {
+
+      var examLeft = 15 - stats.examsPassed;
+
+      parts.push(examLeft + " " + pluralWord(examLeft, "exam", "exams"));
+
+    }
+
+    if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) {
+
+      var modLeft = CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened;
+
+      parts.push(modLeft + " " + pluralWord(modLeft, "module", "modules"));
+
+    }
+
+    if (!parts.length) return "";
+
+    if (parts.length === 1) return parts[0] + " from Certified";
+
+    return parts.join(" and ") + " from Certified";
+
+  }
+
+
+
+  function formatLongevityCountsDetail(stats, targets){
+
+    var safe = normaliseStats(stats);
+
+    function show(val){ return val == null ? 0 : val; }
+
+    return " - " + show(safe.appliedLearningOpened) + "/" + targets.appliedLearning + " applied guides, " +
+
+      show(safe.practicePacksOpened) + "/" + targets.practicePacks + " packs, " +
+
+      show(safe.pdfAssignmentsOpened) + "/" + targets.pdfAssignments + " assignments, " +
+
+      show(safe.distinctActiveMonthsAllTime) + "/" + targets.activeMonths + " active months";
+
+  }
+
+
+
+  function formatMomentumCountsDetail(badges, stats, openedCount, examsPassed){
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) return "";
+
+    if (next.key === "graduate") return formatLongevityCountsDetail(stats, GRADUATE_TARGETS);
+
+    if (next.key === "master") return formatLongevityCountsDetail(stats, MASTER_TARGETS);
+
+    return " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
+
+  }
+
+
+
+  function isTrialNudgeEligible(engagement){
+
+    return engagement && engagement.isTrial === true &&
+
+      engagement.hasConverted !== true &&
+
+      typeof engagement.daysLeftInTrial === "number" && engagement.daysLeftInTrial > 0;
+
+  }
+
+
+
+  function formatTrialNudgeClause(engagement, rag, modulesOpened, activeDays, engagementDegraded, badges){
+
+    if (!isTrialNudgeEligible(engagement)) return "";
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) return "";
+
+    var days = engagement.daysLeftInTrial;
+
+    if (next.key === "foundation") {
+
+      if (!modulesOpened && (!activeDays || engagementDegraded)) {
+
+        return "Welcome - you've got " + days + " days to explore. Open a module to get going.";
+
+      }
+
+      var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+
+      var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+      var nearlyThere = rag.state === "green" ||
+
+        (modShort <= 1 && dayShort <= 1 && (modShort > 0 || dayShort > 0));
+
+      if (nearlyThere) {
+
+        return "You've got " + days + " days to earn your Foundation badge - you're nearly there.";
+
+      }
+
+      return "Lots of time to earn your Foundation badge - " + days + " days to enjoy the modules.";
+
+    }
+
+    if (next.key === "practitioner") {
+
+      return "Lots of time to keep exploring - " + days + " days left in your trial.";
+
+    }
+
+    return "You've got " + days + " days left in your trial to keep building.";
+
+  }
+
+
+
+  function formatGoalTileTrialLine(engagement, badges){
+
+    if (!isTrialNudgeEligible(engagement)) return "";
+
+    if (!getNextUnearnedBadge(badges)) return "";
+
+    return "Plenty of time in your trial to get there.";
+
+  }
+
+
+
+  function computeMomentumRag(badges, stats, activeDays, engagementDegraded){
+
+    var foundation = badges.filter(function(b){ return b.key === "foundation"; })[0];
+
+    if (!foundation || !foundation.earned) {
+
+      var modShort = Math.max(0, FOUNDATION_GATE.minModules - stats.foundationModulesOpened);
+
+      var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+
+      var proximity = formatFoundationProximity(stats.foundationModulesOpened, activeDays, engagementDegraded);
+
+      if (!stats.foundationModulesOpened && (!activeDays || engagementDegraded)) {
+
+        return { state: "red", label: proximity || "Just getting started", color: RAG_COLORS.red };
+
+      }
+
+      if (!engagementDegraded && modShort <= 1 && dayShort <= 1 && (modShort > 0 || dayShort > 0)) {
+
+        return { state: "green", label: "Almost there - 1 step from Foundation", color: RAG_COLORS.green };
+
+      }
+
+      return { state: "amber", label: proximity || "Building momentum", color: RAG_COLORS.amber };
+
+    }
+
+    var practitioner = badges.filter(function(b){ return b.key === "practitioner"; })[0];
+
+    if (practitioner && !practitioner.earned) {
+
+      var pReq = practitionerRequirementsMet(stats);
+
+      var pLabel = formatPractitionerProximity(stats);
+
+      if (pReq.met >= pReq.total - 1 && pReq.met < pReq.total) return { state: "green", label: pLabel || "Almost there", color: RAG_COLORS.green };
+
+      return { state: "amber", label: pLabel || "Building momentum", color: RAG_COLORS.amber };
+
+    }
+
+    var certified = badges.filter(function(b){ return b.key === "certified"; })[0];
+
+    if (certified && !certified.earned) {
+
+      var cLabel = formatCertifiedProximity(stats);
+
+      var examLeft = Math.max(0, 15 - stats.examsPassed);
+
+      var modLeft = Math.max(0, CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened);
+
+      if (examLeft <= 1 && modLeft <= 1 && (examLeft > 0 || modLeft > 0)) {
+
+        return { state: "green", label: cLabel || "Almost there for Certified", color: RAG_COLORS.green };
+
+      }
+
+      return { state: "amber", label: cLabel || "Building toward Certified", color: RAG_COLORS.amber };
+
+    }
+
+    var graduate = badges.filter(function(b){ return b.key === "graduate"; })[0];
+
+    if (graduate && !graduate.earned) {
+
+      var gReq = graduateRequirementsMet(stats);
+
+      var gLabel = formatGraduateProximity(stats);
+
+      if (gReq.met >= gReq.total - 1 && gReq.met < gReq.total) return { state: "green", label: gLabel || "Almost there for Graduate", color: RAG_COLORS.green };
+
+      return { state: "amber", label: gLabel || "Building toward Graduate", color: RAG_COLORS.amber };
+
+    }
+
+    var master = badges.filter(function(b){ return b.key === "master"; })[0];
+
+    if (master && !master.earned) {
+
+      var mReq = masterRequirementsMet(stats);
+
+      var mLabel = formatMasterProximity(stats);
+
+      if (mReq.met >= mReq.total - 1 && mReq.met < mReq.total) return { state: "green", label: mLabel || "Almost there for Master", color: RAG_COLORS.green };
+
+      return { state: "amber", label: mLabel || "Building toward Master", color: RAG_COLORS.amber };
+
+    }
+
+    if (!getNextUnearnedBadge(badges)) {
+
+      return { state: "green", label: "All badges earned", color: RAG_COLORS.green };
+
+    }
+
+    return { state: "amber", label: "Building momentum", color: RAG_COLORS.amber };
+
+  }
+
+
+
+  function buildResumeTile(openedSet, examInfo, rag){
+
+    var openedCount = openedSet.size;
+
+    var nextArt = firstUnopenedArticle(openedSet);
+
+    var tile = { n: 1, label: "1 - Resume", variant: "resume", why: "Pick up where you left off" };
+
+    if (rag.state === "red") tile.why = "This is the most important step";
+
+    if (nextArt) {
+
+      var prefix = openedCount === 0 ? "Start here:" : "Continue:";
+
+      tile.action = prefix + " " + shortArticleTitle(nextArt.mod.t) + " \u2192";
+
+      tile.href = SITE + nextArt.mod.p;
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus && examInfo.examsPassed < 15) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take your next exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "Explore practice assignments \u2192";
+
+    tile.href = PRACTICE_URL;
+
+    return tile;
+
+  }
+
+
+
+  function buildTestTile(examInfo){
+
+    var tile = { n: 2, label: "2 - Test yourself", variant: "ghost-green", why: "Earns a certificate" };
+
+    if (examInfo.examsPassed >= 15) {
+
+      tile.action = "Review your certificates \u2192";
+
+      tile.href = EXAM_BASE;
+
+      tile.why = "All 15 exams passed";
+
+      return tile;
+
+    }
+
+    if (examInfo.hasModuleStatus) {
+
+      var nextExam = firstUnpassedExam(examInfo.statusMap);
+
+      if (nextExam) {
+
+        tile.action = "Take exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+
+        tile.href = EXAM_BASE + "?module=" + nextExam.id;
+
+        return tile;
+
+      }
+
+    }
+
+    tile.action = "View exams and certificates \u2192";
+
+    tile.href = EXAM_BASE;
+
+    return tile;
+
+  }
+
+
+
+  function buildPracticeTile(openedSet){
+
+    var tile = {
+
+      n: 3,
+
+      label: "3 - Put it into practice",
+
+      variant: "ghost-green"
+
+    };
+
+    var next = firstUnopenedAssignment(openedSet);
+
+    if (next) {
+
+      tile.action = "Open practical assignment " + assignmentNum(next.idx) + " \u2192";
+
+      tile.why = "Counts towards Practitioner";
+
+      tile.href = SITE + next.path;
+
+      tile.trackPath = next.path;
+
+      tile.target = "_blank";
+
+      tile.rel = "noopener noreferrer";
+
+      return tile;
+
+    }
+
+    tile.action = "Save a field checklist \u2192";
+
+    tile.why = "Take it on your next shoot";
+
+    tile.href = CHECKLISTS_URL;
+
+    return tile;
+
+  }
+
+
+
+  function buildGoalTile(stats, activeDays, engagementDegraded, engagement, badges){
+
+    var tile = { n: 4, variant: "amber", isGoalChecklist: true };
+
+    var trialLine = formatGoalTileTrialLine(engagement, badges);
+
+    if (trialLine) tile.trialLine = trialLine;
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) {
+
+      tile.label = "4 - Goal";
+
+      tile.criteria = { type: "soft", text: "You have earned every available badge." };
+
+      return { tile: tile, goalTarget: null, goalRemaining: 0 };
+
+    }
+
+    tile.label = "4 - Goal: " + next.label;
+
+    tile.criteria = buildBadgeCriteriaContent(next.key, stats, activeDays, engagementDegraded);
+
+    var rows = tile.criteria.type === "rows" ? tile.criteria.rows : [];
+
+    var goalRemaining = rows.filter(function(r){ return !r.met; }).length;
+
+    return { tile: tile, goalTarget: rows.length, goalRemaining: goalRemaining };
+
+  }
+
+
+
+  function buildStage1Tiles(openedSet, examInfo, rag, engagement, badges, gateStats, activeDays, engagementDegraded){
+
+    var goal = buildGoalTile(gateStats, activeDays, engagementDegraded, engagement, badges);
+
+    return {
+
+      tiles: [
+
+        buildResumeTile(openedSet, examInfo, rag),
+
+        buildTestTile(examInfo),
+
+        buildPracticeTile(openedSet),
+
+        goal.tile
+
+      ],
+
+      goalTarget: goal.goalTarget,
+
+      goalRemaining: goal.goalRemaining
+
+    };
+
+  }
+
+
+
+  function renderTile(tile){
+
+    if (tile.isGoalChecklist) {
+
+      var box = document.createElement("div");
+
+      box.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant + " ar-do-next-tile--goal-checklist";
+
+      var eyebrow = document.createElement("span");
+
+      eyebrow.className = "ar-do-next-tile__eyebrow";
+
+      eyebrow.textContent = tile.label;
+
+      box.appendChild(eyebrow);
+
+      appendCriteriaContent(box, tile.criteria);
+
+      if (tile.trialLine) {
+
+        var trialLine = document.createElement("span");
+
+        trialLine.className = "ar-do-next-tile__trial-line";
+
+        trialLine.textContent = tile.trialLine;
+
+        box.appendChild(trialLine);
+
+      }
+
+      return box;
+
+    }
+
+    var a = document.createElement("a");
+
+    a.className = "ar-do-next-tile ar-do-next-tile--" + tile.variant;
+
+    a.href = tile.href;
+
+    if (tile.target) a.target = tile.target;
+
+    if (tile.rel) a.rel = tile.rel;
+
+    if (tile.trackPath) wirePracticeAssignmentLink(a, tile);
+
+    var eyebrow = document.createElement("span");
+
+    eyebrow.className = "ar-do-next-tile__eyebrow";
+
+    eyebrow.textContent = tile.label;
+
+    var action = document.createElement("span");
+
+    action.className = "ar-do-next-tile__action";
+
+    action.textContent = tile.action;
+
+    var why = document.createElement("span");
+
+    why.className = "ar-do-next-tile__why";
+
+    why.textContent = tile.why;
+
+    a.appendChild(eyebrow);
+
+    a.appendChild(action);
+
+    a.appendChild(why);
+
+    if (tile.trialLine) {
+
+      var trialLine = document.createElement("span");
+
+      trialLine.className = "ar-do-next-tile__trial-line";
+
+      trialLine.textContent = tile.trialLine;
+
+      a.appendChild(trialLine);
+
+    }
+
+    return a;
+
+  }
+
+
+
+  function renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    var badgeRailEl = document.getElementById("ar-do-next-badge-rail");
+
+    var statusEl = document.getElementById("ar-do-next-status");
+
+    var barEl = document.getElementById("ar-do-next-milestone-bar");
+
+    var tilesEl = document.getElementById("ar-do-next-tiles");
+
+    if (!strip || !statusEl || !barEl || !tilesEl) return;
+
+
+
+    renderPreviewRibbon(strip, coachDebug);
+
+
+
+    var openedCount = openedSet.size;
+
+    var examsPassed = examInfo.examsPassed;
+
+    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
+
+      ? engagement.distinctActiveDaysFirst14d : 0;
+
+    var engagementDegraded = !engagement;
+
+    var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, openedSet, engagement);
+
+    var gateContext = buildGateContext(engagement);
+
+    var badges = computeJourneyBadges(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+
+    var progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+
+    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext, badges);
+
+    var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
+
+    var pct = progress.pct;
+
+    var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
+
+    var currentStage = injectBannerCurrentStage(badgeRail.badges);
+
+
+
+    if (badgeRailEl) {
+
+      badgeRailEl.innerHTML = "";
+
+      badgeRailEl.appendChild(badgeRail.rail);
+
+    }
+
+    var journeyCountEl = document.getElementById("ar-do-next-journey-count");
+
+    if (journeyCountEl) {
+
+      journeyCountEl.textContent = badgeRail.badgesEarned + " of " + badgeRail.badges.length + " earned";
+
+    }
+
+
+
+    statusEl.innerHTML = "";
+
+    var left = document.createElement("div");
+
+    left.className = "ar-do-next-strip__status-left";
+
+    var dot = document.createElement("span");
+
+    dot.className = "ar-do-next-rag__dot ar-do-next-rag__dot--" + rag.state;
+
+    dot.setAttribute("aria-hidden", "true");
+
+    var label = document.createElement("span");
+
+    label.className = "ar-do-next-rag__label";
+
+    var trialClause = formatTrialNudgeClause(engagement, rag, gateStats.foundationModulesOpened, activeDays, engagementDegraded, badgeRail.badges);
+
+    var momentumLabel = rag.label;
+
+    if (trialClause) momentumLabel = rag.label ? (rag.label + ". " + trialClause) : trialClause;
+
+    label.textContent = momentumLabel;
+
+    var counts = document.createElement("span");
+
+    counts.className = "ar-do-next-strip__counts";
+
+    counts.textContent = formatMomentumCountsDetail(badgeRail.badges, gateStatsWithLongevity, openedCount, examsPassed);
+
+    left.appendChild(dot);
+
+    left.appendChild(label);
+
+    left.appendChild(counts);
+
+    var right = document.createElement("span");
+
+    right.className = "ar-do-next-strip__pct";
+
+    right.textContent = progress.label;
+
+    statusEl.appendChild(left);
+
+    statusEl.appendChild(right);
+
+
+
+    barEl.innerHTML = "";
+
+    barEl.appendChild(buildProgressMilestoneTrack(badgeRail.badges, progress));
+
+
+
+    tilesEl.innerHTML = "";
+
+    stage.tiles.forEach(function(tile, idx){
+
+      if (idx > 0) tilesEl.appendChild(buildTileArrow());
+
+      tilesEl.appendChild(renderTile(tile));
+
+    });
+
+
+
+    if (coachDebug) {
+
+      coachDebug.ragState = rag.state;
+
+      coachDebug.ragLabel = rag.label;
+
+      coachDebug.progressPct = pct;
+
+      coachDebug.progressLabel = progress.label;
+
+      coachDebug.progressDegraded = progress.degraded;
+
+      coachDebug.trackFillPct = computeTrackFillPct(badgeRail.badges, pct);
+
+      coachDebug.progressNextKey = progress.nextKey;
+
+      coachDebug.modulesOpened = openedCount;
+
+      coachDebug.modulesTotal = MODULES_TOTAL;
+
+      coachDebug.gateStats = gateStatsWithLongevity;
+
+      coachDebug.examsPassed = examsPassed;
+
+      coachDebug.examsTotal = 15;
+
+      coachDebug.tiles = stage.tiles.map(function(t){
+
+        return { n: t.n, label: t.label, href: t.href, action: t.action };
+
+      });
+
+      coachDebug.goalTarget = stage.goalTarget;
+
+      coachDebug.goalRemaining = stage.goalRemaining;
+
+      coachDebug.badges = badgeRail.badges.map(function(b){
+
+        return { key: b.key, label: b.label, earned: b.earned, colour: b.colour, stars: b.stars };
+
+      });
+
+      coachDebug.badgesEarned = badgeRail.badgesEarned;
+
+      coachDebug.currentStage = currentStage ? {
+
+        key: currentStage.key,
+
+        label: currentStage.label,
+
+        levelIndex: currentStage.levelIndex,
+
+        levelTotal: currentStage.levelTotal,
+
+        colour: currentStage.colour,
+
+        stars: currentStage.stars
+
+      } : null;
+
+      coachDebug.ragDataNote = "module-opens and exam-passes only; login count not read client-side";
+
+    }
+
+
+
+    strip.classList.add("is-ready");
+
+    strip.removeAttribute("aria-hidden");
+
+    scheduleLayout();
+
+  }
+
+
+
+  function watchDoNextStripMetrics(){
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+    if (typeof ResizeObserver !== "undefined") {
+
+      new ResizeObserver(function(){ scheduleLayout(); }).observe(strip);
+
+    }
+
+    window.addEventListener("resize", function(){ scheduleLayout(); });
+
+    document.addEventListener("ar-academy-layout-sync", function(){ scheduleLayout(); });
+
+  }
+
+
+
+  function isExpiredTrialBody(){
+
+    return document.body && document.body.getAttribute("data-ar-academy-state") === "expired-trial";
+
+  }
+
+
+
+  function waitForMemberstack(maxMs){
+
+    maxMs = typeof maxMs === "number" ? maxMs : 8000;
+
+    return new Promise(function(resolve){
+
+      var start = Date.now();
+
+      (function tick(){
+
+        if (window.$memberstackDom && typeof window.$memberstackDom.getMemberJSON === "function") {
+
+          resolve(window.$memberstackDom);
+
+          return;
+
+        }
+
+        if ((Date.now() - start) > maxMs) { resolve(null); return; }
+
+        setTimeout(tick, 100);
+
+      })();
+
+    });
+
+  }
+
+
+
+  function getMemberEmail(member){
+
+    var d = member && member.data ? member.data : {};
+
+    return d.email || d.emailAddress || d.loginEmail || (member && member.email) || "";
+
+  }
+
+
+
+  async function fetchWhoami(){
+
+    try {
+
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  async function resolveMemberId(ms, member){
+
+    var memberId = getMemberId(member);
+
+    var idSource = memberId ? "getCurrentMember" : "none";
+
+    if (!memberId) {
+
+      var identity = await fetchWhoami();
+
+      if (identity && identity.memberstack_id) {
+
+        memberId = String(identity.memberstack_id);
+
+        idSource = "whoami";
+
+      }
+
+    }
+
+    return { memberId: memberId, idSource: idSource };
+
+  }
+
+
+
+  function unwrapMember(res){
+
+    if (!res) return null;
+
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+
+    if (res.data && res.data.data) return res.data;
+
+    return res;
+
+  }
+
+
+
+  async function fetchTrialExpired(memberId){
+
+    if (!memberId) return false;
+
+    try {
+
+      var res = await fetch(TRIAL_STATUS_URL + "?memberId=" + encodeURIComponent(memberId), { credentials: "omit" });
+
+      if (!res.ok) return false;
+
+      var data = await res.json();
+
+      return !!(data && (data.isExpiredTrial || data.state === "expired-trial"));
+
+    } catch (e) { return false; }
+
+  }
+
+
+
+  async function fetchExamProgress(memberId){
+
+    if (!memberId) return null;
+
+    try {
+
+      var res = await fetch(PROGRESS_URL, {
+
+        headers: { "X-Memberstack-Id": memberId },
+
+        credentials: "omit"
+
+      });
+
+      if (!res.ok) return null;
+
+      return await res.json();
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  async function fetchEngagementSummary(memberId){
+
+    if (!memberId) return null;
+
+    var cacheKey = "ar-engagement-" + memberId;
+
+    try {
+
+      var raw = sessionStorage.getItem(cacheKey);
+
+      if (raw) {
+
+        var cached = JSON.parse(raw);
+
+        if (cached && cached.at && Date.now() - cached.at < 300000) return cached.data;
+
+      }
+
+    } catch (e) { /* ignore */ }
+
+
+
+    try {
+
+      var res = await fetch(ENGAGEMENT_URL, {
+
+        headers: { "X-Memberstack-Id": memberId },
+
+        credentials: "omit"
+
+      });
+
+      if (!res.ok) {
+
+        console.warn("[do-next-strip] engagement-summary failed:", res.status);
+
+        return null;
+
+      }
+
+      var data = await res.json();
+
+      try {
+
+        sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data }));
+
+      } catch (e2) { /* ignore */ }
+
+      return data;
+
+    } catch (e) {
+
+      console.warn("[do-next-strip] engagement-summary error");
+
+      return null;
+
+    }
+
+  }
+
+
+
+  function isAdminPreviewUser(memberId, email){
+
+    if (memberId && ADMIN_MEMBER_IDS[memberId]) return true;
+
+    var e = (email || "").toLowerCase();
+
+    return !!(e && ADMIN_EMAILS[e]);
+
+  }
+
+
+
+  function resolvePreviewLastActivityAt(params){
+
+    var raw = params.get("lastactivity") || params.get("lastActivity");
+
+    var nowMs = Date.now();
+
+    if (raw === null || raw === "") return new Date(nowMs).toISOString();
+
+    var lower = String(raw).toLowerCase();
+
+    if (lower === "today" || lower === "0") return new Date(nowMs).toISOString();
+
+    var days = parseInt(raw, 10);
+
+    if (!isNaN(days)) return new Date(nowMs - days * 86400000).toISOString();
+
+    return new Date(nowMs).toISOString();
+
+  }
+
+
+
+  function parsePreviewConfig(memberId, email){
+
+    if (!isAdminPreviewUser(memberId, email)) return null;
+
+    try {
+
+      var params = new URLSearchParams(window.location.search);
+
+      if (params.get("ar_preview") !== "1") return null;
+
+      var state = (params.get("state") || "trial").toLowerCase();
+
+      var trialDays = parseInt(params.get("trialdays") || params.get("days") || "8", 10);
+
+      var modules = parseInt(params.get("modules") || params.get("modulesopened") || "0", 10);
+
+      var activeDays = parseInt(params.get("activedays") || params.get("active_days") || "0", 10);
+
+      var exams = parseInt(params.get("exams") || params.get("examspassed") || "0", 10);
+
+      var appliedLearning = parseInt(params.get("appliedlearning") || params.get("appliedLearning") || "0", 10);
+
+      var practicePacks = parseInt(params.get("practicepacks") || params.get("practicePacks") || "0", 10);
+
+      var pdfAssignments = parseInt(params.get("pdfassignments") || params.get("pdfAssignments") || "0", 10);
+
+      var activeMonths = parseInt(params.get("activemonths") || params.get("activeMonths") || "0", 10);
+
+      if (state === "annual" && !params.has("modules")) modules = 20;
+
+      if (state === "annual" && !params.has("activedays")) activeDays = 7;
+
+      if (state === "annual" && !params.has("exams")) exams = 2;
+
+      return {
+
+        state: state,
+
+        trialDaysLeft: isNaN(trialDays) ? 8 : trialDays,
+
+        modulesOpened: isNaN(modules) ? 0 : modules,
+
+        activeDays: isNaN(activeDays) ? 0 : activeDays,
+
+        examsPassed: isNaN(exams) ? 0 : exams,
+
+        appliedLearning: isNaN(appliedLearning) ? 0 : appliedLearning,
+
+        practicePacks: isNaN(practicePacks) ? 0 : practicePacks,
+
+        pdfAssignments: isNaN(pdfAssignments) ? 0 : pdfAssignments,
+
+        activeMonths: isNaN(activeMonths) ? 0 : activeMonths,
+
+        lastActivityAt: resolvePreviewLastActivityAt(params)
+
+      };
+
+    } catch (e) { return null; }
+
+  }
+
+
+
+  function buildPreviewOpenedSet(count){
+
+    var set = new Set();
+
+    var n = Math.max(0, Math.min(count, FOUNDATION_MODULE_PATHS.length));
+
+    for (var i = 0; i < n; i++) set.add(FOUNDATION_MODULE_PATHS[i]);
+
+    return set;
+
+  }
+
+
+
+  function buildPreviewExamInfo(examsPassed){
+
+    var n = Math.max(0, Math.min(15, examsPassed || 0));
+
+    return {
+
+      examsPassed: n,
+
+      hasModuleStatus: false,
+
+      statusMap: {},
+
+      source: "preview",
+
+      nextExamModuleId: null
+
+    };
+
+  }
+
+
+
+  function buildPreviewEngagement(preview){
+
+    var longevity = {
+
+      appliedLearningOpened: preview.appliedLearning,
+
+      practicePacksOpened: preview.practicePacks,
+
+      pdfAssignmentsOpened: preview.pdfAssignments,
+
+      distinctActiveMonthsAllTime: preview.activeMonths
+
+    };
+
+    if (preview.state === "annual") {
+
+      return Object.assign({
+
+        isTrial: false,
+
+        hasConverted: true,
+
+        daysLeftInTrial: null,
+
+        distinctActiveDaysFirst14d: preview.activeDays,
+
+        lastActivityAt: preview.lastActivityAt
+
+      }, longevity);
+
+    }
+
+    if (preview.state === "expired") {
+
+      return Object.assign({
+
+        isTrial: false,
+
+        hasConverted: false,
+
+        daysLeftInTrial: null,
+
+        distinctActiveDaysFirst14d: preview.activeDays,
+
+        lastActivityAt: preview.lastActivityAt
+
+      }, longevity);
+
+    }
+
+    return Object.assign({
+
+      isTrial: true,
+
+      hasConverted: false,
+
+      daysLeftInTrial: preview.trialDaysLeft,
+
+      distinctActiveDaysFirst14d: preview.activeDays,
+
+      lastActivityAt: preview.lastActivityAt
+
+    }, longevity);
+
+  }
+
+
+
+  function renderPreviewRibbon(strip, coachDebug){
+
+    var ribbon = document.getElementById("ar-do-next-preview-ribbon");
+
+    if (!coachDebug || !coachDebug.previewMode) {
+
+      if (ribbon) ribbon.remove();
+
+      return;
+
+    }
+
+    if (!ribbon) {
+
+      ribbon = document.createElement("div");
+
+      ribbon.id = "ar-do-next-preview-ribbon";
+
+      ribbon.className = "ar-do-next-preview-ribbon";
+
+      var inner = strip.querySelector(".ar-do-next-strip__inner");
+
+      if (inner) inner.insertBefore(ribbon, inner.firstChild);
+
+    }
+
+    var p = coachDebug.previewMode;
+
+    var dayNote = p.state === "trial" ? ", day " + p.trialDaysLeft : "";
+
+    ribbon.textContent = "PREVIEW MODE - " + p.state + dayNote;
+
+  }
+
+
+
+  function trackPageView(memberId, email){
+
+    if (!memberId) return;
+
+    var key = "ar-pv-dashboard-" + memberId;
+
+    try {
+
+      if (sessionStorage.getItem(key) === "1") return;
+
+      sessionStorage.setItem(key, "1");
+
+    } catch (e) { /* ignore */ }
+
+
+
+    fetch(TRACK_URL, {
+
+      method: "POST",
+
+      headers: { "Content-Type": "application/json" },
+
+      credentials: "omit",
+
+      body: JSON.stringify({
+
+        member_id: memberId,
+
+        email: email || null,
+
+        path: "/academy/dashboard",
+
+        title: "Academy Dashboard",
+
+        category: "dashboard",
+
+        meta: { source: "do-next-strip", surface: "dashboard" }
+
+      })
+
+    }).catch(function(){ /* non-blocking */ });
+
+  }
+
+
+
+  function watchExpiredTrial(onChange){
+
+    if (!document.body) return;
+
+    if (isExpiredTrialBody()) onChange(true);
+
+    var obs = new MutationObserver(function(){ onChange(isExpiredTrialBody()); });
+
+    obs.observe(document.body, { attributes: true, attributeFilter: ["data-ar-academy-state"] });
+
+    setTimeout(function(){ obs.disconnect(); }, 30000);
+
+  }
+
+
+
+  async function init(){
+
+    if (!isDashboardPath()) return;
+
+    var strip = document.getElementById("ar-do-next-strip");
+
+    if (!strip) return;
+
+
+
+    try {
+
+    strip.classList.add("is-ready");
+
+    strip.removeAttribute("aria-hidden");
+
+    scheduleLayout();
+
+
+
+    watchExpiredTrial(function(expired){
+
+      if (expired) {
+
+        strip.classList.remove("is-ready");
+
+        strip.setAttribute("aria-hidden", "true");
+
+        scheduleLayout();
+
+      }
+
+    });
+
+    if (isExpiredTrialBody()) {
+
+      strip.classList.remove("is-ready");
+
+      strip.setAttribute("aria-hidden", "true");
+
+      scheduleLayout();
+
+      return;
+
+    }
+
+
+
+    var ms = await waitForMemberstack();
+
+    if (!ms) {
+
+      var statusEl = document.getElementById("ar-do-next-status");
+
+      if (statusEl) statusEl.textContent = "Sign in to see your learning coach.";
+
+      strip.classList.add("is-ready");
+
+      return;
+
+    }
+
+
+
+    var member = null;
+
+    var jsonRes = null;
+
+    var normalized = {};
+
+    if (globalThis.__arMsReader) {
+
+      try {
+
+        var msBundle = await globalThis.__arMsReader.fetchBundle(ms);
+
+        member = msBundle.member;
+
+        jsonRes = msBundle.rawJson;
+
+        normalized = normalizeMemberJson(jsonRes);
+
+      } catch (e) { /* ignore */ }
+
+    }
+
+    if (member && !member.data && (member.planConnections || member.email)) {
+
+      member = { id: member.id || null, data: member };
+
+    }
+
+    if (member && !member.id && member.data && member.data.id) {
+
+      member.id = String(member.data.id);
+
+    }
+
+    var resolved = await resolveMemberId(ms, member);
+
+    var memberId = resolved.memberId;
+
+    doNextRuntime.ms = ms;
+
+    doNextRuntime.memberId = memberId || null;
+
+
+
+    if (memberId) {
+
+      var expired = await fetchTrialExpired(memberId);
+
+      if (expired || isExpiredTrialBody()) {
+
+        strip.classList.remove("is-ready");
+
+        strip.setAttribute("aria-hidden", "true");
+
+        scheduleLayout();
+
+        return;
+
+      }
+
+    }
+
+    var memberEmail = getMemberEmail(member);
+
+    var preview = parsePreviewConfig(memberId, memberEmail);
+
+    var openedSet = getOpenedSet(normalized);
+
+    var examInfo = parseExamProgress(null);
+
+    var engagement = null;
+
+    var engagementDegraded = true;
+
+
+
+    if (preview) {
+
+      openedSet = buildPreviewOpenedSet(preview.modulesOpened);
+
+      examInfo = buildPreviewExamInfo(preview.examsPassed);
+
+      engagement = buildPreviewEngagement(preview);
+
+      engagementDegraded = false;
+
+    } else {
+
+      var progressData = await fetchExamProgress(memberId);
+
+      examInfo = parseExamProgress(progressData);
+
+      engagement = await fetchEngagementSummary(memberId);
+
+      engagementDegraded = !engagement;
+
+    }
+
+
+
+    var coachDebug = {
+
+      memberId: memberId || null,
+
+      idSource: resolved.idSource,
+
+      source: examInfo.source,
+
+      nextExamModuleId: examInfo.nextExamModuleId,
+
+      stage: preview ? "preview" : "stage1",
+
+      engagementDegraded: engagementDegraded,
+
+      distinctActiveDaysFirst14d: engagement ? engagement.distinctActiveDaysFirst14d : null,
+
+      isTrial: engagement ? engagement.isTrial : null,
+
+      daysLeftInTrial: engagement ? engagement.daysLeftInTrial : null,
+
+      hasConverted: engagement ? engagement.hasConverted : null,
+
+      previewMode: preview || null
+
+    };
+
+    window.__arDoNextStrip = coachDebug;
+
+
+
+    var gateStats = computeGateStats(normalized, openedSet, examInfo, preview);
+
+    renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats);
+
+    if (!preview) trackPageView(memberId, memberEmail);
+
+    } catch (err) {
+
+      console.error("[do-next] init failed:", err);
+
+      var statusEl = document.getElementById("ar-do-next-status");
+
+      if (statusEl) statusEl.textContent = "Learning coach could not load. Refresh the page.";
+
+      strip.classList.add("is-ready");
+
+      strip.removeAttribute("aria-hidden");
+
+      scheduleLayout();
+
+    }
+
+  }
+
+
+
+  ensureAcademyLayout();
+
+  wireJourneyToggle();
+
+  watchDoNextStripMetrics();
+
+
+
+  function watchStripFocusRefresh(){
+
+    if (window.__arStripFocusWired) return;
+
+    window.__arStripFocusWired = true;
+
+    document.addEventListener("visibilitychange", function(){
+
+      if (document.visibilityState === "visible" && isDashboardPath()) {
+
+        setTimeout(init, 500);
+
+      }
+
+    });
+
+  }
+
+
+
+  watchStripFocusRefresh();
+
+  window.addEventListener("scroll", function(){ scheduleLayout(); }, { passive: true });
+
+  if (document.readyState === "loading") {
+
+    document.addEventListener("DOMContentLoaded", init);
+
+  } else {
+
+    init();
+
+  }
+
+  setTimeout(scheduleLayout, 100);
+
+  setTimeout(scheduleLayout, 1000);
+
+  setTimeout(scheduleLayout, 2500);
+
+})();
+
+</script>
+
+
+
+<!-- ===========================
+
+END: AR | DASHBOARD "DO THESE NEXT" STRIP
+
+=========================== -->
+
