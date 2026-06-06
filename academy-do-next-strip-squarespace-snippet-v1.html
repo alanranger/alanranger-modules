@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.42 — badge-aware progress bar + proximity for all six rungs (re-based to next badge; Graduate/Master proximity + counts detail)
 v1.3.41 — fix: remove duplicate getNextUnearnedBadge that excluded master; tile-4 now shows Goal: Master when Graduate earned (earned everything only when all 6 earned)
 v1.3.40 — fix: getCurrentStage carries colour/stars/iconClass to banner badge (gold Master + stars restored in header); preview injects lastActivityAt (default recent/un-paused; lastactivity=70 forces paused)
 v1.3.39 — fix: badge rail/banner regression - computeJourneyBadges now carries colour, stars, iconClass and sublabel through from the stage, restoring gold Master, per-stage stars (1-5) and correct icons (display passthrough only; earn logic, thresholds, weights and decay unchanged)
@@ -2589,6 +2590,90 @@ function practitionerRequirementsMet(stats) {
   return { met, total };
 }
 
+function graduateRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = GRADUATE_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function masterRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = MASTER_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function componentRatio(current, target) {
+  if (target <= 0) return 100;
+  var val = current == null ? 0 : current;
+  return Math.min(100, (val / target) * 100);
+}
+
+function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+  var safe = normaliseStats(stats);
+  var next = getNextUnearnedBadge(badges);
+  var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
+
+  if (!next) {
+    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null };
+  }
+
+  if ((next.key === "graduate" || next.key === "master") && isLongevityDegraded(stats)) {
+    var pct = Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+    return { pct, label: `${pct}% of the foundations course`, degraded: true, nextKey: next.key };
+  }
+
+  var ratios = [];
+  if (next.key === "foundation") {
+    ratios.push(componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules));
+    if (!engagementDegraded) {
+      ratios.push(componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays));
+    }
+  } else if (next.key === "practitioner") {
+    ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
+    ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minExamsPassed));
+  } else if (next.key === "certified") {
+    ratios.push(componentRatio(safe.examsPassed, 15));
+    ratios.push(componentRatio(safe.totalModulesOpened, CERTIFIED_GATE.minModulesOpened));
+  } else if (next.key === "graduate") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, GRADUATE_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, GRADUATE_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, GRADUATE_TARGETS.activeMonths));
+  } else if (next.key === "master") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, MASTER_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, MASTER_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, MASTER_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, MASTER_TARGETS.activeMonths));
+  }
+
+  var pct = ratios.length
+    ? Math.round(ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length)
+    : Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+  return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key };
+}
+
   // END BADGE-GATES-SYNC
 
 
@@ -3649,28 +3734,6 @@ function practitionerRequirementsMet(stats) {
 
 
 
-  function practitionerRequirementsMet(stats){
-
-    var safeStats = normaliseStats(stats);
-
-    var total = 4;
-
-    var met = 0;
-
-    if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) met++;
-
-    if (!PRACTITIONER_GATE.requireAllComposition || safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length) met++;
-
-    if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met++;
-
-    if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met++;
-
-    return { met: met, total: total };
-
-  }
-
-
-
   function formatPractitionerProximity(stats){
 
     var r = practitionerRequirementsMet(stats);
@@ -3680,6 +3743,34 @@ function practitionerRequirementsMet(stats) {
     if (r.met === 1) return "1 of " + r.total + " requirements complete for Practitioner";
 
     return r.met + " of " + r.total + " requirements complete for Practitioner";
+
+  }
+
+
+
+  function formatGraduateProximity(stats){
+
+    var r = graduateRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Graduate";
+
+    return r.met + " of " + r.total + " requirements complete for Graduate";
+
+  }
+
+
+
+  function formatMasterProximity(stats){
+
+    var r = masterRequirementsMet(stats);
+
+    if (r.met >= r.total) return "";
+
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Master";
+
+    return r.met + " of " + r.total + " requirements complete for Master";
 
   }
 
@@ -3710,6 +3801,40 @@ function practitionerRequirementsMet(stats) {
     if (parts.length === 1) return parts[0] + " from Certified";
 
     return parts.join(" and ") + " from Certified";
+
+  }
+
+
+
+  function formatLongevityCountsDetail(stats, targets){
+
+    var safe = normaliseStats(stats);
+
+    function show(val){ return val == null ? 0 : val; }
+
+    return " - " + show(safe.appliedLearningOpened) + "/" + targets.appliedLearning + " applied guides, " +
+
+      show(safe.practicePacksOpened) + "/" + targets.practicePacks + " packs, " +
+
+      show(safe.pdfAssignmentsOpened) + "/" + targets.pdfAssignments + " assignments, " +
+
+      show(safe.distinctActiveMonthsAllTime) + "/" + targets.activeMonths + " active months";
+
+  }
+
+
+
+  function formatMomentumCountsDetail(badges, stats, openedCount, examsPassed){
+
+    var next = getNextUnearnedBadge(badges);
+
+    if (!next) return "";
+
+    if (next.key === "graduate") return formatLongevityCountsDetail(stats, GRADUATE_TARGETS);
+
+    if (next.key === "master") return formatLongevityCountsDetail(stats, MASTER_TARGETS);
+
+    return " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
 
   }
 
@@ -3849,9 +3974,37 @@ function practitionerRequirementsMet(stats) {
 
     }
 
-    if (stats.totalModulesOpened >= 30 && stats.examsPassed >= 1) {
+    var graduate = badges.filter(function(b){ return b.key === "graduate"; })[0];
 
-      return { state: "green", label: "On track to certify", color: RAG_COLORS.green };
+    if (graduate && !graduate.earned) {
+
+      var gReq = graduateRequirementsMet(stats);
+
+      var gLabel = formatGraduateProximity(stats);
+
+      if (gReq.met >= gReq.total - 1 && gReq.met < gReq.total) return { state: "green", label: gLabel || "Almost there for Graduate", color: RAG_COLORS.green };
+
+      return { state: "amber", label: gLabel || "Building toward Graduate", color: RAG_COLORS.amber };
+
+    }
+
+    var master = badges.filter(function(b){ return b.key === "master"; })[0];
+
+    if (master && !master.earned) {
+
+      var mReq = masterRequirementsMet(stats);
+
+      var mLabel = formatMasterProximity(stats);
+
+      if (mReq.met >= mReq.total - 1 && mReq.met < mReq.total) return { state: "green", label: mLabel || "Almost there for Master", color: RAG_COLORS.green };
+
+      return { state: "amber", label: mLabel || "Building toward Master", color: RAG_COLORS.amber };
+
+    }
+
+    if (!getNextUnearnedBadge(badges)) {
+
+      return { state: "green", label: "All badges earned", color: RAG_COLORS.green };
 
     }
 
@@ -4183,7 +4336,9 @@ function practitionerRequirementsMet(stats) {
 
     var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
 
-    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
+    var progress = computeNextBadgeProgress(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+
+    var pct = progress.pct;
 
     var stage = buildStage1Tiles(openedSet, examInfo, rag, engagement, badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
 
@@ -4237,7 +4392,7 @@ function practitionerRequirementsMet(stats) {
 
     counts.className = "ar-do-next-strip__counts";
 
-    counts.textContent = " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
+    counts.textContent = formatMomentumCountsDetail(badgeRail.badges, gateStatsWithLongevity, openedCount, examsPassed);
 
     left.appendChild(dot);
 
@@ -4249,7 +4404,7 @@ function practitionerRequirementsMet(stats) {
 
     right.className = "ar-do-next-strip__pct";
 
-    right.textContent = pct + "% of the foundations course";
+    right.textContent = progress.label;
 
     statusEl.appendChild(left);
 
@@ -4280,6 +4435,14 @@ function practitionerRequirementsMet(stats) {
       coachDebug.ragState = rag.state;
 
       coachDebug.ragLabel = rag.label;
+
+      coachDebug.progressPct = pct;
+
+      coachDebug.progressLabel = progress.label;
+
+      coachDebug.progressDegraded = progress.degraded;
+
+      coachDebug.progressNextKey = progress.nextKey;
 
       coachDebug.modulesOpened = openedCount;
 

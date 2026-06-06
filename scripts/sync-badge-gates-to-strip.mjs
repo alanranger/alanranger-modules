@@ -34,6 +34,10 @@ const fnNames = [
   "getCurrentStage",
   "getNextUnearnedBadge",
   "practitionerRequirementsMet",
+  "graduateRequirementsMet",
+  "masterRequirementsMet",
+  "componentRatio",
+  "computeNextBadgeProgress",
 ];
 
 function extractFunction(source, name) {

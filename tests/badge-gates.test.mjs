@@ -23,6 +23,9 @@ const {
   computeLongevityPoints,
   getCurrentStage,
   getNextUnearnedBadge,
+  graduateRequirementsMet,
+  masterRequirementsMet,
+  computeNextBadgeProgress,
 } = gates;
 
 const DAY_MS = 86400000;
@@ -283,4 +286,67 @@ test("19. all 6 badges earned -> getNextUnearnedBadge returns null", () => {
   assert.equal(result.earned.master, true);
   assert.equal(next, null);
   assert.equal(result.target, null);
+});
+
+test("20. Certified earned, Graduate not, partial counts -> progress ~63% to Graduate", () => {
+  const stats = certifiedFloorStats({
+    appliedLearningOpened: 12,
+    practicePacksOpened: 6,
+    pdfAssignmentsOpened: 3,
+    distinctActiveMonthsAllTime: 2,
+  });
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  assert.equal(result.earned.certified, true);
+  assert.equal(result.earned.graduate, false);
+  assert.equal(result.target, "graduate");
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
+  assert.equal(progress.pct, 63);
+  assert.equal(progress.label, "63% to Graduate");
+  assert.equal(progress.degraded, false);
+  const gReq = graduateRequirementsMet(stats);
+  assert.equal(gReq.met, 0);
+});
+
+test("21. Graduate earned, Master not, partial counts -> progress to Master", () => {
+  const stats = graduateCountsStats({
+    appliedLearningOpened: 18,
+    practicePacksOpened: 12,
+    pdfAssignmentsOpened: 6,
+    distinctActiveMonthsAllTime: 5,
+  });
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  assert.equal(result.earned.graduate, true);
+  assert.equal(result.earned.master, false);
+  assert.equal(result.target, "master");
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
+  assert.equal(progress.pct, 73);
+  assert.equal(progress.label, "73% to Master");
+  const mReq = masterRequirementsMet(stats);
+  assert.equal(mReq.met, 0);
+});
+
+test("22. all 6 earned -> progress 100% all badges earned", () => {
+  const stats = masterCountsStats();
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
+  assert.equal(progress.pct, 100);
+  assert.equal(progress.label, "100% - all badges earned");
+});
+
+test("23. longevity null toward Graduate -> degraded modules-based bar", () => {
+  const stats = certifiedFloorStats();
+  const result = evaluateBadges(stats, 10, false, paidContext());
+  assert.equal(result.target, "graduate");
+  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 45, 60);
+  assert.equal(progress.pct, 75);
+  assert.equal(progress.label, "75% of the foundations course");
+  assert.equal(progress.degraded, true);
+});
+
+test("24. Foundation stage -> progress to Foundation from modules + active days", () => {
+  const stats = fixtureStats({ foundationModulesOpened: 2 });
+  const result = evaluateBadges(stats, 2, false);
+  const progress = computeNextBadgeProgress(result.badges, stats, 2, false, 2, 60);
+  assert.equal(progress.label, "67% to Foundation");
+  assert.equal(progress.pct, 67);
 });
