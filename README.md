@@ -17,26 +17,28 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 
 ### Squarespace Code Blocks
 
+All paste snippets live in **`Squarespace Snippets/`** (repo root).
+
 **Current live versions (2026-06-06 baseline):** H 1.4.4 · S 1.3.35 · D 1.3.11 · B 1.3.5  
 **New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md` first (also mirrored in Google Drive `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).  
 See `RESTORE_POINT_2026-06-06-D-1.3.10.md` and `docs/handoff/` for paste instructions.
 
-- **`academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init)
-- **`academy-do-next-strip-squarespace-snippet-v1.html`** - Dashboard "Do These Next" strip (code block 1)
-- **`squarespace-v2.2.html`** - Exams & Certification page code block
+- **`Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init)
+- **`Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html`** - Dashboard "Do These Next" strip (code block 1)
+- **`Squarespace Snippets/squarespace-v2.2.html`** - Exams & Certification page code block
   - Main exam interface with grid view and quiz functionality
   - Includes debug panel (hidden by default, press Ctrl+Shift+D to show)
   - Auto-refreshes grid when navigating back to page
   - Auto-saves exam results after submission
 
-- **`academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block (code block 2)
+- **`Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html`** - Dashboard page code block (code block 2)
   - Displays exam progress summary on academy dashboard
   - Session-cached access + shared `__arMsReader` (D 1.3.9 / D 1.3.10)
   - Auto-refreshes every 30 seconds and on page visibility change
   - **Inactivity logout** - Automatically logs out users after 30 minutes of inactivity
   - Tracks user activity (clicks, mouse, keyboard, scroll, touch, focus) to reset timer
 
-- **`academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages (B 1.3.5)
+- **`Squarespace Snippets/academy-bookmark-buttons-squarespace-snippet-v1.html`** - Bookmark buttons for blog/article pages (B 1.3.5)
   - Adds "Bookmark this page", "Back to Modules", and "Back to Dashboard" buttons
   - Appears on blog posts with the "Sign up to free online photography course" snippet
   - Auto-positions after first H1 or at top of main content
@@ -66,8 +68,8 @@ All endpoints support:
 API endpoints are deployed to Vercel at: `https://alanranger-modules.vercel.app`
 
 ### Squarespace
-1. Copy contents of `squarespace-v2.2.html` to Exams & Certification page code block
-2. Copy contents of `academy-dashboard-squarespace-snippet-v1.html` to Dashboard page code block
+1. Copy contents of `Squarespace Snippets/squarespace-v2.2.html` to Exams & Certification page code block
+2. Copy contents of `Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html` to Dashboard page code block
 
 ## Recent Updates
 

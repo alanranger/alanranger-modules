@@ -6,16 +6,14 @@ import fs from "fs";
 import path from "path";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
+import { STRIP_SNIPPET } from "./snippet-paths.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const require = createRequire(import.meta.url);
 const lib = require(path.join(root, "lib/academy-module-paths.js"));
 
-const strip = fs.readFileSync(
-  path.join(root, "academy-do-next-strip-squarespace-snippet-v1.html"),
-  "utf8"
-);
+const strip = fs.readFileSync(STRIP_SNIPPET, "utf8");
 
 const pathRe = /p:\s*"(\/[^"]+)"/g;
 const articleStart = strip.indexOf("var ARTICLE_MODULES = [");

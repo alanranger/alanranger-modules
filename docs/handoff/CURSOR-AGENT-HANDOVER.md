@@ -76,12 +76,12 @@ Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Ve
 
 | Alan's name | File | Squarespace location |
 |-------------|------|----------------------|
-| **Header H** | `academy-header-elements-squarespace-snippet-v1.html` | Settings → Code Injection → **Header** |
-| **Strip S** | `academy-do-next-strip-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **1** |
-| **Dashboard D** | `academy-dashboard-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **2** |
-| **Bookmark B** | `academy-bookmark-buttons-squarespace-snippet-v1.html` | Blog/article template (module lessons) |
-| Exams page | `squarespace-v2.2.html` | Exams & Certification page block |
-| Login | `academy-login-squarespace-snippet-v1.html` | Login page |
+| **Header H** | `Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html` | Settings → Code Injection → **Header** |
+| **Strip S** | `Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **1** |
+| **Dashboard D** | `Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **2** |
+| **Bookmark B** | `Squarespace Snippets/academy-bookmark-buttons-squarespace-snippet-v1.html` | Blog/article template (module lessons) |
+| Exams page | `Squarespace Snippets/squarespace-v2.2.html` | Exams & Certification page block |
+| Login | `Squarespace Snippets/academy-login-squarespace-snippet-v1.html` | Login page |
 
 **Live version stamp** (under logo on dashboard): check `#ar-academy-header-snippet-version` — must match pasted versions.
 
@@ -229,10 +229,13 @@ See test plan § STAGE 3 (AL1–AL7).
 
 ```
 alanranger-academy-assesment/
-├── academy-header-elements-squarespace-snippet-v1.html   # H
-├── academy-do-next-strip-squarespace-snippet-v1.html     # S
-├── academy-dashboard-squarespace-snippet-v1.html         # D (8600+ lines)
-├── academy-bookmark-buttons-squarespace-snippet-v1.html  # B
+├── Squarespace Snippets/                                 # All Squarespace paste HTML
+│   ├── academy-header-elements-squarespace-snippet-v1.html   # H
+│   ├── academy-do-next-strip-squarespace-snippet-v1.html     # S
+│   ├── academy-dashboard-squarespace-snippet-v1.html         # D (8600+ lines)
+│   ├── academy-bookmark-buttons-squarespace-snippet-v1.html  # B
+│   ├── squarespace-v2.2.html                               # Exams page
+│   └── academy-login-squarespace-snippet-v1.html           # Login
 ├── api/
 │   ├── exams/          # whoami, progress, save, CORS
 │   └── academy/        # track-page-view, track-tile-open, track-login

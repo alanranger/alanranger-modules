@@ -5,11 +5,12 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { STRIP_SNIPPET } from "./snippet-paths.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const libPath = path.join(root, "lib/academy-badge-gates.js");
-const stripPath = path.join(root, "academy-do-next-strip-squarespace-snippet-v1.html");
+const stripPath = STRIP_SNIPPET;
 
 const BEGIN = "  // BEGIN BADGE-GATES-SYNC";
 const END = "  // END BADGE-GATES-SYNC";
@@ -126,4 +127,4 @@ if (beginIdx < 0 || endIdx < 0) {
 const updated =
   strip.slice(0, beginIdx) + injected + strip.slice(endIdx + END.length);
 fs.writeFileSync(stripPath, updated, "utf8");
-console.log("OK: synced badge gate logic into academy-do-next-strip-squarespace-snippet-v1.html");
+console.log("OK: synced badge gate logic into Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html");

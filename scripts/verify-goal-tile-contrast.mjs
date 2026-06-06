@@ -3,6 +3,7 @@ import fs from "fs";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { STRIP_SNIPPET } from "./snippet-paths.mjs";
 
 const require = createRequire(
   "G:/Dropbox/alan ranger photography/Website Code/AI GEO Audit/package.json"
@@ -10,10 +11,7 @@ const require = createRequire(
 const { chromium } = require("playwright");
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const stripHtml = fs.readFileSync(
-  path.join(root, "academy-do-next-strip-squarespace-snippet-v1.html"),
-  "utf8"
-);
+const stripHtml = fs.readFileSync(STRIP_SNIPPET, "utf8");
 const style = (stripHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i) || [])[1] || "";
 const body = stripHtml
   .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")

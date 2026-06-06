@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
+import { DASHBOARD_SNIPPET, STRIP_SNIPPET, BOOKMARK_SNIPPET } from "./snippet-paths.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -68,13 +69,13 @@ function compare(label, actual, expected) {
 
 const canonical = lib.DEFINITIVE_MODULE_URLS;
 const dashboard = extractDashboardPaths(
-  fs.readFileSync(path.join(root, "academy-dashboard-squarespace-snippet-v1.html"), "utf8")
+  fs.readFileSync(DASHBOARD_SNIPPET, "utf8")
 );
 const strip = extractStripPaths(
-  fs.readFileSync(path.join(root, "academy-do-next-strip-squarespace-snippet-v1.html"), "utf8")
+  fs.readFileSync(STRIP_SNIPPET, "utf8")
 );
 const bookmark = extractBookmarkPaths(
-  fs.readFileSync(path.join(root, "academy-bookmark-buttons-squarespace-snippet-v1.html"), "utf8")
+  fs.readFileSync(BOOKMARK_SNIPPET, "utf8")
 );
 
 const report = {

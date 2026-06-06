@@ -7,6 +7,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { DASHBOARD_SNIPPET, STRIP_SNIPPET } from "./snippet-paths.mjs";
 
 const require = createRequire(
   "G:/Dropbox/alan ranger photography/Website Code/AI GEO Audit/package.json"
@@ -15,14 +16,8 @@ const { chromium } = require("playwright");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const dashboardSnippet = fs.readFileSync(
-  path.join(root, "academy-dashboard-squarespace-snippet-v1.html"),
-  "utf8"
-);
-const stripSnippet = fs.readFileSync(
-  path.join(root, "academy-do-next-strip-squarespace-snippet-v1.html"),
-  "utf8"
-);
+const dashboardSnippet = fs.readFileSync(DASHBOARD_SNIPPET, "utf8");
+const stripSnippet = fs.readFileSync(STRIP_SNIPPET, "utf8");
 
 const mockBootstrap = `
 <script>

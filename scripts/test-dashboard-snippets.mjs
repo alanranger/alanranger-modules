@@ -7,6 +7,7 @@ import fs from "fs";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { snippetPath } from "./snippet-paths.mjs";
 
 const require = createRequire(
   "G:/Dropbox/alan ranger photography/Website Code/AI GEO Audit/package.json"
@@ -17,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
 function readSnippet(name) {
-  return fs.readFileSync(path.join(root, name), "utf8");
+  return fs.readFileSync(snippetPath(name), "utf8");
 }
 
 function extractParts(html) {
