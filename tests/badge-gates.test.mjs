@@ -18,6 +18,7 @@ const {
   GRADUATE_TARGETS,
   MASTER_TARGETS,
   KEEPALIVE_DECAY_DAYS,
+  JOURNEY_STAGES,
   evaluateBadges,
   computeLongevityPoints,
 } = gates;
@@ -224,4 +225,23 @@ test("14. null longevity fields: Graduate/Master unearned, longevityDegraded fla
   assert.equal(result.earned.graduate, false);
   assert.equal(result.earned.master, false);
   assert.equal(result.longevityPoints, null);
+});
+
+test("15. badge objects carry display fields (colour/stars/iconClass) for rail + banner", () => {
+  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
+  result.badges.forEach((badge) => {
+    const stage = JOURNEY_STAGES.filter((s) => s.key === badge.key)[0];
+    assert.equal(badge.colour, stage.colour);
+    assert.equal(badge.stars, stage.stars);
+    assert.equal(badge.iconClass, stage.iconClass);
+    assert.equal(badge.sublabel, stage.sublabel);
+  });
+  const master = result.badges.filter((b) => b.key === "master")[0];
+  assert.equal(master.colour, "gold");
+  assert.equal(master.stars, 5);
+  assert.equal(master.iconClass, "ti-trophy");
+  const expectedStars = { enrolled: 0, foundation: 1, practitioner: 2, certified: 3, graduate: 4, master: 5 };
+  result.badges.forEach((badge) => {
+    assert.equal(badge.stars, expectedStars[badge.key]);
+  });
 });
