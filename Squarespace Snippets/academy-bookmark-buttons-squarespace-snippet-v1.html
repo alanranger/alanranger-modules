@@ -1,8 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
-v1.3.12 Hotfix: stop member-strip MutationObserver loop (inflight guard, no observer kick)
-v1.3.11 Hotfix: single-shot member Next resolve — stops MutationObserver MS call flood
-v1.3.10 Shared next-unopened resolver on __arAcademyModuleNav; bookmark Next matches footer
+v1.3.13 Member Next = next-unopened via shared __arAcademyModuleNav (applied once in wireMemberStrip)
 v1.3.9 Expose __arAcademyModuleNav + __arAcademyMemberAccess globals for footer CTA (canonical module array)
 v1.3.8 Non-member CTA: black/gold styling + single copy "Get all 60 modules + certificates - free"
 v1.3.7 Lesson-page soft grey bg (body.ar-academy-lesson) + gold numbered non-member CTA (last in row)
@@ -419,21 +417,26 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     if (next) {
       return {
         kind: "module",
-        index: next.index,
-        path: next.path,
-        title: next.title,
         href: SITE + next.path,
         label: "Next: " + next.title + " \u2192"
       };
     }
     if (allArticleModulesOpened(openedSet)) {
-      return {
-        kind: "foundation",
-        href: FOUNDATION_URL,
-        label: "Foundation course home \u2192"
-      };
+      return { kind: "foundation", href: FOUNDATION_URL, label: "Foundation course home \u2192" };
     }
     return null;
+  }
+
+  function applyMemberNextButton(normalized){
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    if (!nextBtn) return;
+    var idx = findArticleIndex(normalizePath(window.location.pathname));
+    if (idx === -1) return;
+    var resolved = resolveNextUnopened(idx, buildOpenedSet(normalized));
+    if (!resolved) return;
+    var nextSpan = nextBtn.querySelector("span");
+    nextBtn.href = resolved.href;
+    if (nextSpan) nextSpan.textContent = resolved.label;
   }
 
   globalThis.__arAcademyModuleNav = {
@@ -448,7 +451,20 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     get examModuleIds() { return EXAM_MODULE_IDS; }
   };
 
-  function applySequentialNext(nextBtn, idx){
+  function wireNextModuleButtons(){
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    var examBtn = document.getElementById("ar-take-exam-btn");
+    if (!nextBtn || !examBtn || nextBtn.dataset.wired === "1") return;
+
+    var idx = findArticleIndex(normalizePath(window.location.pathname));
+    if (idx === -1) {
+      nextBtn.classList.add("is-hidden");
+      examBtn.classList.add("is-hidden");
+      nextBtn.dataset.wired = "1";
+      examBtn.dataset.wired = "1";
+      return;
+    }
+
     var nextSpan = nextBtn.querySelector("span");
     if (idx < 44) {
       var nextMod = ARTICLE_MODULES[idx + 1];
@@ -458,59 +474,9 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
       nextBtn.href = FOUNDATION_URL;
       if (nextSpan) nextSpan.textContent = "Foundation course home \u2192";
     }
-  }
+    nextBtn.classList.remove("is-hidden");
+    nextBtn.removeAttribute("aria-hidden");
 
-  function applyResolvedNext(nextBtn, resolved){
-    if (!resolved || !nextBtn) return;
-    var nextSpan = nextBtn.querySelector("span");
-    nextBtn.href = resolved.href;
-    if (nextSpan) nextSpan.textContent = resolved.label;
-  }
-
-  var memberNextResolveScheduled = false;
-  var memberStripInflight = false;
-  var memberStripKickDone = false;
-
-  async function resolveMemberNextButton(nextBtn, idx){
-    if (!nextBtn || nextBtn.dataset.wiredFinal === "1" || nextBtn.dataset.resolveInflight === "1") return;
-    nextBtn.dataset.resolveInflight = "1";
-    try {
-      var ms = await waitForMemberstack();
-      if (!ms) {
-        memberNextResolveScheduled = false;
-        return;
-      }
-      var ctx = { member: null, memberId: "", normalized: {} };
-      if (globalThis.__arMsReader) {
-        try {
-          var bundle = await globalThis.__arMsReader.fetchBundle(ms);
-          ctx.member = bundle.member || null;
-          ctx.normalized = bundle.memberJson || {};
-          ctx.memberId = getMemberId(ctx.member) || "";
-        } catch (e) { /* ignore */ }
-      }
-      var access = evaluateAccess(ctx.member, { memberId: ctx.memberId, idSource: "ms-bundle", normalized: ctx.normalized });
-      if (!access.loggedIn || !access.hasAccess) {
-        nextBtn.dataset.wiredFinal = "1";
-        return;
-      }
-      var openedSet = buildOpenedSet(ctx.normalized || {});
-      var resolved = resolveNextUnopened(idx, openedSet);
-      if (resolved) applyResolvedNext(nextBtn, resolved);
-      nextBtn.dataset.wiredFinal = "1";
-    } finally {
-      delete nextBtn.dataset.resolveInflight;
-    }
-  }
-
-  function scheduleMemberNextResolve(nextBtn, idx){
-    if (!nextBtn || nextBtn.dataset.wiredFinal === "1" || memberNextResolveScheduled) return;
-    memberNextResolveScheduled = true;
-    resolveMemberNextButton(nextBtn, idx);
-  }
-
-  function wireExamButton(examBtn, idx){
-    if (!examBtn || examBtn.dataset.wired === "1") return;
     if (idx <= 14 && EXAM_MODULE_IDS[idx]) {
       var examSpan = examBtn.querySelector("span");
       var mod = ARTICLE_MODULES[idx];
@@ -521,36 +487,9 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     } else {
       examBtn.classList.add("is-hidden");
     }
+
+    nextBtn.dataset.wired = "1";
     examBtn.dataset.wired = "1";
-  }
-
-  function wireNextModuleButtons(){
-    var nextBtn = document.getElementById("ar-next-module-btn");
-    var examBtn = document.getElementById("ar-take-exam-btn");
-    if (!nextBtn || !examBtn) return;
-    if (nextBtn.dataset.wiredFinal === "1" && examBtn.dataset.wired === "1") return;
-
-    var idx = findArticleIndex(normalizePath(window.location.pathname));
-    if (idx === -1) {
-      nextBtn.classList.add("is-hidden");
-      examBtn.classList.add("is-hidden");
-      nextBtn.dataset.wired = "1";
-      nextBtn.dataset.wiredFinal = "1";
-      examBtn.dataset.wired = "1";
-      return;
-    }
-
-    wireExamButton(examBtn, idx);
-
-    if (nextBtn.dataset.wiredFinal !== "1") {
-      if (nextBtn.dataset.wired !== "1") {
-        applySequentialNext(nextBtn, idx);
-        nextBtn.classList.remove("is-hidden");
-        nextBtn.removeAttribute("aria-hidden");
-        nextBtn.dataset.wired = "1";
-      }
-      scheduleMemberNextResolve(nextBtn, idx);
-    }
   }
 
   function findInsertPoint(){
@@ -968,55 +907,49 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   async function wireMemberStrip(){
     var strip = document.getElementById("ar-lesson-member-strip");
     if (!strip) return;
-    if (strip.dataset.wiredFinal === "1") return;
-    if (memberStripInflight) return;
-    memberStripInflight = true;
-    try {
-      var ms = await waitForMemberstack();
-      var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
-      if (ms) {
-        try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
-      }
+    if (strip.dataset.wired === "1" && strip.dataset.wiredFinal === "1") return;
 
-      var access = evaluateAccess(ctx.member, ctx);
-      access.idSource = ctx.idSource;
-      access.modulesTotal = MODULES_TOTAL;
-      window.__arLessonAccess = access;
-
-      if (!access.loggedIn || !access.hasAccess) {
-        renderSignupStrip(strip);
-        if (access.reason !== "missing_member_id") {
-          strip.dataset.wired = "1";
-          strip.dataset.wiredFinal = "1";
-        }
-        return;
-      }
-
-      var memberId = ctx.memberId || getMemberId(ctx.member);
-      var openedCount = countOpenedModules(ctx.normalized);
-      var progressData = await fetchExamProgress(memberId);
-      var examsPassed = passedExamCount(progressData);
-      renderProgressStrip(strip, openedCount, examsPassed);
-      access.modulesOpened = openedCount;
-      window.__arLessonAccess = access;
-
-      var member = ctx.member || {};
-      var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
-      var lessonPath = normalizePath(window.location.pathname);
-      trackLessonPageView(memberId, email);
-      if (lessonPath.indexOf("/blog-on-photography/") === 0) {
-        trackLessonModuleOpen(memberId, lessonPath);
-      }
-      strip.dataset.wired = "1";
-      strip.dataset.wiredFinal = "1";
-    } finally {
-      memberStripInflight = false;
+    var ms = await waitForMemberstack();
+    var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
+    if (ms) {
+      try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
     }
+
+    var access = evaluateAccess(ctx.member, ctx);
+    access.idSource = ctx.idSource;
+    access.modulesTotal = MODULES_TOTAL;
+    window.__arLessonAccess = access;
+
+    if (!access.loggedIn || !access.hasAccess) {
+      renderSignupStrip(strip);
+      if (access.reason !== "missing_member_id") {
+        strip.dataset.wired = "1";
+        strip.dataset.wiredFinal = "1";
+      }
+      return;
+    }
+
+    var memberId = ctx.memberId || getMemberId(ctx.member);
+    var openedCount = countOpenedModules(ctx.normalized);
+    var progressData = await fetchExamProgress(memberId);
+    var examsPassed = passedExamCount(progressData);
+    renderProgressStrip(strip, openedCount, examsPassed);
+    applyMemberNextButton(ctx.normalized);
+    access.modulesOpened = openedCount;
+    window.__arLessonAccess = access;
+
+    var member = ctx.member || {};
+    var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
+    var lessonPath = normalizePath(window.location.pathname);
+    trackLessonPageView(memberId, email);
+    if (lessonPath.indexOf("/blog-on-photography/") === 0) {
+      trackLessonModuleOpen(memberId, lessonPath);
+    }
+    strip.dataset.wired = "1";
+    strip.dataset.wiredFinal = "1";
   }
 
   function kickMemberStrip(){
-    if (memberStripKickDone) return;
-    memberStripKickDone = true;
     var strip = document.getElementById("ar-lesson-member-strip");
     if (strip && strip.dataset.wiredFinal === "1") return;
     wireMemberStrip();
@@ -1077,29 +1010,13 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     wireBookmark();
     wireNextModuleButtons();
     kickMemberStrip();
-    setTimeout(function(){
-      var nb = document.getElementById("ar-next-module-btn");
-      if (nb && nb.dataset.wiredFinal !== "1") {
-        memberNextResolveScheduled = false;
-        scheduleMemberNextResolve(nb, findArticleIndex(normalizePath(window.location.pathname)));
-      }
-    }, 1500);
 
     var obs = new MutationObserver(function(){
-      var widget = document.getElementById("ar-bookmark-widget");
-      var nextBtn = document.getElementById("ar-next-module-btn");
-      var examBtn = document.getElementById("ar-take-exam-btn");
-      var bookmarkBtn = document.getElementById("bookmark-btn");
-      var allDone = widget && widget.dataset.moved === "1" &&
-        bookmarkBtn && bookmarkBtn.dataset.wired === "1" &&
-        nextBtn && nextBtn.dataset.wiredFinal === "1" &&
-        examBtn && examBtn.dataset.wired === "1";
-      if (allDone) return;
       moveWidgetOnce();
       wireBookmark();
-      if (!nextBtn || nextBtn.dataset.wiredFinal !== "1" || !examBtn || examBtn.dataset.wired !== "1") {
-        wireNextModuleButtons();
-      }
+      wireNextModuleButtons();
+      var strip = document.getElementById("ar-lesson-member-strip");
+      if (!strip || strip.dataset.wiredFinal !== "1") kickMemberStrip();
     });
 
     obs.observe(document.documentElement, { childList:true, subtree:true });
