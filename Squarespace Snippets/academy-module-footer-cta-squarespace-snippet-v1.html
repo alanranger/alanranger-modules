@@ -1,9 +1,10 @@
 <!-- ===========================
 AR | MODULE FOOTER CTA (member-aware end-of-lesson panel)
-F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare article)
+F 1.1.0 Will Myers load-target partial — renders in place (no DOM relocation)
+- Paste into Squarespace page /online-photography-course-signup (WM data-target content)
+- Replaces the old self-injecting snippet; position comes from the editor load block
 - Reads canonical module list from globalThis.__arAcademyModuleNav (Bookmark B exposes it)
 - Member detection via globalThis.__arAcademyMemberAccess + __arMsReader
-- Replaces static "Take The FREE Online Photography Crash Course" billboard
 =========================== -->
 
 <style id="ar-module-footer-cta-style">
@@ -92,9 +93,10 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
     flex-wrap:wrap;
     align-items:center;
     gap:16px 20px;
-    background:#f1efe9;
+    background:#ffffff;
     border:1px solid #d8d3c4;
     border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
     padding:20px 24px;
     max-width:100%;
   }
@@ -161,7 +163,7 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
   .ar-footer-cta__btn.is-hidden{ display:none !important; }
 </style>
 
-<div id="ar-module-footer-cta" class="is-hidden" aria-hidden="true"></div>
+<div id="ar-module-footer-cta"></div>
 
 <script>
 (function initArMemberstackReader(){
@@ -268,51 +270,6 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
     return path;
   }
 
-  function isLessonPage(){
-    return normalizePath(window.location.pathname).indexOf("/blog-on-photography/") === 0;
-  }
-
-  function findArticleBodyBlock(){
-    var article =
-      document.querySelector("article.BlogItem") ||
-      document.querySelector('article[itemtype*="BlogPosting"]') ||
-      document.querySelector(".BlogItem");
-    if (!article) return null;
-    var layouts = article.querySelectorAll(".sqs-layout.sqs-grid-12");
-    if (layouts.length) return layouts[layouts.length - 1];
-    return article.querySelector(".blog-item-content-wrapper") ||
-      article.querySelector(".BlogItem-content") ||
-      article.querySelector(".entry-content") ||
-      null;
-  }
-
-  function isFooterAnchored(w, body){
-    return !!(w && body && w.parentElement === body);
-  }
-
-  function moveFooterOnce(){
-    var w = document.getElementById("ar-module-footer-cta");
-    if (!w) return false;
-    var body = findArticleBodyBlock();
-    if (!body) {
-      w.classList.add("is-hidden");
-      w.setAttribute("aria-hidden", "true");
-      w.dataset.moved = "0";
-      return false;
-    }
-    if (isFooterAnchored(w, body)) {
-      w.dataset.moved = "1";
-      w.classList.remove("is-hidden");
-      w.removeAttribute("aria-hidden");
-      return true;
-    }
-    body.appendChild(w);
-    w.dataset.moved = "1";
-    w.classList.remove("is-hidden");
-    w.removeAttribute("aria-hidden");
-    return true;
-  }
-
   function waitForGlobal(name, timeout){
     timeout = timeout || 8000;
     return new Promise(function(resolve){
@@ -323,16 +280,6 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
         setTimeout(poll, 80);
       })();
     });
-  }
-
-  function startFooterObserver(){
-    var obs = new MutationObserver(function(){
-      moveFooterOnce();
-      var el = document.getElementById("ar-module-footer-cta");
-      if (el && el.dataset.rendered !== "1") initFooter();
-    });
-    obs.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(function(){ obs.disconnect(); }, 15000);
   }
 
   function renderGuestPanel(el){
@@ -377,8 +324,6 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
   }
 
   async function initFooter(){
-    if (!isLessonPage()) return;
-    if (!moveFooterOnce()) return;
     var el = document.getElementById("ar-module-footer-cta");
     if (!el || el.dataset.rendered === "1") return;
 
@@ -403,7 +348,6 @@ F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare articl
   }
 
   function boot(){
-    startFooterObserver();
     initFooter();
   }
 
