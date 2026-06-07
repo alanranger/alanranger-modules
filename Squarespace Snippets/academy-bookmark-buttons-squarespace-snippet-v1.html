@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.11 Hotfix: single-shot member Next resolve — stops MutationObserver MS call flood
 v1.3.10 Shared next-unopened resolver on __arAcademyModuleNav; bookmark Next matches footer
 v1.3.9 Expose __arAcademyModuleNav + __arAcademyMemberAccess globals for footer CTA (canonical module array)
 v1.3.8 Non-member CTA: black/gold styling + single copy "Get all 60 modules + certificates - free"
@@ -465,27 +466,27 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     if (nextSpan) nextSpan.textContent = resolved.label;
   }
 
+  var memberNextResolveScheduled = false;
+
   async function resolveMemberNextButton(nextBtn, idx){
     if (!nextBtn || nextBtn.dataset.wiredFinal === "1" || nextBtn.dataset.resolveInflight === "1") return;
     nextBtn.dataset.resolveInflight = "1";
     try {
       var ms = await waitForMemberstack();
-      var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
-      if (ms) {
-        try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
+      if (!ms) return;
+      var ctx = { member: null, memberId: "", normalized: {} };
+      if (globalThis.__arMsReader) {
+        try {
+          var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+          ctx.member = bundle.member || null;
+          ctx.normalized = bundle.memberJson || {};
+          ctx.memberId = getMemberId(ctx.member) || "";
+        } catch (e) { /* ignore */ }
       }
-      var access = evaluateAccess(ctx.member, ctx);
+      var access = evaluateAccess(ctx.member, { memberId: ctx.memberId, idSource: "ms-bundle", normalized: ctx.normalized });
       if (!access.loggedIn || !access.hasAccess) {
         nextBtn.dataset.wiredFinal = "1";
         return;
-      }
-      if (!ctx.normalized || !ctx.normalized.arAcademy) {
-        if (ms && globalThis.__arMsReader) {
-          try {
-            var bundle = await globalThis.__arMsReader.fetchBundle(ms);
-            ctx.normalized = bundle.memberJson || ctx.normalized || {};
-          } catch (e) { /* ignore */ }
-        }
       }
       var openedSet = buildOpenedSet(ctx.normalized || {});
       var resolved = resolveNextUnopened(idx, openedSet);
@@ -494,6 +495,12 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     } finally {
       delete nextBtn.dataset.resolveInflight;
     }
+  }
+
+  function scheduleMemberNextResolve(nextBtn, idx){
+    if (!nextBtn || nextBtn.dataset.wiredFinal === "1" || memberNextResolveScheduled) return;
+    memberNextResolveScheduled = true;
+    resolveMemberNextButton(nextBtn, idx);
   }
 
   function wireExamButton(examBtn, idx){
@@ -515,12 +522,14 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     var nextBtn = document.getElementById("ar-next-module-btn");
     var examBtn = document.getElementById("ar-take-exam-btn");
     if (!nextBtn || !examBtn) return;
+    if (nextBtn.dataset.wiredFinal === "1" && examBtn.dataset.wired === "1") return;
 
     var idx = findArticleIndex(normalizePath(window.location.pathname));
     if (idx === -1) {
       nextBtn.classList.add("is-hidden");
       examBtn.classList.add("is-hidden");
       nextBtn.dataset.wired = "1";
+      nextBtn.dataset.wiredFinal = "1";
       examBtn.dataset.wired = "1";
       return;
     }
@@ -528,12 +537,14 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     wireExamButton(examBtn, idx);
 
     if (nextBtn.dataset.wiredFinal !== "1") {
-      applySequentialNext(nextBtn, idx);
-      nextBtn.classList.remove("is-hidden");
-      nextBtn.removeAttribute("aria-hidden");
-      resolveMemberNextButton(nextBtn, idx);
+      if (nextBtn.dataset.wired !== "1") {
+        applySequentialNext(nextBtn, idx);
+        nextBtn.classList.remove("is-hidden");
+        nextBtn.removeAttribute("aria-hidden");
+        nextBtn.dataset.wired = "1";
+      }
+      scheduleMemberNextResolve(nextBtn, idx);
     }
-    nextBtn.dataset.wired = "1";
   }
 
   function findInsertPoint(){
@@ -1053,12 +1064,19 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     wireBookmark();
     wireNextModuleButtons();
     kickMemberStrip();
-    setTimeout(wireNextModuleButtons, 1500);
+    setTimeout(function(){
+      var nb = document.getElementById("ar-next-module-btn");
+      if (nb && nb.dataset.wiredFinal !== "1") scheduleMemberNextResolve(nb, findArticleIndex(normalizePath(window.location.pathname)));
+    }, 1500);
 
     var obs = new MutationObserver(function(){
       moveWidgetOnce();
       wireBookmark();
-      wireNextModuleButtons();
+      var nextBtn = document.getElementById("ar-next-module-btn");
+      var examBtn = document.getElementById("ar-take-exam-btn");
+      if (!nextBtn || nextBtn.dataset.wiredFinal !== "1" || !examBtn || examBtn.dataset.wired !== "1") {
+        wireNextModuleButtons();
+      }
       var strip = document.getElementById("ar-lesson-member-strip");
       if (!strip || strip.dataset.wiredFinal !== "1") kickMemberStrip();
     });
