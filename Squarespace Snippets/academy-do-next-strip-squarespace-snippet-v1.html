@@ -5015,6 +5015,8 @@ function computeTrackFillPct(badges, progressPct) {
 
       clearGhostSessionContext();
 
+      if (globalThis.__arMsReader) globalThis.__arMsReader.invalidate();
+
       return { ghostMode: false };
 
     }
