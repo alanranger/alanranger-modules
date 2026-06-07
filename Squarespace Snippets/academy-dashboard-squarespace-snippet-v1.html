@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.14) — Squarespace Snippet
+Academy Dashboard UI (v1.3.15) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -19,6 +19,7 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
 v1.3.11: Open-tracking beacon on module/PDF/pack/checklist cubes — fires after window.open (keepalive before same-tab nav); uses cached openedProgressMemberId only.
 v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
+v1.3.15: Fix modules grid — __arDashboardGhostMode on globalThis (was scoped to auth IIFE; module-progress IIFE threw ReferenceError and skipped grid render).
 v1.3.14: Ghost session lifecycle — clear ar_ghost_context_v1 on plain dashboard load (no ?ghost=/?ghostEmail=); session key only persists while URL ghost params are active.
 v1.3.13: Ghost mode — invalidate/prefetch __arMsReader with ghost member JSON so modules grid shows ghosted member opens (not admin cache); suppress cube/pack/checklist write beacons and Memberstack persists in ghost mode.
 v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 live baseline. Beacon logic unchanged (fire-and-forget keepalive AFTER open; cached __arMsReader member id only; sendModuleProgressBeacon stays in the module-progress IIFE). Fresh version stamp so post-restore live verification is unambiguous; corrects the stale header stamp that still read D 1.3.10.
@@ -3004,7 +3005,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     var UPGRADE_CHECKOUT_ENDPOINT = API_BASE + "/api/stripe/create-upgrade-checkout";
     var UPGRADE_COUPON_WINDOW_DAYS = 7;
     var GHOST_CONTEXT_KEY = "ar_ghost_context_v1";
-    var dashboardGhostMode = false;
+    globalThis.__arDashboardGhostMode = false;
     // Key used to carry a lapsed-trial re-engagement deep link across a login
     // round-trip. Populated when the dashboard sees ?ar_rewind=<signed token>
     // in the URL (from the REWIND20 win-back email). Consumed on the login
@@ -5112,7 +5113,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
     async function persistOpenedProgressToMemberJson(sectionKey, openedSet, selector, keyAttr) {
       try {
-        if (dashboardGhostMode) return;
+        if (globalThis.__arDashboardGhostMode) return;
         if (!openedProgressMs || typeof openedProgressMs.updateMemberJSON !== "function" || !globalThis.__arMsReader) return;
         if (!openedProgressMemberId) return;
         var bundle = await globalThis.__arMsReader.fetchBundle(openedProgressMs);
@@ -5900,12 +5901,13 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         setGhostSessionContext(ghostMemberId, ghostEmail);
       } else {
         clearGhostSessionContext();
+        globalThis.__arDashboardGhostMode = false;
       }
 
       // If ghost mode is requested, handle it BEFORE normal authentication
       // This allows admins to ghost login even if they're not logged into Memberstack on Squarespace
       if (ghostMemberId || ghostEmail) {
-        dashboardGhostMode = true;
+        globalThis.__arDashboardGhostMode = true;
         // Build API URL with appropriate parameter
         var apiUrl = 'https://alanranger-modules.vercel.app/api/admin/ghost-login?';
         if (ghostMemberId) {
@@ -6852,7 +6854,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
     function sendModuleProgressBeacon(section, key, linkEl) {
       try {
-        if (dashboardGhostMode || !moduleProgressBeaconMemberId || !section || !key) return;
+        if (globalThis.__arDashboardGhostMode || !moduleProgressBeaconMemberId || !section || !key) return;
         if (typeof fetch !== "function") return;
         fetch("https://alanranger-modules.vercel.app/api/academy/track-tile-open", {
           method: "POST",
@@ -7416,7 +7418,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       
       // Only save to Memberstack if new module keys were added
       // This prevents overwriting good data when nothing changed
-      if (!dashboardGhostMode && openedAfterFallback > openedBeforeFallback) {
+      if (!globalThis.__arDashboardGhostMode && openedAfterFallback > openedBeforeFallback) {
         updateDebugPanel('💾 Saving ' + (openedAfterFallback - openedBeforeFallback) + ' new modules to Memberstack...', null);
         try {
           // Ensure arAcademy structure exists
@@ -7634,7 +7636,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             var alreadyOpened = !!(opened[moduleUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(isPdf || (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)));
 
-            if (!dashboardGhostMode && !alreadyOpened) {
+            if (!globalThis.__arDashboardGhostMode && !alreadyOpened) {
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
                 cat: category,
@@ -7684,7 +7686,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             }
 
             navigateModuleCubeOpen({
-              alreadyOpened: dashboardGhostMode || alreadyOpened,
+              alreadyOpened: globalThis.__arDashboardGhostMode || alreadyOpened,
               openInNewTab: openInNewTab,
               navigateUrl: navigateUrl,
               section: "modules",
@@ -7848,7 +7850,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             var alreadyOpened = !!(opened[packUrl] || opened[normalizedUrl]);
             var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
 
-            if (!dashboardGhostMode && !alreadyOpened) {
+            if (!globalThis.__arDashboardGhostMode && !alreadyOpened) {
               var nowIso = new Date().toISOString();
               opened[normalizedUrl] = {
                 cat: category,
@@ -7909,7 +7911,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             }
 
             navigateModuleCubeOpen({
-              alreadyOpened: dashboardGhostMode || alreadyOpened,
+              alreadyOpened: globalThis.__arDashboardGhostMode || alreadyOpened,
               openInNewTab: openInNewTab,
               navigateUrl: navigateUrl,
               section: "modules",
@@ -8071,7 +8073,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
               var alreadyOpened = !!(opened[checklistUrl] || opened[normalizedUrl]);
               var openInNewTab = !!(e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1));
 
-              if (!dashboardGhostMode && !alreadyOpened) {
+              if (!globalThis.__arDashboardGhostMode && !alreadyOpened) {
                 var nowIso = new Date().toISOString();
                 opened[normalizedUrl] = {
                   cat: category,
@@ -8128,7 +8130,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
               }
 
               navigateModuleCubeOpen({
-                alreadyOpened: dashboardGhostMode || alreadyOpened,
+                alreadyOpened: globalThis.__arDashboardGhostMode || alreadyOpened,
                 openInNewTab: openInNewTab,
                 navigateUrl: navigateUrl,
                 section: "modules",
@@ -8328,7 +8330,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
           // Check if already opened
           var alreadyOpened = !!(openedModules[packUrl] || openedModules[normalizedUrl]);
           
-          if (!dashboardGhostMode && !alreadyOpened) {
+          if (!globalThis.__arDashboardGhostMode && !alreadyOpened) {
             // Mark as opened immediately (optimistic update)
             var nowIso = new Date().toISOString();
             openedModules[normalizedUrl] = {

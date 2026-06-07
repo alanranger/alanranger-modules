@@ -22,6 +22,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-07] - Dashboard D 1.3.15: modules grid ReferenceError fix (CRITICAL)
+
+### Fixed
+- **Modules grid empty on normal dashboard** — `dashboardGhostMode` was declared in the auth/guard script IIFE but referenced from the separate module-progress IIFE (added in D 1.3.13). `renderModuleProgress()` threw `ReferenceError` before reaching cube DOM render; exams grid (first IIFE) was unaffected.
+- **Fix:** `globalThis.__arDashboardGhostMode` shared flag; both IIFEs read/write the same property.
+- Ghost session clear (D 1.3.14), grid ghost-awareness, and write guards retained.
+
+### Paste
+- **Dashboard D 1.3.15** + **Header H 1.4.18** (stamp). Strip S 1.3.48 unchanged — re-paste only if not yet on 1.3.48.
+
+---
+
 ## [2026-06-07] - Strip S 1.3.48 + Dashboard D 1.3.14: ghost session lifecycle (regression fix)
 
 ### Fixed
