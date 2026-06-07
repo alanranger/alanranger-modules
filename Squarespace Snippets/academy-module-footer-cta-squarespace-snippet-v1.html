@@ -1,0 +1,379 @@
+<!-- ===========================
+AR | MODULE FOOTER CTA (member-aware end-of-lesson panel)
+F 1.0.0 New footer block: dark guest conversion panel OR light member next-step strip
+- Reads canonical module list from globalThis.__arAcademyModuleNav (Bookmark B exposes it)
+- Member detection via globalThis.__arAcademyMemberAccess + __arMsReader
+- Replaces static "Take The FREE Online Photography Crash Course" billboard
+=========================== -->
+
+<style id="ar-module-footer-cta-style">
+  #ar-module-footer-cta{
+    margin:32px 0 24px;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  #ar-module-footer-cta *{ box-sizing:border-box; }
+
+  .ar-footer-cta--guest{
+    background:#0e0e0e;
+    border-radius:12px;
+    padding:28px 24px;
+    text-align:center;
+    max-width:640px;
+    margin:0 auto;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__logo{
+    width:46px;
+    height:46px;
+    object-fit:contain;
+    display:block;
+    margin:0 auto 16px;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__eyebrow{
+    margin:0 0 12px;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:#e6c067;
+    line-height:1.4;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__headline{
+    margin:0 0 18px;
+    font-size:22px;
+    font-weight:500;
+    color:#f4f4f4;
+    line-height:1.35;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__bullets{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px 20px;
+    margin:0 0 22px;
+    padding:0;
+    list-style:none;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__bullets li{
+    font-size:13px;
+    color:#d4d4d4;
+    line-height:1.4;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__bullets li::before{
+    content:"\2713 ";
+    color:#c79a3b;
+    font-weight:800;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__cta{
+    display:inline-block;
+    padding:13px 30px;
+    border-radius:8px;
+    border:none;
+    background:#c79a3b;
+    color:#1a1305;
+    font-size:15px;
+    font-weight:500;
+    line-height:1.2;
+    text-decoration:none;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__cta:hover{
+    background:#b8860b;
+    color:#1a1305;
+  }
+  .ar-footer-cta--guest .ar-footer-cta__reassure{
+    margin:14px 0 0;
+    font-size:12px;
+    color:#8a8a8a;
+    line-height:1.4;
+  }
+
+  .ar-footer-cta--member{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:16px 20px;
+    background:#f1efe9;
+    border:1px solid #d8d3c4;
+    border-radius:12px;
+    padding:20px 24px;
+    max-width:100%;
+  }
+  .ar-footer-cta--member .ar-footer-cta__logo{
+    width:38px;
+    height:38px;
+    object-fit:contain;
+    flex:0 0 auto;
+  }
+  .ar-footer-cta--member .ar-footer-cta__copy{
+    flex:1 1 180px;
+    min-width:0;
+  }
+  .ar-footer-cta--member .ar-footer-cta__title{
+    margin:0 0 4px;
+    font-size:17px;
+    font-weight:500;
+    color:#2c2c2a;
+    line-height:1.3;
+  }
+  .ar-footer-cta--member .ar-footer-cta__subtitle{
+    margin:0;
+    font-size:13px;
+    color:#5f5e5a;
+    line-height:1.4;
+  }
+  .ar-footer-cta--member .ar-footer-cta__actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    flex:1 1 220px;
+    justify-content:flex-end;
+  }
+  .ar-footer-cta__btn{
+    display:inline-flex;
+    align-items:center;
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:700;
+    line-height:1.2;
+    text-decoration:none;
+    white-space:normal;
+    text-align:center;
+  }
+  .ar-footer-cta__btn--next{
+    background:#166534;
+    border:2px solid #14532d;
+    color:#fff;
+  }
+  .ar-footer-cta__btn--next:hover{ background:#15803d; color:#fff; }
+  .ar-footer-cta__btn--exam{
+    background:transparent;
+    border:2px solid #166534;
+    color:#166534;
+  }
+  .ar-footer-cta__btn--exam:hover{ background:#f0fdf4; }
+  .ar-footer-cta__btn--dash{
+    background:transparent;
+    border:2px solid #b4b2a9;
+    color:#5f5e5a;
+  }
+  .ar-footer-cta__btn--dash:hover{ background:#fff; }
+  .ar-footer-cta__btn.is-hidden{ display:none !important; }
+</style>
+
+<div id="ar-module-footer-cta" class="is-hidden" aria-hidden="true"></div>
+
+<script>
+(function initArMemberstackReader(){
+  if (globalThis.__arMsReader) return;
+  var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+  function unwrapMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+  function normalizeMemberJsonPayload(jsonRes) {
+    var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+    if (raw && raw.json && typeof raw.json === "object") return raw.json;
+    return raw || {};
+  }
+  function mergeMemberWithJson(member, jsonRes) {
+    var m = unwrapMember(member);
+    if (!m || !m.data || !jsonRes) return m;
+    var mj = unwrapMember(jsonRes);
+    if (!mj) return m;
+    if (!m.id && mj.id) m.id = mj.id;
+    if (!m.data) m.data = {};
+    if (mj.data) mergeMissingFields(m.data, mj.data);
+    mergeMissingFields(m.data, mj);
+    return m;
+  }
+  globalThis.__arMsReader = {
+    invalidate: function() {
+      state.member = null; state.rawJson = null; state.memberJson = null;
+      state.inflight = null; state.at = 0;
+    },
+    patchJson: function(memberJson, rawJson) {
+      if (memberJson) state.memberJson = memberJson;
+      if (rawJson) state.rawJson = rawJson;
+      state.at = Date.now();
+    },
+    fetchBundle: function(ms, opts) {
+      opts = opts || {};
+      if (!ms) return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+      if (!opts.force && state.at && state.rawJson) {
+        return Promise.resolve({ member: state.member, rawJson: state.rawJson, memberJson: state.memberJson });
+      }
+      if (!opts.force && state.inflight) return state.inflight;
+      var memberCall = (typeof ms.getCurrentMember === "function")
+        ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+        : Promise.resolve(null);
+      state.inflight = Promise.resolve(memberCall).then(function(res) {
+        var m = unwrapMember(res);
+        if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        }
+        return ms.getMemberJSON().then(function(jsonRes) {
+          var merged = mergeMemberWithJson(m, jsonRes);
+          state.member = merged; state.rawJson = jsonRes;
+          state.memberJson = normalizeMemberJsonPayload(jsonRes);
+          state.at = Date.now(); state.inflight = null;
+          return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+        }).catch(function() {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        });
+      }).catch(function(err) { state.inflight = null; throw err; });
+      return state.inflight;
+    }
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__arFooterCtaInit) return;
+  window.__arFooterCtaInit = true;
+
+  var SITE = "https://www.alanranger.com";
+  var SIGNUP_URL = SITE + "/free-online-photography-course";
+  var FOUNDATION_URL = SITE + "/academy/online-photography-course";
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+  var DASHBOARD_URL = SITE + "/academy/dashboard";
+  var LOGO_WHITE = SITE + "/s/alan-ranger-photography-academy-logo-white.png";
+  var LOGO_DARK = SITE + "/s/alan-ranger-photography-academy-logo.png";
+  var SIGNUP_CTA_COPY = "Get all 60 modules + certificates - free \u2192";
+
+  function normalizePath(url){
+    if (!url || typeof url !== "string") return "/";
+    var path = url;
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+      try { path = new URL(path).pathname; } catch (e) {
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+        if (m) path = m[1];
+      }
+    }
+    path = path.split("?")[0].split("#")[0];
+    path = path.replace(/\/+$/, "") || "/";
+    if (path.charAt(0) !== "/") path = "/" + path;
+    return path;
+  }
+
+  function isLessonPage(){
+    return normalizePath(window.location.pathname).indexOf("/blog-on-photography/") === 0;
+  }
+
+  function waitForGlobal(name, timeout){
+    timeout = timeout || 8000;
+    return new Promise(function(resolve){
+      var start = Date.now();
+      (function poll(){
+        if (globalThis[name]) return resolve(globalThis[name]);
+        if (Date.now() - start > timeout) return resolve(null);
+        setTimeout(poll, 80);
+      })();
+    });
+  }
+
+  function findInsertPoint(){
+    var article = document.querySelector("article") || document.querySelector("main") || document.querySelector("#page");
+    return article || null;
+  }
+
+  function mountShell(){
+    var el = document.getElementById("ar-module-footer-cta");
+    if (!el || el.dataset.mounted === "1") return el;
+    var target = findInsertPoint();
+    if (target && el.parentElement !== target) target.appendChild(el);
+    el.dataset.mounted = "1";
+    el.classList.remove("is-hidden");
+    el.removeAttribute("aria-hidden");
+    return el;
+  }
+
+  function renderGuestPanel(el){
+    el.className = "ar-footer-cta--guest";
+    el.innerHTML =
+      '<img class="ar-footer-cta__logo" src="' + LOGO_WHITE + '" alt="Alan Ranger Photography Academy" loading="lazy">' +
+      '<p class="ar-footer-cta__eyebrow">\uD83D\uDD12 You\'ve reached the end of this free module</p>' +
+      '<h2 class="ar-footer-cta__headline">There are 59 more modules, exams and certificates waiting.</h2>' +
+      '<ul class="ar-footer-cta__bullets">' +
+      '<li>60 step-by-step modules</li><li>15 exams + certificates</li>' +
+      '<li>practice packs</li><li>progress tracking</li></ul>' +
+      '<a class="ar-footer-cta__cta" href="' + SIGNUP_URL + '">' + SIGNUP_CTA_COPY + '</a>' +
+      '<p class="ar-footer-cta__reassure">Free 14-day trial. No card needed.</p>';
+  }
+
+  function renderMemberStrip(el, nav, idx){
+    var mods = nav.articleModules;
+    var examIds = nav.examModuleIds;
+    var nextHtml = "";
+    var examHtml = "";
+    if (idx >= 0 && idx < mods.length) {
+      if (idx < 44) {
+        var nextMod = mods[idx + 1];
+        nextHtml = '<a class="ar-footer-cta__btn ar-footer-cta__btn--next" href="' + SITE + nextMod.p + '">Next: ' + nextMod.t + ' \u2192</a>';
+      } else {
+        nextHtml = '<a class="ar-footer-cta__btn ar-footer-cta__btn--next" href="' + FOUNDATION_URL + '">Foundation course home \u2192</a>';
+      }
+      if (idx <= 14 && examIds[idx]) {
+        var mod = mods[idx];
+        var examLabel = nav.examButtonLabel(mod.t);
+        examHtml = '<a class="ar-footer-cta__btn ar-footer-cta__btn--exam" href="' + EXAM_BASE + "?module=" + examIds[idx] + '">' + examLabel + '</a>';
+      }
+    }
+    el.className = "ar-footer-cta--member";
+    el.innerHTML =
+      '<img class="ar-footer-cta__logo" src="' + LOGO_DARK + '" alt="Alan Ranger Photography Academy" loading="lazy">' +
+      '<div class="ar-footer-cta__copy">' +
+      '<p class="ar-footer-cta__title">Finished this module?</p>' +
+      '<p class="ar-footer-cta__subtitle">Take the exam, or carry on to the next one.</p></div>' +
+      '<div class="ar-footer-cta__actions">' + nextHtml + examHtml +
+      '<a class="ar-footer-cta__btn ar-footer-cta__btn--dash" href="' + DASHBOARD_URL + '">Dashboard \u2192</a></div>';
+  }
+
+  async function initFooter(){
+    if (!isLessonPage()) return;
+    var el = mountShell();
+    if (!el) return;
+
+    var nav = await waitForGlobal("__arAcademyModuleNav", 8000);
+    var accessApi = await waitForGlobal("__arAcademyMemberAccess", 8000);
+    var idx = nav ? nav.findArticleIndex(normalizePath(window.location.pathname)) : -1;
+
+    var hasAccess = false;
+    if (accessApi) {
+      var ms = await accessApi.waitForMemberstack();
+      var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
+      if (ms) {
+        try { ctx = await accessApi.resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
+      }
+      var access = accessApi.evaluateAccess(ctx.member, ctx);
+      hasAccess = !!(access && access.loggedIn && access.hasAccess);
+    }
+
+    if (hasAccess) renderMemberStrip(el, nav, idx);
+    else renderGuestPanel(el);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFooter);
+  } else {
+    initFooter();
+  }
+  setTimeout(initFooter, 1200);
+})();
+</script>
+
+<!-- ===========================
+END: AR | MODULE FOOTER CTA
+=========================== -->

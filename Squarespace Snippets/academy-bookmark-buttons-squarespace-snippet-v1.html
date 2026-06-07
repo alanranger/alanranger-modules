@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.9 Expose __arAcademyModuleNav + __arAcademyMemberAccess globals for footer CTA (canonical module array)
 v1.3.8 Non-member CTA: black/gold styling + single copy "Get all 60 modules + certificates - free"
 v1.3.7 Lesson-page soft grey bg (body.ar-academy-lesson) + gold numbered non-member CTA (last in row)
 v1.3.6 Re-ship of the B 1.3.5 module-open beacon on the restored baseline (logic unchanged); version stamp sync with D 1.3.12 / S 1.3.36 for post-restore verification
@@ -374,6 +375,14 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     return "Take the " + shortTitle + " exam \u2192";
   }
 
+  globalThis.__arAcademyModuleNav = {
+    normalizePath: normalizePath,
+    findArticleIndex: findArticleIndex,
+    examButtonLabel: examButtonLabel,
+    get articleModules() { return ARTICLE_MODULES; },
+    get examModuleIds() { return EXAM_MODULE_IDS; }
+  };
+
   function wireNextModuleButtons(){
     var nextBtn = document.getElementById("ar-next-module-btn");
     var examBtn = document.getElementById("ar-take-exam-btn");
@@ -690,6 +699,12 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   function hasAccess(member){
     return evaluateAccess(member).hasAccess;
   }
+
+  globalThis.__arAcademyMemberAccess = {
+    resolveMemberIdentity: resolveMemberIdentity,
+    evaluateAccess: evaluateAccess,
+    waitForMemberstack: waitForMemberstack
+  };
 
   function countOpenedModules(normalized){
     var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
