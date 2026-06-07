@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | MODULE FOOTER CTA (member-aware end-of-lesson panel)
-F 1.0.1 Foot-of-article relocation (moveFooterOnce + observer) + inline base64 white logo
+F 1.0.2 Anchor footer to article body `.sqs-layout.sqs-grid-12` (not bare article)
 - Reads canonical module list from globalThis.__arAcademyModuleNav (Bookmark B exposes it)
 - Member detection via globalThis.__arAcademyMemberAccess + __arMsReader
 - Replaces static "Take The FREE Online Photography Crash Course" billboard
@@ -272,33 +272,41 @@ F 1.0.1 Foot-of-article relocation (moveFooterOnce + observer) + inline base64 w
     return normalizePath(window.location.pathname).indexOf("/blog-on-photography/") === 0;
   }
 
-  function findFootInsertPoint(){
+  function findArticleBodyBlock(){
     var article =
+      document.querySelector("article.BlogItem") ||
       document.querySelector('article[itemtype*="BlogPosting"]') ||
-      document.querySelector('[data-section-type="blog-item"] article') ||
-      document.querySelector(".BlogItem article") ||
-      document.querySelector("article");
-    if (!article) {
-      var main = document.querySelector("main");
-      return main ? { el: main } : null;
-    }
-    var content =
-      article.querySelector(".blog-item-content-wrapper") ||
+      document.querySelector(".BlogItem");
+    if (!article) return null;
+    var layouts = article.querySelectorAll(".sqs-layout.sqs-grid-12");
+    if (layouts.length) return layouts[layouts.length - 1];
+    return article.querySelector(".blog-item-content-wrapper") ||
       article.querySelector(".BlogItem-content") ||
       article.querySelector(".entry-content") ||
-      article.querySelector(".blog-item-inner-wrapper") ||
-      article.querySelector(".content-wrapper") ||
-      article;
-    return { el: content };
+      null;
+  }
+
+  function isFooterAnchored(w, body){
+    return !!(w && body && w.parentElement === body);
   }
 
   function moveFooterOnce(){
     var w = document.getElementById("ar-module-footer-cta");
     if (!w) return false;
-    if (w.dataset.moved === "1") return true;
-    var target = findFootInsertPoint();
-    if (!target || !target.el) return false;
-    target.el.appendChild(w);
+    var body = findArticleBodyBlock();
+    if (!body) {
+      w.classList.add("is-hidden");
+      w.setAttribute("aria-hidden", "true");
+      w.dataset.moved = "0";
+      return false;
+    }
+    if (isFooterAnchored(w, body)) {
+      w.dataset.moved = "1";
+      w.classList.remove("is-hidden");
+      w.removeAttribute("aria-hidden");
+      return true;
+    }
+    body.appendChild(w);
     w.dataset.moved = "1";
     w.classList.remove("is-hidden");
     w.removeAttribute("aria-hidden");
@@ -370,7 +378,7 @@ F 1.0.1 Foot-of-article relocation (moveFooterOnce + observer) + inline base64 w
 
   async function initFooter(){
     if (!isLessonPage()) return;
-    moveFooterOnce();
+    if (!moveFooterOnce()) return;
     var el = document.getElementById("ar-module-footer-cta");
     if (!el || el.dataset.rendered === "1") return;
 
