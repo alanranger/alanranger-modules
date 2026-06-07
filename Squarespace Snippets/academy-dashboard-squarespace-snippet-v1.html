@@ -1,5 +1,5 @@
 <!--
-Academy Dashboard UI (v1.3.15) — Squarespace Snippet
+Academy Dashboard UI (v1.3.17) — Squarespace Snippet
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -19,6 +19,8 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
 v1.3.11: Open-tracking beacon on module/PDF/pack/checklist cubes — fires after window.open (keepalive before same-tab nav); uses cached openedProgressMemberId only.
 v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
+v1.3.17: Disable auto-open upgrade modal on first active-trial dashboard login; trial end fallback uses 14 days (not legacy 30).
+v1.3.16: Active-trial upgrade prompt — comparison table shows trial access (not "Trial expired"/locked); trial end reads Memberstack cancelAtDate (14-day truth, not 30-day fallback).
 v1.3.15: Fix modules grid — __arDashboardGhostMode on globalThis (was scoped to auth IIFE; module-progress IIFE threw ReferenceError and skipped grid render).
 v1.3.14: Ghost session lifecycle — clear ar_ghost_context_v1 on plain dashboard load (no ?ghost=/?ghostEmail=); session key only persists while URL ghost params are active.
 v1.3.13: Ghost mode — invalidate/prefetch __arMsReader with ghost member JSON so modules grid shows ghosted member opens (not admin cache); suppress cube/pack/checklist write beacons and Memberstack persists in ghost mode.
@@ -3112,6 +3114,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
   
     var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+    var TRIAL_LENGTH_DAYS = 14;
     // Keep the old annual price id for legacy members, but also support the new annual-with-trial price id.
     var ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
     var ANNUAL_WITH_TRIAL_PRICE_ID = "prc_annual-membership-with-30-day-trial-881h0iui";
@@ -3727,6 +3730,11 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       for (var i = 0; i < pcs.length; i++) {
         var pc = pcs[i] || {};
         if (pc.planId !== TRIAL_PLAN_ID) continue;
+        var cancelAt = pc.payment && pc.payment.cancelAtDate;
+        if (cancelAt) {
+          var cancelTs = typeof cancelAt === "number" ? cancelAt : parseInt(cancelAt, 10);
+          if (!Number.isNaN(cancelTs)) return new Date(cancelTs * 1000);
+        }
         var d =
           safeDate(pc.trialEndsAt) ||
           safeDate(pc.endsAt) ||
@@ -3738,7 +3746,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       var created =
         safeDate(member.createdAt) ||
         safeDate(member.data && (member.data.createdAt || member.data.created_at));
-      if (created) return new Date(created.getTime() + (30 * 24 * 60 * 60 * 1000));
+      if (created) return new Date(created.getTime() + (TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000));
       return null;
     }
   
@@ -6558,7 +6566,8 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         logAuthSuccess(successStage || "guard-main", m);
         renderMemberStatus(m, ms);
         handleUpgradeReturn(ms);
-        maybeShowActiveTrialPrompt(m);
+        // Active-trial auto-upgrade modal disabled (v1.3.17) — too intrusive on first login.
+        // Expired-trial locked modal (enterExpiredTrialMode) unchanged.
 
         // Inactivity logout (30 minutes of no activity)
           (function initInactivityLogout(){
