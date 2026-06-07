@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.17) — Squarespace Snippet
+Academy Dashboard UI (v1.3.18) — Squarespace Snippet
+v1.3.18: Remove Members Guide accordion sidebar (overlaps Foundation page "how it works"); slim pointer to course map; centre dashboard layout.
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
 v1.3: Members Guide sidebar docked LEFT (was right); main area offset. Modules tile: "Go to online course page" link.
@@ -19,6 +20,7 @@ v1.3.8: B-path fix — block external MS network-failure login redirect when ses
 v1.3.9: Session-cached access — confirm once per session; subsequent loads render from cache; Memberstack hydrates in background only (network failures non-fatal).
 v1.3.11: Open-tracking beacon on module/PDF/pack/checklist cubes — fires after window.open (keepalive before same-tab nav); uses cached openedProgressMemberId only.
 v1.3.10: Single shared Memberstack read per page load — deduped getCurrentMember+getMemberJSON bundle; dashboard cubes/packs/checklists + bookmark article widget + do-next strip use __arMsReader (header H 1.4.4 inits on Academy pages; bookmark inits on blog articles).
+v1.3.18: Slim Members Guide sidebar to one-line pointer (Foundation page has How it works strip).
 v1.3.17: Disable auto-open upgrade modal on first active-trial dashboard login; trial end fallback uses 14 days (not legacy 30).
 v1.3.16: Active-trial upgrade prompt — comparison table shows trial access (not "Trial expired"/locked); trial end reads Memberstack cancelAtDate (14-day truth, not 30-day fallback).
 v1.3.15: Fix modules grid — __arDashboardGhostMode on globalThis (was scoped to auth IIFE; module-progress IIFE threw ReferenceError and skipped grid render).
@@ -201,113 +203,42 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   }
   
   html.ar-academy .ar-academy-dashboard__inner {
-    max-width: 1400px; /* Increased from 1200px for larger dashboard */
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 12px; /* Reduced from 18px for less side padding */
+    padding: 0 12px;
     position: relative;
   }
 
-  /* Desktop: Members Guide fixed on the LEFT — main column centered in remaining viewport width */
-  @media (min-width: 1201px) {
-    html.ar-academy .ar-academy-dashboard__inner {
-      --arp-dash-gutter: 352px; /* 320px sidebar + gap */
-      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
-      max-width: 1400px;
-      margin-left: calc(
-        var(--arp-dash-gutter) +
-        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
-          2
-      );
-      margin-right: auto;
-      box-sizing: border-box;
-      padding: 0 12px;
-    }
+  html.ar-academy .ar-academy-dashboard__guide-pointer {
+    font-size: 13px;
+    color: var(--ar-text-muted);
+    margin: 12px 0 0;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+
+  html.ar-academy .ar-academy-dashboard__guide-pointer a {
+    color: hsl(16, 88%, 54%);
+    font-weight: 600;
   }
   
   html.ar-academy .ar-academy-dashboard__main {
     width: 100%;
   }
   
-  html.ar-academy .ar-academy-dashboard__sidebar {
-    position: fixed;
-    left: 20px;
-    top: 82px; /* Default: Below the sticky Academy header (will be adjusted by JS) */
-    width: 320px;
-    z-index: 997; /* Below Academy header (998) but above dashboard content */
-    max-height: calc(100vh - 102px);
-    overflow-y: auto;
-  }
-  
-  @media (max-width: 1600px) and (min-width: 1201px) {
-    html.ar-academy .ar-academy-dashboard__sidebar {
-      left: 10px;
-      width: 300px;
-    }
-
-    html.ar-academy .ar-academy-dashboard__inner {
-      --arp-dash-gutter: 322px; /* 300px sidebar + gap */
-      width: min(1400px, calc(100vw - var(--arp-dash-gutter)));
-      margin-left: calc(
-        var(--arp-dash-gutter) +
-        (100vw - var(--arp-dash-gutter) - min(1400px, calc(100vw - var(--arp-dash-gutter)))) /
-          2
-      );
-    }
-  }
-  
   @media (max-width: 1200px) {
     html.ar-academy .ar-academy-dashboard__inner {
-    display: flex;
+      display: flex;
       flex-direction: column;
-      max-width: 100%; /* Full width when stacked */
+      max-width: 100%;
       width: 100%;
       margin-left: auto;
       margin-right: auto;
-      padding: 0 12px; /* Consistent padding */
+      padding: 0 12px;
     }
     
     html.ar-academy .ar-academy-dashboard__main {
       width: 100%;
-      order: 1; /* Main content first on small screens */
-    }
-    
-    html.ar-academy .ar-academy-dashboard__sidebar {
-      position: relative;
-      left: auto;
-      right: auto;
-      top: auto;
-      width: 100%;
-      max-width: 100%;
-      max-height: none;
-      margin-top: 32px;
-      margin-bottom: 24px;
-      order: 2; /* Members Guide below tiles on small screens */
-    }
-  }
-  
-  @media (max-width: 768px) {
-    html.ar-academy .ar-academy-dashboard {
-      padding: 12px 0 40px;
-    }
-    
-    html.ar-academy .ar-academy-dashboard__inner {
-      padding: 0 12px;
-    }
-    
-    html.ar-academy .ar-academy-dashboard__sidebar {
-      margin-top: 24px;
-      margin-bottom: 20px;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    html.ar-academy .ar-academy-dashboard__inner {
-      padding: 0 8px;
-    }
-    
-    html.ar-academy .ar-academy-dashboard__sidebar {
-      margin-top: 20px;
-      margin-bottom: 16px;
     }
   }
   
@@ -1741,144 +1672,6 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     border-color: var(--ar-border);
   }
   
-  /* Members Guide Accordion */
-  html.ar-academy .ar-members-guide {
-    background: var(--ar-panel);
-    border: 1px solid var(--ar-border);
-    border-radius: var(--ar-radius);
-    padding: 20px;
-  }
-  html.ar-academy .ar-members-guide__header {
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--ar-border);
-  }
-  html.ar-academy .ar-members-guide__title {
-    margin: 0 0 8px 0;
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--ar-text);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  html.ar-academy .ar-members-guide__icon {
-    font-size: 24px;
-  }
-  html.ar-academy .ar-members-guide__subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: var(--ar-text-muted);
-    font-weight: 600;
-  }
-  html.ar-academy .ar-members-guide__accordion {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  html.ar-academy .ar-members-guide__item {
-    border: 1px solid var(--ar-border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: rgba(15, 20, 25, 0.4);
-  }
-  html.ar-academy .ar-members-guide__button {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    background: transparent;
-    border: none;
-    color: var(--ar-text);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s ease;
-  }
-  html.ar-academy .ar-members-guide__button:hover {
-    background: rgba(229, 114, 0, 0.1);
-  }
-  html.ar-academy .ar-members-guide__button:focus {
-    outline: 2px solid var(--ar-brand);
-    outline-offset: -2px;
-  }
-  html.ar-academy .ar-members-guide__button-text {
-    flex: 1;
-  }
-  html.ar-academy .ar-members-guide__button-icon {
-    font-size: 10px;
-    transition: transform 0.2s ease;
-    color: var(--ar-text-muted);
-  }
-  html.ar-academy .ar-members-guide__button[aria-expanded="true"] .ar-members-guide__button-icon {
-    transform: rotate(180deg);
-  }
-  html.ar-academy .ar-members-guide__content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease;
-    padding: 0 16px;
-  }
-  html.ar-academy .ar-members-guide__button[aria-expanded="true"] + .ar-members-guide__content {
-    max-height: 1000px;
-    padding: 0 16px 16px 16px;
-  }
-  html.ar-academy .ar-members-guide__content p {
-    margin: 0 0 12px 0;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--ar-text);
-  }
-  html.ar-academy .ar-members-guide__content p:last-child {
-    margin-bottom: 0;
-  }
-  html.ar-academy .ar-members-guide__content ul {
-    margin: 0 0 12px 0;
-    padding-left: 20px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--ar-text);
-  }
-  html.ar-academy .ar-members-guide__content li {
-    margin-bottom: 6px;
-  }
-  html.ar-academy .ar-members-guide__content li:last-child {
-    margin-bottom: 0;
-  }
-  html.ar-academy .ar-members-guide__content strong {
-    color: var(--ar-brand);
-    font-weight: 800;
-  }
-  
-  /* Responsive adjustments for Members Guide */
-  @media (max-width: 1200px) {
-    html.ar-academy .ar-members-guide {
-      width: 100%;
-      max-width: 100%;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    html.ar-academy .ar-members-guide__header {
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-    }
-    
-    html.ar-academy .ar-members-guide__title {
-      font-size: 18px;
-    }
-    
-    html.ar-academy .ar-members-guide__subtitle {
-      font-size: 12px;
-    }
-    
-    html.ar-academy .ar-members-guide__button {
-      padding: 12px 14px;
-      font-size: 13px;
-    }
-  }
   </style>
 
   <style>
@@ -2232,6 +2025,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
           class="ar-academy-dashboard__course-cta"
           href="https://www.alanranger.com/academy/online-photography-course/"
         >&#8250;&#8250; Start the online photography course &#8250;&#8250;</a>
+        <p class="ar-academy-dashboard__guide-pointer">New here? The <a href="https://www.alanranger.com/academy/online-photography-course">Foundation course page</a> explains how the Academy works and lists every module.</p>
       </div>
   
       <div class="ar-academy-tiles">
@@ -2630,203 +2424,6 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       </div>
       </div>
       
-      <!-- Members Guide Accordion Sidebar -->
-      <div class="ar-academy-dashboard__sidebar">
-        <div class="ar-members-guide">
-          <div class="ar-members-guide__header">
-            <h2 class="ar-members-guide__title">
-              <span class="ar-members-guide__icon">📚</span>
-              Members Guide
-            </h2>
-            <p class="ar-members-guide__subtitle">Navigation help and step-by-step instructions</p>
-          </div>
-          
-          <div class="ar-members-guide__accordion">
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Getting Started</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p><strong>Welcome to your Academy Dashboard!</strong></p>
-                <p>Start by exploring the <strong>Modules</strong> section. Each module is a step-by-step lesson covering different photography topics.</p>
-                <ul>
-                  <li>Click any numbered cube to open a module</li>
-                  <li>Orange cubes = modules you've opened</li>
-                  <li>Grey cubes = modules not yet started</li>
-                  <li>Track your progress: "X/60 opened" shows how many modules you've completed</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Modules Explained</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>The <strong>Modules</strong> section contains 60 lessons organized into 5 categories:</p>
-                <ul>
-                  <li><strong>15 Key Camera Setting Modules</strong> - Learn essential camera controls</li>
-                  <li><strong>10 Essential Gear and Accessory Guides</strong> - Equipment recommendations</li>
-                  <li><strong>10 Composition Guide Modules</strong> - Improve your photo composition</li>
-                  <li><strong>10 Photography Genre Topic Guides</strong> - Explore different photography styles</li>
-                  <li><strong>15 Practical Photography Assignments</strong> - Hands-on practice exercises</li>
-                </ul>
-                <p>Each module opens as a web page. PDF assignments open in a new tab so you don't lose your place.</p>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Exams & Certificates</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>Test your knowledge with <strong>Exams & Certificates</strong>:</p>
-                <ul>
-                  <li>Green cubes = exams you've passed</li>
-                  <li>Red cubes = exams you've failed (you can retake them)</li>
-                  <li>Grey cubes = exams not yet attempted</li>
-                  <li>Click "View Details" to see your exam history and download certificates</li>
-                  <li>Your progress shows as "X/15 passed"</li>
-                </ul>
-                <p><strong>Tip:</strong> Review the relevant modules before taking an exam to improve your chances of passing!</p>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Practice Packs</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p><strong>Practice Packs</strong> are 30 field exercises to reinforce what you've learned:</p>
-                <ul>
-                  <li>Organized into 3 categories: Technical Foundations, Composition & Creative, and Genre-Specific</li>
-                  <li>Each practice pack is a web page with step-by-step instructions</li>
-                  <li>Orange cubes = practice packs you've opened</li>
-                  <li>Track your progress: "X/30 opened"</li>
-                </ul>
-                <p>These are practical exercises you can do on location to improve your photography skills.</p>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">1-Page Field Checklists</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p><strong>1-Page Field Checklists</strong> are quick reference guides:</p>
-                <ul>
-                  <li>35 printable checklists covering composition, genres, and camera settings</li>
-                  <li>Each checklist opens as a PDF in a new tab</li>
-                  <li>Print them and take them on location for quick reference</li>
-                  <li>Track your progress: "X/35 opened"</li>
-                </ul>
-                <p><strong>Tip:</strong> Bookmark your favorite checklists for easy access!</p>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Bookmarks & Recent Activity</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>Use <strong>Bookmarks</strong> to save your favorite modules and pages:</p>
-                <ul>
-                  <li>Click the bookmark button (⭐) on any module or article page</li>
-                  <li>Save up to 20 bookmarks</li>
-                  <li>Access them quickly from your dashboard</li>
-                </ul>
-                <p><strong>Recent Activity</strong> shows the last 10 pages you've visited, making it easy to pick up where you left off.</p>
-              </div>
-            </div>
-
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Exposure Calculator</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>Use the <strong>Exposure Calculator</strong> to visualise camera settings for outdoor light:</p>
-                <ul>
-                  <li>Open it from the Tools tile</li>
-                  <li>Experiment with aperture, shutter speed, and ISO</li>
-                  <li>Great for planning exposure before a shoot</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Colour IQ / Hue Test</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>The <strong>Colour IQ / Hue Test</strong> measures your hue perception:</p>
-                <ul>
-                  <li>Open it from the Tools tile</li>
-                  <li>Arrange each row from left (start) to right (end)</li>
-                  <li>Score and save your results to your dashboard</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Your Questions and Answers</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>This is your private Q&A area to ask Alan questions:</p>
-                <ul>
-                  <li>Your questions are private and only seen by Alan</li>
-                  <li>No other members can view your questions</li>
-                  <li>Check back for replies and updates</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Photography Style Quiz</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>Discover your photography style with the <strong>Photography Personality Quiz</strong>:</p>
-                <ul>
-                  <li>Located in the Membership Status tile</li>
-                  <li>Click "Take Photography Personality Quiz" to get started</li>
-                  <li>Your results will be saved and displayed on your dashboard</li>
-                  <li>You can retake the quiz anytime if your interests change</li>
-                </ul>
-                <p>The quiz helps identify your primary photography style and other interests.</p>
-              </div>
-            </div>
-            
-            <div class="ar-members-guide__item">
-              <button class="ar-members-guide__button" type="button" aria-expanded="false">
-                <span class="ar-members-guide__button-text">Need Help?</span>
-                <span class="ar-members-guide__button-icon">▼</span>
-              </button>
-              <div class="ar-members-guide__content">
-                <p>If you need assistance, check out:</p>
-                <ul>
-                  <li><strong>Course Feedback</strong> - Submit questions and share your progress</li>
-                  <li><strong>Your Questions & Answers</strong> - Browse common questions and answers</li>
-                  <li><strong>Robo-Ranger Chat</strong> - Get instant answers from Alan's AI assistant</li>
-                </ul>
-                <p>You can also manage your subscription and account settings from the <strong>Membership Status</strong> tile.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ===========================
     AR | DASHBOARD: RECENT ACTIVITY + BOOKMARKS (DISPLAY)
     WHAT IT DOES:
@@ -5710,94 +5307,6 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       try { globalThis.location.href = url; } catch(e) {}
     }
   
-    // Position Members Guide: align top with main dashboard column, never under sticky header
-    function positionMembersGuide() {
-      var headerContainer = document.getElementById('ar-academy-header-container');
-      var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
-      var mainEl = document.querySelector('.ar-academy-dashboard__main');
-
-      if (!sidebar) {
-        return;
-      }
-
-      // Check if we're on mobile/tablet (sidebar should be relative, not fixed)
-      var isMobile = window.innerWidth <= 1200;
-      var computedStyle = window.getComputedStyle(sidebar);
-      var isFixed = computedStyle.position === 'fixed';
-
-      // Only position if sidebar is fixed (desktop view)
-      if (isMobile || !isFixed) {
-        return;
-      }
-
-      var headerBottom = 82;
-      if (headerContainer) {
-        var headerRect = headerContainer.getBoundingClientRect();
-        var hb = headerRect.bottom;
-        headerBottom = hb > 0 ? hb + 2 : (headerRect.height || 80) + 2;
-      }
-
-      var stackBottom = headerBottom;
-      var stripEl = document.getElementById('ar-do-next-strip');
-      if (stripEl && stripEl.classList.contains('is-ready')) {
-        var stripRect = stripEl.getBoundingClientRect();
-        if (stripRect.bottom > stackBottom) {
-          stackBottom = stripRect.bottom + 2;
-        }
-      }
-
-      var mainTop = null;
-      if (mainEl) {
-        var mr = mainEl.getBoundingClientRect();
-        if (mr && typeof mr.top === 'number') {
-          mainTop = mr.top;
-        }
-      }
-
-      // Line up with the main tiles area; never tuck under sticky header + do-next strip
-      var topPosition = stackBottom;
-      if (mainTop !== null && !isNaN(mainTop)) {
-        topPosition = Math.max(stackBottom, mainTop);
-      }
-
-      if (topPosition < 80) {
-        topPosition = 82;
-      }
-
-      sidebar.style.top = topPosition + 'px';
-      sidebar.style.maxHeight = 'calc(100vh - ' + (topPosition + 20) + 'px)';
-    }
-    
-    // Initialize Members Guide Accordion
-    function initMembersGuideAccordion() {
-      var accordionButtons = document.querySelectorAll('.ar-members-guide__button');
-      accordionButtons.forEach(function(button) {
-        button.addEventListener('click', function() {
-          var isExpanded = this.getAttribute('aria-expanded') === 'true';
-          var content = this.nextElementSibling;
-          
-          // Close all other items (optional - remove if you want multiple open)
-          // accordionButtons.forEach(function(btn) {
-          //   if (btn !== button) {
-          //     btn.setAttribute('aria-expanded', 'false');
-          //     btn.nextElementSibling.style.maxHeight = '0';
-          //     btn.nextElementSibling.style.padding = '0 16px';
-          //   }
-          // });
-          
-          // Toggle current item
-          this.setAttribute('aria-expanded', !isExpanded);
-          if (!isExpanded) {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            content.style.padding = '0 16px 16px 16px';
-          } else {
-            content.style.maxHeight = '0';
-            content.style.padding = '0 16px';
-          }
-        });
-      });
-    }
-  
     ready(function(){
       var arPath = (globalThis.location && globalThis.location.pathname)
         ? String(globalThis.location.pathname).replace(/\/+$/, "") || "/"
@@ -5809,51 +5318,12 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.remove("is-ready");
       
-      // Position Members Guide below header
-      // Wait for header to be fully rendered
-      function initMembersGuidePosition() {
-        var headerContainer = document.getElementById('ar-academy-header-container');
-        if (headerContainer) {
-          positionMembersGuide();
-        } else {
-          // Retry if header not ready yet
-          setTimeout(initMembersGuidePosition, 50);
-        }
-      }
-      
-      initMembersGuidePosition();
-      
-      // Re-position on window resize and scroll (header might be sticky)
-      // Use debounced resize handler
-      var resizeTimeout;
-      window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(positionMembersGuide, 100);
-      });
-      
-      // Only reposition on scroll if on desktop (sidebar is fixed)
-      window.addEventListener('scroll', function() {
-        var sidebar = document.querySelector('.ar-academy-dashboard__sidebar');
-        if (sidebar && window.getComputedStyle(sidebar).position === 'fixed') {
-          positionMembersGuide();
-        }
-      });
-
-      document.addEventListener('ar-academy-sticky-metrics', positionMembersGuide);
-      
-      // Also re-position after delays to ensure header is fully rendered
-      setTimeout(positionMembersGuide, 200);
-      setTimeout(positionMembersGuide, 500);
-      setTimeout(positionMembersGuide, 1000);
       ensureAcademyCourseCta();
       setTimeout(ensureAcademyCourseCta, 250);
       setTimeout(ensureAcademyCourseCta, 900);
       initDashboardCatalogSummaryObserver();
       scheduleDashboardCatalogSummary();
 
-      // Initialize accordion
-      initMembersGuideAccordion();
-  
       var isEditor = inSquarespaceEditor();
       var banner = document.getElementById("ar-academy-editor-banner");
       if (isEditor) {

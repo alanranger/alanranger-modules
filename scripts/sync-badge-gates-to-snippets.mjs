@@ -1,6 +1,6 @@
 /**
  * Injects lib/academy-badge-gates.js evaluation logic into strip + foundation snippets.
- * Run after editing lib: node scripts/sync-badge-gates-to-strip.mjs
+ * Run after editing lib: node scripts/sync-badge-gates-to-snippets.mjs
  */
 import fs from "fs";
 import path from "path";
@@ -14,7 +14,6 @@ const libPath = path.join(root, "lib/academy-badge-gates.js");
 const BEGIN = "  // BEGIN BADGE-GATES-SYNC";
 const END = "  // END BADGE-GATES-SYNC";
 
-const lib = fs.readFileSync(libPath, "utf8");
 const fnNames = [
   "safeNum",
   "normaliseStats",
@@ -104,29 +103,34 @@ const gateConsts = [
   "GRADUATE_TARGETS",
   "MASTER_TARGETS",
   "KEEPALIVE_DECAY_DAYS",
-].map((name) => extractConstBlock(lib, name));
+].map((name) => extractConstBlock(requireLib(), name));
 
+function requireLib() {
+  return fs.readFileSync(libPath, "utf8");
+}
+
+const lib = requireLib();
 const injected = [
   BEGIN,
-  "  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-strip.mjs)",
-  ...gateConsts,
+  "  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)",
+  ...gateConsts.map((c) => c.replace(/^const /, "var ").replace(/^var var /, "var ")),
   "",
   ...fnNames.map((name) => toStripFn(extractFunction(lib, name))),
   END,
 ].join("\n\n");
 
-function syncFile(targetPath) {
-  const strip = fs.readFileSync(targetPath, "utf8");
-  const beginIdx = strip.indexOf(BEGIN);
-  const endIdx = strip.indexOf(END);
+function syncFile(filePath, label) {
+  const content = fs.readFileSync(filePath, "utf8");
+  const beginIdx = content.indexOf(BEGIN);
+  const endIdx = content.indexOf(END);
   if (beginIdx < 0 || endIdx < 0) {
-    console.error("Missing BADGE-GATES-SYNC markers:", targetPath);
+    console.error(`${label} missing BADGE-GATES-SYNC markers`);
     process.exit(1);
   }
-  const updated = strip.slice(0, beginIdx) + injected + strip.slice(endIdx + END.length);
-  fs.writeFileSync(targetPath, updated, "utf8");
-  console.log("OK:", path.basename(targetPath));
+  const updated = content.slice(0, beginIdx) + injected + content.slice(endIdx + END.length);
+  fs.writeFileSync(filePath, updated, "utf8");
+  console.log(`OK: synced badge gate logic into ${label}`);
 }
 
-syncFile(STRIP_SNIPPET);
-syncFile(FOUNDATION_SNIPPET);
+syncFile(STRIP_SNIPPET, "strip");
+syncFile(FOUNDATION_SNIPPET, "foundation page");

@@ -15,3 +15,4 @@ export const STRIP_SNIPPET = snippetPath("academy-do-next-strip-squarespace-snip
 export const HEADER_SNIPPET = snippetPath("academy-header-elements-squarespace-snippet-v1.html");
 export const DASHBOARD_SNIPPET = snippetPath("academy-dashboard-squarespace-snippet-v1.html");
 export const BOOKMARK_SNIPPET = snippetPath("academy-bookmark-buttons-squarespace-snippet-v1.html");
+export const FOUNDATION_SNIPPET = snippetPath("academy-foundation-page-squarespace-snippet-v1.html");
