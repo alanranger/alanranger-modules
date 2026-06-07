@@ -2,6 +2,12 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.54 — Foundation progress: 80/20 modules/days weighting; breakdown line under %
+v1.3.53 — Goal tile label: "Next badge — {next}" (avoids Graduate verb clash)
+v1.3.52 — Tile labels: Resume/Study; Goal: Graduate to {next badge}
+v1.3.51 — Loading coach status: larger centred text; reset on each strip refresh
+v1.3.50 — Your Journey header title → "Your Journey - Coached" (coach recommendations panel)
+v1.3.49 — Your Journey collapse chevron: small "hide me" / "show me" hint under toggle button
 v1.3.48 — ghost session lifecycle: URL-param-driven only; clear ar_ghost_context_v1 on plain dashboard load (fixes stale ghost leak into admin's own view)
 v1.3.47 — ghost mode: modulesOpened aligns with gateStats.totalModulesOpened (same 60-module filter); builds on S 1.3.46 ghostMode/idSource invariant
 v1.3.46 — ghost mode: sync ghostMode/ghostMemberId with idSource (ghost_* invariant); preserve read-only flags when ghost-login fetch fails; writesSuppressed on debug hook
@@ -209,6 +215,26 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-strip__status.is-loading{
+
+    justify-content:center;
+
+    margin:10px 0 24px;
+
+    font-size:26px;
+
+    font-weight:800;
+
+    line-height:1.25;
+
+    color:#f8fafc;
+
+    letter-spacing:0.01em;
+
+    text-align:center;
+
+  }
+
   #ar-do-next-strip .ar-do-next-strip__status-left{
 
     display:flex;
@@ -272,6 +298,36 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
     white-space:nowrap;
 
     opacity:0.92;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__pct-wrap{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:flex-end;
+
+    gap:2px;
+
+    text-align:right;
+
+    min-width:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__pct-breakdown{
+
+    font-size:11px;
+
+    font-weight:600;
+
+    line-height:1.3;
+
+    color:#64748b;
+
+    white-space:nowrap;
 
   }
 
@@ -1219,6 +1275,38 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle-control{
+
+    flex-shrink:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    gap:2px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-strip__journey-toggle-hint{
+
+    font-size:10px;
+
+    font-weight:600;
+
+    line-height:1.1;
+
+    letter-spacing:0.02em;
+
+    color:#94a3b8;
+
+    text-transform:lowercase;
+
+    user-select:none;
+
+  }
+
   #ar-do-next-strip .ar-do-next-strip__journey-chevron{
 
     flex-shrink:0;
@@ -1691,9 +1779,15 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         <button type="button" id="ar-do-next-journey-toggle" class="ar-do-next-strip__journey-toggle" aria-expanded="true" aria-controls="ar-do-next-journey-panel" data-tip="Collapse Your Journey coach panel">
 
-          <span class="ar-do-next-strip__journey-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></span>
+          <span class="ar-do-next-strip__journey-toggle-control">
 
-          <span class="ar-do-next-strip__journey-title">Your Journey</span>
+            <span class="ar-do-next-strip__journey-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></span>
+
+            <span class="ar-do-next-strip__journey-toggle-hint" id="ar-do-next-journey-toggle-hint">hide me</span>
+
+          </span>
+
+          <span class="ar-do-next-strip__journey-title">Your Journey - Coached</span>
 
         </button>
 
@@ -1705,7 +1799,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         <div class="ar-do-next-strip__badge-rail" id="ar-do-next-badge-rail" aria-label="Your Journey badges"></div>
 
-        <div class="ar-do-next-strip__status" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
+        <div class="ar-do-next-strip__status is-loading" id="ar-do-next-status" aria-live="polite">Loading your coach...</div>
 
         <div class="ar-do-next-strip__bar" id="ar-do-next-milestone-bar" aria-label="Journey milestone progress"></div>
 
@@ -2945,20 +3039,28 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
   var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
 
   if (!next) {
-    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null };
+    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null, breakdown: null };
   }
 
   if ((next.key === "graduate" || next.key === "master") && isLongevityDegraded(stats)) {
     var pct = Math.round((safeNum(openedCount, 0) / modTotal) * 100);
-    return { pct, label: `${pct}% of the foundations course`, degraded: true, nextKey: next.key };
+    return { pct, label: `${pct}% of the foundations course`, degraded: true, nextKey: next.key, breakdown: null };
   }
 
   var ratios = [];
+  var breakdown = null;
   if (next.key === "foundation") {
-    ratios.push(componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules));
+    var moduleRatio = componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules);
     if (!engagementDegraded) {
-      ratios.push(componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays));
+      var daysRatio = componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
+      var pct = Math.round(moduleRatio * 0.8 + daysRatio * 0.2);
+      var mod = Math.min(safeNum(safe.foundationModulesOpened, 0), FOUNDATION_GATE.minModules);
+      var days = Math.min(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
+      breakdown = `Foundation: ${mod}/${FOUNDATION_GATE.minModules} modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
+      return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown };
     }
+    var pct = Math.round(moduleRatio);
+    return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown: null };
   } else if (next.key === "practitioner") {
     ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
     ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
@@ -2982,7 +3084,7 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
   var pct = ratios.length
     ? Math.round(ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length)
     : Math.round((safeNum(openedCount, 0) / modTotal) * 100);
-  return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key };
+  return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown: null };
 }
 
 function computeTrackFillPct(badges, progressPct) {
@@ -3441,15 +3543,15 @@ function computeTrackFillPct(badges, progressPct) {
 
     var toggle = document.getElementById("ar-do-next-journey-toggle");
 
+    var hint = document.getElementById("ar-do-next-journey-toggle-hint");
+
     var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
 
     if (!toggle || !card || toggle.getAttribute("data-wired")) return;
 
     toggle.setAttribute("data-wired", "true");
 
-    toggle.addEventListener("click", function(){
-
-      var expanded = card.classList.toggle("is-journey-expanded");
+    function syncJourneyToggleUi(expanded){
 
       toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
 
@@ -3460,6 +3562,16 @@ function computeTrackFillPct(badges, progressPct) {
         expanded ? "Collapse Your Journey coach panel" : "Expand Your Journey coach panel"
 
       );
+
+      if (hint) hint.textContent = expanded ? "hide me" : "show me";
+
+    }
+
+    toggle.addEventListener("click", function(){
+
+      var expanded = card.classList.toggle("is-journey-expanded");
+
+      syncJourneyToggleUi(expanded);
 
       scheduleLayout();
 
@@ -4349,7 +4461,7 @@ function computeTrackFillPct(badges, progressPct) {
 
     var nextArt = firstUnopenedArticle(openedSet);
 
-    var tile = { n: 1, label: "1 - Resume", variant: "resume", why: "Pick up where you left off" };
+    var tile = { n: 1, label: "1 - Resume/Study", variant: "resume", why: "Pick up where you left off" };
 
     if (rag.state === "red") tile.why = "This is the most important step";
 
@@ -4497,7 +4609,7 @@ function computeTrackFillPct(badges, progressPct) {
 
     }
 
-    tile.label = "4 - Goal: " + next.label;
+    tile.label = "4 - Goal: Next badge — " + next.label;
 
     tile.criteria = buildBadgeCriteriaContent(next.key, stats, activeDays, engagementDegraded);
 
@@ -4627,6 +4739,20 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
+  function setCoachStatusLoading(){
+
+    var statusEl = document.getElementById("ar-do-next-status");
+
+    if (!statusEl) return;
+
+    statusEl.classList.add("is-loading");
+
+    statusEl.textContent = "Loading your coach...";
+
+  }
+
+
+
   function renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats){
 
     var strip = document.getElementById("ar-do-next-strip");
@@ -4695,6 +4821,8 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
+    statusEl.classList.remove("is-loading");
+
     statusEl.innerHTML = "";
 
     var left = document.createElement("div");
@@ -4731,15 +4859,33 @@ function computeTrackFillPct(badges, progressPct) {
 
     left.appendChild(counts);
 
+    var rightWrap = document.createElement("div");
+
+    rightWrap.className = "ar-do-next-strip__pct-wrap";
+
     var right = document.createElement("span");
 
     right.className = "ar-do-next-strip__pct";
 
     right.textContent = progress.label;
 
+    rightWrap.appendChild(right);
+
+    if (progress.breakdown) {
+
+      var breakdown = document.createElement("span");
+
+      breakdown.className = "ar-do-next-strip__pct-breakdown";
+
+      breakdown.textContent = progress.breakdown;
+
+      rightWrap.appendChild(breakdown);
+
+    }
+
     statusEl.appendChild(left);
 
-    statusEl.appendChild(right);
+    statusEl.appendChild(rightWrap);
 
 
 
@@ -4770,6 +4916,8 @@ function computeTrackFillPct(badges, progressPct) {
       coachDebug.progressPct = pct;
 
       coachDebug.progressLabel = progress.label;
+
+      coachDebug.progressBreakdown = progress.breakdown || null;
 
       coachDebug.progressDegraded = progress.degraded;
 
@@ -5549,6 +5697,10 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
+    setCoachStatusLoading();
+
+
+
     try {
 
     strip.classList.add("is-ready");
@@ -5593,7 +5745,13 @@ function computeTrackFillPct(badges, progressPct) {
 
       var statusEl = document.getElementById("ar-do-next-status");
 
-      if (statusEl) statusEl.textContent = "Sign in to see your learning coach.";
+      if (statusEl) {
+
+        statusEl.classList.remove("is-loading");
+
+        statusEl.textContent = "Sign in to see your learning coach.";
+
+      }
 
       strip.classList.add("is-ready");
 
@@ -5819,7 +5977,13 @@ function computeTrackFillPct(badges, progressPct) {
 
       var statusEl = document.getElementById("ar-do-next-status");
 
-      if (statusEl) statusEl.textContent = "Learning coach could not load. Refresh the page.";
+      if (statusEl) {
+
+        statusEl.classList.remove("is-loading");
+
+        statusEl.textContent = "Learning coach could not load. Refresh the page.";
+
+      }
 
       strip.classList.add("is-ready");
 

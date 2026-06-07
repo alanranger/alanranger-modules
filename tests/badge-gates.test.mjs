@@ -344,12 +344,31 @@ test("23. longevity null toward Graduate -> degraded modules-based bar", () => {
   assert.equal(progress.degraded, true);
 });
 
-test("24. Foundation stage -> progress to Foundation from modules + active days", () => {
+test("24. Foundation stage -> progress to Foundation from modules + active days (80/20 weighted)", () => {
   const stats = fixtureStats({ foundationModulesOpened: 2 });
   const result = evaluateBadges(stats, 2, false);
   const progress = computeNextBadgeProgress(result.badges, stats, 2, false, 2, 60);
   assert.equal(progress.label, "67% to Foundation");
   assert.equal(progress.pct, 67);
+  assert.equal(progress.breakdown, "Foundation: 2/3 modules · 2/3 active days");
+});
+
+test("24b. brand new Enrolled -> 7% to Foundation (0 modules, 1 active day, 80/20)", () => {
+  const stats = fixtureStats();
+  const result = evaluateBadges(stats, 1, false);
+  const progress = computeNextBadgeProgress(result.badges, stats, 1, false, 0, 60);
+  assert.equal(progress.pct, 7);
+  assert.equal(progress.label, "7% to Foundation");
+  assert.equal(progress.breakdown, "Foundation: 0/3 modules · 1/3 active days");
+});
+
+test("24c. first module opened -> 33% to Foundation (1 module, 1 active day)", () => {
+  const stats = fixtureStats({ foundationModulesOpened: 1 });
+  const result = evaluateBadges(stats, 1, false);
+  const progress = computeNextBadgeProgress(result.badges, stats, 1, false, 1, 60);
+  assert.equal(progress.pct, 33);
+  assert.equal(progress.label, "33% to Foundation");
+  assert.equal(progress.breakdown, "Foundation: 1/3 modules · 1/3 active days");
 });
 
 test("25. track fill matches progress toward Graduate (Certified earned, 63%)", () => {
