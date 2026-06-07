@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.14 Button typography 600/15px; guest CTA gold; exam green outline
 v1.3.13 Member Next = next-unopened via shared __arAcademyModuleNav (applied once in wireMemberStrip)
 v1.3.9 Expose __arAcademyModuleNav + __arAcademyMemberAccess globals for footer CTA (canonical module array)
 v1.3.8 Non-member CTA: black/gold styling + single copy "Get all 60 modules + certificates - free"
@@ -53,8 +54,8 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     border:none !important;
     border-radius:8px !important;
     cursor:pointer !important;
-    font-weight:800 !important;
-    font-size:16px !important;
+    font-weight:600 !important;
+    font-size:15px !important;
     line-height:1 !important;
     text-decoration:none !important;
     background:#E57200 !important;
@@ -66,19 +67,28 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
   #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
   #ar-bookmark-widget .ar-btn.is-hidden{ display:none !important; }
-  /* Forward actions: flat dark green for strong white-text contrast */
-  #ar-bookmark-widget #ar-next-module-btn,
-  #ar-bookmark-widget #ar-take-exam-btn{
+  /* Forward: Next = solid green; Exam = green outline on light page */
+  #ar-bookmark-widget #ar-next-module-btn{
     background:#166534 !important;
     border:2px solid #14532d !important;
     color:#fff !important;
     box-shadow:none;
   }
-  #ar-bookmark-widget #ar-next-module-btn:hover,
-  #ar-bookmark-widget #ar-take-exam-btn:hover{
+  #ar-bookmark-widget #ar-next-module-btn:hover{
     background:#15803d !important;
     filter:none;
   }
+  #ar-bookmark-widget #ar-take-exam-btn{
+    background:transparent !important;
+    border:1.5px solid #166534 !important;
+    color:#166534 !important;
+    box-shadow:none;
+  }
+  #ar-bookmark-widget #ar-take-exam-btn:hover{
+    background:rgba(22,101,52,0.08) !important;
+    filter:none;
+  }
+  #ar-bookmark-widget #ar-take-exam-btn:visited{ color:#166534 !important; }
 
   #ar-bookmark-widget .ar-help{
     width:100%;
@@ -103,11 +113,11 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     gap:10px;
     padding:10px 20px;
     border-radius:8px;
-    border:2px solid #e6c067;
-    background:#1a1305;
-    color:#e6c067 !important;
-    font-size:16px;
-    font-weight:800;
+    border:none;
+    background:#c79a3b;
+    color:#1a1305 !important;
+    font-size:15px;
+    font-weight:600;
     line-height:1;
     text-decoration:none !important;
     box-shadow:none;
@@ -115,8 +125,8 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     cursor:pointer;
   }
   #ar-lesson-member-strip .ar-lesson-signup-cta:hover{
-    background:#2a2417;
-    color:#e6c067 !important;
+    background:#b8860b;
+    color:#1a1305 !important;
   }
   #ar-lesson-member-strip .ar-lesson-progress-stats{
     margin:0 0 6px;
@@ -837,7 +847,7 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
 
   function renderSignupStrip(el){
     el.classList.remove("is-progress");
-    el.innerHTML = '<a class="ar-lesson-signup-cta" href="' + SIGNUP_URL + '">' + SIGNUP_CTA_COPY + '</a>';
+    el.innerHTML = '<a class="ar-lesson-signup-cta" href="' + SIGNUP_URL + '">\uD83D\uDD12 ' + SIGNUP_CTA_COPY + '</a>';
     el.classList.remove("is-hidden");
     el.removeAttribute("aria-hidden");
     placeStripAfterForwardButtons(el);
