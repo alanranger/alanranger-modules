@@ -1,6 +1,6 @@
 <!-- ===========================
 AR | MODULE FOOTER CTA (member-aware end-of-lesson panel)
-F 1.3.0 Black/gold member panel — brand orange + bookmark green (mockup)
+F 1.3.1 Delegate next-unopened to __arAcademyModuleNav shared resolver
 - Paste into Squarespace page /online-photography-course-signup (WM data-target content)
 - Reads canonical module list from globalThis.__arAcademyModuleNav (Bookmark B)
 - Member detection via globalThis.__arAcademyMemberAccess + __arMsReader
@@ -419,6 +419,8 @@ F 1.3.0 Black/gold member panel — brand orange + bookmark green (mockup)
   ];
 
   function buildOpenedSet(normalized){
+    var nav = globalThis.__arAcademyModuleNav;
+    if (nav && typeof nav.buildOpenedSet === "function") return nav.buildOpenedSet(normalized);
     var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
     var set = new Set();
     Object.keys(opened).forEach(function(key){
@@ -428,20 +430,13 @@ F 1.3.0 Black/gold member panel — brand orange + bookmark green (mockup)
     return set;
   }
 
-  function countOpenedModules(normalized, nav){
-    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
-    var set = new Set();
-    var paths = nav.articleModules.map(function(m){ return m.p; }).concat(PDF_ASSIGNMENT_PATHS);
-    Object.keys(opened).forEach(function(key){
-      var p = normalizePath(key);
-      for (var i = 0; i < paths.length; i++) {
-        if (paths[i] === p) { set.add(p); break; }
-      }
-    });
-    return set.size;
-  }
-
   function findNextUnopenedModule(nav, openedSet, currentIdx){
+    var api = globalThis.__arAcademyModuleNav;
+    if (api && typeof api.findNextUnopenedModule === "function") {
+      var hit = api.findNextUnopenedModule(openedSet, currentIdx);
+      if (!hit) return null;
+      return { p: hit.path, t: hit.title };
+    }
     var mods = nav.articleModules;
     if (!mods || !mods.length) return null;
     var start = currentIdx >= 0 ? currentIdx + 1 : 0;
@@ -457,10 +452,27 @@ F 1.3.0 Black/gold member panel — brand orange + bookmark green (mockup)
   }
 
   function allArticleModulesOpened(nav, openedSet){
+    var api = globalThis.__arAcademyModuleNav;
+    if (api && typeof api.allArticleModulesOpened === "function") {
+      return api.allArticleModulesOpened(openedSet);
+    }
     for (var i = 0; i < nav.articleModules.length; i++) {
       if (!openedSet.has(nav.articleModules[i].p)) return false;
     }
     return true;
+  }
+
+  function countOpenedModules(normalized, nav){
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var set = new Set();
+    var paths = nav.articleModules.map(function(m){ return m.p; }).concat(PDF_ASSIGNMENT_PATHS);
+    Object.keys(opened).forEach(function(key){
+      var p = normalizePath(key);
+      for (var i = 0; i < paths.length; i++) {
+        if (paths[i] === p) { set.add(p); break; }
+      }
+    });
+    return set.size;
   }
 
   async function fetchExamProgress(memberId){
