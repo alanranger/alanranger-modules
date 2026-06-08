@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+---
+
+## [2026-06-08] - Foundation page FP 1.0.36–1.0.43 (Modules Map)
+
+### Added / changed
+- **Foundation / Modules Map page** (`/academy/online-photography-course/`) — built via `scripts/build-foundation-page-snippet.mjs`
+- **FP 1.0.36–38:** Google reviews badge in sticky header; removed standalone “Leave a review” control
+- **FP 1.0.39–40:** Collapsible top panels + map sections (shared chevron + hide/show)
+- **FP 1.0.41:** Single members divider; Exams + Practice Packs + Checklists as collapsible map sections; Exams trial-accessible above divider
+- **FP 1.0.42:** Unified progress labels on all members-only sections (`N/total opened`; trial: `Paid only · 0/N opened`)
+- **FP 1.0.43:** Divider copy — “Paid Members-only modules & resources” / annual membership subline
+- **Module meta tooltips:** `lib/academy-module-meta-descriptions.js` + build script
+- **Dashboard D 1.3.24–1.3.27:** Catalog metrics layout (stats + footnote under gauge)
+- **Strip S 1.3.56 / Header H 1.4.33:** Journey strip column alignment with dashboard
+
+### Paste
+- **FP 1.0.43** → Modules Map page Code Block
+- **H 1.4.33, S 1.3.56, D 1.3.27, B 1.3.16** → dashboard + blog (if not already live)
+
+### Docs
+- `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`
+- `docs/handoff/NEW-CHAT-START-PROMPT.md`
+- Updated `docs/handoff/CURSOR-AGENT-HANDOVER.md`
+
+### Git
+- `a96ace3` — FP 1.0.42 committed; **1.0.43 + handover docs may be local-only**
+
+---
+
 ### Changed
 - **Shared `AdminSessionCacheProvider`** wraps all `/academy/admin/*` routes — in-memory + sessionStorage (5 min) survives tab switches without refetch spinner
 - Ghost + Members directory hydrate instantly when returning to a tab; background revalidate still runs

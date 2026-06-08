@@ -537,10 +537,10 @@ const FP_SQSP_WRAPPER_SELECTORS = [
 
 const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
 
-const snippet = `<!-- FP 1.0.42 — Foundation course map (/academy/online-photography-course) -->
+const snippet = `<!-- FP 1.0.43 — Foundation course map (/academy/online-photography-course) -->
 ${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.42" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.43" hidden aria-hidden="true">
 <style>
 html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
@@ -757,9 +757,9 @@ ${zone1}
 <div class="ar-fp-divider"></div>
 ${examsZoneHtml}
 
-<div class="ar-fp-zone-divider ar-fp-zone-divider--members" role="separator" aria-label="Members-only modules and resources">
-  <span class="ar-fp-zone-divider__label">Members-only modules &amp; resources</span>
-  <span class="ar-fp-zone-divider__sub">Practice packs, checklists, Applied Learning and RPS — included with paid membership</span>
+<div class="ar-fp-zone-divider ar-fp-zone-divider--members" role="separator" aria-label="Paid members-only modules and resources">
+  <span class="ar-fp-zone-divider__label">Paid Members-only modules &amp; resources</span>
+  <span class="ar-fp-zone-divider__sub">Practice packs, checklists, Applied Learning and RPS — included with annual membership</span>
 </div>
 ${practicePacksZoneHtml}
 ${checklistsZoneHtml}

@@ -1,6 +1,6 @@
 # Quick Reference Guide - Academy Assessment System
 
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-08
 
 This guide provides quick reference for AI agents and developers working on the Academy Assessment System.
 
@@ -51,13 +51,18 @@ This guide provides quick reference for AI agents and developers working on the 
   - `top-members.js` - Most active members (used by sortable table)
 - **Styles**: `styles/admin-globals.css`
 
-### Squarespace Snippets (live baseline D 1.3.10)
-- `academy-header-elements-squarespace-snippet-v1.html` - **H 1.4.4** — header + `__arMsReader` init
-- `academy-do-next-strip-squarespace-snippet-v1.html` - **S 1.3.34** — do-next strip
-- `academy-dashboard-squarespace-snippet-v1.html` - **D 1.3.10** — dashboard, session cache, inactivity logout
-- `academy-bookmark-buttons-squarespace-snippet-v1.html` - **B 1.3.4** — article bookmark/lesson widget
-- `academy-login-squarespace-snippet-v1.html` - Login page
-- Restore point: `RESTORE_POINT_2026-06-06-D-1.3.10.md`
+### Squarespace Snippets (live baseline 2026-06-08)
+
+| Snippet | Version | Location |
+|---------|---------|----------|
+| `academy-foundation-page-squarespace-snippet-v1.html` | **FP 1.0.43** | Modules Map page — build from `scripts/build-foundation-page-snippet.mjs` |
+| `academy-header-elements-squarespace-snippet-v1.html` | **H 1.4.33** | Code Injection → Header |
+| `academy-do-next-strip-squarespace-snippet-v1.html` | **S 1.3.56** | Dashboard code block 1 |
+| `academy-dashboard-squarespace-snippet-v1.html` | **D 1.3.27** | Dashboard code block 2 |
+| `academy-bookmark-buttons-squarespace-snippet-v1.html` | **B 1.3.16** | Blog/article template |
+| `academy-login-squarespace-snippet-v1.html` | — | Login page |
+
+Handover: `docs/handoff/CURSOR-AGENT-HANDOVER.md`, `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`
 
 ### Database Tables
 - `ms_members_cache` - Member cache from Memberstack

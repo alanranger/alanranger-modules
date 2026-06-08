@@ -1,21 +1,24 @@
-# Cursor Agent Handover — Academy Dashboard (Alan Ranger Photography)
+# Cursor Agent Handover — Academy (Alan Ranger Photography)
 
-**Last updated:** 2026-06-06  
+**Last updated:** 2026-06-08  
 **Repo:** `G:/Dropbox/alan ranger photography/Website Code/Academy/alanranger-academy-assesment`  
 **GitHub remote:** `https://github.com/alanranger/alanranger-modules.git` (branch `main`)  
-**Latest commit at handover:** `afc7ef9` — `Docs: comprehensive Cursor agent handover for Academy dashboard continuity`  
-**Prior feature commit:** `7eb5a6a` — `fix: D 1.3.11 beacon helpers in module-progress IIFE scope`  
-**Alan confirmation:** **B3 login bounce FIXED** after D 1.3.10 paste (fast return × 5+ passes).
+**Latest commit:** `a96ace3` — Foundation FP 1.0.42 (members zone + collapsibles + progress labels)  
+**Local uncommitted:** FP 1.0.43 divider copy + handover doc updates — run `git status` first  
 
-Read this file **first**. Then read the Google Drive docs listed in §2.
+Read this file **first**. Then read:
 
-**Google Drive mirror:** `C:/Users/alan/Google Drive/Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md` (summary) — keep in sync with this file on major updates.
+- **`docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`** — Modules Map page (FP) — **required for FP work**
+- **`docs/handoff/NEW-CHAT-START-PROMPT.md`** — copy-paste block for a fresh Cursor chat
+- Google Drive `_CLAUDE-CURSOR-WORKFLOW-2026-06-05.md` if the Claude loop is unclear
+
+**Google Drive mirror:** `C:/Users/alan/Google Drive/Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`
 
 ---
 
 ## 1. What this project is
 
-Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Vercel API** (`alanranger-modules.vercel.app`) for exams, tracking, and admin analytics.
+Squarespace-hosted **Academy member dashboard**, **Modules Map (Foundation) page**, **blog lesson widgets**, + **Vercel API** (`alanranger-modules.vercel.app`) for exams, tracking, and admin analytics.
 
 - **Memberstack** = auth + `getCurrentMember` / `getMemberJSON` / `updateMemberJSON`
 - **Supabase** = exam results, events, engagement (`academy_events`, etc.)
@@ -76,6 +79,7 @@ Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Ve
 
 | Alan's name | File | Squarespace location |
 |-------------|------|----------------------|
+| **Foundation FP** | `Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html` | `/academy/online-photography-course/` page → Code Block |
 | **Header H** | `Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html` | Settings → Code Injection → **Header** |
 | **Strip S** | `Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **1** |
 | **Dashboard D** | `Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html` | `/academy/dashboard` page → Code block **2** |
@@ -83,16 +87,20 @@ Squarespace-hosted **Academy member dashboard** + **blog lesson widgets** + **Ve
 | Exams page | `Squarespace Snippets/squarespace-v2.2.html` | Exams & Certification page block |
 | Login | `Squarespace Snippets/academy-login-squarespace-snippet-v1.html` | Login page |
 
-**Live version stamp** (under logo on dashboard): check `#ar-academy-header-snippet-version` — must match pasted versions.
+**Foundation page:** edit `scripts/build-foundation-page-snippet.mjs` only, then `node scripts/build-foundation-page-snippet.mjs`. See `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`.
 
-### Current repo versions (2026-06-06 — verify stamp matches after paste)
+**Live version stamp** (dashboard): check `#ar-academy-header-snippet-version` under logo — must match pasted H/S/D/B.  
+**Foundation:** check `#ar-foundation-hub` → `data-ar-fp-version` (e.g. `FP 1.0.43`).
+
+### Current repo versions (2026-06-08 — verify stamp matches after paste)
 
 | Block | Version | Notes |
 |-------|---------|-------|
-| Header H | **1.4.4** | Inits `globalThis.__arMsReader` on Academy pages |
-| Strip S | **1.3.35** | Tile-open beacon after `window.open` |
-| Dashboard D | **1.3.11** | Session cache + MS reader + cube beacons |
-| Bookmark B | **1.3.5** | Lesson module-open beacon + MS reader on articles |
+| Foundation FP | **1.0.43** | Modules Map; collapsibles + one members divider; **1.0.43 may be uncommitted** |
+| Header H | **1.4.33** | Stamp sync with D 1.3.27 layout |
+| Strip S | **1.3.56** | Journey strip column align |
+| Dashboard D | **1.3.27** | Catalog gauge / stats under progress |
+| Bookmark B | **1.3.16** | "Browse the Modules" label |
 
 *(Header HTML stamp text may lag comment header — always bump **both** when releasing.)*
 
@@ -142,20 +150,25 @@ sessionStorage['ar-auth-trace']            // persistent redirect diagnosis log
 
 ---
 
-## 5. Open / deferred work (post-bounce-fix)
+## 5. Open / deferred work (verify live with Alan)
 
-From definitive test plan + conversation — **verify live status with Alan before assuming done:**
+### Foundation page (FP)
+
+| Task | Status |
+|------|--------|
+| Paste **FP 1.0.43** live | Alan action — confirm `data-ar-fp-version` on live page |
+| Commit FP 1.0.43 + handover docs | Pending unless Alan asks |
+| Visual verify trial vs paid progress labels | Post-paste checklist in `FOUNDATION-PAGE-HANDOVER-LATEST.md` |
+
+### Dashboard (from earlier arc)
 
 | ID | Task | Notes |
 |----|------|-------|
-| **G3** | Garbled panel header icons | D 1.3.7 used HTML entities; verify live |
+| **G3** | Garbled panel header icons | Verify live |
 | **D4** | Abstract assignment cube 56 → PDF not blog | `/s/Abstract-photography-Assignment.pdf` |
-| **C** | Cube open → orange persistence | Baseline MS JSON tracking works; D 1.3.11 adds server beacons — verify end-to-end in admin engagement |
-| **Tracking** | Beacon + key-matching checklist | `npm run test:tile-open-beacon`; API `track-tile-open.js` |
+| **C** | Cube open → orange persistence + admin beacons | `npm run test:tile-open-beacon` |
 
-**Deferred intentionally during bounce fix:** full cube-tracking admin verification until B3 passed (now passed).
-
-**Test plan context note:** `_ACADEMY-DASHBOARD-DEFINITIVE-TEST-PLAN.md` still lists bounce fix as "active change" and defers beacons — update that file when starting the next verification pass (G3, D4, C/beacons). B3 is now **PASS** per Alan.
+**B3 login bounce:** FIXED (D 1.3.10 / `__arMsReader`) — do not regress MS call flooding.
 
 ---
 
@@ -229,23 +242,25 @@ See test plan § STAGE 3 (AL1–AL7).
 
 ```
 alanranger-academy-assesment/
-├── Squarespace Snippets/                                 # All Squarespace paste HTML
+├── Squarespace Snippets/
+│   ├── academy-foundation-page-squarespace-snippet-v1.html   # FP — generated
 │   ├── academy-header-elements-squarespace-snippet-v1.html   # H
 │   ├── academy-do-next-strip-squarespace-snippet-v1.html     # S
-│   ├── academy-dashboard-squarespace-snippet-v1.html         # D (8600+ lines)
+│   ├── academy-dashboard-squarespace-snippet-v1.html         # D
 │   ├── academy-bookmark-buttons-squarespace-snippet-v1.html  # B
 │   ├── squarespace-v2.2.html                               # Exams page
 │   └── academy-login-squarespace-snippet-v1.html           # Login
-├── api/
-│   ├── exams/          # whoami, progress, save, CORS
-│   └── academy/        # track-page-view, track-tile-open, track-login
-├── lib/                # module paths, badge gates, cube-open helpers
-├── scripts/            # regression tests, audit tools
-├── docs/handoff/       # RESPONSE mirrors + THIS FILE
-├── RESTORE_POINT_2026-06-06-D-1.3.10.md
-├── CHANGELOG.md
-├── QUICK_REFERENCE.md
-└── pages/academy/admin/  # Next.js admin dashboard (Vercel)
+├── scripts/
+│   ├── build-foundation-page-snippet.mjs                   # FP source of truth
+│   └── build-module-meta-descriptions.mjs
+├── lib/
+│   ├── academy-module-paths.js
+│   ├── academy-module-meta-descriptions.js
+│   └── academy-applied-rps-catalog.js
+├── docs/handoff/
+│   ├── CURSOR-AGENT-HANDOVER.md                            # THIS FILE
+│   ├── FOUNDATION-PAGE-HANDOVER-LATEST.md
+│   └── NEW-CHAT-START-PROMPT.md
 ```
 
 **Vercel:** pushes to `main` auto-deploy API routes. Snippets still need Squarespace paste.
@@ -265,20 +280,15 @@ alanranger-academy-assesment/
 
 ---
 
-## 11. Git commit history (bounce-fix arc)
+## 11. Git commit history (recent)
 
 ```
-afc7ef9 Docs: comprehensive Cursor agent handover
-7eb5a6a fix: D 1.3.11 beacon helpers in module-progress IIFE scope
-0d2369d Add test:tile-open-beacon script
-de125c3 Dashboard D 1.3.11: cube open-tracking beacons + track-tile-open API
-ff545e3 Docs: restore point + handoff MDs + changelog
-9f7fed1 Baseline rollback + audit/test helpers
-7b0fc0b D 1.3.10 complete: __arMsReader articles + strip
-5e000d5 D 1.3.10: dashboard MS consolidation
-0387920 D 1.3.9: session-cached access
-72e102b D 1.3.8: MS network bounce shield
+a96ace3 Foundation FP 1.0.42: unified members zone, collapsibles, progress labels
+bdb74f2 Rename Foundation entry CTAs to Browse the Modules; trial-aware FAQ
+… (see git log for dashboard arc: D 1.3.10 bounce fix, ghost mode, etc.)
 ```
+
+**Uncommitted at 2026-06-08 handover:** FP 1.0.43 divider copy, handover MD updates.
 
 ---
 
@@ -295,6 +305,10 @@ ff545e3 Docs: restore point + handoff MDs + changelog
 ---
 
 ## 13. First actions for a new Cursor agent
+
+1. Read **`docs/handoff/NEW-CHAT-START-PROMPT.md`** (or Alan pastes that block into chat)
+2. Read **`FOUNDATION-PAGE-HANDOVER-LATEST.md`** if touching FP
+3. Run `git status` — confirm FP 1.0.43 commit state
 
 When Alan says **"check claude"**:
 

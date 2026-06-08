@@ -19,11 +19,11 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 
 All paste snippets live in **`Squarespace Snippets/`** (repo root).
 
-**Current live versions (2026-06-06 baseline):** H 1.4.4 · S 1.3.35 · D 1.3.11 · B 1.3.5  
-**New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md` first (also mirrored in Google Drive `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).  
-See `RESTORE_POINT_2026-06-06-D-1.3.10.md` and `docs/handoff/` for paste instructions.
+**Current live versions (2026-06-08):** FP 1.0.43 · H 1.4.33 · S 1.3.56 · D 1.3.27 · B 1.3.16  
+**New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md` and `docs/handoff/NEW-CHAT-START-PROMPT.md` (Google Drive mirror: `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).
 
-- **`Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init)
+- **`Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html`** - Modules Map page (`/academy/online-photography-course/`) — **FP 1.0.43** (generate via `scripts/build-foundation-page-snippet.mjs`)
+- **`Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init) — **H 1.4.33**
 - **`Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html`** - Dashboard "Do These Next" strip (code block 1)
 - **`Squarespace Snippets/squarespace-v2.2.html`** - Exams & Certification page code block
   - Main exam interface with grid view and quiz functionality
