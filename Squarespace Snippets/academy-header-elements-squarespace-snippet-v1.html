@@ -1,11 +1,12 @@
 <!--
-Academy Header Elements — Squarespace Code Block v1.4.30 (snippet version stamp under brand logo)
+Academy Header Elements — Squarespace Code Block v1.4.33 (snippet version stamp under brand logo)
 For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 
 Snippet versions shown live (update all four when re-pasting blocks):
-  Header H = 1.4.30 | Strip S = 1.3.48 | Dashboard D = 1.3.15 | Bookmark B = 1.3.15 | Footer F = 1.3.3
-v1.4.30: Stamp updated for B 1.3.15 + F 1.3.3 (guest signup CTA deep gold). No functional header change.
+  Header H = 1.4.33 | Strip S = 1.3.56 | Dashboard D = 1.3.27 | Bookmark B = 1.3.16 | Footer F = 1.3.3
+v1.4.33: Stamp sync — Dashboard D 1.3.27 (catalog gauge column layout).
+v1.4.32: Dashboard layout sync — align fixed journey strip column to .ar-academy-dashboard__inner (runtime measure).
 v1.4.26: Stamp updated for Bookmark B 1.3.10 (shared next-unopened) + Footer F 1.3.1. No functional header change.
 v1.4.25: Stamp updated for Footer F 1.2.0 (champagne member panel + live stats). No functional header change.
 v1.4.24: Stamp updated for Footer F 1.1.0 (Will Myers load-target delivery). No functional header change.
@@ -118,6 +119,25 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
     max-width: 100%;
   }
 
+  /* Hide Squarespace site chrome — injected Academy header replaces it (dashboard + foundation) */
+  html.ar-academy {
+    --ar-sqsp-nav-offset: 0px;
+  }
+  html.ar-academy #header,
+  html.ar-academy header.Header,
+  html.ar-academy .Mobile-bar,
+  html.ar-academy .sqs-mobile-info-bar,
+  html.ar-academy .Header-nav--primary,
+  html.ar-academy .Header-nav--secondary,
+  html.ar-academy .Header--bottom,
+  html.ar-academy .Mobile-overlay-nav--primary,
+  html.ar-academy .Mobile-bar-menu {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
   /* Academy header — sticky below Squarespace nav on non-dashboard pages */
   #ar-academy-header-container {
     display: grid;
@@ -144,7 +164,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
   /* Dashboard: fixed pin-stack below Sqsp nav (header injection + page blocks stay separate) */
   html.ar-dashboard-pin-stack #ar-academy-header-container {
     position: fixed !important;
-    top: var(--ar-sqsp-nav-offset, 71px) !important;
+    top: var(--ar-sqsp-nav-offset, 0px) !important;
     left: 0;
     right: 0;
     width: 100%;
@@ -467,6 +487,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
   }
 </style>
 
+<template id="ar-academy-header-template">
 <div id="ar-academy-header-container">
   <!-- Left: Welcome message -->
   <div id="ar-academy-header-welcome">
@@ -510,7 +531,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
       <span
         id="ar-academy-header-snippet-version"
         title="Header / Do-next strip / Dashboard snippet versions"
-      >H 1.4.25 · S 1.3.48 · D 1.3.15 · B 1.3.9 · F 1.2.0</span>
+      >H 1.4.32 · S 1.3.56 · D 1.3.23 · B 1.3.16 · F 1.3.3</span>
     </div>
     <button
       id="ar-academy-header-logout-btn"
@@ -521,6 +542,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
     </button>
   </div>
 </div>
+</template>
 
 <script>
 (function() {
@@ -528,6 +550,44 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
   var path = (window.location && window.location.pathname) ? window.location.pathname : "";
   var isAcademy = (path === "/academy" || path.indexOf("/academy/") === 0);
   if (!isAcademy) return;
+
+  function isFoundationCoursePath() {
+    var p = path.replace(/\/+$/, "") || "/";
+    return p === "/academy/online-photography-course";
+  }
+
+  function mountAcademyHeaderContainer() {
+    var el = document.getElementById("ar-academy-header-container");
+    var tpl = document.getElementById("ar-academy-header-template");
+    if (!el && tpl && tpl.content && tpl.content.firstElementChild) {
+      el = tpl.content.firstElementChild.cloneNode(true);
+    }
+    if (!el) return null;
+    var page = document.getElementById("page") || document.getElementById("siteWrapper") || document.body;
+    if (page && (el.parentElement === tpl || !page.contains(el))) {
+      page.insertBefore(el, page.firstChild);
+    }
+    el.style.display = "grid";
+    applyFoundationHeaderCopy();
+    return el;
+  }
+
+  function applyFoundationHeaderCopy() {
+    if (!isFoundationCoursePath()) return;
+    var title = document.getElementById("ar-academy-header-title");
+    var sub = document.getElementById("ar-academy-header-subtitle");
+    if (title) title.textContent = "Photography Course Modules Map";
+    if (sub) sub.textContent = "Your photography Academy";
+  }
+
+  document.documentElement.classList.add("ar-academy");
+  mountAcademyHeaderContainer();
+  applyFoundationHeaderCopy();
+
+  window.__arAcademyHeader = {
+    mount: mountAcademyHeaderContainer,
+    applyFoundationCopy: applyFoundationHeaderCopy
+  };
 
   var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
   var AUTH_LOGIN_ALLOW_KEY = "ar-auth-login-allow-v1";
@@ -1060,6 +1120,28 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
       }
       return 0;
     }
+    function clearStripInnerAlign() {
+      var stripInner = document.querySelector('#ar-do-next-strip .ar-do-next-strip__inner');
+      if (!stripInner || !stripInner.style) return;
+      ['width', 'max-width', 'margin-left', 'margin-right'].forEach(function(prop) {
+        stripInner.style.removeProperty(prop);
+      });
+    }
+    function alignStripInnerToDashboard() {
+      var stripInner = document.querySelector('#ar-do-next-strip .ar-do-next-strip__inner');
+      var dashInner = document.querySelector('.ar-academy-dashboard__inner');
+      if (!stripInner) return;
+      if (!dashInner) {
+        clearStripInnerAlign();
+        return;
+      }
+      var rect = dashInner.getBoundingClientRect();
+      if (!rect.width || rect.width < 200) return;
+      stripInner.style.setProperty('width', Math.round(rect.width) + 'px', 'important');
+      stripInner.style.setProperty('max-width', Math.round(rect.width) + 'px', 'important');
+      stripInner.style.setProperty('margin-left', Math.round(rect.left) + 'px', 'important');
+      stripInner.style.setProperty('margin-right', '0', 'important');
+    }
     function syncLayout() {
       if (state.busy) return;
       var root = document.documentElement;
@@ -1072,6 +1154,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
         root.classList.remove('ar-dashboard-in-flow');
         clearFixedLayout(header);
         clearFixedLayout(strip);
+        clearStripInnerAlign();
         ensureSpacer('ar-academy-header-spacer', header, 0);
         ensureSpacer('ar-do-next-strip-spacer', strip, 0);
         return;
@@ -1109,6 +1192,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
         }
         ensureSpacer('ar-academy-header-spacer', header, 0);
         if (strip) ensureSpacer('ar-do-next-strip-spacer', strip, stripH);
+        alignStripInnerToDashboard();
       } finally {
         state.busy = false;
       }
@@ -1123,7 +1207,8 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
           syncLayout();
         });
       },
-      sync: syncLayout
+      sync: syncLayout,
+      alignStrip: alignStripInnerToDashboard
     };
   })();
   }
@@ -1134,6 +1219,10 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
     window.__arAcademyLayout.schedule();
     if (typeof ResizeObserver !== 'undefined') {
       new ResizeObserver(function() { window.__arAcademyLayout.schedule(); }).observe(el);
+      var dashInner = document.querySelector('.ar-academy-dashboard__inner');
+      if (dashInner) {
+        new ResizeObserver(function() { window.__arAcademyLayout.schedule(); }).observe(dashInner);
+      }
     }
     window.addEventListener('resize', function() { window.__arAcademyLayout.schedule(); });
     window.addEventListener('scroll', function() { window.__arAcademyLayout.schedule(); }, { passive: true });
@@ -1154,10 +1243,12 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
+      mountAcademyHeaderContainer();
       loadHeaderData();
       watchAcademyHeaderHeight();
     });
   } else {
+    mountAcademyHeaderContainer();
     loadHeaderData();
     watchAcademyHeaderHeight();
   }

@@ -1,5 +1,13 @@
 <!--
-Academy Dashboard UI (v1.3.19) — Squarespace Snippet
+Academy Dashboard UI (v1.3.27) — Squarespace Snippet
+v1.3.27: Stack stats + footnote under progress gauge (single right column).
+v1.3.26: Catalog footnote sits under progress gauge; stats+gauge cluster aligned right (no middle float).
+v1.3.25: Catalog summary — left-align stats footnote with “190 links / Your opens” line.
+v1.3.24: Tiles-help — Browse button under intro copy; metrics gauge stays on the right.
+v1.3.23: Re-sync journey strip column when dashboard shell shows (layout schedule hook).
+v1.3.22: Note — journey strip alignment fixed in Strip S 1.3.55 (re-paste strip + dashboard).
+v1.3.21: Remove Foundation course page guide pointer under tiles-help strip.
+v1.3.20: Restore Browse the Modules CTA to right side of tiles-help row (guide pointer moved below strip).
 v1.3.19: Foundation course CTA label → "Browse the Modules" (dashboard green button + JS fallback).
 v1.3.18: Remove Members Guide accordion sidebar (overlaps Foundation page "how it works"); slim pointer to course map; centre dashboard layout.
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
@@ -210,19 +218,6 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     position: relative;
   }
 
-  html.ar-academy .ar-academy-dashboard__guide-pointer {
-    font-size: 13px;
-    color: var(--ar-text-muted);
-    margin: 12px 0 0;
-    max-width: 720px;
-    line-height: 1.5;
-  }
-
-  html.ar-academy .ar-academy-dashboard__guide-pointer a {
-    color: hsl(16, 88%, 54%);
-    font-weight: 600;
-  }
-  
   html.ar-academy .ar-academy-dashboard__main {
     width: 100%;
   }
@@ -274,23 +269,39 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     border-radius: 10px;
     border-left: 3px solid var(--ar-brand);
   }
+  html.ar-academy .ar-academy-dashboard__tiles-help-lead {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
   @media (min-width: 701px) {
     html.ar-academy .ar-academy-dashboard__tiles-help {
       flex-direction: row;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 16px;
     }
+    html.ar-academy .ar-academy-dashboard__tiles-help-lead {
+      flex: 0 1 340px;
+      max-width: 360px;
+    }
     html.ar-academy .ar-academy-dashboard__tiles-help-intro {
-      flex: 1 1 80px;
-      max-width: 11rem;
+      flex: none;
+      max-width: none;
     }
     html.ar-academy .ar-academy-dashboard__tiles-help-metrics {
       flex: 1 1 280px;
+      min-width: 0;
     }
-    html.ar-academy .ar-academy-dashboard__course-cta {
+    html.ar-academy .ar-academy-dashboard__tiles-help-lead .ar-academy-dashboard__course-cta {
       flex: 0 0 auto;
+      align-self: stretch;
+      width: 100%;
+      margin-left: 0;
     }
   }
   html.ar-academy .ar-academy-dashboard__tiles-help-intro {
@@ -306,30 +317,35 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     font-size: 13px;
     font-weight: 650;
     line-height: 1.45;
-    text-align: center;
     color: var(--ar-text-muted);
     width: 100%;
+    display: flex;
+    justify-content: flex-end;
   }
   html.ar-academy .ar-catalog-metrics {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    row-gap: 10px;
-    width: 100%;
+    align-items: flex-start;
+    justify-content: flex-end;
+    width: auto;
+    max-width: 100%;
   }
   html.ar-academy .ar-catalog-metrics__stats {
-    flex: 1 1 200px;
-    min-width: min(100%, 200px);
+    margin: 0;
+    min-width: 0;
+    text-align: left;
   }
   html.ar-academy .ar-catalog-metrics__stats .ar-catalog-line {
     display: inline;
   }
   html.ar-academy .ar-catalog-metrics__bar-wrap {
-    flex: 2 1 320px;
+    flex: 0 1 440px;
     max-width: 440px;
-    min-width: 200px;
+    min-width: min(100%, 200px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
   }
   html.ar-academy .ar-catalog-progress-stack {
     position: relative;
@@ -451,11 +467,12 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     letter-spacing: 0.01em;
   }
   html.ar-academy .ar-catalog-foot {
-    margin-top: 4px;
+    margin-top: 0;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.35;
     color: rgba(148, 163, 184, 0.92);
+    text-align: left;
   }
   html.ar-academy .ar-academy-dashboard__course-cta {
     display: inline-flex !important;
@@ -495,12 +512,11 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     outline: none;
   }
   @media (max-width: 700px) {
-    html.ar-academy .ar-academy-dashboard__course-cta {
+    html.ar-academy .ar-academy-dashboard__tiles-help-lead .ar-academy-dashboard__course-cta {
       align-self: stretch;
       width: 100%;
     }
     html.ar-academy .ar-academy-dashboard__tiles-help-intro {
-      flex-basis: 100%;
       max-width: none;
     }
   }
@@ -2012,23 +2028,24 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       </div>
   
       <div class="ar-academy-dashboard__tiles-help" role="region" aria-label="Dashboard tips">
-        <p class="ar-academy-dashboard__tiles-help-intro" role="note">
-          Hover your mouse pointer over any tile to reveal the topic and link.
-        </p>
+        <div class="ar-academy-dashboard__tiles-help-lead">
+          <p class="ar-academy-dashboard__tiles-help-intro" role="note">
+            Hover your mouse pointer over any tile to reveal the topic and link or click Browse the Modules green button.
+          </p>
+          <a
+            id="arp-academy-course-cta"
+            class="ar-academy-dashboard__course-cta"
+            href="https://www.alanranger.com/academy/online-photography-course/"
+          >&#8250;&#8250; Browse the Modules &#8250;&#8250;</a>
+        </div>
         <div
           class="ar-academy-dashboard__tiles-help-metrics"
           id="ar-dashboard-catalog-summary"
           aria-live="polite"
           aria-label="Your personal academy link totals"
         ></div>
-        <a
-          id="arp-academy-course-cta"
-          class="ar-academy-dashboard__course-cta"
-          href="https://www.alanranger.com/academy/online-photography-course/"
-        >&#8250;&#8250; Browse the Modules &#8250;&#8250;</a>
-        <p class="ar-academy-dashboard__guide-pointer">New here? The <a href="https://www.alanranger.com/academy/online-photography-course">Foundation course page</a> explains how the Academy works and lists every module.</p>
       </div>
-  
+
       <div class="ar-academy-tiles">
         <div class="ar-tile ar-span-6" id="arp-modules-tile">
           <div class="ar-tile__kicker"><span class="ar-dot ar-dot--brand"></span>Start here</div>
@@ -3057,6 +3074,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     function showDashboardShell() {
       var dashEl = document.querySelector(".ar-academy-dashboard");
       if (dashEl) dashEl.classList.add("is-ready");
+      if (window.__arAcademyLayout && window.__arAcademyLayout.schedule) {
+        window.__arAcademyLayout.schedule();
+      }
     }
 
     function scheduleAuthHydrateRetry(ms, onReady) {
@@ -3844,19 +3864,6 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
       el.innerHTML =
         '<div class="ar-catalog-metrics">' +
-        '<div class="ar-catalog-metrics__stats">' +
-        '<span class="ar-catalog-line"><span class="ar-catalog-strong">' +
-        safeTotal +
-        '</span> links<span class="ar-catalog-dot" aria-hidden="true">&middot;</span>' +
-        'Your opens ' +
-        '<span class="ar-catalog-strong">' +
-        safeOpens +
-        '/' +
-        safeTotal +
-        "</span> (" +
-        safePct +
-        "%)" +
-        "</span></div>" +
         '<div class="ar-catalog-metrics__bar-wrap">' +
         '<div class="ar-catalog-progress-stack">' +
         '<div class="ar-catalog-progress" style="--ar-fill-pct:' +
@@ -3888,9 +3895,22 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         safePct +
         "%</div>" +
         "</div>" +
+        '<div class="ar-catalog-metrics__stats">' +
+        '<span class="ar-catalog-line"><span class="ar-catalog-strong">' +
+        safeTotal +
+        '</span> links<span class="ar-catalog-dot" aria-hidden="true">&middot;</span>' +
+        'Your opens ' +
+        '<span class="ar-catalog-strong">' +
+        safeOpens +
+        '/' +
+        safeTotal +
+        "</span> (" +
+        safePct +
+        "%)" +
+        "</span></div>" +
+        '<div class="ar-catalog-foot">Your account only. Modules, exams, packs, checklists, published applied guides &amp; RPS.</div>' +
         "</div>" +
-        "</div>" +
-        '<div class="ar-catalog-foot">Your account only. Modules, exams, packs, checklists, published applied guides &amp; RPS.</div>';
+        "</div>";
     }
     function scheduleDashboardCatalogSummary() {
       for (var i = 0; i < dashboardCatalogTimers.length; i++) clearTimeout(dashboardCatalogTimers[i]);
@@ -5255,6 +5275,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       if (!wrap) return;
       var url = "https://www.alanranger.com/academy/online-photography-course/";
       var label = "\u203a\u203a Browse the Modules \u203a\u203a";
+      var lead = wrap.querySelector(".ar-academy-dashboard__tiles-help-lead") || wrap;
       var el = document.getElementById("arp-academy-course-cta");
       if (!el) {
         var legacy = wrap.querySelector("a.ar-academy-dashboard__course-cta");
@@ -5267,7 +5288,13 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         el = document.createElement("a");
         el.id = "arp-academy-course-cta";
         el.className = "ar-academy-dashboard__course-cta";
-        wrap.appendChild(el);
+        lead.appendChild(el);
+      } else if (el.parentNode !== lead) {
+        lead.appendChild(el);
+      }
+      var intro = lead.querySelector(".ar-academy-dashboard__tiles-help-intro");
+      if (intro && el.previousElementSibling !== intro) {
+        intro.insertAdjacentElement("afterend", el);
       }
       if (!el.getAttribute("href") || String(el.getAttribute("href") || "").indexOf("online-photography-course") < 0) {
         el.setAttribute("href", url);

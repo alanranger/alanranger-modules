@@ -38,5 +38,8 @@
     "analytics"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
 }

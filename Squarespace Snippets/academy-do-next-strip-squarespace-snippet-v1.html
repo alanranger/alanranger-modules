@@ -2,6 +2,8 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.56 — Runtime align journey strip inner to dashboard column (fixes legacy gutter / viewport drift).
+v1.3.55 — Remove legacy Members Guide gutter offset; align journey strip with dashboard column (margin 0 auto).
 v1.3.54 — Foundation progress: 80/20 modules/days weighting; breakdown line under %
 v1.3.53 — Goal tile label: "Next badge — {next}" (avoids Graduate verb clash)
 v1.3.52 — Tile labels: Resume/Study; Goal: Graduate to {next badge}
@@ -109,53 +111,19 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
-  @media (min-width:1201px){
+  html.ar-dashboard-pin-stack #ar-do-next-strip .ar-do-next-strip__inner{
 
-    #ar-do-next-strip .ar-do-next-strip__inner{
+    width:auto !important;
 
-      --arp-dash-gutter:352px;
+    max-width:1400px !important;
 
-      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
+    margin-left:auto !important;
 
-      max-width:1400px;
+    margin-right:auto !important;
 
-      margin-left:calc(
+    padding-left:12px !important;
 
-        var(--arp-dash-gutter) +
-
-        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
-
-          2
-
-      );
-
-      margin-right:auto;
-
-      padding:0 12px;
-
-    }
-
-  }
-
-  @media (max-width:1600px) and (min-width:1201px){
-
-    #ar-do-next-strip .ar-do-next-strip__inner{
-
-      --arp-dash-gutter:322px;
-
-      width:min(1400px,calc(100% - var(--arp-dash-gutter)));
-
-      margin-left:calc(
-
-        var(--arp-dash-gutter) +
-
-        (100% - var(--arp-dash-gutter) - min(1400px,calc(100% - var(--arp-dash-gutter)))) /
-
-          2
-
-      );
-
-    }
+    padding-right:12px !important;
 
   }
 
@@ -1859,6 +1827,38 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
+  function alignDoNextStripColumn(){
+
+    if (window.__arAcademyLayout && typeof window.__arAcademyLayout.alignStrip === "function") {
+
+      window.__arAcademyLayout.alignStrip();
+
+      return;
+
+    }
+
+    var stripInner = document.querySelector("#ar-do-next-strip .ar-do-next-strip__inner");
+
+    var dashInner = document.querySelector(".ar-academy-dashboard__inner");
+
+    if (!stripInner || !dashInner) return;
+
+    var rect = dashInner.getBoundingClientRect();
+
+    if (!rect.width || rect.width < 200) return;
+
+    stripInner.style.setProperty("width", Math.round(rect.width) + "px", "important");
+
+    stripInner.style.setProperty("max-width", Math.round(rect.width) + "px", "important");
+
+    stripInner.style.setProperty("margin-left", Math.round(rect.left) + "px", "important");
+
+    stripInner.style.setProperty("margin-right", "0", "important");
+
+  }
+
+
+
   function ensureAcademyLayout(){
 
     if (window.__arAcademyLayout && window.__arAcademyLayout.pinVersion === 2) {
@@ -1920,6 +1920,50 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
       }
 
       return 0;
+
+    }
+
+    function clearStripInnerAlign() {
+
+      var stripInner = document.querySelector("#ar-do-next-strip .ar-do-next-strip__inner");
+
+      if (!stripInner || !stripInner.style) return;
+
+      ["width", "max-width", "margin-left", "margin-right"].forEach(function(prop) {
+
+        stripInner.style.removeProperty(prop);
+
+      });
+
+    }
+
+    function alignStripInnerToDashboard() {
+
+      var stripInner = document.querySelector("#ar-do-next-strip .ar-do-next-strip__inner");
+
+      var dashInner = document.querySelector(".ar-academy-dashboard__inner");
+
+      if (!stripInner) return;
+
+      if (!dashInner) {
+
+        clearStripInnerAlign();
+
+        return;
+
+      }
+
+      var rect = dashInner.getBoundingClientRect();
+
+      if (!rect.width || rect.width < 200) return;
+
+      stripInner.style.setProperty("width", Math.round(rect.width) + "px", "important");
+
+      stripInner.style.setProperty("max-width", Math.round(rect.width) + "px", "important");
+
+      stripInner.style.setProperty("margin-left", Math.round(rect.left) + "px", "important");
+
+      stripInner.style.setProperty("margin-right", "0", "important");
 
     }
 
@@ -2005,6 +2049,8 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         if (strip) ensureSpacer("ar-do-next-strip-spacer", strip, stripH);
 
+        alignStripInnerToDashboard();
+
       } finally {
 
         state.busy = false;
@@ -2033,7 +2079,9 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       },
 
-      sync: syncLayout
+      sync: syncLayout,
+
+      alignStrip: alignStripInnerToDashboard
 
     };
 
@@ -4981,6 +5029,8 @@ function computeTrackFillPct(badges, progressPct) {
 
     scheduleLayout();
 
+    requestAnimationFrame(function(){ alignDoNextStripColumn(); });
+
   }
 
 
@@ -4995,11 +5045,19 @@ function computeTrackFillPct(badges, progressPct) {
 
       new ResizeObserver(function(){ scheduleLayout(); }).observe(strip);
 
+      var dashInner = document.querySelector(".ar-academy-dashboard__inner");
+
+      if (dashInner) {
+
+        new ResizeObserver(function(){ scheduleLayout(); alignDoNextStripColumn(); }).observe(dashInner);
+
+      }
+
     }
 
-    window.addEventListener("resize", function(){ scheduleLayout(); });
+    window.addEventListener("resize", function(){ scheduleLayout(); alignDoNextStripColumn(); });
 
-    document.addEventListener("ar-academy-layout-sync", function(){ scheduleLayout(); });
+    document.addEventListener("ar-academy-layout-sync", function(){ scheduleLayout(); alignDoNextStripColumn(); });
 
   }
 
