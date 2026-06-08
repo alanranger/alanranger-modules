@@ -78,6 +78,50 @@ function displayTitle(raw) {
   return String(raw || "").replace(/^\d+\s+/, "");
 }
 
+function slugToTitle(modulePath) {
+  const parts = String(modulePath || "")
+    .split("/")
+    .filter(Boolean);
+  const slug = parts[parts.length - 1] || "";
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const PRACTICE_PACK_GROUPS = [
+  { label: "Technical Foundations", start: 0, end: 9 },
+  { label: "Composition & Creative", start: 10, end: 19 },
+  { label: "Genre-Specific", start: 20, end: 29 },
+];
+
+const CHECKLIST_GROUPS = [
+  { label: "Composition Guides", start: 0, end: 9 },
+  { label: "Genre Guides", start: 10, end: 19 },
+  { label: "Camera Settings Guides", start: 20, end: 34 },
+];
+
+function resourceGroupButtons(urls, groups, tilePrefix, opts) {
+  opts = opts || {};
+  let html = "";
+  groups.forEach((group) => {
+    html += `<div class="ar-fp-sec"><div class="ar-fp-sec-head"><span>◉</span> ${esc(group.label)}</div>`;
+    html += `<div class="ar-fp-mod-grid">`;
+    for (let i = group.start; i <= group.end; i++) {
+      const p = urls[i];
+      if (!p) continue;
+      const label = displayTitle(slugToTitle(p));
+      const cnt = i - group.start + 1;
+      const tileTag = tilePrefix + pad2(i + 1);
+      const paidAttr = opts.paid ? ' data-fp-paid="1"' : "";
+      const blankAttr = opts.blank ? ' target="_blank" rel="noopener noreferrer"' : "";
+      html += `<a href="${SITE}${p}" class="ar-fp-mod-btn" data-fp-resource="1"${paidAttr} data-fp-path="${esc(p)}"${tipAttr(label, tileTag, p)}${blankAttr}>`;
+      html += `<span class="ar-fp-mod-btn__cnt">${cnt}</span>`;
+      html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(label)}</span></span>`;
+      html += `<span class="ar-fp-mod-btn__tile">${tileTag}</span></a>`;
+    }
+    html += `</div></div>`;
+  });
+  return html;
+}
+
 function pad2(n) {
   return n < 10 ? "0" + n : String(n);
 }
@@ -159,6 +203,23 @@ function rpsButtons() {
   return html;
 }
 
+function examSoonButtons() {
+  let html =
+    '<div class="ar-fp-sec" id="ar-fp-exams-soon"><div class="ar-fp-sec-head"><span>◉</span> Coming soon</div><div class="ar-fp-mod-grid">';
+  for (let i = 16; i <= 35; i++) {
+    const tag = `E${pad2(i)}`;
+    html += `<span class="ar-fp-mod-btn ar-fp-mod-btn--soon" title="Coming soon"><span class="ar-fp-mod-btn__cnt">${i - 15}</span><span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">Coming soon</span></span><span class="ar-fp-mod-btn__tile">${tag}</span></span>`;
+  }
+  return html + "</div></div>";
+}
+const practicePackButtons = resourceGroupButtons(paths.PRACTICE_PACK_URLS, PRACTICE_PACK_GROUPS, "P", {
+  paid: true,
+});
+const checklistButtons = resourceGroupButtons(paths.CHECKLIST_URLS, CHECKLIST_GROUPS, "C", {
+  paid: true,
+  blank: true,
+});
+
 const FAQ_ITEMS = [
   {
     q: "Where should I start?",
@@ -171,6 +232,7 @@ const FAQ_ITEMS = [
   {
     q: "Is this included in the 14-day trial?",
     a: "Yes. Your trial unlocks the Foundation course modules and exams for 14 days. Applied Learning, RPS guides and downloads such as Practice Packs are paid-member content and stay locked until you upgrade.",
+    trialOnly: true,
   },
   {
     q: "Do modules include exams and certificates?",
@@ -191,10 +253,10 @@ const FAQ_ITEMS = [
 ];
 
 function faqAccordionHtml() {
-  return FAQ_ITEMS.map(
-    (item) =>
-      `<details class="ar-fp-faq-item"><summary>${esc(item.q)}</summary><div class="ar-fp-faq-body"><p>${esc(item.a)}</p></div></details>`
-  ).join("");
+  return FAQ_ITEMS.map((item) => {
+    const trialAttr = item.trialOnly ? ' data-fp-trial-only="1"' : "";
+    return `<details class="ar-fp-faq-item"${trialAttr}><summary>${esc(item.q)}</summary><div class="ar-fp-faq-body"><p>${esc(item.a)}</p></div></details>`;
+  }).join("");
 }
 
 const JOURNEY_ICON_SVGS = {
@@ -250,6 +312,13 @@ function hiwIconSvg(iconClass) {
   );
 }
 
+function statBadgeIconHtml(iconClass, colour) {
+  const bg = colour === "gold" ? "#b45309" : "#166534";
+  const border = colour === "gold" ? "#92400e" : "#14532d";
+  const svg = hiwIconSvg(iconClass).replace(/28px/g, "22px");
+  return `<div class="ar-fp-stat__icon ar-fp-hiw-icon ar-fp-hiw-icon--badge" id="ar-fp-stat-badge-icon" aria-hidden="true" style="width:44px!important;height:44px!important;margin:0!important;background:${bg}!important;border:1px solid ${border}!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important;box-sizing:border-box!important;box-shadow:0 2px 8px rgba(0,0,0,.35)!important">${svg}</div>`;
+}
+
 function hiwCardsHtml() {
   return HIW_CARDS.map(
     (card) =>
@@ -274,53 +343,65 @@ const articleModulesJson = JSON.stringify(
   }))
 );
 const foundationPathsJson = JSON.stringify(paths.DEFINITIVE_MODULE_URLS);
+const practicePackUrlsJson = JSON.stringify(paths.PRACTICE_PACK_URLS);
+const checklistUrlsJson = JSON.stringify(paths.CHECKLIST_URLS);
+const journeyIconsJson = JSON.stringify(JOURNEY_ICON_SVGS);
 
-const FP_HEADER_FALLBACK = `<template id="ar-fp-header-fallback-template"><div id="ar-academy-header-container"><div id="ar-academy-header-welcome"><div id="ar-academy-header-welcome-copy"><div id="ar-academy-header-welcome-text">Welcome back, <span id="ar-academy-header-welcome-name">...</span></div><div id="ar-academy-header-last-login"></div></div></div><div id="ar-academy-header-center"><img id="ar-academy-header-logo-icon" src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png" alt="Academy" loading="eager" /><div><h1 id="ar-academy-header-title">Your photography Academy</h1><p id="ar-academy-header-subtitle">Foundation course map — modules, progress and badges.</p></div></div><div id="ar-academy-header-right"><div id="ar-academy-header-brand"><a id="ar-academy-header-brand-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage"><img id="ar-academy-header-brand-logo" src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w" alt="Alan Ranger Photography" loading="eager" /></a></div><button id="ar-academy-header-logout-btn" type="button" data-ms-action="logout">Log out</button></div></div></template>`;
+const FP_HEADER_FALLBACK = `<template id="ar-fp-header-fallback-template"><div id="ar-academy-header-container"><div id="ar-academy-header-welcome"><div id="ar-academy-header-welcome-copy"><div id="ar-academy-header-welcome-text">Welcome back, <span id="ar-academy-header-welcome-name">...</span></div><div id="ar-academy-header-last-login"></div></div></div><div id="ar-academy-header-center"><a id="ar-fp-header-back" class="ar-fp-header-back" href="${SITE}/academy/dashboard">← Back to dashboard</a><div id="ar-academy-header-center-copy"><h1 id="ar-academy-header-title">Your photography Academy</h1><p id="ar-academy-header-subtitle">Photography Course Modules Map</p></div></div><div id="ar-academy-header-right"><div id="ar-academy-header-brand"><a id="ar-academy-header-brand-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage"><img id="ar-academy-header-brand-logo" src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w" alt="Alan Ranger Photography" loading="eager" /></a></div><button id="ar-academy-header-logout-btn" type="button" data-ms-action="logout">Log out</button></div></div></template>`;
 
 const FP_SQSP_WRAPPER_SELECTORS = [
-  "html.ar-academy.ar-fp-app-shell",
-  "html.ar-academy.ar-fp-app-shell body",
-  "html.ar-academy.ar-fp-app-shell #siteWrapper",
-  "html.ar-academy.ar-fp-app-shell .Site",
-  "html.ar-academy.ar-fp-app-shell .Site-inner",
-  "html.ar-academy.ar-fp-app-shell .Content-outer",
-  "html.ar-academy.ar-fp-app-shell #content",
-  "html.ar-academy.ar-fp-app-shell main.Main",
-  "html.ar-academy.ar-fp-app-shell .Main--page",
-  "html.ar-academy.ar-fp-app-shell .Main-content",
-  "html.ar-academy.ar-fp-app-shell #page",
-  "html.ar-academy.ar-fp-app-shell #sections",
-  "html.ar-academy.ar-fp-app-shell #canvas",
-  "html.ar-academy.ar-fp-app-shell .page-section",
-  "html.ar-academy.ar-fp-app-shell .section-background",
-  "html.ar-academy.ar-fp-app-shell .content-wrapper",
-  "html.ar-academy.ar-fp-app-shell .sqs-layout",
+  "html.ar-fp-live-shell",
+  "html.ar-fp-live-shell body",
+  "html.ar-fp-live-shell #siteWrapper",
+  "html.ar-fp-live-shell .Site",
+  "html.ar-fp-live-shell .Site-inner",
+  "html.ar-fp-live-shell .Content-outer",
+  "html.ar-fp-live-shell #content",
+  "html.ar-fp-live-shell main.Main",
+  "html.ar-fp-live-shell .Main--page",
+  "html.ar-fp-live-shell .Main-content",
+  "html.ar-fp-live-shell #page",
+  "html.ar-fp-live-shell #sections",
+  "html.ar-fp-live-shell #canvas",
+  "html.ar-fp-live-shell .page-section",
+  "html.ar-fp-live-shell .section-background",
+  "html.ar-fp-live-shell .content-wrapper",
+  "html.ar-fp-live-shell .sqs-layout",
 ].join(",");
 
-const snippet = `<!-- FP 1.0.20 — Foundation course map (/academy/online-photography-course) -->
-<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";if(p==="/academy/online-photography-course"||p.indexOf("/academy/")===0)document.documentElement.classList.add("ar-academy","ar-fp-app-shell");}catch(e){}})();</script>
+const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
+
+const snippet = `<!-- FP 1.0.27 — Foundation course map (/academy/online-photography-course) -->
+${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-version="FP 1.0.20" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.27" hidden aria-hidden="true">
 <style>
-html.ar-academy.ar-fp-app-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
+html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
-html.ar-academy.ar-fp-app-shell,html.ar-academy.ar-fp-app-shell body{color:#e2e8f0;min-height:100vh}
-html.ar-academy.ar-fp-app-shell #siteWrapper,html.ar-academy.ar-fp-app-shell .Site,html.ar-academy.ar-fp-app-shell .Site-inner{min-height:100vh}
-html.ar-academy.ar-fp-app-shell #header,html.ar-academy.ar-fp-app-shell header.Header,html.ar-academy.ar-fp-app-shell .Mobile-bar,html.ar-academy.ar-fp-app-shell .Header-nav--primary,html.ar-academy.ar-fp-app-shell .Header-nav--secondary,html.ar-academy.ar-fp-app-shell .Header--bottom,html.ar-academy.ar-fp-app-shell .sqs-mobile-info-bar{display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;margin:0!important;padding:0!important}
-html.ar-academy.ar-fp-app-shell .sqs-block-content{background:transparent!important}
-html.ar-academy.ar-fp-app-shell .page-section,html.ar-academy.ar-fp-app-shell .sqs-block{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-container{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;column-gap:20px;width:100%;max-width:100%;padding:16px 32px;background:#000!important;color:#fff;position:relative!important;top:auto!important;left:0;right:0;z-index:998;min-height:80px;box-sizing:border-box;margin:0;border:none}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-welcome{grid-column:1;justify-self:start;display:flex;align-items:center;min-width:0}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-center{grid-column:2;justify-self:center;display:flex;align-items:center;gap:12px;text-align:left}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-right{grid-column:3;justify-self:end;display:flex;align-items:center;gap:14px}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-title{font-size:22px;font-weight:700;margin:0;line-height:1.2}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-subtitle{font-size:13px;margin:4px 0 0;color:#bbb;line-height:1.35}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-welcome-text{font-size:14px;line-height:1.35}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-last-login{font-size:12px;color:#999;margin-top:4px}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-logo-icon{width:40px;height:40px;object-fit:contain;flex-shrink:0}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-brand-logo{width:130px;height:auto;display:block;filter:brightness(0) invert(1)}
-html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transparent;border:1px solid #fff;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
-#ar-foundation-hub{--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);max-width:none;padding:12px 12px 48px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:radial-gradient(1200px 600px at 20% 0%,rgba(229,114,0,.10),transparent 60%),radial-gradient(900px 500px at 85% 20%,rgba(245,158,11,.10),transparent 55%),var(--ar-bg);min-height:calc(100vh - var(--ar-sqsp-nav-offset,0px))}
+html.ar-fp-live-shell,html.ar-fp-live-shell body{color:#e2e8f0}
+html.ar-fp-live-shell #header,html.ar-fp-live-shell header.Header,html.ar-fp-live-shell .Mobile-bar,html.ar-fp-live-shell .Header-nav--primary,html.ar-fp-live-shell .Header-nav--secondary,html.ar-fp-live-shell .Header--bottom,html.ar-fp-live-shell .sqs-mobile-info-bar{display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;margin:0!important;padding:0!important}
+html.ar-fp-live-shell .sqs-block-content{background:transparent!important}
+html.ar-fp-live-shell .page-section,html.ar-fp-live-shell .sqs-block{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important;min-height:0!important}
+html.ar-fp-live-shell .page-section .section-border,html.ar-fp-live-shell .page-section .section-background-content,html.ar-fp-live-shell .content-wrapper{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important}
+html.ar-fp-live-shell .page-section:has(#ar-foundation-hub){padding-top:0!important;margin-top:0!important;min-height:0!important;border-top:none!important}
+html.ar-fp-live-shell .page-section:has(#ar-foundation-hub) .section-background{opacity:0!important;height:0!important;min-height:0!important}
+html.ar-fp-live-shell #ar-academy-header-container{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;column-gap:20px;width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;padding:16px 32px;background:#000!important;color:#fff;position:relative!important;top:auto!important;left:0;right:0;z-index:998;min-height:80px;box-sizing:border-box;margin-bottom:0!important;border:none!important;box-shadow:none!important}
+html.ar-fp-live-shell #ar-academy-header-welcome{grid-column:1;justify-self:start;display:flex;align-items:center;min-width:0}
+html.ar-fp-live-shell #ar-academy-header-center{grid-column:2;justify-self:center;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:32px;text-align:center;min-width:0;max-width:min(820px,100%)}
+html.ar-fp-live-shell #ar-academy-header-center-copy{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;flex:0 1 auto}
+html.ar-fp-live-shell .ar-fp-header-back{flex-shrink:0;margin-right:0}
+html.ar-fp-live-shell #ar-academy-header-title{font-size:28px!important;font-weight:700!important;margin:0;line-height:1.15;color:#fff!important}
+html.ar-fp-live-shell #ar-academy-header-subtitle{font-size:15px!important;margin:0;color:#f0f0f0!important;line-height:1.35;font-weight:500}
+html.ar-fp-live-shell .ar-fp-header-back{display:inline-block;font-size:13px;font-weight:600;color:#fff!important;text-decoration:none!important;padding:8px 16px;border-radius:8px;background:#E57200!important;border:1px solid #E57200!important;line-height:1.3;white-space:nowrap}
+html.ar-fp-live-shell .ar-fp-header-back:hover{background:#c96200!important;border-color:#c96200!important;color:#fff!important}
+html.ar-fp-live-shell #ar-academy-header-right{grid-column:3;justify-self:end;display:flex;align-items:center;gap:14px}
+html.ar-fp-live-shell #ar-academy-header-welcome-text{font-size:14px;line-height:1.35;color:#fff!important}
+html.ar-fp-live-shell #ar-academy-header-last-login{font-size:12px;color:#bbb!important;margin-top:4px}
+html.ar-fp-live-shell #ar-academy-header-brand-logo{width:130px;height:auto;display:block;filter:brightness(0) invert(1)}
+html.ar-fp-live-shell #ar-academy-header-logout-btn{background:transparent;border:1px solid #fff;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+html.ar-fp-edit-mode #ar-foundation-hub[hidden]{display:block!important;visibility:visible!important}
+html.ar-fp-edit-mode #ar-foundation-hub{width:auto!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;min-height:0!important}
+#ar-foundation-hub{--ar-bg:#0f1419;--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);max-width:none;margin-top:0!important;padding:12px 12px 48px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:radial-gradient(1200px 600px at 20% 0%,rgba(229,114,0,.10),transparent 60%),radial-gradient(900px 500px at 85% 20%,rgba(245,158,11,.10),transparent 55%),var(--ar-bg);min-height:calc(100vh - var(--ar-sqsp-nav-offset,0px))}
 #ar-foundation-hub>.ar-fp-panel,#ar-foundation-hub>.ar-fp-divider,#ar-foundation-hub>nav{max-width:1100px;width:100%;margin-left:auto;margin-right:auto}
 #ar-foundation-hub[hidden]{display:none!important}
 #ar-foundation-hub *,#ar-foundation-hub *::before,#ar-foundation-hub *::after{box-sizing:border-box}
@@ -335,6 +416,10 @@ html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transpa
 .ar-fp-member{background:#13251a;border:1px solid #2f6b46;border-radius:9px;padding:9px 16px;text-align:center;color:#7fd0a0;font-size:13px;font-weight:700}
 .ar-fp-stats{display:flex;gap:12px;margin:18px 0 14px;flex-wrap:wrap}
 .ar-fp-stat{flex:1;min-width:120px;background:var(--ar-fp-panel);border:1px solid var(--ar-fp-border);border-radius:9px;padding:12px 16px}
+.ar-fp-stat--badge{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ar-fp-stat__text{min-width:0;flex:1}
+.ar-fp-stat__icon{flex-shrink:0}
+#ar-foundation-hub .ar-fp-stat__icon svg,#ar-foundation-hub .ar-fp-stat__icon svg path,#ar-foundation-hub .ar-fp-stat__icon svg circle,#ar-foundation-hub .ar-fp-stat__icon svg rect{stroke:#fff!important;fill:none!important;vector-effect:non-scaling-stroke}
 .ar-fp-stat .l{color:var(--ar-fp-orange);font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
 .ar-fp-stat .v{font-size:18px;font-weight:700;margin-top:2px}
 .ar-fp-stat .v span{font-size:13px;color:var(--ar-fp-muted);font-weight:400}
@@ -394,9 +479,24 @@ html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transpa
 .ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__cnt{border-color:#666;color:#666}
 .ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__ttl{color:#999}
 .ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__tile{color:#999;border-color:#555}
+.ar-fp-mod-btn.is-exam-passed{background:#142819;border-color:#2f6b46;cursor:pointer}
+.ar-fp-mod-btn.is-exam-passed:hover{border-color:#4d9468}
+.ar-fp-mod-btn.is-exam-passed .ar-fp-mod-btn__cnt{background:#1f7a45;border-color:#7fd0a0;color:#fff}
+.ar-fp-mod-btn.is-exam-passed .ar-fp-mod-btn__ttl{color:#cfe8d6}
+.ar-fp-mod-btn.is-exam-failed{background:#2a1212;border-color:#7a3b3b;cursor:pointer}
+.ar-fp-mod-btn.is-exam-failed:hover{border-color:#a44}
+.ar-fp-mod-btn.is-exam-failed .ar-fp-mod-btn__cnt{background:#7a2020;border-color:#f0a0a0;color:#fff}
+.ar-fp-mod-btn.is-exam-failed .ar-fp-mod-btn__ttl{color:#f0c0c0}
+button.ar-fp-mod-btn{text-align:left;width:100%;font:inherit;color:inherit}
 .ar-fp-paid-zone-head.is-trial-locked .ar-fp-zone-badge,.ar-fp-paid-zone-body.is-trial-locked .ar-fp-zone-badge{background:#3a1d1d;color:#f0a0a0;border-color:#7a3b3b}
 .ar-fp-paid-lock-note{color:#f0a0a0;font-size:12px;margin:6px 0 0;font-weight:600}
 .ar-fp-divider{border-top:2px dashed #c9c5b8;margin:6px 0}
+.ar-fp-paid-group-head{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e6c067;margin:0}
+.ar-fp-paid-group-muted{color:var(--ar-fp-grey);font-weight:600;text-transform:none;letter-spacing:0}
+.ar-fp-resource-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.ar-fp-resource-link{font-size:11px;font-weight:700;color:var(--ar-fp-orange)!important;border:1px solid var(--ar-fp-orange);border-radius:50px;padding:6px 12px;text-decoration:none!important;white-space:nowrap}
+.ar-fp-resource-link:hover{background:rgba(229,114,0,.12);color:#fff!important}
+.ar-fp-exams-cta{margin-top:18px}
 .ar-fp-top-strip{padding:14px 20px;overflow:visible}
 .ar-fp-top-strip__inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 18px}
 .ar-fp-top-strip__actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;flex:0 0 auto}
@@ -416,14 +516,13 @@ html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transpa
 .ar-fp-faq-item[open] summary::after{content:"−"}
 .ar-fp-faq-body{padding:0 16px 14px;color:var(--ar-fp-grey);font-size:13px;line-height:1.65}
 .ar-fp-faq-body p{margin:0}
-@media(max-width:640px){.ar-fp-panel{padding:18px 16px}.ar-fp-hl-title{font-size:20px}.ar-fp-top-strip__inner{flex-direction:column;align-items:stretch}.ar-fp-top-strip__actions{width:100%}.ar-fp-top-strip__actions .ar-fp-nav__link{flex:1 1 calc(50% - 5px);text-align:center}.ar-fp-top-strip__reviews{justify-content:center;width:100%}}
+@media(max-width:640px){.ar-fp-panel{padding:18px 16px}.ar-fp-hl-title{font-size:20px}.ar-fp-top-strip__inner{flex-direction:column;align-items:stretch}.ar-fp-top-strip__actions{width:100%}.ar-fp-top-strip__actions .ar-fp-nav__link{flex:1 1 calc(50% - 5px);text-align:center}.ar-fp-top-strip__reviews{justify-content:center;width:100%}html.ar-fp-live-shell #ar-academy-header-center{flex-wrap:wrap;justify-content:center;gap:20px}html.ar-fp-live-shell #ar-academy-header-center-copy{align-items:center;text-align:center}html.ar-fp-live-shell #ar-academy-header-title{font-size:22px!important}html.ar-fp-live-shell #ar-academy-header-subtitle{font-size:13px!important}}
 </style>
 
 <div class="ar-fp-panel ar-fp-top-strip">
   <script src="https://elfsightcdn.com/platform.js" async></script>
   <div class="ar-fp-top-strip__inner">
     <div class="ar-fp-top-strip__actions" aria-label="Academy navigation">
-      <a class="ar-fp-nav__link ar-fp-nav__back" href="${SITE}/academy/dashboard">← Back to dashboard</a>
       <a class="ar-fp-nav__link ar-fp-nav__review" href="${GOOGLE_REVIEW_URL}" target="_blank" rel="noopener noreferrer">Leave a review</a>
     </div>
     <div class="ar-fp-top-strip__reviews" id="ar-fp-reviews-mount">
@@ -440,14 +539,17 @@ html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transpa
     <div id="ar-fp-membership-badge"></div>
   </div>
   <div class="ar-fp-stats">
-    <div class="ar-fp-stat"><div class="l">Badge</div><div class="v" id="ar-fp-stat-badge">Enrolled</div></div>
+    <div class="ar-fp-stat ar-fp-stat--badge">
+      <div class="ar-fp-stat__text"><div class="l">Badge</div><div class="v" id="ar-fp-stat-badge">Enrolled</div></div>
+      ${statBadgeIconHtml("ti-school", "green")}
+    </div>
     <div class="ar-fp-stat"><div class="l">Modules opened</div><div class="v"><span id="ar-fp-stat-modules">0</span> <span>/ 60</span></div></div>
     <div class="ar-fp-stat"><div class="l">Exams passed</div><div class="v"><span id="ar-fp-stat-exams">0</span> <span>/ 15</span></div></div>
   </div>
   <div class="ar-fp-prow"><span class="l" id="ar-fp-progress-label">Next badge: Foundation</span><span class="r" id="ar-fp-progress-pct">0%</span></div>
   <div class="ar-fp-track"><div class="ar-fp-fill" id="ar-fp-progress-fill"></div></div>
   <div class="ar-fp-hint" id="ar-fp-progress-hint"></div>
-  <div class="ar-fp-cta"><a class="ar-fp-btn ar-fp-btn-orange" id="ar-fp-primary-cta" href="${SITE}/blog-on-photography/what-is-exposure-in-photography">Start with module 01: Exposure →</a><span class="ar-fp-cred">★ Award-winning photographer · 15 years teaching · rated 4.9</span></div>
+  <div class="ar-fp-cta"><a class="ar-fp-btn ar-fp-btn-orange" id="ar-fp-primary-cta" href="${SITE}/blog-on-photography/what-is-exposure-in-photography">Start with module 01: Exposure →</a></div>
   <div class="ar-fp-mapnote">This page is your full course map. Your dashboard is where you pick up day to day. <a href="${SITE}/academy/dashboard">→ Go to dashboard</a></div>
   </div>
 </div>
@@ -460,6 +562,42 @@ html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transpa
 
 <div class="ar-fp-panel"><div class="ar-fp-zone-head"><span class="t">Foundation course</span><span class="ar-fp-zone-badge ar-fp-zb-tracked">Tracked · 60 modules</span></div><p class="ar-fp-zone-sub">The core path — camera, gear, composition, genre and 15 practice assignments. Opening these counts toward your badges.</p></div>
 ${zone1}
+
+<div class="ar-fp-divider"></div>
+<div class="ar-fp-panel" id="ar-fp-zone-exams">
+  <div class="ar-fp-zone-head"><span class="t">Exams &amp; Certificates</span><span class="ar-fp-zone-badge ar-fp-zb-tracked" id="ar-fp-exams-progress-badge">15 exams</span></div>
+  <p class="ar-fp-zone-sub">Take exams, save progress, download results PDFs and certificates.</p>
+  <div class="ar-fp-sec">
+    <div class="ar-fp-sec-head"><span>🎓</span> 15 topic exams</div>
+    <p class="ar-fp-sec-intro" id="ar-fp-exams-tip">Resume an exam or download your latest results.</p>
+    <div id="ar-fp-exams-grid" class="ar-fp-mod-grid" aria-label="Exam progress grid"></div>
+    ${examSoonButtons()}
+  </div>
+  <div class="ar-fp-exams-cta"><a class="ar-fp-btn ar-fp-btn-orange" href="${SITE}/academy/photography-exams-certification">Go to exams &amp; certificates →</a></div>
+</div>
+
+<div class="ar-fp-divider"></div>
+<div class="ar-fp-panel"><div class="ar-fp-paid-group-head">Paid Members Only <span class="ar-fp-paid-group-muted">— Resources</span></div></div>
+
+<div class="ar-fp-panel ar-fp-paid-zone-head" id="ar-fp-zone-practice-packs-head">
+  <div class="ar-fp-resource-row">
+    <div class="ar-fp-zone-head" style="margin:0"><span class="t">Practice Packs</span><span class="ar-fp-zone-badge ar-fp-zb-untracked" id="ar-fp-practice-packs-badge">30 packs</span></div>
+    <a class="ar-fp-resource-link" data-fp-paid="1" href="${SITE}/practice-pack-library">Go to practice pack page</a>
+  </div>
+  <p class="ar-fp-zone-sub">30 Assignment Practice Packs — grab a pack and follow the step-by-step field exercises.</p>
+  <p class="ar-fp-paid-lock-note" id="ar-fp-practice-packs-lock-note" hidden>Paid membership only — upgrade to unlock Practice Packs.</p>
+</div>
+<div class="ar-fp-panel ar-fp-paid-zone-body" id="ar-fp-zone-practice-packs-body">${practicePackButtons}</div>
+
+<div class="ar-fp-panel ar-fp-paid-zone-head" id="ar-fp-zone-checklists-head">
+  <div class="ar-fp-resource-row">
+    <div class="ar-fp-zone-head" style="margin:0"><span class="t">1-Page Field Checklists</span><span class="ar-fp-zone-badge ar-fp-zb-untracked" id="ar-fp-checklists-badge">35 checklists</span></div>
+    <a class="ar-fp-resource-link" data-fp-paid="1" href="${SITE}/35-photography-1-page-field-checklists">Go to checklists page</a>
+  </div>
+  <p class="ar-fp-zone-sub">35 one-page field checklists — print one page per lesson and take it on location.</p>
+  <p class="ar-fp-paid-lock-note" id="ar-fp-checklists-lock-note" hidden>Paid membership only — upgrade to unlock checklists.</p>
+</div>
+<div class="ar-fp-panel ar-fp-paid-zone-body" id="ar-fp-zone-checklists-body">${checklistButtons}</div>
 
 <div class="ar-fp-divider"></div>
 <div class="ar-fp-panel ar-fp-paid-zone-head" id="ar-fp-zone-applied-head"><div class="ar-fp-zone-head"><span class="t">Applied Learning Library</span><span class="ar-fp-zone-badge ar-fp-zb-untracked">40 modules · 8 sections</span></div><p class="ar-fp-zone-sub">Deeper, applied guides that build on the Foundation course. Same format — these do not count toward Foundation badge tracking.</p><p class="ar-fp-paid-lock-note" id="ar-fp-applied-lock-note" hidden>Paid membership only — upgrade to unlock these guides.</p></div>
@@ -477,7 +615,7 @@ ${zone1}
 </div>
 <div class="ar-fp-panel">
   <div class="ar-fp-sec-head" style="color:#fff">FAQs</div>
-  <p class="ar-fp-sec-intro">Common questions about the Foundation course and your 14-day trial.</p>
+  <p class="ar-fp-sec-intro" id="ar-fp-faq-intro">Common questions about the Foundation course and your 14-day trial.</p>
   <div class="ar-fp-faq-list">${faqAccordionHtml()}</div>
 </div>
 </div>
@@ -494,6 +632,13 @@ ${zone1}
   var MODULES_TOTAL = 60;
   var ARTICLE_MODULES = ${articleModulesJson};
   var FOUNDATION_PATHS = ${foundationPathsJson};
+  var PRACTICE_PACK_URLS = ${practicePackUrlsJson};
+  var CHECKLIST_URLS = ${checklistUrlsJson};
+  var JOURNEY_ICON_SVGS = ${journeyIconsJson};
+  var BADGE_GREEN = "#166534";
+  var BADGE_GREEN_BORDER = "#14532d";
+  var BADGE_GOLD = "#b45309";
+  var BADGE_GOLD_BORDER = "#92400e";
   var CAMERA_MODULE_PATHS = FOUNDATION_PATHS.slice(0, 15);
   var COMPOSITION_MODULE_PATHS = FOUNDATION_PATHS.slice(25, 35);
   var PDF_ASSIGNMENT_PATHS = FOUNDATION_PATHS.slice(45, 60);
@@ -508,7 +653,12 @@ ${zone1}
   ];
 
   function isFoundationPage(){
-    try { return (location.pathname || "").replace(/\\/$/, "") === FP_PATH; } catch(e){ return false; }
+    try {
+      var p = (location.pathname || "").replace(/\\/$/, "") || "/";
+      if (p === FP_PATH) return true;
+      if (p.indexOf("online-photography-course") !== -1) return true;
+      return !!document.getElementById("ar-foundation-hub");
+    } catch(e){ return false; }
   }
   function normalizePath(p){
     if (!p) return "";
@@ -532,12 +682,101 @@ ${zone1}
     return Object.keys(openedMap).some(function(k){ return normalizePath(k) === target; });
   }
   function buildOpenedSet(normalized){
-    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var opened = getOpenedMap(normalized);
     var set = new Set();
+    Object.keys(opened).forEach(function(k){
+      var nk = normalizePath(k);
+      if (nk) set.add(nk);
+    });
     FOUNDATION_PATHS.forEach(function(p){
       if (pathIsOpened(opened, p)) set.add(normalizePath(p));
     });
     return set;
+  }
+  function getOpenedMap(normalized){
+    return (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+  }
+  function fpEscHtml(s){
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function titleFromPath(path, opened){
+    var key = normalizePath(path);
+    var rec = opened[path] || opened[key];
+    if (rec && rec.t) return rec.t;
+    var parts = String(path || "").split("/").filter(function(p){ return p; });
+    var slug = parts[parts.length - 1] || "";
+    return slug.replace(/-/g, " ").replace(/\\b\\w/g, function(l){ return l.toUpperCase(); });
+  }
+  function countOpenedUrls(opened, urls){
+    var n = 0;
+    for (var i = 0; i < urls.length; i++) {
+      if (pathIsOpened(opened, urls[i])) n += 1;
+    }
+    return n;
+  }
+  function buildExamPageUrl(moduleId){
+    var base = "/academy/photography-exams-certification";
+    if (!moduleId) return SITE + base;
+    return SITE + base + "?module=" + encodeURIComponent(String(moduleId));
+  }
+  function renderExamsSection(examData){
+    var tip = document.getElementById("ar-fp-exams-tip");
+    var badge = document.getElementById("ar-fp-exams-progress-badge");
+    var grid = document.getElementById("ar-fp-exams-grid");
+    if (!grid) return;
+    var modules = examData && examData.modules ? examData.modules : [];
+    var passed = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
+    var failed = examData && examData.summary ? safeNum(examData.summary.failedCount, 0) : 0;
+    if (badge) {
+      badge.textContent = passed > 0 || failed > 0 ? (passed + "/15 passed") : "15 exams";
+    }
+    if (tip) {
+      if (passed > 0 || failed > 0) {
+        var tipText = passed + "/15 modules passed";
+        if (failed > 0) tipText += " • " + failed + " failed";
+        var remaining = 15 - passed - failed;
+        if (remaining > 0) tipText += " • " + remaining + " not started";
+        tip.textContent = tipText;
+      } else {
+        tip.textContent = "Resume an exam or download your latest results.";
+      }
+    }
+    if (!modules.length) {
+      grid.innerHTML = "";
+      return;
+    }
+    var html = "";
+    modules.forEach(function(mod, idx){
+      var status = mod.status || "not_taken";
+      var statusClass = status === "passed" ? " is-exam-passed" : (status === "failed" ? " is-exam-failed" : "");
+      var title = mod.name || ("Exam " + mod.label);
+      var tooltip = title;
+      if (status === "passed" && mod.bestScore) tooltip += " — Passed (" + mod.bestScore + "%)";
+      else if (status === "failed" && mod.bestScore) tooltip += " — Failed (Best: " + mod.bestScore + "%)";
+      else if (status === "not_taken") tooltip += " — Not started";
+      var tileTag = "E" + String(idx + 1).padStart(2, "0");
+      html += '<button type="button" class="ar-fp-mod-btn' + statusClass + '" data-module-id="' + fpEscHtml(mod.moduleId) + '" title="' + fpEscHtml(tooltip) + '">';
+      html += '<span class="ar-fp-mod-btn__cnt">' + fpEscHtml(String(idx + 1)) + '</span>';
+      html += '<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">' + fpEscHtml(displayTitle(title)) + '</span></span>';
+      html += '<span class="ar-fp-mod-btn__tile">' + tileTag + '</span></button>';
+    });
+    grid.innerHTML = html;
+    grid.querySelectorAll(".ar-fp-mod-btn[data-module-id]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var moduleId = btn.getAttribute("data-module-id");
+        if (moduleId) location.href = buildExamPageUrl(moduleId);
+      });
+    });
+  }
+  function displayTitle(t){ return String(t || "").replace(/^\\d+\\s+/, ""); }
+  function updateResourceBadges(normalized){
+    var opened = getOpenedMap(normalized);
+    var packsOpened = countOpenedUrls(opened, PRACTICE_PACK_URLS);
+    var listsOpened = countOpenedUrls(opened, CHECKLIST_URLS);
+    var packsBadge = document.getElementById("ar-fp-practice-packs-badge");
+    var listsBadge = document.getElementById("ar-fp-checklists-badge");
+    if (packsBadge) packsBadge.textContent = packsOpened > 0 ? (packsOpened + "/30 opened") : "30 packs";
+    if (listsBadge) listsBadge.textContent = listsOpened > 0 ? (listsOpened + "/35 opened") : "35 checklists";
   }
   function findNextUnopenedModule(openedSet){
     var nav = globalThis.__arAcademyModuleNav;
@@ -642,12 +881,20 @@ ${zone1}
     });
     var appliedNote = document.getElementById("ar-fp-applied-lock-note");
     var rpsNote = document.getElementById("ar-fp-rps-lock-note");
+    var packsNote = document.getElementById("ar-fp-practice-packs-lock-note");
+    var listsNote = document.getElementById("ar-fp-checklists-lock-note");
     if (appliedNote) appliedNote.hidden = !isTrial;
     if (rpsNote) rpsNote.hidden = !isTrial;
+    if (packsNote) packsNote.hidden = !isTrial;
+    if (listsNote) listsNote.hidden = !isTrial;
     var appliedBadge = document.querySelector("#ar-fp-zone-applied-head .ar-fp-zone-badge");
     if (appliedBadge) appliedBadge.textContent = isTrial ? "Paid only · 40 modules" : "40 modules · 8 sections";
     var rpsBadge = document.querySelector("#ar-fp-zone-rps-head .ar-fp-zone-badge");
     if (rpsBadge) rpsBadge.textContent = isTrial ? "Paid only" : "Planning guides";
+    var packsBadge = document.getElementById("ar-fp-practice-packs-badge");
+    if (packsBadge && packsBadge.textContent.indexOf("opened") === -1) packsBadge.textContent = isTrial ? "Paid only · 30 packs" : "30 packs";
+    var listsBadge = document.getElementById("ar-fp-checklists-badge");
+    if (listsBadge && listsBadge.textContent.indexOf("opened") === -1) listsBadge.textContent = isTrial ? "Paid only · 35 checklists" : "35 checklists";
     document.querySelectorAll("#ar-foundation-hub [data-fp-paid='1']").forEach(function(linkEl){
       linkEl.classList.toggle("is-paid-locked", isTrial);
       if (isTrial) {
@@ -662,6 +909,17 @@ ${zone1}
       if (storedHref) linkEl.setAttribute("href", storedHref);
       linkEl.removeAttribute("aria-disabled");
       linkEl.removeAttribute("tabindex");
+    });
+  }
+  function applyFaqTrialCopy(isTrial){
+    var intro = document.getElementById("ar-fp-faq-intro");
+    if (intro) {
+      intro.textContent = isTrial
+        ? "Common questions about the Foundation course and your 14-day trial."
+        : "Common questions about the Foundation course.";
+    }
+    document.querySelectorAll("#ar-foundation-hub [data-fp-trial-only='1']").forEach(function(el){
+      el.hidden = !isTrial;
     });
   }
   function safeDate(v){
@@ -763,7 +1021,7 @@ ${zone1}
     return stats;
   }
   function applyOpenedPills(openedSet){
-    document.querySelectorAll("#ar-foundation-hub [data-fp-tracked='1']").forEach(function(el){
+    document.querySelectorAll("#ar-foundation-hub [data-fp-tracked='1'],#ar-foundation-hub [data-fp-resource='1']").forEach(function(el){
       var p = el.getAttribute("data-fp-path");
       if (p && openedSet.has(normalizePath(p))) el.classList.add("is-opened");
     });
@@ -780,6 +1038,19 @@ ${zone1}
     } else {
       el.innerHTML = "";
     }
+  }
+  function journeyIconSvg(iconClass){
+    var svg = JOURNEY_ICON_SVGS[iconClass] || JOURNEY_ICON_SVGS["ti-school"];
+    return svg.replace("<svg ", '<svg style="width:22px!important;height:22px!important;display:block!important;stroke:#fff!important;fill:none!important" ');
+  }
+  function applyStatBadgeIcon(badge){
+    var iconEl = document.getElementById("ar-fp-stat-badge-icon");
+    if (!iconEl) return;
+    var iconClass = (badge && badge.iconClass) || "ti-school";
+    var colour = (badge && badge.colour) || "green";
+    iconEl.innerHTML = journeyIconSvg(iconClass);
+    iconEl.style.setProperty("background", colour === "gold" ? BADGE_GOLD : BADGE_GREEN, "important");
+    iconEl.style.setProperty("border-color", colour === "gold" ? BADGE_GOLD_BORDER : BADGE_GREEN_BORDER, "important");
   }
   function renderCta(openedSet){
     var cta = document.getElementById("ar-fp-primary-cta");
@@ -802,6 +1073,7 @@ ${zone1}
     var current = earned.length ? earned[earned.length - 1] : null;
     var badgeEl = document.getElementById("ar-fp-stat-badge");
     if (badgeEl) badgeEl.textContent = current ? current.label : "Enrolled";
+    applyStatBadgeIcon(current || { iconClass: "ti-school", colour: "green" });
     var modEl = document.getElementById("ar-fp-stat-modules");
     if (modEl) modEl.textContent = String(openedCount);
     var exEl = document.getElementById("ar-fp-stat-exams");
@@ -823,6 +1095,14 @@ ${zone1}
   // BEGIN BADGE-GATES-SYNC
   // END BADGE-GATES-SYNC
 
+  function isSqspEditMode(){
+    try {
+      if (document.documentElement.classList.contains("ar-fp-edit-mode")) return true;
+      if (window.self !== window.top) return true;
+      if ((location.pathname || "").indexOf("/config/") === 0) return true;
+    } catch(e){}
+    return false;
+  }
   function ensureFoundationHeaderInFlow(){
     var h = document.getElementById("ar-academy-header-container");
     if (!h) return;
@@ -832,37 +1112,107 @@ ${zone1}
       h.style.removeProperty(prop);
     });
   }
+  function collapseFoundationLayoutGap(){
+    var hub = document.getElementById("ar-foundation-hub");
+    if (!hub) return;
+    var sec = hub.closest(".page-section");
+    if (sec) {
+      sec.style.setProperty("padding-top", "0", "important");
+      sec.style.setProperty("padding-bottom", "0", "important");
+      sec.style.setProperty("margin-top", "0", "important");
+      sec.style.setProperty("min-height", "0", "important");
+      var sib = sec.previousElementSibling;
+      while (sib) {
+        if (sib.classList && sib.classList.contains("page-section") && !sib.querySelector("#ar-foundation-hub")) {
+          var empty = !sib.querySelector("img,video,iframe,.sqs-block-html,.sqs-block-code,.sqs-block-form,.Header") && (sib.textContent || "").trim().length < 2;
+          if (empty) sib.style.setProperty("display", "none", "important");
+        }
+        sib = sib.previousElementSibling;
+      }
+    }
+    var block = hub.closest(".sqs-block");
+    if (block) {
+      block.style.setProperty("padding-top", "0", "important");
+      block.style.setProperty("margin-top", "0", "important");
+    }
+  }
+  function relocateHeaderAboveHub(){
+    var hub = document.getElementById("ar-foundation-hub");
+    var header = document.getElementById("ar-academy-header-container");
+    if (!hub || !header || header.nextElementSibling === hub) return;
+    var parent = hub.parentNode;
+    if (parent) parent.insertBefore(header, hub);
+  }
   function bootAppShell(){
+    if (isSqspEditMode()) return;
     try {
-      document.documentElement.classList.add("ar-academy", "ar-fp-app-shell");
+      document.documentElement.classList.add("ar-academy", "ar-fp-app-shell", "ar-fp-live-shell");
       document.documentElement.style.setProperty("--ar-sqsp-nav-offset", "0px");
       mountAcademyHeader();
+      relocateHeaderAboveHub();
+      collapseFoundationLayoutGap();
+      applyFoundationHeaderCopy();
+      ensureFoundationHeaderBackLink();
       ensureFoundationHeaderInFlow();
       if (window.__arAcademyLayout && window.__arAcademyLayout.schedule) window.__arAcademyLayout.schedule();
+      relocateHeaderAboveHub();
+      collapseFoundationLayoutGap();
+      applyFoundationHeaderCopy();
+      ensureFoundationHeaderBackLink();
       ensureFoundationHeaderInFlow();
     } catch(e){}
   }
+  function applyFoundationHeaderCopy(){
+    var title = document.getElementById("ar-academy-header-title");
+    var sub = document.getElementById("ar-academy-header-subtitle");
+    if (title) title.textContent = "Your photography Academy";
+    if (sub) sub.textContent = "Photography Course Modules Map";
+    var icon = document.getElementById("ar-academy-header-logo-icon");
+    if (icon) icon.style.display = "none";
+  }
   function mountAcademyHeader(){
-    if (document.getElementById("ar-academy-header-container")) return true;
+    if (document.getElementById("ar-academy-header-container")) {
+      applyFoundationHeaderCopy();
+      return true;
+    }
     try {
       if (window.__arAcademyHeader && window.__arAcademyHeader.mount) {
         window.__arAcademyHeader.mount();
+        if (window.__arAcademyHeader.applyFoundationCopy) window.__arAcademyHeader.applyFoundationCopy();
+        applyFoundationHeaderCopy();
+        ensureFoundationHeaderBackLink();
         if (document.getElementById("ar-academy-header-container")) return true;
       }
     } catch(e){}
     var tpl = document.getElementById("ar-academy-header-template") || document.getElementById("ar-fp-header-fallback-template");
     if (!tpl || !tpl.content || !tpl.content.firstElementChild) return false;
     var el = tpl.content.firstElementChild.cloneNode(true);
-    var title = el.querySelector("#ar-academy-header-title");
-    var sub = el.querySelector("#ar-academy-header-subtitle");
-    if (title) title.textContent = "Your photography Academy";
-    if (sub) sub.textContent = "Foundation course map — modules, progress and badges.";
-    var page = document.getElementById("page") || document.getElementById("siteWrapper") || document.body;
-    if (page) page.insertBefore(el, page.firstChild);
+    applyFoundationHeaderCopy();
+    var hub = document.getElementById("ar-foundation-hub");
+    var anchor = hub && hub.parentNode;
+    if (anchor) anchor.insertBefore(el, hub);
+    else {
+      var page = document.getElementById("page") || document.getElementById("siteWrapper") || document.body;
+      if (page) page.insertBefore(el, page.firstChild);
+    }
     el.style.display = "grid";
     ensureFoundationHeaderInFlow();
+    ensureFoundationHeaderBackLink();
     wireHeaderLogout();
     return true;
+  }
+  function ensureFoundationHeaderBackLink(){
+    if (document.getElementById("ar-fp-header-back")) return;
+    var center = document.getElementById("ar-academy-header-center");
+    if (!center) return;
+    var link = document.createElement("a");
+    link.id = "ar-fp-header-back";
+    link.className = "ar-fp-header-back";
+    link.href = SITE + "/academy/dashboard";
+    link.textContent = "← Back to dashboard";
+    var copy = document.getElementById("ar-academy-header-center-copy") || center.querySelector("div");
+    if (copy) center.insertBefore(link, copy);
+    else center.insertBefore(link, center.firstChild);
   }
   function wireHeaderLogout(){
     var btn = document.getElementById("ar-academy-header-logout-btn");
@@ -997,7 +1347,10 @@ ${zone1}
     var trial = isTrialMember(member, engagement);
     var examsPassed = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
     applyOpenedPills(openedSet);
+    updateResourceBadges(normalized);
+    renderExamsSection(examData);
     lockPaidResourceTiles(lockPaid);
+    applyFaqTrialCopy(trial);
     var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;
     renderMembershipBadge(member, engagement);
     syncHeaderWelcome(member);
@@ -1080,6 +1433,11 @@ ${zone1}
 
   async function init(){
     if (!isFoundationPage()) return;
+    var hub = document.getElementById("ar-foundation-hub");
+    if (isSqspEditMode()) {
+      if (hub) { hub.hidden = false; hub.removeAttribute("aria-hidden"); }
+      return;
+    }
     bootAppShell();
     ensureAcademyHeaderMounted(24);
     var hub = document.getElementById("ar-foundation-hub");

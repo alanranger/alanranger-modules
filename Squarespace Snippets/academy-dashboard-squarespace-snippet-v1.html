@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.18) — Squarespace Snippet
+Academy Dashboard UI (v1.3.19) — Squarespace Snippet
+v1.3.19: Foundation course CTA label → "Browse the Modules" (dashboard green button + JS fallback).
 v1.3.18: Remove Members Guide accordion sidebar (overlaps Foundation page "how it works"); slim pointer to course map; centre dashboard layout.
 Fix: DO NOT redirect inside Squarespace editor (/config, /backend, ?nochrome, frame preview).
 v1.2: Access guard + dashboard init run ONLY on pathname /academy/dashboard.
@@ -2024,7 +2025,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
           id="arp-academy-course-cta"
           class="ar-academy-dashboard__course-cta"
           href="https://www.alanranger.com/academy/online-photography-course/"
-        >&#8250;&#8250; Start the online photography course &#8250;&#8250;</a>
+        >&#8250;&#8250; Browse the Modules &#8250;&#8250;</a>
         <p class="ar-academy-dashboard__guide-pointer">New here? The <a href="https://www.alanranger.com/academy/online-photography-course">Foundation course page</a> explains how the Academy works and lists every module.</p>
       </div>
   
@@ -5253,7 +5254,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       var wrap = document.querySelector(".ar-academy-dashboard__tiles-help");
       if (!wrap) return;
       var url = "https://www.alanranger.com/academy/online-photography-course/";
-      var label = "\u203a\u203a Start the online photography course \u203a\u203a";
+      var label = "\u203a\u203a Browse the Modules \u203a\u203a";
       var el = document.getElementById("arp-academy-course-cta");
       if (!el) {
         var legacy = wrap.querySelector("a.ar-academy-dashboard__course-cta");
