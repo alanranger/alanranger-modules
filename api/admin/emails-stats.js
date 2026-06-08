@@ -1,22 +1,12 @@
 // api/admin/emails-stats.js
 //
 // Per-stage statistics for the /academy/admin/emails dashboard tiles.
-// Returns, for each of the 6 stages:
-//   - eligible_today: members who currently qualify for that stage
-//   - sent_last_24h:  successful sends in academy_email_events within 24h
-//   - sent_last_7d:   successful sends within the last 7 days
-//   - next_send_at:   ISO timestamp of the next scheduled run (trial
-//                     reminders only — Day +20/+30/+60 is Zapier)
-//
-// Approximations (documented for honesty, not hidden):
-//   - Day -7 / -1 / +7 eligibility is computed from academy_trial_history,
-//     which is the same table the production webhook uses as its source of
-//     truth. Memberstack-only trials that haven't synced yet won't appear.
-//   - REWIND20 eligibility mirrors passesResendGate() in the lapsed webhook:
-//     send_count < 3, opted_out = false, converted_at is null, window + gap
-//     rules applied per-attempt.
+// Legacy trial/rewind stages keep existing fast SQL counts.
+// Trigger stages count members matching snapshot + trigger rules today.
 
 const { createClient } = require("@supabase/supabase-js");
+const { EMAIL_STAGES } = require("../../lib/emailStages");
+const { countEligibleForStage } = require("../../lib/emailStageTriggers");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -28,9 +18,8 @@ const supabase =
 
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
+const REACH_BACK_DAYS = 180;
 
-// Stage definitions mirror pages/academy/admin/emails.js STAGES array.
-// Keep in sync if you add or rename a stage.
 const TRIAL_STAGES = [
   { key: "day-minus-7", daysAhead: 7 },
   { key: "day-minus-1", daysAhead: 1 },
@@ -43,11 +32,6 @@ const REWIND_STAGES = [
   { key: "day-plus-60", attempt: 3, minDays: 60, gapDays: 30 },
 ];
 
-const REACH_BACK_DAYS = 180;
-
-// Compute the next 09:00 Europe/London instant as an ISO UTC string.
-// Uses the Intl API for DST-safe London hour resolution without an external
-// tz library. Complexity kept low by splitting into two helpers.
 function londonHour(date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
@@ -59,26 +43,16 @@ function londonHour(date) {
 }
 
 function nextLondon9AMIso(nowMs) {
-  // Floor to the next whole UTC hour, then walk forward one hour at a time
-  // until we find a slot whose London hour is 09. The cron jobs fire at
-  // 08:00 and 09:00 UTC so we match either tick-point. At most 24 iterations.
   const startMs = Math.ceil((nowMs + 1000) / HOUR_MS) * HOUR_MS;
   let candidate = startMs;
   for (let i = 0; i < 48; i++) {
     const d = new Date(candidate);
-    if (londonHour(d) === 9) {
-      return d.toISOString();
-    }
+    if (londonHour(d) === 9) return d.toISOString();
     candidate += HOUR_MS;
   }
   return null;
 }
 
-// Build a Set of member_ids for which we actually have email + name in the
-// cache. Everything we count in the tiles must belong to this set, otherwise
-// the webhook would skip them with "no email on file" and the tile would be
-// lying about deliverable candidates. Also dedupes trial rows by member_id
-// (we have a known case of duplicate rows 3 min apart for one member).
 async function fetchContactableMemberIds() {
   if (!supabase) return new Set();
   const { data, error } = await supabase
@@ -94,14 +68,10 @@ async function fetchContactableMemberIds() {
 
 async function countTrialReminderEligible(daysAhead, nowMs, contactable) {
   if (!supabase) return 0;
-  // Mirror the production webhook: qualifying trial_end_at falls on the same
-  // UTC calendar day as (now + daysAhead). So Day -1 run at 09:00 today targets
-  // anyone whose trial ends at any time tomorrow, Day -7 targets exactly +7d,
-  // and Day +7 targets exactly 7 calendar days ago.
   const target = new Date(nowMs + daysAhead * DAY_MS);
-  const startOfDay = new Date(Date.UTC(
-    target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate(), 0, 0, 0, 0
-  ));
+  const startOfDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate(), 0, 0, 0, 0)
+  );
   const endOfDay = new Date(startOfDay.getTime() + DAY_MS - 1);
   const { data, error } = await supabase
     .from("academy_trial_history")
@@ -113,8 +83,7 @@ async function countTrialReminderEligible(daysAhead, nowMs, contactable) {
     console.warn(`[emails-stats] trial count ${daysAhead}d failed:`, error.message);
     return 0;
   }
-  const ids = new Set((data || []).map((r) => r.member_id).filter((id) => contactable.has(id)));
-  return ids.size;
+  return new Set((data || []).map((r) => r.member_id).filter((id) => contactable.has(id))).size;
 }
 
 function rewindRowPassesGap(row, stage, nowMs) {
@@ -127,7 +96,6 @@ async function countRewindEligible(stage, nowMs, contactable) {
   if (!supabase) return 0;
   const maxEndIso = new Date(nowMs - stage.minDays * DAY_MS).toISOString();
   const minEndIso = new Date(nowMs - REACH_BACK_DAYS * DAY_MS).toISOString();
-
   const { data, error } = await supabase
     .from("academy_trial_history")
     .select("member_id, reengagement_last_sent_at")
@@ -166,35 +134,48 @@ async function countSentInWindow(stageKey, windowMs, nowMs) {
   return count || 0;
 }
 
-async function statsForTrialStage(stage, nowMs, contactable) {
+async function statsForLegacyStage(stageDef, nowMs, contactable) {
+  const trial = TRIAL_STAGES.find((s) => s.key === stageDef.key);
+  const rewind = REWIND_STAGES.find((s) => s.key === stageDef.key);
+  let eligible = 0;
+  if (trial) eligible = await countTrialReminderEligible(trial.daysAhead, nowMs, contactable);
+  if (rewind) eligible = await countRewindEligible(rewind, nowMs, contactable);
+
+  const [last24h, last7d] = await Promise.all([
+    countSentInWindow(stageDef.key, DAY_MS, nowMs),
+    countSentInWindow(stageDef.key, 7 * DAY_MS, nowMs),
+  ]);
+
+  return {
+    key: stageDef.key,
+    enabled: stageDef.enabled === true,
+    cron_enabled: stageDef.cronEnabled === true,
+    eligible_today: eligible,
+    sent_last_24h: last24h,
+    sent_last_7d: last7d,
+    next_send_at: trial ? nextLondon9AMIso(nowMs) : null,
+    schedule_source: trial
+      ? "Vercel Cron (daily 09:00 Europe/London)"
+      : "Zapier weekly trigger",
+  };
+}
+
+async function statsForTriggerStage(stageDef, nowMs, contactable) {
   const [eligible, last24h, last7d] = await Promise.all([
-    countTrialReminderEligible(stage.daysAhead, nowMs, contactable),
-    countSentInWindow(stage.key, DAY_MS, nowMs),
-    countSentInWindow(stage.key, 7 * DAY_MS, nowMs),
+    countEligibleForStage(supabase, stageDef.key, contactable, nowMs),
+    countSentInWindow(stageDef.key, DAY_MS, nowMs),
+    countSentInWindow(stageDef.key, 7 * DAY_MS, nowMs),
   ]);
   return {
-    key: stage.key,
+    key: stageDef.key,
+    enabled: stageDef.enabled === true,
+    cron_enabled: stageDef.cronEnabled === true,
+    test_mode_only: stageDef.testModeOnly === true,
     eligible_today: eligible,
     sent_last_24h: last24h,
     sent_last_7d: last7d,
     next_send_at: nextLondon9AMIso(nowMs),
-    schedule_source: "Vercel Cron (daily 09:00 Europe/London)",
-  };
-}
-
-async function statsForRewindStage(stage, nowMs, contactable) {
-  const [eligible, last24h, last7d] = await Promise.all([
-    countRewindEligible(stage, nowMs, contactable),
-    countSentInWindow(stage.key, DAY_MS, nowMs),
-    countSentInWindow(stage.key, 7 * DAY_MS, nowMs),
-  ]);
-  return {
-    key: stage.key,
-    eligible_today: eligible,
-    sent_last_24h: last24h,
-    sent_last_7d: last7d,
-    next_send_at: null,
-    schedule_source: "Zapier weekly trigger",
+    schedule_source: "Vercel Cron trigger check (09:00 Europe/London)",
   };
 }
 
@@ -212,16 +193,18 @@ module.exports = async function handler(req, res) {
   try {
     const nowMs = Date.now();
     const contactable = await fetchContactableMemberIds();
-    const trialResults = await Promise.all(
-      TRIAL_STAGES.map((s) => statsForTrialStage(s, nowMs, contactable))
-    );
-    const rewindResults = await Promise.all(
-      REWIND_STAGES.map((s) => statsForRewindStage(s, nowMs, contactable))
-    );
+    const results = [];
+    for (const stageDef of EMAIL_STAGES) {
+      if (stageDef.legacyStats) {
+        results.push(await statsForLegacyStage(stageDef, nowMs, contactable));
+      } else if (stageDef.trigger) {
+        results.push(await statsForTriggerStage(stageDef, nowMs, contactable));
+      }
+    }
     return res.status(200).json({
       success: true,
       generated_at: new Date(nowMs).toISOString(),
-      stages: [...trialResults, ...rewindResults],
+      stages: results,
     });
   } catch (err) {
     console.error("[emails-stats] unexpected failure:", err);

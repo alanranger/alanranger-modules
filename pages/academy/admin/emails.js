@@ -1,103 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { EMAIL_STAGES } from '../../../lib/emailStages';
 
-// Inline stage config rather than fetching it — the admin UI knows every
-// webhook URL and param set up-front. Keep in sync with lib/emailStages.js
-// (which the webhooks themselves do NOT consume; it's only the admin map).
+function mapStageForUi(stage) {
+  const preview = stage.preview || {};
+  const params = { ...(preview.params || {}) };
+  delete params.sendEmail;
+  return {
+    key: stage.key,
+    shortLabel: stage.shortLabel,
+    displayName: stage.displayName,
+    enabled: stage.enabled === true,
+    testModeOnly: stage.testModeOnly === true,
+    triggerSummary: stage.triggerSummary || '',
+    sentBy: stage.sentBy,
+    schedule: stage.schedule,
+    description: stage.description,
+    webhook: preview.webhook || '/api/admin/triggered-email-webhook',
+    params,
+  };
+}
 
-const TRIAL_WEBHOOK = '/api/admin/trial-expiry-reminder-webhook';
-const REWIND_WEBHOOK = '/api/admin/lapsed-trial-reengagement-webhook';
-
-const STAGES = [
-  {
-    key: 'day-minus-7',
-    shortLabel: 'Day -7',
-    displayName: 'Day -7 · Mid-trial reminder',
-    sentBy: 'trial-expiry-reminder-webhook',
-    schedule: {
-      cadence: 'daily',
-      timeOfDay: '09:00 Europe/London',
-      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
-    },
-    description:
-      'Halfway through the 14-day trial. Activity block, 5-step plan, full feature list, personal signed dashboard link.',
-    webhook: TRIAL_WEBHOOK,
-    params: { daysAhead: 7, forceDaysUntilExpiry: 7 },
-  },
-  {
-    key: 'day-minus-1',
-    shortLabel: 'Day -1',
-    displayName: 'Day -1 · Final-day reminder',
-    sentBy: 'trial-expiry-reminder-webhook',
-    schedule: {
-      cadence: 'daily',
-      timeOfDay: '09:00 Europe/London',
-      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
-    },
-    description:
-      'Last day of the free trial. Activity block, quick wins, members-only resources, full feature list. No discount.',
-    webhook: TRIAL_WEBHOOK,
-    params: { daysAhead: 1, forceDaysUntilExpiry: 1 },
-  },
-  {
-    key: 'day-plus-7',
-    shortLabel: 'Day +7',
-    displayName: 'Day +7 · SAVE20 offer',
-    sentBy: 'trial-expiry-reminder-webhook',
-    schedule: {
-      cadence: 'daily',
-      timeOfDay: '09:00 Europe/London',
-      mechanism: 'Vercel Cron (08:00 + 09:00 UTC with London-hour gate)',
-    },
-    description:
-      '7 days after trial expiry. SAVE20 code (£79 → £59). Offer valid Day +7 → Day +13.',
-    webhook: TRIAL_WEBHOOK,
-    params: { daysAhead: -7, forceDaysUntilExpiry: -7 },
-  },
-  {
-    key: 'day-plus-20',
-    shortLabel: 'Day +20',
-    displayName: 'Day +20 · REWIND20 attempt 1',
-    sentBy: 'lapsed-trial-reengagement-webhook',
-    schedule: {
-      cadence: 'weekly (Zapier)',
-      timeOfDay: '—',
-      mechanism: 'Zapier schedule. Gated server-side: 3-send cap + min days + min gap.',
-    },
-    description:
-      'First REWIND20 outreach. Activity block, quick wins, members-only, feature list, REWIND20 code.',
-    webhook: REWIND_WEBHOOK,
-    params: {},
-  },
-  {
-    key: 'day-plus-30',
-    shortLabel: 'Day +30',
-    displayName: 'Day +30 · REWIND20 attempt 2',
-    sentBy: 'lapsed-trial-reengagement-webhook',
-    schedule: {
-      cadence: 'weekly (Zapier)',
-      timeOfDay: '—',
-      mechanism: 'Fires 10+ days after attempt 1 if still not converted.',
-    },
-    description: 'Second REWIND20 outreach (subject escalates). Same body as attempt 1.',
-    webhook: REWIND_WEBHOOK,
-    params: {},
-  },
-  {
-    key: 'day-plus-60',
-    shortLabel: 'Day +60',
-    displayName: 'Day +60 · REWIND20 final attempt',
-    sentBy: 'lapsed-trial-reengagement-webhook',
-    schedule: {
-      cadence: 'weekly (Zapier)',
-      timeOfDay: '—',
-      mechanism: 'Fires 30+ days after attempt 2. Max 3 attempts per member.',
-    },
-    description: 'Third and final REWIND20 outreach ("Final offer").',
-    webhook: REWIND_WEBHOOK,
-    params: {},
-  },
-];
+const STAGES = EMAIL_STAGES.map(mapStageForUi);
 
 const STAGE_KEYS = STAGES.map((s) => s.key);
 const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
@@ -386,8 +310,14 @@ function StageTile({ stage, stats, active, onClick, nowMs }) {
   const nextSendAt = stats?.next_send_at;
   const nextLabel = nextSendAt
     ? `${formatDateTimeShort(nextSendAt)} · ${formatRelative(nextSendAt, nowMs)}`
-    : 'Zapier (weekly)';
+    : (stage.sentBy === 'lapsed-trial-reengagement-webhook' ? 'Zapier (weekly)' : 'Daily trigger check');
   const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
+  const statusLabel = stage.enabled
+    ? 'LIVE'
+    : (stage.testModeOnly ? 'TEST ONLY · no live send' : 'DISABLED · no copy yet');
+  const statusColor = stage.enabled
+    ? 'var(--ar-success, #0a0)'
+    : 'var(--ar-text-muted)';
   return (
     <button
       type="button"
@@ -402,16 +332,22 @@ function StageTile({ stage, stats, active, onClick, nowMs }) {
         color: 'inherit',
         font: 'inherit',
         minWidth: 0,
+        opacity: stage.enabled ? 1 : 0.88,
       }}
     >
-      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
-        {stage.shortLabel.toUpperCase()}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
+          {stage.shortLabel.toUpperCase()}
+        </div>
+        <span style={{ fontSize: 10, fontWeight: 700, color: statusColor, whiteSpace: 'nowrap' }}>
+          {statusLabel}
+        </span>
       </div>
       <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>
         {eligible}
       </div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
-        eligible today · {sent24} sent 24h
+        match trigger · {sent24} sent 24h
       </div>
       <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
         Next: {nextLabel}
@@ -429,7 +365,7 @@ function StageTilesRow({ stats, activeKey, onTileClick, nowMs }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
       gap: 12, marginBottom: 20,
     }}>
       {STAGES.map((s) => (

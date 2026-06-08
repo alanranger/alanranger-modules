@@ -6,6 +6,7 @@
   "functions": {
     "api/admin/lapsed-trial-reengagement-webhook.js": { "maxDuration": 60 },
     "api/admin/trial-expiry-reminder-webhook.js": { "maxDuration": 60 },
+    "api/admin/triggered-email-webhook.js": { "maxDuration": 60 },
     "api/admin/orphaned-members-webhook.js": { "maxDuration": 60 }
   },
   "crons": [
@@ -44,6 +45,14 @@
     {
       "path": "/api/admin/activation-snapshot-cron",
       "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=false",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=false",
+      "schedule": "0 9 * * *"
     }
   ]
 }
