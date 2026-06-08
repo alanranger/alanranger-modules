@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-08] - Bookmark B 1.3.17: lesson page background white
+
+### Changed
+- **Bookmark B 1.3.17:** Revert `body.ar-academy-lesson` background `#f1efe9` → `#ffffff` (fixes patchy seams around in-article images on ~45 Foundation lesson pages)
+
+### Paste
+- **B 1.3.17** → Blog/article template (Will Myers snippet-loader block)
+
+---
+
 ## [2026-06-08] - Foundation page FP 1.0.36–1.0.43 (Modules Map)
 
 ### Added / changed
