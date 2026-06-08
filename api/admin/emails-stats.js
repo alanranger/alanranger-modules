@@ -161,8 +161,13 @@ async function statsForLegacyStage(stageDef, nowMs, contactable) {
 }
 
 async function statsForTriggerStage(stageDef, nowMs, contactable) {
-  const [eligible, last24h, last7d] = await Promise.all([
-    countEligibleForStage(supabase, stageDef.key, contactable, nowMs),
+  let eligible = null;
+  try {
+    eligible = await countEligibleForStage(supabase, stageDef.key, contactable, nowMs);
+  } catch (err) {
+    console.warn(`[emails-stats] trigger count ${stageDef.key} failed:`, err.message);
+  }
+  const [last24h, last7d] = await Promise.all([
     countSentInWindow(stageDef.key, DAY_MS, nowMs),
     countSentInWindow(stageDef.key, 7 * DAY_MS, nowMs),
   ]);

@@ -942,7 +942,7 @@ function TemplatesSection({ templates, mergeTags, loadError, onTemplatesChanged 
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 12 }}>
-        The 6 email templates below are what the webhook renders (DB override if set,
+        The email templates below are what each webhook renders (DB override if set,
         otherwise the built-in default). Click <em>Edit</em> on any card to change the
         subject or body; save takes effect on the next scheduled send.
         Supported merge tags: {mergeTags.map((t) => t.tag).join(', ')}.
@@ -1117,6 +1117,18 @@ export default function EmailsAdmin() {
                 <strong>Schedule:</strong> {selectedStage.schedule.cadence} · {selectedStage.schedule.timeOfDay}
               </div>
               <div style={{ marginTop: 4 }}>{selectedStage.description}</div>
+              {selectedStage.triggerSummary ? (
+                <div style={{ marginTop: 4 }}>
+                  <strong>Trigger:</strong> {selectedStage.triggerSummary}
+                </div>
+              ) : null}
+              {!selectedStage.enabled ? (
+                <div style={{ marginTop: 6, color: 'var(--ar-text-muted)' }}>
+                  {selectedStage.testModeOnly
+                    ? 'Test mode only — use Preview / Test send; no live cron send yet.'
+                    : 'Disabled — scaffold only; will not send until enabled.'}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
