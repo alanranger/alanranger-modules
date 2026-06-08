@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { execSync } from "child_process";
 import { SNIPPETS_DIR } from "./snippet-paths.mjs";
 
 const require = createRequire(import.meta.url);
@@ -14,8 +15,13 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const paths = require(path.join(root, "lib/academy-module-paths.js"));
 const topics = require(path.join(root, "lib/academy-module-topics.js"));
 const catalog = require(path.join(root, "lib/academy-applied-rps-catalog.js"));
+const metaLib = require(path.join(root, "lib/academy-module-meta-descriptions.js"));
+const META_BY_PATH = metaLib.META_BY_PATH || {};
 
 const SITE = "https://www.alanranger.com";
+const GOOGLE_REVIEW_URL =
+  "https://engage.squarespace-mail.com/r?m=66cce95b22dd057ef44d0451&u=https%3A%2F%2Fg.page%2Fr%2FCX5PMdGA5IP6EAI%2Freview&w=5013f4b2c4aaa4752ac69b17&c=b_66ccb975e9434962f23c97c3&l=en-US&s=Bfly0EXu7d_h0G9Wu1YHJPSX3x8%3D";
+const ELFSIGHT_REVIEWS_APP = "elfsight-app-f80cced4-3461-4683-bf2b-461a77b60d68";
 const OUT = path.join(SNIPPETS_DIR, "academy-foundation-page-squarespace-snippet-v1.html");
 
 const FOUNDATION_SECTIONS = [
@@ -76,6 +82,24 @@ function pad2(n) {
   return n < 10 ? "0" + n : String(n);
 }
 
+function normPath(p) {
+  return String(p || "").split("?")[0].replace(/\/$/, "");
+}
+
+function metaForPath(modulePath) {
+  return META_BY_PATH[normPath(modulePath)] || "";
+}
+
+function tipAttr(titleText, tileTag, modulePath) {
+  const head = `${titleText} · ${tileTag}`;
+  const desc = metaForPath(modulePath);
+  const full = desc ? `${head}\n${desc}` : head;
+  if (desc) {
+    return ` data-fp-tip-head="${esc(head)}" data-fp-tip-desc="${esc(desc)}" title="${esc(full)}"`;
+  }
+  return ` data-fp-tip-head="${esc(head)}" title="${esc(head)}"`;
+}
+
 function foundationButtons(start, count) {
   let html = "";
   for (let i = 0; i < count; i += 1) {
@@ -83,11 +107,13 @@ function foundationButtons(start, count) {
     const p = paths.DEFINITIVE_MODULE_URLS[idx];
     const t = topics.FOUNDATION_MODULE_TOPICS[idx] || p;
     const global = idx + 1;
+    const tileTag = `#${pad2(global)}`;
+    const label = displayTitle(t);
     const isPdf = p.endsWith(".pdf");
-    html += `<a href="${SITE}${p}" class="ar-fp-mod-btn" data-fp-tracked="1" data-fp-path="${esc(p)}"${isPdf ? ' target="_blank" rel="noopener noreferrer"' : ""}>`;
+    html += `<a href="${SITE}${p}" class="ar-fp-mod-btn" data-fp-tracked="1" data-fp-path="${esc(p)}"${tipAttr(label, tileTag, p)}${isPdf ? ' target="_blank" rel="noopener noreferrer"' : ""}>`;
     html += `<span class="ar-fp-mod-btn__cnt">${i + 1}</span>`;
-    html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(displayTitle(t))}</span></span>`;
-    html += `<span class="ar-fp-mod-btn__tile">#${pad2(global)}</span></a>`;
+    html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(label)}</span></span>`;
+    html += `<span class="ar-fp-mod-btn__tile">${tileTag}</span></a>`;
   }
   return html;
 }
@@ -100,10 +126,11 @@ function appliedButtons() {
     html += `<div class="ar-fp-mod-grid">`;
     sec.items.forEach((item, i) => {
       global += 1;
-      html += `<a href="${SITE}${item.path}" class="ar-fp-mod-btn" data-fp-path="${esc(item.path)}">`;
+      const tileTag = `A${pad2(global)}`;
+      html += `<a href="${SITE}${item.path}" class="ar-fp-mod-btn" data-fp-paid="1" data-fp-path="${esc(item.path)}"${tipAttr(item.title, tileTag, item.path)}>`;
       html += `<span class="ar-fp-mod-btn__cnt">${i + 1}</span>`;
       html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(item.title)}</span></span>`;
-      html += `<span class="ar-fp-mod-btn__tile">A${pad2(global)}</span></a>`;
+      html += `<span class="ar-fp-mod-btn__tile">${tileTag}</span></a>`;
     });
     html += `</div></div>`;
   });
@@ -117,12 +144,12 @@ function rpsButtons() {
   catalog.RPS_ITEMS.forEach((item, i) => {
     const tag = `R${pad2(i + 1)}`;
     if (item.live && item.path) {
-      html += `<a href="${SITE}${item.path}" class="ar-fp-mod-btn" data-fp-path="${esc(item.path)}">`;
+      html += `<a href="${SITE}${item.path}" class="ar-fp-mod-btn" data-fp-paid="1" data-fp-path="${esc(item.path)}"${tipAttr(item.title, tag, item.path)}>`;
       html += `<span class="ar-fp-mod-btn__cnt">${i + 1}</span>`;
       html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(item.title)}</span></span>`;
       html += `<span class="ar-fp-mod-btn__tile">${tag}</span></a>`;
     } else {
-      html += `<span class="ar-fp-mod-btn ar-fp-mod-btn--soon">`;
+      html += `<span class="ar-fp-mod-btn ar-fp-mod-btn--soon"${tipAttr("Coming soon", tag, null)}>`;
       html += `<span class="ar-fp-mod-btn__cnt">${i + 1}</span>`;
       html += `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">Coming soon</span></span>`;
       html += `<span class="ar-fp-mod-btn__tile">${tag}</span></span>`;
@@ -130,6 +157,104 @@ function rpsButtons() {
   });
   html += `</div></div>`;
   return html;
+}
+
+const FAQ_ITEMS = [
+  {
+    q: "Where should I start?",
+    a: "Open module 01 on exposure, or use the orange button at the top — it always points to your next unread Foundation module. Your dashboard also recommends what to do next day to day.",
+  },
+  {
+    q: "How long does each module take?",
+    a: "Most modules take 8–15 minutes to read, with optional deeper material if you want more. The full 60-module Foundation course is roughly 10 hours of reading. PDF assignments are designed for a walk or a weekend session.",
+  },
+  {
+    q: "Is this included in the 14-day trial?",
+    a: "Yes. Your trial unlocks the Foundation course modules and exams for 14 days. Applied Learning, RPS guides and downloads such as Practice Packs are paid-member content and stay locked until you upgrade.",
+  },
+  {
+    q: "Do modules include exams and certificates?",
+    a: "Yes. There are 15 topic exams linked to the Foundation course. Pass an exam and you can download a certificate with your name and the date. Complete the full Academy path for the master certificate.",
+  },
+  {
+    q: "Can I learn at my own pace?",
+    a: "Absolutely. There are no deadlines. Open modules when it suits you — the Academy tracks your progress and badges automatically.",
+  },
+  {
+    q: "Can I use a phone or tablet?",
+    a: "Yes. Modules work on any modern browser. Several topics cover phone photography. A few PDF assignments are easier with a printer or second screen but are not required.",
+  },
+  {
+    q: "What support is there if I get stuck?",
+    a: "Use the Q&A library, ask Robo-Ranger AI, or post in the community. Links to both support tools are in the Support and resources section below.",
+  },
+];
+
+function faqAccordionHtml() {
+  return FAQ_ITEMS.map(
+    (item) =>
+      `<details class="ar-fp-faq-item"><summary>${esc(item.q)}</summary><div class="ar-fp-faq-body"><p>${esc(item.a)}</p></div></details>`
+  ).join("");
+}
+
+const JOURNEY_ICON_SVGS = {
+  "ti-school":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M22 9l-10-5-10 5 10 5 10-5z"/><path d="M6 10v6c0 1 2 3 6 3s6-2 6-3v-6"/></svg>',
+  "ti-camera":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3"/></svg>',
+  "ti-aperture":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>',
+  "ti-certificate":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="1"/><path d="M8 20l4-2 4 2v-8H8z"/></svg>',
+  "ti-award":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M8.5 14L7 21l5-2 5 2-1.5-7"/></svg>',
+  "ti-trophy":
+    '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3a4 4 0 01-8 0V4z"/><path d="M6 4H4v1a3 3 0 003 3M18 4h2v1a3 3 0 01-3 3"/><path d="M12 11v3M9 20h6M10 14h4v6h-4z"/></svg>',
+};
+
+const HIW_CARDS = [
+  {
+    title: "1 · Open modules",
+    text: "Read any module to learn. We track your Foundation modules for you.",
+    iconClass: "ti-camera",
+    badgeLabel: "Foundation",
+  },
+  {
+    title: "2 · Pass exams",
+    text: "Test yourself and earn a certificate for each topic area.",
+    iconClass: "ti-certificate",
+    badgeLabel: "Certified",
+  },
+  {
+    title: "3 · Earn badges",
+    text: "Climb from Enrolled to Master as you learn, test and keep going.",
+    iconClass: "ti-trophy",
+    badgeLabel: "Master",
+  },
+  {
+    title: "4 · We guide you",
+    text: "Your dashboard always recommends what to do next.",
+    iconClass: "ti-school",
+    badgeLabel: "Enrolled",
+  },
+];
+
+const HIW_ICON_WRAP_STYLE =
+  'style="width:58px!important;height:58px!important;margin:0 0 12px!important;background:#166534!important;border:1px solid #14532d!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important;box-sizing:border-box!important;box-shadow:0 2px 10px rgba(0,0,0,.45)!important"';
+
+function hiwIconSvg(iconClass) {
+  var svg = JOURNEY_ICON_SVGS[iconClass] || JOURNEY_ICON_SVGS["ti-school"];
+  return svg.replace(
+    "<svg ",
+    '<svg style="width:28px!important;height:28px!important;display:block!important;stroke:#fff!important;fill:none!important" '
+  );
+}
+
+function hiwCardsHtml() {
+  return HIW_CARDS.map(
+    (card) =>
+      `<div class="ar-fp-hiw-card"><div class="ar-fp-hiw-icon ar-fp-hiw-icon--badge" ${HIW_ICON_WRAP_STYLE}>${hiwIconSvg(card.iconClass)}</div><div class="ar-fp-hiw-badge-lbl">${esc(card.badgeLabel)} badge</div><div class="h">${esc(card.title)}</div><div class="p">${esc(card.text)}</div></div>`
+  ).join("");
 }
 
 let zone1 = "";
@@ -150,10 +275,53 @@ const articleModulesJson = JSON.stringify(
 );
 const foundationPathsJson = JSON.stringify(paths.DEFINITIVE_MODULE_URLS);
 
-const snippet = `<!-- FP 1.0.0 — Foundation course map (/academy/online-photography-course) -->
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-version="FP 1.0.0" hidden aria-hidden="true">
+const FP_HEADER_FALLBACK = `<template id="ar-fp-header-fallback-template"><div id="ar-academy-header-container"><div id="ar-academy-header-welcome"><div id="ar-academy-header-welcome-copy"><div id="ar-academy-header-welcome-text">Welcome back, <span id="ar-academy-header-welcome-name">...</span></div><div id="ar-academy-header-last-login"></div></div></div><div id="ar-academy-header-center"><img id="ar-academy-header-logo-icon" src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png" alt="Academy" loading="eager" /><div><h1 id="ar-academy-header-title">Your photography Academy</h1><p id="ar-academy-header-subtitle">Foundation course map — modules, progress and badges.</p></div></div><div id="ar-academy-header-right"><div id="ar-academy-header-brand"><a id="ar-academy-header-brand-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage"><img id="ar-academy-header-brand-logo" src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w" alt="Alan Ranger Photography" loading="eager" /></a></div><button id="ar-academy-header-logout-btn" type="button" data-ms-action="logout">Log out</button></div></div></template>`;
+
+const FP_SQSP_WRAPPER_SELECTORS = [
+  "html.ar-academy.ar-fp-app-shell",
+  "html.ar-academy.ar-fp-app-shell body",
+  "html.ar-academy.ar-fp-app-shell #siteWrapper",
+  "html.ar-academy.ar-fp-app-shell .Site",
+  "html.ar-academy.ar-fp-app-shell .Site-inner",
+  "html.ar-academy.ar-fp-app-shell .Content-outer",
+  "html.ar-academy.ar-fp-app-shell #content",
+  "html.ar-academy.ar-fp-app-shell main.Main",
+  "html.ar-academy.ar-fp-app-shell .Main--page",
+  "html.ar-academy.ar-fp-app-shell .Main-content",
+  "html.ar-academy.ar-fp-app-shell #page",
+  "html.ar-academy.ar-fp-app-shell #sections",
+  "html.ar-academy.ar-fp-app-shell #canvas",
+  "html.ar-academy.ar-fp-app-shell .page-section",
+  "html.ar-academy.ar-fp-app-shell .section-background",
+  "html.ar-academy.ar-fp-app-shell .content-wrapper",
+  "html.ar-academy.ar-fp-app-shell .sqs-layout",
+].join(",");
+
+const snippet = `<!-- FP 1.0.20 — Foundation course map (/academy/online-photography-course) -->
+<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";if(p==="/academy/online-photography-course"||p.indexOf("/academy/")===0)document.documentElement.classList.add("ar-academy","ar-fp-app-shell");}catch(e){}})();</script>
+${FP_HEADER_FALLBACK}
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-version="FP 1.0.20" hidden aria-hidden="true">
 <style>
-#ar-foundation-hub{--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;max-width:1100px;margin:0 auto;padding:24px 12px 48px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box}
+html.ar-academy.ar-fp-app-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
+${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
+html.ar-academy.ar-fp-app-shell,html.ar-academy.ar-fp-app-shell body{color:#e2e8f0;min-height:100vh}
+html.ar-academy.ar-fp-app-shell #siteWrapper,html.ar-academy.ar-fp-app-shell .Site,html.ar-academy.ar-fp-app-shell .Site-inner{min-height:100vh}
+html.ar-academy.ar-fp-app-shell #header,html.ar-academy.ar-fp-app-shell header.Header,html.ar-academy.ar-fp-app-shell .Mobile-bar,html.ar-academy.ar-fp-app-shell .Header-nav--primary,html.ar-academy.ar-fp-app-shell .Header-nav--secondary,html.ar-academy.ar-fp-app-shell .Header--bottom,html.ar-academy.ar-fp-app-shell .sqs-mobile-info-bar{display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;margin:0!important;padding:0!important}
+html.ar-academy.ar-fp-app-shell .sqs-block-content{background:transparent!important}
+html.ar-academy.ar-fp-app-shell .page-section,html.ar-academy.ar-fp-app-shell .sqs-block{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-container{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;column-gap:20px;width:100%;max-width:100%;padding:16px 32px;background:#000!important;color:#fff;position:relative!important;top:auto!important;left:0;right:0;z-index:998;min-height:80px;box-sizing:border-box;margin:0;border:none}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-welcome{grid-column:1;justify-self:start;display:flex;align-items:center;min-width:0}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-center{grid-column:2;justify-self:center;display:flex;align-items:center;gap:12px;text-align:left}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-right{grid-column:3;justify-self:end;display:flex;align-items:center;gap:14px}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-title{font-size:22px;font-weight:700;margin:0;line-height:1.2}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-subtitle{font-size:13px;margin:4px 0 0;color:#bbb;line-height:1.35}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-welcome-text{font-size:14px;line-height:1.35}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-last-login{font-size:12px;color:#999;margin-top:4px}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-logo-icon{width:40px;height:40px;object-fit:contain;flex-shrink:0}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-brand-logo{width:130px;height:auto;display:block;filter:brightness(0) invert(1)}
+html.ar-academy.ar-fp-app-shell #ar-academy-header-logout-btn{background:transparent;border:1px solid #fff;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+#ar-foundation-hub{--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);max-width:none;padding:12px 12px 48px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:radial-gradient(1200px 600px at 20% 0%,rgba(229,114,0,.10),transparent 60%),radial-gradient(900px 500px at 85% 20%,rgba(245,158,11,.10),transparent 55%),var(--ar-bg);min-height:calc(100vh - var(--ar-sqsp-nav-offset,0px))}
+#ar-foundation-hub>.ar-fp-panel,#ar-foundation-hub>.ar-fp-divider,#ar-foundation-hub>nav{max-width:1100px;width:100%;margin-left:auto;margin-right:auto}
 #ar-foundation-hub[hidden]{display:none!important}
 #ar-foundation-hub *,#ar-foundation-hub *::before,#ar-foundation-hub *::after{box-sizing:border-box}
 .ar-fp-panel{background:var(--ar-fp-black);border-radius:14px;padding:24px 28px}
@@ -186,9 +354,16 @@ const snippet = `<!-- FP 1.0.0 — Foundation course map (/academy/online-photog
 .ar-fp-hiw-sub{color:var(--ar-fp-grey);font-size:12px;margin-bottom:16px}
 .ar-fp-hiw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .ar-fp-hiw-card{background:var(--ar-fp-panel);border:1px solid var(--ar-fp-border);border-radius:10px;padding:15px}
+#ar-foundation-hub .ar-fp-hiw-icon--badge{width:58px!important;height:58px!important;background:#166534!important;border:1px solid #14532d!important;border-radius:50%!important;box-shadow:0 2px 10px rgba(0,0,0,.45)!important}
+#ar-foundation-hub .ar-fp-hiw-icon--badge svg,#ar-foundation-hub .ar-fp-hiw-icon--badge svg path,#ar-foundation-hub .ar-fp-hiw-icon--badge svg circle,#ar-foundation-hub .ar-fp-hiw-icon--badge svg rect{stroke:#fff!important;fill:none!important;vector-effect:non-scaling-stroke}
+#ar-foundation-hub .ar-fp-hiw-icon{width:58px;height:58px;margin-bottom:12px;background:#166534;border:1px solid #14532d;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box}
+#ar-foundation-hub .ar-fp-hiw-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 .ar-fp-hiw-card .h{font-size:14px;font-weight:600;margin-bottom:3px}
+.ar-fp-hiw-badge-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#7fd0a0;margin:-4px 0 6px}
 .ar-fp-hiw-card .p{color:var(--ar-fp-grey);font-size:12px;line-height:1.5}
-.ar-fp-block-lbl{font-size:13px;font-weight:700;color:#2c2c2a;background:#e6c067;display:inline-block;padding:5px 14px;border-radius:6px}
+.ar-fp-headline-loading{color:var(--ar-fp-muted);font-size:13px;padding:18px 0;text-align:center}
+.ar-fp-panel.bordered[data-fp-loading="true"] .ar-fp-headline-body{display:none}
+.ar-fp-panel.bordered[data-fp-loading="false"] .ar-fp-headline-loading{display:none}
 .ar-fp-zone-head{display:flex;align-items:center;gap:12px;margin:8px 0 2px;flex-wrap:wrap}
 .ar-fp-zone-head .t{font-size:19px;font-weight:700}
 .ar-fp-zone-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
@@ -200,61 +375,99 @@ const snippet = `<!-- FP 1.0.0 — Foundation course map (/academy/online-photog
 .ar-fp-callout{background:rgba(229,114,0,.1);border:1px solid rgba(229,114,0,.3);border-radius:8px;padding:9px 14px;margin-bottom:14px;color:var(--ar-fp-gold-l);font-size:13px;display:inline-flex;align-items:center;gap:8px}
 .ar-fp-callout a{color:var(--ar-fp-gold-l);text-decoration:underline}
 .ar-fp-mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
-.ar-fp-mod-btn{display:flex;align-items:center;gap:11px;background:var(--ar-fp-panel);border:1px solid var(--ar-fp-border);border-radius:9px;padding:10px 13px;text-decoration:none;color:inherit}
+.ar-fp-mod-btn{position:relative;display:flex;align-items:center;gap:11px;background:var(--ar-fp-panel);border:1px solid var(--ar-fp-border);border-radius:9px;padding:10px 13px;text-decoration:none;color:inherit}
 .ar-fp-mod-btn:hover{border-color:var(--ar-fp-orange)}
+.ar-fp-mod-btn[data-fp-tip-head]:not([data-fp-tip-desc])::after{content:attr(data-fp-tip-head);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);min-width:180px;max-width:min(340px,92vw);padding:10px 14px;background:#1a1610;border:1px solid var(--ar-fp-gold);border-radius:8px;color:#fff;font-size:12px;font-weight:600;line-height:1.45;text-align:center;white-space:pre-line;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .15s ease,visibility .15s ease;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.ar-fp-mod-btn[data-fp-tip-desc]::after{content:attr(data-fp-tip-head) "\\A" attr(data-fp-tip-desc);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);min-width:180px;max-width:min(340px,92vw);padding:10px 14px;background:#1a1610;border:1px solid var(--ar-fp-gold);border-radius:8px;color:#fff;font-size:12px;font-weight:600;line-height:1.45;text-align:center;white-space:pre-line;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .15s ease,visibility .15s ease;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.ar-fp-mod-btn[data-fp-tip-head]:hover::after,.ar-fp-mod-btn[data-fp-tip-head]:focus-visible::after{opacity:1;visibility:visible}
 .ar-fp-mod-btn__cnt{flex-shrink:0;width:30px;height:30px;border-radius:7px;background:#0e0e0e;border:1px solid var(--ar-fp-orange);color:var(--ar-fp-orange);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .ar-fp-mod-btn__body{flex:1;min-width:0}
 .ar-fp-mod-btn__ttl{color:#e8e8e8;font-size:13px;line-height:1.3}
-.ar-fp-mod-btn__tile{flex-shrink:0;color:var(--ar-fp-muted);font-size:11px;font-weight:600;background:#0e0e0e;border:1px solid #2a2622;border-radius:5px;padding:2px 6px}
-.ar-fp-mod-btn.is-opened .ar-fp-mod-btn__cnt{background:var(--ar-fp-green);border-color:var(--ar-fp-green);color:#fff}
-.ar-fp-mod-btn.is-opened .ar-fp-mod-btn__ttl{color:#b8b8b8}
+.ar-fp-mod-btn__tile{flex-shrink:0;color:var(--ar-fp-gold-l);font-size:15px;font-weight:800;background:#1a1610;border:1px solid var(--ar-fp-gold);border-radius:6px;padding:4px 9px;letter-spacing:.03em;line-height:1}
+.ar-fp-mod-btn.is-opened{background:#142819;border-color:#2f6b46}
+.ar-fp-mod-btn.is-opened:hover{border-color:#4d9468}
+.ar-fp-mod-btn.is-opened .ar-fp-mod-btn__cnt{background:#1f7a45;border-color:#7fd0a0;color:#fff}
+.ar-fp-mod-btn.is-opened .ar-fp-mod-btn__ttl{color:#cfe8d6}
 .ar-fp-mod-btn--soon{opacity:.65;cursor:default}
+.ar-fp-mod-btn.is-paid-locked{opacity:.58;cursor:not-allowed;border-color:#3a3a3a;filter:grayscale(.25)}
+.ar-fp-mod-btn.is-paid-locked:hover{border-color:#3a3a3a}
+.ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__cnt{border-color:#666;color:#666}
+.ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__ttl{color:#999}
+.ar-fp-mod-btn.is-paid-locked .ar-fp-mod-btn__tile{color:#999;border-color:#555}
+.ar-fp-paid-zone-head.is-trial-locked .ar-fp-zone-badge,.ar-fp-paid-zone-body.is-trial-locked .ar-fp-zone-badge{background:#3a1d1d;color:#f0a0a0;border-color:#7a3b3b}
+.ar-fp-paid-lock-note{color:#f0a0a0;font-size:12px;margin:6px 0 0;font-weight:600}
 .ar-fp-divider{border-top:2px dashed #c9c5b8;margin:6px 0}
-.ar-fp-faq{color:var(--ar-fp-grey);font-size:13px;line-height:1.9;margin-top:6px}
-@media(max-width:640px){.ar-fp-panel{padding:18px 16px}.ar-fp-hl-title{font-size:20px}}
+.ar-fp-top-strip{padding:14px 20px;overflow:visible}
+.ar-fp-top-strip__inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 18px}
+.ar-fp-top-strip__actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;flex:0 0 auto}
+#ar-foundation-hub .ar-fp-nav__link{font-size:13px;font-weight:600;color:#e6c067!important;text-decoration:none!important;padding:10px 16px;border:1px solid #3a3328!important;border-radius:8px;background:#161310!important;display:inline-block;line-height:1.3;white-space:nowrap}
+#ar-foundation-hub .ar-fp-nav__link:hover{border-color:#E57200!important;color:#fff!important;background:#1a1610!important}
+#ar-foundation-hub .ar-fp-nav__back{color:#fff!important;background:#E57200!important;border-color:#E57200!important}
+#ar-foundation-hub .ar-fp-nav__back:hover{color:#fff!important;background:#c96200!important;border-color:#c96200!important}
+#ar-foundation-hub .ar-fp-nav__review{color:#fff!important;background:#166534!important;border:1px solid #c79a3b!important}
+#ar-foundation-hub .ar-fp-nav__review:hover{color:#fff!important;background:#1f7a45!important;border-color:#e6c067!important}
+.ar-fp-top-strip__reviews{flex:1 1 200px;display:flex;justify-content:flex-end;align-items:center;min-width:0;min-height:52px}
+.ar-fp-top-strip__reviews .${ELFSIGHT_REVIEWS_APP}{width:auto;max-width:min(100%,340px);margin:0}
+.ar-fp-faq-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.ar-fp-faq-item{background:var(--ar-fp-panel);border:1px solid var(--ar-fp-border);border-radius:9px;padding:0;overflow:hidden}
+.ar-fp-faq-item summary{cursor:pointer;list-style:none;padding:12px 16px;font-size:14px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ar-fp-faq-item summary::-webkit-details-marker{display:none}
+.ar-fp-faq-item summary::after{content:"+";color:var(--ar-fp-orange);font-size:18px;font-weight:700;line-height:1}
+.ar-fp-faq-item[open] summary::after{content:"−"}
+.ar-fp-faq-body{padding:0 16px 14px;color:var(--ar-fp-grey);font-size:13px;line-height:1.65}
+.ar-fp-faq-body p{margin:0}
+@media(max-width:640px){.ar-fp-panel{padding:18px 16px}.ar-fp-hl-title{font-size:20px}.ar-fp-top-strip__inner{flex-direction:column;align-items:stretch}.ar-fp-top-strip__actions{width:100%}.ar-fp-top-strip__actions .ar-fp-nav__link{flex:1 1 calc(50% - 5px);text-align:center}.ar-fp-top-strip__reviews{justify-content:center;width:100%}}
 </style>
 
-<div class="ar-fp-panel bordered">
+<div class="ar-fp-panel ar-fp-top-strip">
+  <script src="https://elfsightcdn.com/platform.js" async></script>
+  <div class="ar-fp-top-strip__inner">
+    <div class="ar-fp-top-strip__actions" aria-label="Academy navigation">
+      <a class="ar-fp-nav__link ar-fp-nav__back" href="${SITE}/academy/dashboard">← Back to dashboard</a>
+      <a class="ar-fp-nav__link ar-fp-nav__review" href="${GOOGLE_REVIEW_URL}" target="_blank" rel="noopener noreferrer">Leave a review</a>
+    </div>
+    <div class="ar-fp-top-strip__reviews" id="ar-fp-reviews-mount">
+      <div class="${ELFSIGHT_REVIEWS_APP}"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ar-fp-panel bordered" id="ar-fp-headline-panel" data-fp-loading="true">
+  <div class="ar-fp-headline-loading" id="ar-fp-headline-loading">Loading your Academy progress…</div>
+  <div class="ar-fp-headline-body">
   <div class="ar-fp-hl-top">
     <div><div class="ar-fp-hl-title">Your photography Academy</div><div class="ar-fp-hl-sub">Your complete course map — Foundation, Applied Learning and RPS distinctions. Earn your way from Enrolled to Master.</div></div>
     <div id="ar-fp-membership-badge"></div>
   </div>
   <div class="ar-fp-stats">
-    <div class="ar-fp-stat"><div class="l">Badge</div><div class="v" id="ar-fp-stat-badge">—</div></div>
+    <div class="ar-fp-stat"><div class="l">Badge</div><div class="v" id="ar-fp-stat-badge">Enrolled</div></div>
     <div class="ar-fp-stat"><div class="l">Modules opened</div><div class="v"><span id="ar-fp-stat-modules">0</span> <span>/ 60</span></div></div>
     <div class="ar-fp-stat"><div class="l">Exams passed</div><div class="v"><span id="ar-fp-stat-exams">0</span> <span>/ 15</span></div></div>
   </div>
-  <div class="ar-fp-prow"><span class="l" id="ar-fp-progress-label">Next badge: —</span><span class="r" id="ar-fp-progress-pct">—</span></div>
+  <div class="ar-fp-prow"><span class="l" id="ar-fp-progress-label">Next badge: Foundation</span><span class="r" id="ar-fp-progress-pct">0%</span></div>
   <div class="ar-fp-track"><div class="ar-fp-fill" id="ar-fp-progress-fill"></div></div>
   <div class="ar-fp-hint" id="ar-fp-progress-hint"></div>
   <div class="ar-fp-cta"><a class="ar-fp-btn ar-fp-btn-orange" id="ar-fp-primary-cta" href="${SITE}/blog-on-photography/what-is-exposure-in-photography">Start with module 01: Exposure →</a><span class="ar-fp-cred">★ Award-winning photographer · 15 years teaching · rated 4.9</span></div>
   <div class="ar-fp-mapnote">This page is your full course map. Your dashboard is where you pick up day to day. <a href="${SITE}/academy/dashboard">→ Go to dashboard</a></div>
+  </div>
 </div>
 
 <div class="ar-fp-panel">
   <div class="ar-fp-hiw-title">New here? How your Academy works</div>
   <div class="ar-fp-hiw-sub">You learn at your own pace — the Academy tracks your Foundation progress automatically and always shows you what to do next.</div>
-  <div class="ar-fp-hiw-grid">
-    <div class="ar-fp-hiw-card"><div class="h">1 · Open modules</div><div class="p">Read any module to learn. We track your Foundation modules for you.</div></div>
-    <div class="ar-fp-hiw-card"><div class="h">2 · Pass exams</div><div class="p">Test yourself and earn a certificate for each topic area.</div></div>
-    <div class="ar-fp-hiw-card"><div class="h">3 · Earn badges</div><div class="p">Climb from Enrolled to Master as you learn, test and keep going.</div></div>
-    <div class="ar-fp-hiw-card"><div class="h">4 · We guide you</div><div class="p">Your dashboard always recommends what to do next.</div></div>
-  </div>
+  <div class="ar-fp-hiw-grid" data-ar-fp-hiw="badge-green-v2">${hiwCardsHtml()}</div>
 </div>
 
-<div class="ar-fp-block-lbl">ZONE 1 — FOUNDATION COURSE (tracked · counts toward badges)</div>
 <div class="ar-fp-panel"><div class="ar-fp-zone-head"><span class="t">Foundation course</span><span class="ar-fp-zone-badge ar-fp-zb-tracked">Tracked · 60 modules</span></div><p class="ar-fp-zone-sub">The core path — camera, gear, composition, genre and 15 practice assignments. Opening these counts toward your badges.</p></div>
 ${zone1}
 
 <div class="ar-fp-divider"></div>
-<div class="ar-fp-block-lbl">ZONE 2 — APPLIED LEARNING LIBRARY (same format · not tracked for trial)</div>
-<div class="ar-fp-panel"><div class="ar-fp-zone-head"><span class="t">Applied Learning Library</span><span class="ar-fp-zone-badge ar-fp-zb-untracked">40 modules · 8 sections</span></div><p class="ar-fp-zone-sub">Deeper, applied guides that build on the Foundation course. Same format — these do not count toward Foundation badge tracking.</p></div>
-<div class="ar-fp-panel">${appliedButtons()}</div>
+<div class="ar-fp-panel ar-fp-paid-zone-head" id="ar-fp-zone-applied-head"><div class="ar-fp-zone-head"><span class="t">Applied Learning Library</span><span class="ar-fp-zone-badge ar-fp-zb-untracked">40 modules · 8 sections</span></div><p class="ar-fp-zone-sub">Deeper, applied guides that build on the Foundation course. Same format — these do not count toward Foundation badge tracking.</p><p class="ar-fp-paid-lock-note" id="ar-fp-applied-lock-note" hidden>Paid membership only — upgrade to unlock these guides.</p></div>
+<div class="ar-fp-panel ar-fp-paid-zone-body" id="ar-fp-zone-applied-body">${appliedButtons()}</div>
 
 <div class="ar-fp-divider"></div>
-<div class="ar-fp-block-lbl">ZONE 3 — RPS DISTINCTIONS (same format · not tracked for trial)</div>
-<div class="ar-fp-panel"><div class="ar-fp-zone-head"><span class="t">RPS distinctions</span><span class="ar-fp-zone-badge ar-fp-zb-untracked">Planning guides</span></div><p class="ar-fp-zone-sub">Guides for the Royal Photographic Society distinctions (LRPS, ARPS). Reference guidance, not Foundation-tracked.</p></div>
-<div class="ar-fp-panel">${rpsButtons()}</div>
+<div class="ar-fp-panel ar-fp-paid-zone-head" id="ar-fp-zone-rps-head"><div class="ar-fp-zone-head"><span class="t">RPS distinctions</span><span class="ar-fp-zone-badge ar-fp-zb-untracked">Planning guides</span></div><p class="ar-fp-zone-sub">Guides for the Royal Photographic Society distinctions (LRPS, ARPS). Reference guidance, not Foundation-tracked.</p><p class="ar-fp-paid-lock-note" id="ar-fp-rps-lock-note" hidden>Paid membership only — upgrade to unlock RPS planning guides.</p></div>
+<div class="ar-fp-panel ar-fp-paid-zone-body" id="ar-fp-zone-rps-body">${rpsButtons()}</div>
 
 <div class="ar-fp-divider"></div>
 <div class="ar-fp-panel">
@@ -264,7 +477,8 @@ ${zone1}
 </div>
 <div class="ar-fp-panel">
   <div class="ar-fp-sec-head" style="color:#fff">FAQs</div>
-  <div class="ar-fp-faq">Where should I start? · How long does each module take? · Is this included in the 14-day trial? · Do modules include exams and certificates? · Can I learn at my own pace? · Phone or tablet? · Support if I get stuck?</div>
+  <p class="ar-fp-sec-intro">Common questions about the Foundation course and your 14-day trial.</p>
+  <div class="ar-fp-faq-list">${faqAccordionHtml()}</div>
 </div>
 </div>
 
@@ -307,20 +521,33 @@ ${zone1}
   function normalizeMemberJson(json){
     var j = json && json.data ? json.data : json;
     if (!j || typeof j !== "object") return {};
+    if (j.json && typeof j.json === "object") return j.json;
     return j;
+  }
+  function pathIsOpened(openedMap, canonical){
+    if (!openedMap || !canonical) return false;
+    var target = normalizePath(canonical);
+    if (!target) return false;
+    if (openedMap[canonical] || openedMap[target]) return true;
+    return Object.keys(openedMap).some(function(k){ return normalizePath(k) === target; });
   }
   function buildOpenedSet(normalized){
     var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
     var set = new Set();
-    Object.keys(opened).forEach(function(k){
-      var p = normalizePath(k);
-      if (p && FOUNDATION_PATHS.indexOf(p) !== -1) set.add(p);
+    FOUNDATION_PATHS.forEach(function(p){
+      if (pathIsOpened(opened, p)) set.add(normalizePath(p));
     });
     return set;
   }
   function findNextUnopenedModule(openedSet){
+    var nav = globalThis.__arAcademyModuleNav;
+    if (nav && typeof nav.findNextUnopenedModule === "function") {
+      return nav.findNextUnopenedModule(openedSet, -1);
+    }
     for (var i = 0; i < ARTICLE_MODULES.length; i++) {
-      if (!openedSet.has(ARTICLE_MODULES[i].p)) return { index: i, path: ARTICLE_MODULES[i].p, title: ARTICLE_MODULES[i].t };
+      if (!openedSet.has(normalizePath(ARTICLE_MODULES[i].p))) {
+        return { index: i, path: ARTICLE_MODULES[i].p, title: ARTICLE_MODULES[i].t };
+      }
     }
     return null;
   }
@@ -329,12 +556,112 @@ ${zone1}
     var d = member && member.data ? member.data : member;
     return (d && d.planConnections) || [];
   }
+  function isActivePlanConnection(pc){
+    if (!pc || pc.active === false) return false;
+    var status = String(pc.status || "").toUpperCase();
+    if (status === "CANCELED" || status === "CANCELLED" || status === "EXPIRED" || status === "ENDED") return false;
+    return true;
+  }
   function hasTrialAccess(member){
-    return getPlanConnections(member).some(function(pc){ return pc && pc.planId === TRIAL_PLAN_ID && pc.status === "ACTIVE"; });
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId === TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
+  }
+  function hasAnyNonTrialPlan(member){
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
   }
   function hasAnnualAccess(member){
     return getPlanConnections(member).some(function(pc){
-      return pc && pc.status === "ACTIVE" && pc.planId && pc.planId.indexOf("annual") >= 0;
+      return pc && isActivePlanConnection(pc) && pc.planId && pc.planId.indexOf("annual") >= 0;
+    });
+  }
+  function isPaidMember(member, engagement){
+    if (engagement && engagement.isTrial === true) return false;
+    if (engagement && engagement.hasConverted === true) return true;
+    if (hasAnnualAccess(member)) return true;
+    if (hasAnyNonTrialPlan(member)) return true;
+    if (engagement && engagement.isTrial === false && engagement.hasConverted === false) {
+      var plan = engagement.planId || (engagement.trial && engagement.trial.planId);
+      if (plan && plan !== TRIAL_PLAN_ID) return true;
+    }
+    return false;
+  }
+  function isTrialMember(member, engagement){
+    if (engagement && engagement.isTrial === true) return true;
+    if (engagement && engagement.hasConverted === true) return false;
+    if (isPaidMember(member, engagement)) return false;
+    return hasTrialAccess(member);
+  }
+  function shouldLockPaidResources(member, engagement){
+    return isTrialMember(member, engagement);
+  }
+  async function fetchMemberBundle(ms, opts){
+    opts = opts || {};
+    if (globalThis.__arMsReader && ms) {
+      try {
+        var bundle = await globalThis.__arMsReader.fetchBundle(ms, opts);
+        return {
+          member: bundle.member,
+          normalized: bundle.memberJson || normalizeMemberJson(bundle.rawJson)
+        };
+      } catch(e){}
+    }
+    if (!ms || typeof ms.getCurrentMember !== "function") return { member: null, normalized: {} };
+    try {
+      var res = await ms.getCurrentMember();
+      var member = res && res.data ? res : (res && res.email ? { id: res.id, data: res } : null);
+      var normalized = {};
+      if (member && typeof ms.getMemberJSON === "function") {
+        var jsonRes = await ms.getMemberJSON();
+        normalized = normalizeMemberJson(jsonRes);
+      }
+      return { member: member, normalized: normalized };
+    } catch(e2){
+      return { member: null, normalized: {} };
+    }
+  }
+  function showPaidOnlyAccessMessage(){
+    globalThis.alert("Paid membership only: upgrade to access this content.");
+  }
+  function wirePaidLockClicks(){
+    document.querySelectorAll("#ar-foundation-hub [data-fp-paid='1']").forEach(function(linkEl){
+      if (linkEl.getAttribute("data-fp-paid-lock-wired") === "true") return;
+      linkEl.addEventListener("click", function(event){
+        if (linkEl.getAttribute("aria-disabled") !== "true" && linkEl.getAttribute("href")) return;
+        if (event) { event.preventDefault(); event.stopPropagation(); }
+        showPaidOnlyAccessMessage();
+      });
+      linkEl.setAttribute("data-fp-paid-lock-wired", "true");
+    });
+  }
+  function lockPaidResourceTiles(isTrial){
+    document.querySelectorAll("#ar-foundation-hub .ar-fp-paid-zone-head,#ar-foundation-hub .ar-fp-paid-zone-body").forEach(function(el){
+      el.classList.toggle("is-trial-locked", isTrial);
+    });
+    var appliedNote = document.getElementById("ar-fp-applied-lock-note");
+    var rpsNote = document.getElementById("ar-fp-rps-lock-note");
+    if (appliedNote) appliedNote.hidden = !isTrial;
+    if (rpsNote) rpsNote.hidden = !isTrial;
+    var appliedBadge = document.querySelector("#ar-fp-zone-applied-head .ar-fp-zone-badge");
+    if (appliedBadge) appliedBadge.textContent = isTrial ? "Paid only · 40 modules" : "40 modules · 8 sections";
+    var rpsBadge = document.querySelector("#ar-fp-zone-rps-head .ar-fp-zone-badge");
+    if (rpsBadge) rpsBadge.textContent = isTrial ? "Paid only" : "Planning guides";
+    document.querySelectorAll("#ar-foundation-hub [data-fp-paid='1']").forEach(function(linkEl){
+      linkEl.classList.toggle("is-paid-locked", isTrial);
+      if (isTrial) {
+        var href = linkEl.getAttribute("href");
+        if (href) linkEl.dataset.href = href;
+        linkEl.removeAttribute("href");
+        linkEl.setAttribute("aria-disabled", "true");
+        linkEl.setAttribute("tabindex", "-1");
+        return;
+      }
+      var storedHref = linkEl.dataset.href;
+      if (storedHref) linkEl.setAttribute("href", storedHref);
+      linkEl.removeAttribute("aria-disabled");
+      linkEl.removeAttribute("tabindex");
     });
   }
   function safeDate(v){
@@ -342,7 +669,11 @@ ${zone1}
     var d = v instanceof Date ? v : new Date(v);
     return isNaN(d.getTime()) ? null : d;
   }
-  function getTrialEndsAt(member){
+  function getTrialEndsAt(member, engagement){
+    if (engagement && engagement.trial && engagement.trial.endsAt) {
+      var fromApi = safeDate(engagement.trial.endsAt);
+      if (fromApi) return fromApi;
+    }
     var pcs = getPlanConnections(member);
     for (var i = 0; i < pcs.length; i++) {
       var pc = pcs[i] || {};
@@ -361,20 +692,44 @@ ${zone1}
     if (!end) return null;
     return Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000));
   }
-  async function fetchExamProgress(memberId){
+  async function fetchExamProgress(memberId, skipCache){
     if (!memberId) return null;
+    var cacheKey = "ar-exam-progress-" + memberId;
+    if (!skipCache) {
+      try {
+        var raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          var cached = JSON.parse(raw);
+          if (cached && cached.at && Date.now() - cached.at < 300000) return cached.data;
+        }
+      } catch(e){}
+    }
     try {
       var res = await fetch(PROGRESS_URL, { headers: { "X-Memberstack-Id": memberId } });
       if (!res.ok) return null;
-      return await res.json();
+      var data = await res.json();
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data })); } catch(e2){}
+      return data;
     } catch(e){ return null; }
   }
-  async function fetchEngagementSummary(memberId){
+  async function fetchEngagementSummary(memberId, skipCache){
     if (!memberId) return null;
+    var cacheKey = "ar-engagement-" + memberId;
+    if (!skipCache) {
+      try {
+        var raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          var cached = JSON.parse(raw);
+          if (cached && cached.at && Date.now() - cached.at < 300000) return cached.data;
+        }
+      } catch(e){}
+    }
     try {
       var res = await fetch(ENGAGEMENT_URL, { headers: { "X-Memberstack-Id": memberId, Accept: "application/json" } });
       if (!res.ok) return null;
-      return await res.json();
+      var data = await res.json();
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data })); } catch(e2){}
+      return data;
     } catch(e){ return null; }
   }
   function countFoundationOpens(openedSet){
@@ -416,14 +771,14 @@ ${zone1}
   function renderMembershipBadge(member, engagement){
     var el = document.getElementById("ar-fp-membership-badge");
     if (!el) return;
-    var trial = hasTrialAccess(member);
-    var paid = hasAnnualAccess(member) || (engagement && engagement.hasConverted);
-    if (trial && !paid) {
-      var end = getTrialEndsAt(member);
-      var d = daysLeft(end);
+    if (isTrialMember(member, engagement)) {
+      var end = getTrialEndsAt(member, engagement);
+      var d = engagement && typeof engagement.daysLeftInTrial === "number" ? engagement.daysLeftInTrial : daysLeft(end);
       el.innerHTML = '<div class="ar-fp-trial"><div class="lbl">Trial</div><div class="big">' + (d != null ? d : "—") + ' days left</div></div>';
-    } else {
+    } else if (member || (engagement && !engagement.isTrial)) {
       el.innerHTML = '<div class="ar-fp-member">Member · active</div>';
+    } else {
+      el.innerHTML = "";
     }
   }
   function renderCta(openedSet){
@@ -465,71 +820,279 @@ ${zone1}
     }
   }
 
-  var CAMERA_MODULE_PATHS = ARTICLE_MODULES.slice(0, 15).map(function(m){ return m.p; });
-  var COMPOSITION_MODULE_PATHS = ARTICLE_MODULES.slice(25, 35).map(function(m){ return m.p; });
-  var PDF_ASSIGNMENT_PATHS = FOUNDATION_PATHS.slice(45);
-  var JOURNEY_STAGES = [
-    { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
-    { key: "foundation", label: "Foundation", sublabel: "3 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
-    { key: "practitioner", label: "Practitioner", sublabel: "Camera + composition, 3 assignments, 8 exams", iconClass: "ti-aperture", colour: "green", stars: 2, practitionerGate: true },
-    { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
-    { key: "graduate", label: "Graduate", sublabel: "Applied breadth + 4 active months", iconClass: "ti-award", colour: "green", stars: 4, graduateGate: true },
-    { key: "master", label: "Master", sublabel: "Deeper breadth + 7 active months", iconClass: "ti-trophy", colour: "gold", stars: 5, masterGate: true }
-  ];
-  function countOpenedInList(set, list){
-    var n = 0;
-    for (var i = 0; i < list.length; i++) if (set.has(list[i])) n += 1;
-    return n;
-  }
-  function computeGateStats(openedSet, examsPassed){
-    return {
-      foundationModulesOpened: openedSet.size,
-      cameraOpened: countOpenedInList(openedSet, CAMERA_MODULE_PATHS),
-      compositionOpened: countOpenedInList(openedSet, COMPOSITION_MODULE_PATHS),
-      pdfAssignmentsOpened: countOpenedInList(openedSet, PDF_ASSIGNMENT_PATHS),
-      totalModulesOpened: openedSet.size,
-      examsPassed: examsPassed || 0,
-      appliedLearningOpened: null,
-      practicePacksOpened: null,
-      distinctActiveMonthsAllTime: null
-    };
-  }
-
   // BEGIN BADGE-GATES-SYNC
   // END BADGE-GATES-SYNC
 
+  function ensureFoundationHeaderInFlow(){
+    var h = document.getElementById("ar-academy-header-container");
+    if (!h) return;
+    h.style.setProperty("position", "relative", "important");
+    h.style.setProperty("top", "auto", "important");
+    ["left", "right", "width", "margin-top", "z-index"].forEach(function(prop) {
+      h.style.removeProperty(prop);
+    });
+  }
+  function bootAppShell(){
+    try {
+      document.documentElement.classList.add("ar-academy", "ar-fp-app-shell");
+      document.documentElement.style.setProperty("--ar-sqsp-nav-offset", "0px");
+      mountAcademyHeader();
+      ensureFoundationHeaderInFlow();
+      if (window.__arAcademyLayout && window.__arAcademyLayout.schedule) window.__arAcademyLayout.schedule();
+      ensureFoundationHeaderInFlow();
+    } catch(e){}
+  }
+  function mountAcademyHeader(){
+    if (document.getElementById("ar-academy-header-container")) return true;
+    try {
+      if (window.__arAcademyHeader && window.__arAcademyHeader.mount) {
+        window.__arAcademyHeader.mount();
+        if (document.getElementById("ar-academy-header-container")) return true;
+      }
+    } catch(e){}
+    var tpl = document.getElementById("ar-academy-header-template") || document.getElementById("ar-fp-header-fallback-template");
+    if (!tpl || !tpl.content || !tpl.content.firstElementChild) return false;
+    var el = tpl.content.firstElementChild.cloneNode(true);
+    var title = el.querySelector("#ar-academy-header-title");
+    var sub = el.querySelector("#ar-academy-header-subtitle");
+    if (title) title.textContent = "Your photography Academy";
+    if (sub) sub.textContent = "Foundation course map — modules, progress and badges.";
+    var page = document.getElementById("page") || document.getElementById("siteWrapper") || document.body;
+    if (page) page.insertBefore(el, page.firstChild);
+    el.style.display = "grid";
+    ensureFoundationHeaderInFlow();
+    wireHeaderLogout();
+    return true;
+  }
+  function wireHeaderLogout(){
+    var btn = document.getElementById("ar-academy-header-logout-btn");
+    if (!btn || btn.getAttribute("data-fp-wired")) return;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      var ms = window.$memberstackDom;
+      if (ms && typeof ms.logout === "function") ms.logout().then(function(){ location.href = "/academy/login"; }).catch(function(){ location.href = "/academy/login"; });
+      else location.href = "/academy/login";
+    });
+    btn.setAttribute("data-fp-wired", "1");
+  }
+  function syncHeaderWelcome(member){
+    if (!member || !member.data) return;
+    var welcome = document.getElementById("ar-academy-header-welcome");
+    var nameEl = document.getElementById("ar-academy-header-welcome-name");
+    if (!nameEl) return;
+    var cf = member.data.customFields || {};
+    var first = cf["first-name"] || cf.firstName || cf.first_name || "";
+    var last = cf["last-name"] || cf.lastName || cf.last_name || "";
+    var name = (first && last) ? (first + " " + last) : (first || last || (member.data.email || "").split("@")[0] || "Member");
+    nameEl.textContent = name;
+    if (welcome) welcome.style.display = "";
+    wireHeaderLogout();
+  }
+  function ensureAcademyHeaderMounted(retries){
+    if (document.getElementById("ar-academy-header-container")) return;
+    mountAcademyHeader();
+    if (retries > 0) setTimeout(function(){ ensureAcademyHeaderMounted(retries - 1); }, 250);
+  }
+  function bootReviewsWidget(){
+    function refresh(){
+      try {
+        if (window.eapps && typeof window.eapps.init === "function") window.eapps.init();
+      } catch(e){}
+    }
+    if (!document.querySelector('script[src*="elfsightcdn.com/platform.js"]')) {
+      var s = document.createElement("script");
+      s.src = "https://elfsightcdn.com/platform.js";
+      s.async = true;
+      s.onload = refresh;
+      document.head.appendChild(s);
+    } else {
+      refresh();
+    }
+    setTimeout(refresh, 600);
+    setTimeout(refresh, 1800);
+  }
+  function waitForMemberstack(maxMs){
+    maxMs = typeof maxMs === "number" ? maxMs : 2000;
+    if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.getCurrentMember === "function") {
+      return Promise.resolve(globalThis.$memberstackDom);
+    }
+    return new Promise(function(resolve){
+      var start = Date.now();
+      (function tick(){
+        if (globalThis.$memberstackDom && typeof globalThis.$memberstackDom.getCurrentMember === "function") {
+          resolve(globalThis.$memberstackDom);
+          return;
+        }
+        if ((Date.now() - start) > maxMs) { resolve(null); return; }
+        setTimeout(tick, 50);
+      })();
+    });
+  }
+  function readSessionMemberId(){
+    try {
+      var raw = sessionStorage.getItem("ar-dashboard-session-v1");
+      if (!raw) return null;
+      var sess = JSON.parse(raw);
+      if (sess && sess.id && sess.at && Date.now() - sess.at < 86400000) return String(sess.id);
+    } catch(e){}
+    return null;
+  }
+  function hasCachedEngagement(memberId){
+    if (!memberId) return false;
+    try {
+      var raw = sessionStorage.getItem("ar-engagement-" + memberId);
+      if (!raw) return false;
+      var cached = JSON.parse(raw);
+      return !!(cached && cached.at && Date.now() - cached.at < 300000 && cached.data);
+    } catch(e){ return false; }
+  }
+  function hasCachedExamProgress(memberId){
+    if (!memberId) return false;
+    try {
+      var raw = sessionStorage.getItem("ar-exam-progress-" + memberId);
+      if (!raw) return false;
+      var cached = JSON.parse(raw);
+      return !!(cached && cached.at && Date.now() - cached.at < 300000 && cached.data);
+    } catch(e){ return false; }
+  }
+  async function resolveMemberBundle(){
+    if (globalThis.__arMsReader) {
+      try {
+        var msNow = globalThis.$memberstackDom || null;
+        var warm = await globalThis.__arMsReader.fetchBundle(msNow);
+        if (warm && (warm.member || warm.memberJson || warm.rawJson)) {
+          return {
+            member: warm.member,
+            normalized: warm.memberJson || normalizeMemberJson(warm.rawJson)
+          };
+        }
+      } catch(e){}
+    }
+    var ms = globalThis.$memberstackDom || await waitForMemberstack(2000);
+    if (globalThis.__arMsReader && ms) {
+      try {
+        var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+        return {
+          member: bundle.member,
+          normalized: bundle.memberJson || normalizeMemberJson(bundle.rawJson)
+        };
+      } catch(e2){}
+    }
+    return fetchMemberBundle(ms);
+  }
+  function setHeadlineLoading(isLoading){
+    var panel = document.getElementById("ar-fp-headline-panel");
+    if (panel) panel.setAttribute("data-fp-loading", isLoading ? "true" : "false");
+  }
+  function publishFoundationHook(payload){
+    globalThis.__arFoundationPage = payload;
+  }
+  var fpState = { wired: false, busy: false, revalidating: false };
+
+  function paintFoundationState(member, normalized, engagement, examData){
+    var openedSet = buildOpenedSet(normalized);
+    var openedCount = countFoundationOpens(openedSet);
+    var engagementDegraded = !engagement;
+    var lockPaid = shouldLockPaidResources(member, engagement);
+    var trial = isTrialMember(member, engagement);
+    var examsPassed = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
+    applyOpenedPills(openedSet);
+    lockPaidResourceTiles(lockPaid);
+    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;
+    renderMembershipBadge(member, engagement);
+    syncHeaderWelcome(member);
+    var gateStats = buildGateStats(openedSet, examsPassed, engagement, normalized);
+    try {
+      var badges = computeJourneyBadges(gateStats, activeDays, engagementDegraded, { hasConverted: !!(engagement && engagement.hasConverted), lastActivityAt: engagement ? engagement.lastActivityAt : null, nowMs: Date.now() });
+      var progress = computeNextBadgeProgress(badges, gateStats, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+      renderHeadline(badges, progress, openedCount, examsPassed);
+      renderCta(openedSet);
+      publishFoundationHook({
+        ready: true,
+        progressPct: progress.pct,
+        progressBreakdown: progress.breakdown,
+        progressLabel: progress.label,
+        openedCount: openedCount,
+        examsPassed: examsPassed,
+        isTrial: trial
+      });
+    } catch(err) {
+      console.warn("[foundation-hub] badge progress failed", err);
+      renderHeadline([], { pct: 0, label: "0%", breakdown: "", nextKey: "foundation" }, openedCount, examsPassed);
+      renderCta(openedSet);
+      publishFoundationHook({
+        ready: true,
+        progressPct: 0,
+        progressBreakdown: "",
+        progressLabel: "0%",
+        openedCount: openedCount,
+        examsPassed: examsPassed,
+        isTrial: trial
+      });
+    }
+  }
+
+  function scheduleFoundationRevalidate(memberId){
+    if (!memberId || fpState.revalidating) return;
+    fpState.revalidating = true;
+    Promise.all([
+      fetchEngagementSummary(memberId, true),
+      fetchExamProgress(memberId, true)
+    ]).then(function(results){
+      resolveMemberBundle().then(function(bundle){
+        paintFoundationState(bundle.member, bundle.normalized || {}, results[0], results[1]);
+      });
+    }).catch(function(err){
+      console.warn("[foundation-hub] revalidate failed", err);
+    }).finally(function(){
+      fpState.revalidating = false;
+    });
+  }
+
+  async function renderFoundationState(opts){
+    opts = opts || {};
+    if (fpState.busy) return;
+    fpState.busy = true;
+    var memberIdHint = readSessionMemberId();
+    var usedCache = !!(globalThis.__arMsReader || memberIdHint || hasCachedEngagement(memberIdHint));
+    if (!opts.skipLoading && !usedCache) setHeadlineLoading(true);
+    try {
+      var bundle = await resolveMemberBundle();
+      var member = bundle.member;
+      var normalized = bundle.normalized || {};
+      var memberId = (member && (member.id || (member.data && member.data.id))) || memberIdHint;
+      var usedEngagementCache = hasCachedEngagement(memberId);
+      var usedExamCache = hasCachedExamProgress(memberId);
+      var engagementP = fetchEngagementSummary(memberId);
+      var examP = fetchExamProgress(memberId);
+      var results = await Promise.all([engagementP, examP]);
+      paintFoundationState(member, normalized, results[0], results[1]);
+      if (usedEngagementCache || usedExamCache) scheduleFoundationRevalidate(memberId);
+      setHeadlineLoading(false);
+    } catch(err2) {
+      console.warn("[foundation-hub] render failed", err2);
+      setHeadlineLoading(false);
+      publishFoundationHook({ ready: false, error: true });
+    } finally {
+      fpState.busy = false;
+    }
+  }
+
   async function init(){
     if (!isFoundationPage()) return;
+    bootAppShell();
+    ensureAcademyHeaderMounted(24);
     var hub = document.getElementById("ar-foundation-hub");
     if (!hub) return;
     hub.hidden = false;
     hub.removeAttribute("aria-hidden");
-    var ms = globalThis.$memberstackDom || globalThis.MemberStack;
-    var member = null;
-    var normalized = {};
-    if (globalThis.__arMsReader && ms) {
-      try {
-        var bundle = await globalThis.__arMsReader.fetchBundle(ms);
-        member = bundle.member;
-        normalized = normalizeMemberJson(bundle.rawJson);
-      } catch(e){}
+    bootReviewsWidget();
+    if (!fpState.wired) {
+      wirePaidLockClicks();
+      document.addEventListener("ar-academy-member-ready", function(){ renderFoundationState({ skipLoading: true }); });
+      fpState.wired = true;
     }
-    var memberId = member && (member.id || (member.data && member.data.id));
-    var openedSet = buildOpenedSet(normalized);
-    var openedCount = countFoundationOpens(openedSet);
-    applyOpenedPills(openedSet);
-    renderCta(openedSet);
-    var examData = await fetchExamProgress(memberId);
-    var examsPassed = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
-    var engagement = await fetchEngagementSummary(memberId);
-    var engagementDegraded = !engagement;
-    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;
-    renderMembershipBadge(member, engagement);
-    var gateStats = buildGateStats(openedSet, examsPassed, engagement, normalized);
-    var badges = computeJourneyBadges(gateStats, activeDays, engagementDegraded, { hasConverted: !!(engagement && engagement.hasConverted), lastActivityAt: engagement ? engagement.lastActivityAt : null, nowMs: Date.now() });
-    var progress = computeNextBadgeProgress(badges, gateStats, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
-    renderHeadline(badges, progress, openedCount, examsPassed);
-    globalThis.__arFoundationPage = { progressPct: progress.pct, progressBreakdown: progress.breakdown, progressLabel: progress.label, openedCount: openedCount, examsPassed: examsPassed };
+    renderFoundationState({ skipLoading: !!globalThis.__arMsReader });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
@@ -539,3 +1102,4 @@ ${zone1}
 
 fs.writeFileSync(OUT, snippet, "utf8");
 console.log("OK: wrote", OUT);
+execSync("node scripts/sync-badge-gates-to-snippets.mjs", { cwd: root, stdio: "inherit" });
