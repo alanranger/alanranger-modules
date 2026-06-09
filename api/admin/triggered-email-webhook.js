@@ -28,6 +28,7 @@ const {
   DAY2_TEST_SUBJECT_PREFIX,
 } = require("../../lib/day2EmailTestProfiles");
 const { LIFECYCLE_BCC, realPreviewSubjectPrefix } = require("../../lib/lifecycleEmailConfig");
+const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
 const { buildWinbackMergeVars } = require("../../lib/winback-email-vars");
 const {
   generateUnsubToken,
@@ -139,12 +140,6 @@ async function afterWinbackTriggerSend(stageKey, memberId, unsubToken, sendAtMs)
   await markWinbackExhausted(supabase, memberId);
 }
 
-function htmlFromMarkdown(body) {
-  return String(body || "")
-    .replace(/\n/g, "<br>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-}
-
 async function sendMail(to, subject, body) {
   if (!EMAIL_FROM || !EMAIL_PASSWORD) {
     throw new Error("Email SMTP not configured");
@@ -160,7 +155,7 @@ async function sendMail(to, subject, body) {
     to,
     bcc: LIFECYCLE_BCC,
     subject,
-    text: body,
+    text: plainTextFromMarkdown(body),
     html: htmlFromMarkdown(body),
   });
 }

@@ -47,6 +47,7 @@ const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEven
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
+const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
 const { getFoundationModuleMeta } = require("../../lib/foundation-module-meta");
 const { FOUNDATION_MODULE_PATHS } = require("../../lib/academy-module-paths");
 
@@ -796,7 +797,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   const preview = {
     subject: content.subject,
     body: content.body,
-    html: content.body.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+    html: htmlFromMarkdown(content.body),
   };
 
   // Resolve stage_key once, shared by the success + failure log paths below.
@@ -826,8 +827,8 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
       to: member.email,
       bcc: LIFECYCLE_BCC,
       subject: emailSubject,
-      text: emailBody,
-      html: emailBody.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      text: plainTextFromMarkdown(emailBody),
+      html: htmlFromMarkdown(emailBody),
     });
 
     console.log(`[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`);

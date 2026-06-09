@@ -31,6 +31,7 @@ const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildWinbackMergeVars, REWIND_CAMPAIGN } = require("../../lib/winback-email-vars");
+const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
 const {
   generateUnsubToken,
   buildUnsubUrl,
@@ -340,12 +341,6 @@ ${unsubUrl}
   `.trim();
 }
 
-function htmlFromMarkdown(body) {
-  return body
-    .replace(/\n/g, "<br>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-}
-
 function resolveRewindStageKey(attempt) {
   if (attempt === 1) return STAGE_KEYS.DAY_PLUS_20;
   if (attempt === 2) return STAGE_KEYS.DAY_PLUS_30;
@@ -509,7 +504,7 @@ async function deliverEmail({ member, content }) {
       to: member.email,
       bcc: LIFECYCLE_BCC,
       subject: content.subject,
-      text: content.body,
+      text: plainTextFromMarkdown(content.body),
       html: content.html,
     });
     return { sent: true, messageId: info.messageId };
