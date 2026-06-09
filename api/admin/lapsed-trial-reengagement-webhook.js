@@ -841,8 +841,10 @@ module.exports = async (req, res) => {
   const testEmail = req.query.testEmail;
   const isSingleRecipientTest =
     testEmail !== undefined && testEmail !== null && String(testEmail).trim() !== "";
+  const backlog = parseBacklogParams(req);
+  const isGatedBacklogRun = backlog.correctedResend || backlog.backlogRun;
 
-  if (WINBACK_SENDS_HARD_STOP && sendEmail && !isSingleRecipientTest) {
+  if (WINBACK_SENDS_HARD_STOP && sendEmail && !isSingleRecipientTest && !isGatedBacklogRun) {
     console.log("[lapsed-trial-reengagement] HARD STOP — live sends blocked");
     return res.status(200).json({
       success: true,
@@ -852,12 +854,11 @@ module.exports = async (req, res) => {
     });
   }
 
-  const backlog = parseBacklogParams(req);
   if (req.query.testEmail) {
     return runTestMode(req, res, sendEmail);
   }
 
-  if (sendEmail && !isSingleRecipientTest && !backlog.backlogRun && !backlog.correctedResend && !isNineAmLondon()) {
+  if (sendEmail && !isSingleRecipientTest && !isGatedBacklogRun && !isNineAmLondon()) {
     const londonHour = new Date().toLocaleString("en-GB", {
       timeZone: "Europe/London",
       hour: "numeric",
@@ -875,7 +876,7 @@ module.exports = async (req, res) => {
     });
   }
 
-  if (sendEmail && !isSingleRecipientTest && !isWinbackRewindLive()) {
+  if (sendEmail && !isSingleRecipientTest && !isGatedBacklogRun && !isWinbackRewindLive()) {
     return res.status(200).json({
       success: true,
       skipped: true,
@@ -928,7 +929,7 @@ module.exports = async (req, res) => {
       emails_failed: runOutcome.failed,
       emails_deferred: runOutcome.deferred,
       time_budget_exhausted: runOutcome.timeBudgetExhausted,
-      email_results: backlog.batchSize ? undefined : runOutcome.results,
+      email_results: runOutcome.results,
     });
   } catch (err) {
     console.error("[lapsed-trial-reengagement] fatal:", err);
