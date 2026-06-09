@@ -53,7 +53,13 @@ async function invokeBatch(sendCountEq) {
   });
   const url = `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook?${params}`;
   const res = await fetch(url);
-  const body = await res.json();
+  const text = await res.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch (_) {
+    throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+  }
   return { status: res.status, body };
 }
 

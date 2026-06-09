@@ -786,7 +786,7 @@ module.exports = async (req, res) => {
 
   const windowBounds = buildCandidateWindow();
   const limit = backlog.batchSize
-    ? Math.min(Math.max(backlog.batchSize * 5, 100), CAMPAIGN.defaultLimit)
+    ? Math.min(Math.max(backlog.batchSize * 2, 40), CAMPAIGN.defaultLimit)
     : parseLimit(req);
 
   try {
@@ -827,9 +827,12 @@ async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize) {
   let deferred = 0;
   let timeBudgetExhausted = false;
   const startTs = Date.now();
+  const maxAttempts = batchSize ? batchSize * 3 : eligible.length;
 
-  for (const row of eligible) {
-    if (batchSize && sent >= batchSize) break;
+  for (let i = 0; i < eligible.length && i < maxAttempts; i += 1) {
+    const row = eligible[i];
+    if (batchSize && sendEmail && sent >= batchSize) break;
+    if (batchSize && !sendEmail && results.length >= batchSize) break;
     // Dry-run explores the whole list (it doesn't actually send mail) so the
     // time-budget guard only blocks live sends. This keeps previews accurate.
     if (sendEmail && Date.now() - startTs > TIME_BUDGET_MS) {
