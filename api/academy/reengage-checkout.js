@@ -6,6 +6,7 @@
 const {
   createUpgradeCheckoutSession,
   REWIND20_CODE,
+  SAVE20_CODE,
   SUCCESS_PATH_DEFAULT,
   CANCEL_PATH_DEFAULT,
 } = require("../../lib/upgradeCheckoutSession");
@@ -27,11 +28,15 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const rawCoupon = result.payload?.c ? String(result.payload.c) : null;
+    const forceDiscountCode =
+      rawCoupon === SAVE20_CODE ? SAVE20_CODE : rawCoupon === REWIND20_CODE ? REWIND20_CODE : null;
     const checkout = await createUpgradeCheckoutSession({
       memberId: String(result.payload.mid),
       email: String(result.payload.em),
-      forceDiscountCode: REWIND20_CODE,
-      metadataSource: "rewind20_email_link",
+      forceDiscountCode,
+      metadataSource:
+        forceDiscountCode === SAVE20_CODE ? "save20_email_link" : "rewind20_email_link",
       returnUrl: SUCCESS_PATH_DEFAULT,
       cancelUrl: CANCEL_PATH_DEFAULT,
     });

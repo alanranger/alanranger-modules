@@ -47,6 +47,7 @@ const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEven
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
+const { buildPersonalUpgradeUrl } = require("../../lib/reengage-link");
 const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
 const { memberAlreadySent } = require("../../lib/emailStageTriggers");
 const { getFoundationModuleMeta } = require("../../lib/foundation-module-meta");
@@ -187,15 +188,11 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
  * Generate a personalized Stripe checkout URL for a member to upgrade to annual membership
  * Creates a Stripe checkout session linked to the member's email and ID
  */
-async function generateCheckoutUrl(memberId, memberEmail, memberName) {
+async function generateCheckoutUrl(memberId, memberEmail, memberName, opts = {}) {
   try {
     if (!USE_STRIPE_CHECKOUT_IN_EMAIL) {
-      // Signed per-member deep-link: opens the member's dashboard directly
-      // (auto-popping the upgrade modal if the trial has lapsed) and pre-fills
-      // their email on the login screen if the Memberstack session expired.
-      // Same mechanism already used by the REWIND20 lapsed-trial webhook, so
-      // every Academy email delivers the same one-click upgrade experience.
-      return buildPersonalDashboardUrl(memberId, memberEmail);
+      const windowMs = Date.now() + (opts.windowDays || 7) * 86400000;
+      return buildPersonalUpgradeUrl(memberId, memberEmail, windowMs, opts.couponCode || null);
     }
 
     // Debug: Log Stripe configuration status
@@ -781,8 +778,15 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
       })
     : 'soon';
 
-  // Generate personalized checkout URL for this member
-  const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name);
+  const effectiveDays = Number.isFinite(options?.templateDaysAhead)
+    ? options.templateDaysAhead
+    : daysUntilExpiry;
+  const stageKey = stageKeyForTrialReminder(effectiveDays);
+  const couponCode = stageKey === STAGE_KEYS.DAY_PLUS_7 ? "SAVE20" : null;
+  const checkoutUrl = await generateCheckoutUrl(member.member_id, member.email, member.name, {
+    couponCode,
+    windowDays: 7,
+  });
 
   // Pull lightweight activity summary for templates that render a personal
   // block (currently only the Day -7 mid-trial reminder). Failures fall back
@@ -800,15 +804,6 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     body: content.body,
     html: htmlFromMarkdown(content.body),
   };
-
-  // Resolve stage_key once, shared by the success + failure log paths below.
-  // Matches selectTemplateStage(): prefer explicit templateDaysAhead, else
-  // fall back to the member's computed daysUntilExpiry. Non-canonical stages
-  // (e.g. daysUntilExpiry=3) return null and are silently skipped by the log.
-  const effectiveDays = Number.isFinite(templateDaysAhead)
-    ? templateDaysAhead
-    : daysUntilExpiry;
-  const stageKey = stageKeyForTrialReminder(effectiveDays);
 
   if (stageKey && member.member_id && supabase && sendEmail) {
     const alreadySent = await memberAlreadySent(supabase, member.member_id, stageKey);

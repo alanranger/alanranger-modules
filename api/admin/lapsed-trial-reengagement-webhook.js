@@ -574,7 +574,12 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
   // Per-member signed link: scoped to the REWIND20 personal 7-day window.
   // Points at /api/academy/reengage-checkout → Stripe Checkout with REWIND20 applied.
   const windowExpiresAtMs = windowBounds.now + CAMPAIGN.windowDays * 86400000;
-  const upgradeUrl = buildPersonalUpgradeUrl(row.member_id, contact.email, windowExpiresAtMs);
+  const upgradeUrl = buildPersonalUpgradeUrl(
+    row.member_id,
+    contact.email,
+    windowExpiresAtMs,
+    CAMPAIGN.couponCode
+  );
   const dashboardUrl = PLAIN_DASHBOARD_URL;
   const unsubUrl = buildUnsubUrl(token);
   const activity = await fetchMemberActivity(row.member_id);
@@ -798,6 +803,10 @@ async function runTestMode(req, res, sendEmail) {
     .maybeSingle();
   if (!trial) {
     return res.status(400).json({ success: false, error: `No trial history row for ${testEmail}` });
+  }
+  const forceAttempt = parseInt(String(req.query.forceAttempt || ""), 10);
+  if (forceAttempt >= 1 && forceAttempt <= 3) {
+    trial.reengagement_send_count = forceAttempt - 1;
   }
   const windowBounds = buildCandidateWindow();
   const result = await processCandidate(trial, windowBounds, sendEmail);
