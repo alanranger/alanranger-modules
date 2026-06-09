@@ -40,15 +40,32 @@ function readDays(req) {
   return Math.min(n, 365);
 }
 
+async function fetchPagedRows(buildQuery) {
+  const rows = [];
+  let offset = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await buildQuery(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    offset += pageSize;
+  }
+  return rows;
+}
+
 async function fetchRecentSendMemberIds(sinceIso) {
-  const { data, error } = await supabase
-    .from("academy_email_events")
-    .select("member_id")
-    .gte("sent_at", sinceIso)
-    .eq("dry_run", false)
-    .eq("status", "sent");
-  if (error) throw new Error(`academy_email_events (recent sends): ${error.message}`);
-  return [...new Set((data || []).map((r) => r.member_id).filter(Boolean))];
+  const data = await fetchPagedRows((from, to) =>
+    supabase
+      .from("academy_email_events")
+      .select("member_id")
+      .gte("sent_at", sinceIso)
+      .eq("dry_run", false)
+      .eq("status", "sent")
+      .order("sent_at", { ascending: true })
+      .range(from, to)
+  );
+  return [...new Set(data.map((r) => r.member_id).filter(Boolean))];
 }
 
 async function fetchTrialRows(sinceIso, limit) {
@@ -97,24 +114,30 @@ async function fetchMemberContacts(memberIds) {
 
 async function fetchSendEvents(memberIds) {
   if (!memberIds.length) return new Map();
-  const { data, error } = await supabase
-    .from("academy_email_events")
-    .select("member_id, stage_key, sent_at, status, message_id")
-    .in("member_id", memberIds)
-    .eq("dry_run", false)
-    .order("sent_at", { ascending: true });
-  if (error) throw new Error(`academy_email_events: ${error.message}`);
+  const chunkSize = 100;
   const byMember = new Map();
-  (data || []).forEach((ev) => {
-    if (!STAGE_KEYS.includes(ev.stage_key)) return;
-    if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
-    const perStage = byMember.get(ev.member_id);
-    perStage[ev.stage_key] = {
-      sent_at: ev.sent_at,
-      status: ev.status,
-      message_id: ev.message_id,
-    };
-  });
+  for (let i = 0; i < memberIds.length; i += chunkSize) {
+    const chunk = memberIds.slice(i, i + chunkSize);
+    const data = await fetchPagedRows((from, to) =>
+      supabase
+        .from("academy_email_events")
+        .select("member_id, stage_key, sent_at, status, message_id")
+        .in("member_id", chunk)
+        .eq("dry_run", false)
+        .order("sent_at", { ascending: true })
+        .range(from, to)
+    );
+    data.forEach((ev) => {
+      if (!STAGE_KEYS.includes(ev.stage_key)) return;
+      if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
+      const perStage = byMember.get(ev.member_id);
+      perStage[ev.stage_key] = {
+        sent_at: ev.sent_at,
+        status: ev.status,
+        message_id: ev.message_id,
+      };
+    });
+  }
   return byMember;
 }
 

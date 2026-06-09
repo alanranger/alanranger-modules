@@ -328,9 +328,9 @@ function NavTabs({ active }) {
   );
 }
 
-function StageTile({ stage, stats, active, onClick, nowMs }) {
-  const eligible = stats?.eligible_today ?? '—';
-  const sent24 = stats?.sent_last_24h ?? 0;
+function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
+  const eligible = statsLoadFailed ? '—' : (stats?.eligible_today ?? '—');
+  const sent24 = statsLoadFailed ? '—' : (stats?.sent_last_24h ?? 0);
   const nextSendAt = stats?.next_send_at;
   const nextLabel = nextSendAt
     ? `${formatDateTimeShort(nextSendAt)} · ${formatRelative(nextSendAt, nowMs)}`
@@ -380,7 +380,7 @@ function StageTile({ stage, stats, active, onClick, nowMs }) {
   );
 }
 
-function StageTilesRow({ stats, activeKey, onTileClick, nowMs }) {
+function StageTilesRow({ stats, statsLoadFailed, activeKey, onTileClick, nowMs }) {
   const byKey = useMemo(() => {
     const m = {};
     (stats || []).forEach((s) => { m[s.key] = s; });
@@ -397,6 +397,7 @@ function StageTilesRow({ stats, activeKey, onTileClick, nowMs }) {
           key={s.key}
           stage={s}
           stats={byKey[s.key]}
+          statsLoadFailed={statsLoadFailed}
           active={activeKey === s.key}
           onClick={onTileClick}
           nowMs={nowMs}
@@ -1123,6 +1124,7 @@ export default function EmailsAdmin() {
 
       <StageTilesRow
         stats={stats}
+        statsLoadFailed={!!loadErrors.stats}
         activeKey={filterStageKey}
         onTileClick={(key) => {
           setFilterStageKey((prev) => (prev === key ? null : key));

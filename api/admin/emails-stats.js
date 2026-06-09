@@ -1,12 +1,11 @@
 // api/admin/emails-stats.js
 //
 // Per-stage statistics for the /academy/admin/emails dashboard tiles.
-// Legacy trial/rewind stages keep existing fast SQL counts.
-// Trigger stages count members matching snapshot + trigger rules today.
+// Legacy trial/rewind stages: fast SQL eligibility counts.
+// Trigger stages: sent counts only (eligibility deferred — snapshot scan is too slow for HTTP).
 
 const { createClient } = require("@supabase/supabase-js");
 const { EMAIL_STAGES } = require("../../lib/emailStages");
-const { countEligibleForStage } = require("../../lib/emailStageTriggers");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -19,6 +18,7 @@ const supabase =
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const REACH_BACK_DAYS = 180;
+const PAGE_SIZE = 1000;
 
 const TRIAL_STAGES = [
   { key: "day-minus-7", daysAhead: 7 },
@@ -53,17 +53,71 @@ function nextLondon9AMIso(nowMs) {
   return null;
 }
 
+function emptySentMaps() {
+  const last24h = {};
+  const last7d = {};
+  EMAIL_STAGES.forEach((s) => {
+    last24h[s.key] = 0;
+    last7d[s.key] = 0;
+  });
+  return { last24h, last7d };
+}
+
+async function fetchAllSentCounts(nowMs) {
+  const maps = emptySentMaps();
+  if (!supabase) return maps;
+
+  const from7dIso = new Date(nowMs - 7 * DAY_MS).toISOString();
+  const from24hMs = nowMs - DAY_MS;
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("academy_email_events")
+      .select("stage_key, sent_at")
+      .eq("status", "sent")
+      .eq("dry_run", false)
+      .gte("sent_at", from7dIso)
+      .order("sent_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error(`academy_email_events sent counts: ${error.message}`);
+
+    for (const row of data || []) {
+      const key = row.stage_key;
+      if (!key || maps.last7d[key] == null) continue;
+      maps.last7d[key] += 1;
+      const sentMs = new Date(row.sent_at).getTime();
+      if (Number.isFinite(sentMs) && sentMs >= from24hMs) {
+        maps.last24h[key] += 1;
+      }
+    }
+
+    if (!data || data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return maps;
+}
+
 async function fetchContactableMemberIds() {
   if (!supabase) return new Set();
-  const { data, error } = await supabase
-    .from("ms_members_cache")
-    .select("member_id")
-    .not("email", "is", null);
-  if (error) {
-    console.warn("[emails-stats] contactable set failed:", error.message);
-    return new Set();
+  const ids = new Set();
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("ms_members_cache")
+      .select("member_id")
+      .not("email", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) {
+      console.warn("[emails-stats] contactable set failed:", error.message);
+      return ids;
+    }
+    (data || []).forEach((r) => ids.add(r.member_id));
+    if (!data || data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
-  return new Set((data || []).map((r) => r.member_id));
+  return ids;
 }
 
 async function countTrialReminderEligible(daysAhead, nowMs, contactable) {
@@ -117,42 +171,20 @@ async function countRewindEligible(stage, nowMs, contactable) {
   return uniqueIds.size;
 }
 
-async function countSentInWindow(stageKey, windowMs, nowMs) {
-  if (!supabase) return 0;
-  const fromIso = new Date(nowMs - windowMs).toISOString();
-  const { count, error } = await supabase
-    .from("academy_email_events")
-    .select("id", { count: "exact", head: true })
-    .eq("stage_key", stageKey)
-    .eq("status", "sent")
-    .eq("dry_run", false)
-    .gte("sent_at", fromIso);
-  if (error) {
-    console.warn(`[emails-stats] sent count ${stageKey} failed:`, error.message);
-    return 0;
-  }
-  return count || 0;
-}
-
-async function statsForLegacyStage(stageDef, nowMs, contactable) {
+async function statsForLegacyStage(stageDef, nowMs, contactable, sentCounts) {
   const trial = TRIAL_STAGES.find((s) => s.key === stageDef.key);
   const rewind = REWIND_STAGES.find((s) => s.key === stageDef.key);
   let eligible = 0;
   if (trial) eligible = await countTrialReminderEligible(trial.daysAhead, nowMs, contactable);
   if (rewind) eligible = await countRewindEligible(rewind, nowMs, contactable);
 
-  const [last24h, last7d] = await Promise.all([
-    countSentInWindow(stageDef.key, DAY_MS, nowMs),
-    countSentInWindow(stageDef.key, 7 * DAY_MS, nowMs),
-  ]);
-
   return {
     key: stageDef.key,
     enabled: stageDef.enabled === true,
     cron_enabled: stageDef.cronEnabled === true,
     eligible_today: eligible,
-    sent_last_24h: last24h,
-    sent_last_7d: last7d,
+    sent_last_24h: sentCounts.last24h[stageDef.key] || 0,
+    sent_last_7d: sentCounts.last7d[stageDef.key] || 0,
     next_send_at: trial || rewind ? nextLondon9AMIso(nowMs) : null,
     schedule_source:
       trial || (rewind && stageDef.enabled)
@@ -161,25 +193,16 @@ async function statsForLegacyStage(stageDef, nowMs, contactable) {
   };
 }
 
-async function statsForTriggerStage(stageDef, nowMs, contactable) {
-  let eligible = null;
-  try {
-    eligible = await countEligibleForStage(supabase, stageDef.key, contactable, nowMs);
-  } catch (err) {
-    console.warn(`[emails-stats] trigger count ${stageDef.key} failed:`, err.message);
-  }
-  const [last24h, last7d] = await Promise.all([
-    countSentInWindow(stageDef.key, DAY_MS, nowMs),
-    countSentInWindow(stageDef.key, 7 * DAY_MS, nowMs),
-  ]);
+function statsForTriggerStage(stageDef, nowMs, sentCounts) {
   return {
     key: stageDef.key,
     enabled: stageDef.enabled === true,
     cron_enabled: stageDef.cronEnabled === true,
     test_mode_only: stageDef.testModeOnly === true,
-    eligible_today: eligible,
-    sent_last_24h: last24h,
-    sent_last_7d: last7d,
+    eligible_today: null,
+    eligible_deferred: true,
+    sent_last_24h: sentCounts.last24h[stageDef.key] || 0,
+    sent_last_7d: sentCounts.last7d[stageDef.key] || 0,
     next_send_at: nextLondon9AMIso(nowMs),
     schedule_source: "Vercel Cron trigger check (09:00 Europe/London)",
   };
@@ -198,19 +221,27 @@ module.exports = async function handler(req, res) {
 
   try {
     const nowMs = Date.now();
-    const contactable = await fetchContactableMemberIds();
-    const results = [];
-    for (const stageDef of EMAIL_STAGES) {
-      if (stageDef.legacyStats) {
-        results.push(await statsForLegacyStage(stageDef, nowMs, contactable));
-      } else if (stageDef.trigger) {
-        results.push(await statsForTriggerStage(stageDef, nowMs, contactable));
-      }
-    }
+    const [sentCounts, contactable] = await Promise.all([
+      fetchAllSentCounts(nowMs),
+      fetchContactableMemberIds(),
+    ]);
+
+    const results = await Promise.all(
+      EMAIL_STAGES.map(async (stageDef) => {
+        if (stageDef.legacyStats) {
+          return statsForLegacyStage(stageDef, nowMs, contactable, sentCounts);
+        }
+        if (stageDef.trigger) {
+          return statsForTriggerStage(stageDef, nowMs, sentCounts);
+        }
+        return null;
+      })
+    );
+
     return res.status(200).json({
       success: true,
       generated_at: new Date(nowMs).toISOString(),
-      stages: results,
+      stages: results.filter(Boolean),
     });
   } catch (err) {
     console.error("[emails-stats] unexpected failure:", err);
