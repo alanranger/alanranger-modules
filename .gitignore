@@ -10,3 +10,4 @@ node_modules/
 # Office lock files (~$foo.xlsx) that Excel creates while files are open
 ~$*
 .git-commit-msg.tmp
+supabase/.temp/
