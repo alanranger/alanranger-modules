@@ -1,11 +1,12 @@
 /**
- * One-time throttled win-back backlog run (production API).
+ * One-time throttled win-back backlog run.
  * +30 cohort first (send_count=1), then +20 (send_count=0).
  * 20 sends per batch, 10 minutes apart. Idempotent via existing send guards.
  *
- * Usage (from repo root, requires ORPHANED_WEBHOOK_SECRET in .env.local):
+ * Usage (from repo root, requires .env.local with Supabase + SMTP):
  *   node scripts/run-winback-backlog-batched.cjs
  *   node scripts/run-winback-backlog-batched.cjs --dry-run
+ *   node scripts/run-winback-backlog-batched.cjs --remote   (production API; slower deploy cycle)
  */
 
 const fs = require("fs");
@@ -16,8 +17,9 @@ const envPath = path.join(__dirname, "..", ".env.local");
 if (fs.existsSync(envPath)) {
   const parsed = dotenv.parse(fs.readFileSync(envPath));
   for (const [k, v] of Object.entries(parsed)) {
-    if (!process.env[k]) process.env[k] = v;
+    process.env[k] = v;
   }
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 }
 
 const BATCH_SIZE = 20;
@@ -31,6 +33,8 @@ const LOG_PATH =
   "C:/Users/alan/Google Drive/Claude shared resources/Cursor Outputs for Claude/WINBACK-BACKLOG-RUN-LOG-LATEST.json";
 
 const dryRun = process.argv.includes("--dry-run");
+const useRemote = process.argv.includes("--remote");
+const handler = useRemote ? null : require("../api/admin/lapsed-trial-reengagement-webhook");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,7 +45,35 @@ function writeLog(data) {
   fs.writeFileSync(LOG_PATH, JSON.stringify(data, null, 2), "utf8");
 }
 
-async function invokeBatch(sendCountEq) {
+async function invokeBatchLocal(sendCountEq) {
+  const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
+  const req = {
+    method: "GET",
+    query: {
+      sendEmail: dryRun ? "false" : "true",
+      backlogRun: "1",
+      sendCountEq: String(sendCountEq),
+      batchSize: String(BATCH_SIZE),
+      secret,
+    },
+    headers: {},
+  };
+  return new Promise((resolve, reject) => {
+    const res = {
+      statusCode: 200,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        resolve({ status: this.statusCode, body });
+      },
+    };
+    handler(req, res).catch(reject);
+  });
+}
+
+async function invokeBatchRemote(sendCountEq) {
   const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
   if (!secret) throw new Error("ORPHANED_WEBHOOK_SECRET not set");
   const params = new URLSearchParams({
@@ -61,6 +93,10 @@ async function invokeBatch(sendCountEq) {
     throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
   }
   return { status: res.status, body };
+}
+
+async function invokeBatch(sendCountEq) {
+  return useRemote ? invokeBatchRemote(sendCountEq) : invokeBatchLocal(sendCountEq);
 }
 
 async function runCohort(cohort, runLog) {
@@ -98,7 +134,8 @@ async function runCohort(cohort, runLog) {
 async function main() {
   const runLog = {
     mode: dryRun ? "dry-run" : "live",
-    api_base: API_BASE,
+    runner: useRemote ? "remote" : "local",
+    api_base: useRemote ? API_BASE : "local-handler",
     started_at: new Date().toISOString(),
     batch_size: BATCH_SIZE,
     delay_minutes: DELAY_MS / 60000,
