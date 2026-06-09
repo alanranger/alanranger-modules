@@ -11,7 +11,9 @@ function mapStageForUi(stage) {
     shortLabel: stage.shortLabel,
     displayName: stage.displayName,
     enabled: stage.enabled === true,
+    cronEnabled: stage.cronEnabled === true,
     testModeOnly: stage.testModeOnly === true,
+    deprecated: stage.deprecated === true,
     triggerSummary: stage.triggerSummary || '',
     sentBy: stage.sentBy,
     schedule: stage.schedule,
@@ -25,7 +27,11 @@ const STAGES = EMAIL_STAGES.map(mapStageForUi);
 
 const STAGE_KEYS = STAGES.map((s) => s.key);
 const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
-const TRIAL_TILE_STAGES = STAGES.filter((s) => !s.key.startsWith('paid-'));
+const REWIND_RUNG_KEYS = new Set(['day-plus-20', 'day-plus-30', 'day-plus-60', 'day-plus-90']);
+const TRIAL_SCHEDULED_STAGES = STAGES.filter(
+  (s) => !s.key.startsWith('paid-') && !REWIND_RUNG_KEYS.has(s.key)
+);
+const REWIND_TILE_STAGES = STAGES.filter((s) => REWIND_RUNG_KEYS.has(s.key));
 const PAID_TILE_STAGES = STAGES.filter((s) => s.key.startsWith('paid-'));
 const MANUAL_TILE_KEY = 'manual-batch';
 const DAY_MS = 86400000;
@@ -341,6 +347,25 @@ function NavTabs({ active }) {
   );
 }
 
+function stageStatusBadge(stage) {
+  if (stage.deprecated) {
+    return { label: 'DEPRECATED', color: 'var(--ar-text-muted)' };
+  }
+  if (stage.enabled && stage.cronEnabled) {
+    return { label: 'LIVE · cron on', color: 'var(--ar-success, #0a0)' };
+  }
+  if (stage.testModeOnly) {
+    return { label: 'TEST ONLY', color: 'var(--ar-text-muted)' };
+  }
+  if (REWIND_RUNG_KEYS.has(stage.key)) {
+    return { label: 'CRON OFF · batch OK', color: '#d4a017' };
+  }
+  if (!stage.enabled) {
+    return { label: 'OFF · cron off', color: 'var(--ar-text-muted)' };
+  }
+  return { label: 'LIVE', color: 'var(--ar-success, #0a0)' };
+}
+
 function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
   const sent7d = statsLoadFailed ? '—' : (stats?.sent_last_7d ?? 0);
   const eligible = statsLoadFailed ? '—' : (stats?.eligible_today ?? '—');
@@ -350,12 +375,7 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
     ? `${formatDateTimeShort(nextSendAt)} · ${formatRelative(nextSendAt, nowMs)}`
     : (stage.sentBy === 'lapsed-trial-reengagement-webhook' ? 'Zapier (weekly)' : 'Daily trigger check');
   const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
-  const statusLabel = stage.enabled
-    ? 'LIVE'
-    : (stage.testModeOnly ? 'TEST ONLY · no live send' : 'DISABLED · no copy yet');
-  const statusColor = stage.enabled
-    ? 'var(--ar-success, #0a0)'
-    : 'var(--ar-text-muted)';
+  const { label: statusLabel, color: statusColor } = stageStatusBadge(stage);
   return (
     <button
       type="button"
@@ -425,21 +445,26 @@ function ManualBatchTile({ manualSends, statsLoadFailed, active, onClick }) {
         sent 7d · {sent24} sent 24h
       </div>
       <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
-        Batch runs + corrected resends (logged send_source)
+        How sent (batch/corrected) — overlaps REWIND rung tiles below
       </div>
     </button>
   );
 }
 
-function TileSection({ title, children }) {
+function TileSection({ title, subtitle, children }) {
   return (
     <section style={{ marginBottom: 24 }}>
       <h2 style={{
-        fontSize: 15, fontWeight: 600, margin: '0 0 10px', color: 'var(--ar-text-muted)',
+        fontSize: 15, fontWeight: 600, margin: '0 0 6px', color: 'var(--ar-text-muted)',
       }}
       >
         {title}
       </h2>
+      {subtitle ? (
+        <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
+          {subtitle}
+        </p>
+      ) : null}
       <div style={TILE_GRID_STYLE}>{children}</div>
     </section>
   );
@@ -468,8 +493,22 @@ function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileC
 
   return (
     <>
-      <TileSection title="Trials">
-        {TRIAL_TILE_STAGES.map(renderStageTile)}
+      <TileSection
+        title="Trials — scheduled (cron)"
+        subtitle="Trial nudges and Day -7 / -1 / +7. LIVE = automatic 09:00 London trigger is on."
+      >
+        {TRIAL_SCHEDULED_STAGES.map(renderStageTile)}
+      </TileSection>
+      <TileSection
+        title="Trials — REWIND ladder (same emails, 4 rungs)"
+        subtitle="1st REWIND = Day +20 · 2nd = +30 · 3rd = +60 · 4th = +90. Different copy and timing per rung; same REWIND20 offer. CRON OFF on +20/+30/+60 until you approve — today’s sends were batch scripts, still logged on these tiles."
+      >
+        {REWIND_TILE_STAGES.map(renderStageTile)}
+      </TileSection>
+      <TileSection
+        title="Manual / batch sends (how sent, not a separate ladder)"
+        subtitle="Rolls up today’s backlog + corrected re-sends (send_source). Same members also appear on a REWIND rung tile above — filter here for all batch traffic."
+      >
         <ManualBatchTile
           manualSends={manualSends}
           statsLoadFailed={statsLoadFailed}
@@ -477,7 +516,10 @@ function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileC
           onClick={onTileClick}
         />
       </TileSection>
-      <TileSection title="Paid">
+      <TileSection
+        title="Paid"
+        subtitle="Paid-member lifecycle (quiet ladder, badge earned, renewal)."
+      >
         {PAID_TILE_STAGES.map(renderStageTile)}
       </TileSection>
     </>
@@ -1423,11 +1465,14 @@ export default function EmailsAdmin() {
       ) : null}
 
       <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--ar-text-muted)' }}>
-        Click any tile to filter the members table to that tile&apos;s <strong>7-day send count</strong> (logged
-        events only — not inferred history). Large number = sends (7d) from{' '}
-        <code>academy_email_events</code>. Smaller line = who matches the trigger today (not the same as sent).
+        Click any tile to filter the members table to that tile&apos;s <strong>7-day send count</strong>.
+        <strong> LIVE · cron on</strong> = automatic daily send is active.
+        <strong> CRON OFF · batch OK</strong> = same REWIND email, but only manual/backlog scripts until you turn cron on (counts still show batch sends).
+        <strong> Manual / batch</strong> = how it was sent, not a different email ladder.
+        Large number = logged sends (7d) from <code>academy_email_events</code>.
+        Smaller line = who matches the trigger today (not the same as sent).
         Italic dates with * are inferred from <code>academy_trial_history</code> when no event row exists (REWIND attempt history).
-        Trial reminders (Day -7/-1/+7) before logging began may still appear blank. Manual column = last batch/corrected send.
+        Manual column = last batch/corrected send per member.
         Conversion attribution = trial converted within 14 days of the last send.
       </div>
 
