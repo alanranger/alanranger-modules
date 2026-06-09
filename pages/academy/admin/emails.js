@@ -151,7 +151,10 @@ async function loadStats() {
   const res = await fetch('/api/admin/emails-stats');
   if (!res.ok) throw new Error(`stats HTTP ${res.status}`);
   const data = await res.json();
-  return Array.isArray(data.stages) ? data.stages : [];
+  return {
+    stages: Array.isArray(data.stages) ? data.stages : [],
+    manualSends: data.manual_sends || null,
+  };
 }
 
 async function loadTableRows(days = 90) {
@@ -329,6 +332,7 @@ function NavTabs({ active }) {
 }
 
 function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
+  const sent7d = statsLoadFailed ? '—' : (stats?.sent_last_7d ?? 0);
   const eligible = statsLoadFailed ? '—' : (stats?.eligible_today ?? '—');
   const sent24 = statsLoadFailed ? '—' : (stats?.sent_last_24h ?? 0);
   const nextSendAt = stats?.next_send_at;
@@ -368,10 +372,13 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
         </span>
       </div>
       <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>
-        {eligible}
+        {sent7d}
       </div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
-        match trigger · {sent24} sent 24h
+        sent 7d · {sent24} sent 24h
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+        {eligible} match trigger today
       </div>
       <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
         Next: {nextLabel}
@@ -380,7 +387,35 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
   );
 }
 
-function StageTilesRow({ stats, statsLoadFailed, activeKey, onTileClick, nowMs }) {
+function ManualBatchTile({ manualSends, statsLoadFailed }) {
+  const sent7d = statsLoadFailed ? '—' : (manualSends?.sent_last_7d ?? 0);
+  const sent24 = statsLoadFailed ? '—' : (manualSends?.sent_last_24h ?? 0);
+  return (
+    <div
+      style={{
+        textAlign: 'left',
+        padding: '14px 14px 12px',
+        background: 'var(--ar-card)',
+        border: '1px solid var(--ar-border)',
+        borderRadius: 8,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
+        MANUAL SENDS
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>{sent7d}</div>
+      <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
+        sent 7d · {sent24} sent 24h
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
+        Batch runs + corrected resends (logged send_source)
+      </div>
+    </div>
+  );
+}
+
+function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileClick, nowMs }) {
   const byKey = useMemo(() => {
     const m = {};
     (stats || []).forEach((s) => { m[s.key] = s; });
@@ -403,6 +438,7 @@ function StageTilesRow({ stats, statsLoadFailed, activeKey, onTileClick, nowMs }
           nowMs={nowMs}
         />
       ))}
+      <ManualBatchTile manualSends={manualSends} statsLoadFailed={statsLoadFailed} />
     </div>
   );
 }
@@ -415,9 +451,24 @@ const SEND_BADGE_COLORS = {
 function StageSendBadge({ ev }) {
   if (!ev) return <span style={{ color: 'var(--ar-text-muted)' }}>—</span>;
   const color = SEND_BADGE_COLORS[ev.status] || 'var(--ar-text-muted)';
+  const titleParts = [`${ev.status}: ${ev.sent_at}`];
+  if (ev.inferred) titleParts.push('inferred from trial history');
+  if (ev.send_source && ev.send_source !== 'automated') titleParts.push(`source: ${ev.send_source}`);
   return (
-    <span title={`${ev.status}: ${ev.sent_at}`} style={{ color, fontSize: 12 }}>
-      {formatDateShort(ev.sent_at)}
+    <span title={titleParts.join(' · ')} style={{ color, fontSize: 12, fontStyle: ev.inferred ? 'italic' : 'normal' }}>
+      {formatDateShort(ev.sent_at)}{ev.inferred ? '*' : ''}
+    </span>
+  );
+}
+
+function ManualSendBadge({ manualLast }) {
+  if (!manualLast?.sent_at) return <span style={{ color: 'var(--ar-text-muted)' }}>—</span>;
+  return (
+    <span
+      title={`${manualLast.send_source} · ${manualLast.stage_key} · ${manualLast.sent_at}`}
+      style={{ color: 'var(--ar-accent, #4a7fff)', fontSize: 12 }}
+    >
+      {formatDateShort(manualLast.sent_at)}
     </span>
   );
 }
@@ -472,6 +523,9 @@ function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) 
                 {s.shortLabel}
               </th>
             ))}
+            <th style={thStyle} title="Last manual batch or corrected resend">
+              Manual
+            </th>
             <th style={thStyle} title={`Attribution window: ${attributionWindowDays} days`}>
               Converted?
             </th>
@@ -503,6 +557,9 @@ function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) 
                   <StageSendBadge ev={row.sends?.[s.key]} />
                 </td>
               ))}
+              <td style={tdStyle}>
+                <ManualSendBadge manualLast={row.manual_last_sent} />
+              </td>
               <td style={tdStyle}><ConversionCell row={row} /></td>
             </tr>
           ))}
@@ -1018,6 +1075,7 @@ function TemplatesSection({ templates, mergeTags, loadError, onTemplatesChanged 
 export default function EmailsAdmin() {
   const [members, setMembers] = useState([]);
   const [stats, setStats] = useState([]);
+  const [manualSends, setManualSends] = useState(null);
   const [tableData, setTableData] = useState({ rows: [], attributionWindowDays: 14 });
   const [templates, setTemplates] = useState([]);
   const [mergeTags, setMergeTags] = useState([]);
@@ -1044,7 +1102,10 @@ export default function EmailsAdmin() {
 
   useEffect(() => {
     loadStats()
-      .then(setStats)
+      .then(({ stages, manualSends: manual }) => {
+        setStats(stages);
+        setManualSends(manual);
+      })
       .catch((err) => setLoadErrors((e) => ({ ...e, stats: err.message })));
   }, []);
 
@@ -1115,15 +1176,16 @@ export default function EmailsAdmin() {
       ) : null}
 
       <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--ar-text-muted)' }}>
-        Click any tile to filter the members table to that stage. Row-level sends are
-        logged to <code>academy_email_events</code>. REWIND20 attempt-1 history was backfilled
-        from <code>academy_trial_history.reengagement_sent_at</code>. Trial reminders (Day -7/-1/+7)
-        before {formatDateShort(new Date().toISOString())} were not logged and will appear blank.
+        Click any tile to filter the members table to that stage. Large number = logged sends (7d) from{' '}
+        <code>academy_email_events</code>. Smaller line = who matches the trigger today (not the same as sent).
+        Italic dates with * are inferred from <code>academy_trial_history</code> when no event row exists (REWIND attempt history).
+        Trial reminders (Day -7/-1/+7) before logging began may still appear blank. Manual column = last batch/corrected send.
         Conversion attribution = trial converted within 14 days of the last send.
       </div>
 
       <StageTilesRow
         stats={stats}
+        manualSends={manualSends}
         statsLoadFailed={!!loadErrors.stats}
         activeKey={filterStageKey}
         onTileClick={(key) => {

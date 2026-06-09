@@ -1,14 +1,7 @@
-// api/admin/emails-members.js
-//
-// Returns one row per member for the /academy/admin/emails table:
-//   - trials that started in the last N days (default 90), plus
-//   - any member with a logged send in that same window (so manual / win-back
-//     batches appear even when trial_start_at is older than the lookback).
-//
-// Each row includes sends for all lifecycle stage_keys from academy_email_events.
+// api/admin/emails-members.js — rewritten member row builder for send-truth dashboard.
 
 const { createClient } = require("@supabase/supabase-js");
-const { STAGE_KEYS } = require("../../lib/emailEvents");
+const { STAGE_KEYS, MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -20,8 +13,9 @@ const supabase =
 
 const DAY_MS = 86400000;
 const ATTRIBUTION_WINDOW_DAYS = 14;
+const DEFAULT_LIMIT = 500;
 const TRIAL_SELECT =
-  "member_id, trial_start_at, trial_end_at, converted_at, reengagement_send_count, reengagement_opted_out";
+  "member_id, trial_start_at, trial_end_at, converted_at, reengagement_send_count, reengagement_opted_out, reengagement_sent_at, reengagement_last_sent_at";
 
 function parseInt10(raw, fallback) {
   const n = parseInt(raw, 10);
@@ -29,15 +23,11 @@ function parseInt10(raw, fallback) {
 }
 
 function readLimit(req) {
-  const raw = req.query?.limit;
-  const n = parseInt10(raw, 200);
-  return Math.min(n, 500);
+  return Math.min(parseInt10(req.query?.limit, DEFAULT_LIMIT), DEFAULT_LIMIT);
 }
 
 function readDays(req) {
-  const raw = req.query?.days;
-  const n = parseInt10(raw, 90);
-  return Math.min(n, 365);
+  return Math.min(parseInt10(req.query?.days, 90), 365);
 }
 
 async function fetchPagedRows(buildQuery) {
@@ -68,60 +58,95 @@ async function fetchRecentSendMemberIds(sinceIso) {
   return [...new Set(data.map((r) => r.member_id).filter(Boolean))];
 }
 
-async function fetchTrialRows(sinceIso, limit) {
-  const { data, error } = await supabase
-    .from("academy_trial_history")
-    .select(TRIAL_SELECT)
-    .gte("trial_start_at", sinceIso)
-    .order("trial_start_at", { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(`trial history: ${error.message}`);
-  return data || [];
+async function fetchTrialRows(sinceIso) {
+  return fetchPagedRows((from, to) =>
+    supabase
+      .from("academy_trial_history")
+      .select(TRIAL_SELECT)
+      .gte("trial_start_at", sinceIso)
+      .order("trial_start_at", { ascending: false })
+      .range(from, to)
+  );
 }
 
 async function fetchTrialRowsByMemberIds(memberIds) {
   if (!memberIds.length) return [];
-  const { data, error } = await supabase
-    .from("academy_trial_history")
-    .select(TRIAL_SELECT)
-    .in("member_id", memberIds);
-  if (error) throw new Error(`trial history (by member): ${error.message}`);
-  return data || [];
+  const chunkSize = 100;
+  const rows = [];
+  for (let i = 0; i < memberIds.length; i += chunkSize) {
+    const chunk = memberIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("academy_trial_history")
+      .select(TRIAL_SELECT)
+      .in("member_id", chunk);
+    if (error) throw new Error(`trial history (by member): ${error.message}`);
+    rows.push(...(data || []));
+  }
+  return rows;
 }
 
-function mergeTrialRows(primaryRows, extraRows) {
+function stubTrialRow(memberId) {
+  return {
+    member_id: memberId,
+    trial_start_at: null,
+    trial_end_at: null,
+    converted_at: null,
+    reengagement_send_count: 0,
+    reengagement_opted_out: false,
+    reengagement_sent_at: null,
+    reengagement_last_sent_at: null,
+  };
+}
+
+function buildMemberTrialRows(sinceIso, limit, recentSendMemberIds, primaryTrials) {
   const byMember = new Map();
-  (primaryRows || []).forEach((row) => byMember.set(row.member_id, row));
-  (extraRows || []).forEach((row) => {
-    if (!byMember.has(row.member_id)) byMember.set(row.member_id, row);
+  primaryTrials.forEach((row) => byMember.set(row.member_id, row));
+  const missingIds = recentSendMemberIds.filter((id) => !byMember.has(id));
+  return { byMember, missingIds };
+}
+
+function sortMemberRows(rows, recentSendSet) {
+  return rows.sort((a, b) => {
+    const aRecent = recentSendSet.has(a.member_id) ? 1 : 0;
+    const bRecent = recentSendSet.has(b.member_id) ? 1 : 0;
+    if (aRecent !== bRecent) return bRecent - aRecent;
+    const aMs = a.trial_start_at ? new Date(a.trial_start_at).getTime() : 0;
+    const bMs = b.trial_start_at ? new Date(b.trial_start_at).getTime() : 0;
+    return bMs - aMs;
   });
-  return Array.from(byMember.values()).sort(
-    (a, b) => new Date(b.trial_start_at).getTime() - new Date(a.trial_start_at).getTime()
-  );
 }
 
 async function fetchMemberContacts(memberIds) {
   if (!memberIds.length) return new Map();
-  const { data, error } = await supabase
-    .from("ms_members_cache")
-    .select("member_id, email, name")
-    .in("member_id", memberIds);
-  if (error) throw new Error(`ms_members_cache: ${error.message}`);
+  const chunkSize = 100;
   const map = new Map();
-  (data || []).forEach((r) => map.set(r.member_id, r));
+  for (let i = 0; i < memberIds.length; i += chunkSize) {
+    const chunk = memberIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("ms_members_cache")
+      .select("member_id, email, name")
+      .in("member_id", chunk);
+    if (error) throw new Error(`ms_members_cache: ${error.message}`);
+    (data || []).forEach((r) => map.set(r.member_id, r));
+  }
   return map;
 }
 
+function isManualSource(source) {
+  return MANUAL_SEND_SOURCES.includes(source);
+}
+
 async function fetchSendEvents(memberIds) {
-  if (!memberIds.length) return new Map();
+  if (!memberIds.length) return { byMember: new Map(), manualLastByMember: new Map() };
   const chunkSize = 100;
   const byMember = new Map();
+  const manualLastByMember = new Map();
   for (let i = 0; i < memberIds.length; i += chunkSize) {
     const chunk = memberIds.slice(i, i + chunkSize);
     const data = await fetchPagedRows((from, to) =>
       supabase
         .from("academy_email_events")
-        .select("member_id, stage_key, sent_at, status, message_id")
+        .select("member_id, stage_key, sent_at, status, message_id, send_source")
         .in("member_id", chunk)
         .eq("dry_run", false)
         .order("sent_at", { ascending: true })
@@ -135,10 +160,43 @@ async function fetchSendEvents(memberIds) {
         sent_at: ev.sent_at,
         status: ev.status,
         message_id: ev.message_id,
+        send_source: ev.send_source || "automated",
+        inferred: false,
       };
+      if (isManualSource(ev.send_source) && ev.status === "sent") {
+        const ms = new Date(ev.sent_at).getTime();
+        const prev = manualLastByMember.get(ev.member_id);
+        if (!prev || ms > prev.ms) {
+          manualLastByMember.set(ev.member_id, {
+            ms,
+            sent_at: ev.sent_at,
+            stage_key: ev.stage_key,
+            send_source: ev.send_source,
+          });
+        }
+      }
     });
   }
-  return byMember;
+  return { byMember, manualLastByMember };
+}
+
+function inferSendsFromTrialHistory(trialRow) {
+  const count = trialRow.reengagement_send_count || 0;
+  if (count < 1) return {};
+  const first = trialRow.reengagement_sent_at;
+  const last = trialRow.reengagement_last_sent_at;
+  const mk = (sent_at) => ({
+    sent_at,
+    status: "sent",
+    message_id: null,
+    send_source: "automated",
+    inferred: true,
+  });
+  const out = {};
+  if (first) out["day-plus-20"] = mk(first);
+  if (count >= 2 && last) out["day-plus-30"] = mk(last);
+  if (count >= 3 && last) out["day-plus-60"] = mk(last);
+  return out;
 }
 
 function emptySendsMap() {
@@ -147,6 +205,14 @@ function emptySendsMap() {
     out[k] = null;
   });
   return out;
+}
+
+function mergeLoggedAndInferred(logged, inferred) {
+  const sends = emptySendsMap();
+  STAGE_KEYS.forEach((k) => {
+    sends[k] = logged[k] || inferred[k] || null;
+  });
+  return sends;
 }
 
 function computeConvertedWithinWindow(convertedAt, sends) {
@@ -168,13 +234,12 @@ function computeConvertedWithinWindow(convertedAt, sends) {
   return { attributed: true, stage_key: best.key };
 }
 
-function buildRow(trialRow, contact, sendsByMember) {
-  const sendsRaw = sendsByMember.get(trialRow.member_id) || {};
-  const sends = emptySendsMap();
-  STAGE_KEYS.forEach((k) => {
-    if (sendsRaw[k]) sends[k] = sendsRaw[k];
-  });
+function buildRow(trialRow, contact, sendsByMember, manualLastByMember) {
+  const logged = sendsByMember.get(trialRow.member_id) || {};
+  const inferred = inferSendsFromTrialHistory(trialRow);
+  const sends = mergeLoggedAndInferred(logged, inferred);
   const attribution = computeConvertedWithinWindow(trialRow.converted_at, sends);
+  const manualLast = manualLastByMember.get(trialRow.member_id) || null;
   return {
     member_id: trialRow.member_id,
     email: contact?.email || null,
@@ -185,6 +250,13 @@ function buildRow(trialRow, contact, sendsByMember) {
     reengagement_send_count: trialRow.reengagement_send_count || 0,
     reengagement_opted_out: !!trialRow.reengagement_opted_out,
     sends,
+    manual_last_sent: manualLast
+      ? {
+          sent_at: manualLast.sent_at,
+          stage_key: manualLast.stage_key,
+          send_source: manualLast.send_source,
+        }
+      : null,
     converted_within_window: attribution.attributed,
     conversion_attributed_stage: attribution.stage_key,
   };
@@ -207,21 +279,30 @@ module.exports = async function handler(req, res) {
     const sinceIso = new Date(Date.now() - days * DAY_MS).toISOString();
 
     const [primaryTrials, recentSendMemberIds] = await Promise.all([
-      fetchTrialRows(sinceIso, limit),
+      fetchTrialRows(sinceIso),
       fetchRecentSendMemberIds(sinceIso),
     ]);
-    const primaryIds = new Set(primaryTrials.map((r) => r.member_id));
-    const extraIds = recentSendMemberIds.filter((id) => !primaryIds.has(id));
-    const extraTrials = extraIds.length ? await fetchTrialRowsByMemberIds(extraIds) : [];
-    const trialRows = mergeTrialRows(primaryTrials, extraTrials).slice(0, limit);
+    const { byMember, missingIds } = buildMemberTrialRows(
+      sinceIso,
+      limit,
+      recentSendMemberIds,
+      primaryTrials
+    );
+    const extraTrials = missingIds.length ? await fetchTrialRowsByMemberIds(missingIds) : [];
+    extraTrials.forEach((row) => byMember.set(row.member_id, row));
+    missingIds.forEach((id) => {
+      if (!byMember.has(id)) byMember.set(id, stubTrialRow(id));
+    });
 
+    const recentSendSet = new Set(recentSendMemberIds);
+    const trialRows = sortMemberRows([...byMember.values()], recentSendSet).slice(0, limit);
     const memberIds = trialRows.map((r) => r.member_id);
-    const [contacts, sendsByMember] = await Promise.all([
+    const [contacts, sendMaps] = await Promise.all([
       fetchMemberContacts(memberIds),
       fetchSendEvents(memberIds),
     ]);
     const rows = trialRows.map((tr) =>
-      buildRow(tr, contacts.get(tr.member_id), sendsByMember)
+      buildRow(tr, contacts.get(tr.member_id), sendMaps.byMember, sendMaps.manualLastByMember)
     );
 
     return res.status(200).json({
@@ -233,6 +314,7 @@ module.exports = async function handler(req, res) {
       stage_keys: STAGE_KEYS,
       attribution_window_days: ATTRIBUTION_WINDOW_DAYS,
       includes_recent_sends: true,
+      prioritizes_send_recipients: true,
       rows,
     });
   } catch (err) {

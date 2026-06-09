@@ -657,6 +657,11 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
   });
   if (result.sent) {
     if (stageKey) {
+      const sendSource = correctedResend
+        ? "corrected_resend"
+        : opts.backlogRun
+          ? "manual_batch"
+          : "automated";
       await logEmailEvent(supabase, {
         member_id: row.member_id,
         email: contact.email,
@@ -666,6 +671,7 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
         subject: correctedResend ? `[CORRECTED] ${content.subject}` : content.subject,
         dryRun: false,
         eventDetail: correctedResend ? CORRECTED_RESEND_TAG : null,
+        sendSource,
       });
     }
   } else if (sendEmail && reserve?.reserved) {
@@ -900,7 +906,7 @@ module.exports = async (req, res) => {
       const targetIds = new Set(backlog.memberIds);
       eligible = eligible.filter((r) => targetIds.has(r.member_id));
     }
-    const runOpts = { correctedResend: backlog.correctedResend };
+    const runOpts = { correctedResend: backlog.correctedResend, backlogRun: backlog.backlogRun };
     const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize, runOpts);
     return res.status(200).json({
       success: true,

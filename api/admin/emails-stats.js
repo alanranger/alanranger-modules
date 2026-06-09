@@ -6,6 +6,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const { EMAIL_STAGES } = require("../../lib/emailStages");
+const { MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -97,6 +98,37 @@ async function fetchAllSentCounts(nowMs) {
   }
 
   return maps;
+}
+
+async function fetchManualSendCounts(nowMs) {
+  const out = { last24h: 0, last7d: 0 };
+  if (!supabase) return out;
+  const from7dIso = new Date(nowMs - 7 * DAY_MS).toISOString();
+  const from24hMs = nowMs - DAY_MS;
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("academy_email_events")
+      .select("sent_at, send_source, event_detail")
+      .eq("status", "sent")
+      .eq("dry_run", false)
+      .gte("sent_at", from7dIso)
+      .order("sent_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error(`manual send counts: ${error.message}`);
+    for (const row of data || []) {
+      const isManual =
+        MANUAL_SEND_SOURCES.includes(row.send_source) ||
+        row.event_detail === "corrected_resend_2026-06-09";
+      if (!isManual) continue;
+      out.last7d += 1;
+      const sentMs = new Date(row.sent_at).getTime();
+      if (Number.isFinite(sentMs) && sentMs >= from24hMs) out.last24h += 1;
+    }
+    if (!data || data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return out;
 }
 
 async function fetchContactableMemberIds() {
@@ -221,9 +253,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const nowMs = Date.now();
-    const [sentCounts, contactable] = await Promise.all([
+    const [sentCounts, contactable, manualCounts] = await Promise.all([
       fetchAllSentCounts(nowMs),
       fetchContactableMemberIds(),
+      fetchManualSendCounts(nowMs),
     ]);
 
     const results = await Promise.all(
@@ -242,6 +275,12 @@ module.exports = async function handler(req, res) {
       success: true,
       generated_at: new Date(nowMs).toISOString(),
       stages: results.filter(Boolean),
+      manual_sends: {
+        key: "manual-batch",
+        label: "Manual batch / corrected resend",
+        sent_last_24h: manualCounts.last24h,
+        sent_last_7d: manualCounts.last7d,
+      },
     });
   } catch (err) {
     console.error("[emails-stats] unexpected failure:", err);
