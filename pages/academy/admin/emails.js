@@ -1202,7 +1202,7 @@ export default function EmailsAdmin() {
       <div style={{ marginTop: 24 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
           <h2 style={{ fontSize: 18, margin: 0 }}>
-            Members (last 90 days of trials)
+            Members (trials started in last 90 days + anyone emailed in that window)
           </h2>
           <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
             {displayRows.length} row{displayRows.length === 1 ? '' : 's'}

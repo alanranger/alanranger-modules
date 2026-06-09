@@ -1,21 +1,14 @@
 // api/admin/emails-members.js
 //
-// Returns one row per member whose trial started in the last N days
-// (default 90), pivoted across all six email stages.
+// Returns one row per member for the /academy/admin/emails table:
+//   - trials that started in the last N days (default 90), plus
+//   - any member with a logged send in that same window (so manual / win-back
+//     batches appear even when trial_start_at is older than the lookback).
 //
-// Each row includes:
-//   member_id, email, name, trial_start_at, trial_end_at, converted_at,
-//   reengagement_send_count, reengagement_opted_out,
-//   sends: { [stageKey]: { sent_at, status, message_id } | null } for all 6,
-//   converted_within_14d_of_send: boolean (last-touch attribution)
-//
-// Query params:
-//   days  - lookback window in days (default 90, max 365)
-//   limit - page size (default 200, max 500)
-//
-// This endpoint only reads. No schema writes. Safe for frequent polling.
+// Each row includes sends for all lifecycle stage_keys from academy_email_events.
 
 const { createClient } = require("@supabase/supabase-js");
+const { STAGE_KEYS } = require("../../lib/emailEvents");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -25,17 +18,10 @@ const supabase =
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
 
-const STAGE_KEYS = [
-  "day-minus-7",
-  "day-minus-1",
-  "day-plus-7",
-  "day-plus-20",
-  "day-plus-30",
-  "day-plus-60",
-];
-
 const DAY_MS = 86400000;
 const ATTRIBUTION_WINDOW_DAYS = 14;
+const TRIAL_SELECT =
+  "member_id, trial_start_at, trial_end_at, converted_at, reengagement_send_count, reengagement_opted_out";
 
 function parseInt10(raw, fallback) {
   const n = parseInt(raw, 10);
@@ -54,17 +40,47 @@ function readDays(req) {
   return Math.min(n, 365);
 }
 
+async function fetchRecentSendMemberIds(sinceIso) {
+  const { data, error } = await supabase
+    .from("academy_email_events")
+    .select("member_id")
+    .gte("sent_at", sinceIso)
+    .eq("dry_run", false)
+    .eq("status", "sent");
+  if (error) throw new Error(`academy_email_events (recent sends): ${error.message}`);
+  return [...new Set((data || []).map((r) => r.member_id).filter(Boolean))];
+}
+
 async function fetchTrialRows(sinceIso, limit) {
   const { data, error } = await supabase
     .from("academy_trial_history")
-    .select(
-      "member_id, trial_start_at, trial_end_at, converted_at, reengagement_send_count, reengagement_opted_out"
-    )
+    .select(TRIAL_SELECT)
     .gte("trial_start_at", sinceIso)
     .order("trial_start_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`trial history: ${error.message}`);
   return data || [];
+}
+
+async function fetchTrialRowsByMemberIds(memberIds) {
+  if (!memberIds.length) return [];
+  const { data, error } = await supabase
+    .from("academy_trial_history")
+    .select(TRIAL_SELECT)
+    .in("member_id", memberIds);
+  if (error) throw new Error(`trial history (by member): ${error.message}`);
+  return data || [];
+}
+
+function mergeTrialRows(primaryRows, extraRows) {
+  const byMember = new Map();
+  (primaryRows || []).forEach((row) => byMember.set(row.member_id, row));
+  (extraRows || []).forEach((row) => {
+    if (!byMember.has(row.member_id)) byMember.set(row.member_id, row);
+  });
+  return Array.from(byMember.values()).sort(
+    (a, b) => new Date(b.trial_start_at).getTime() - new Date(a.trial_start_at).getTime()
+  );
 }
 
 async function fetchMemberContacts(memberIds) {
@@ -88,13 +104,11 @@ async function fetchSendEvents(memberIds) {
     .eq("dry_run", false)
     .order("sent_at", { ascending: true });
   if (error) throw new Error(`academy_email_events: ${error.message}`);
-  // Group by member → latest event per stage_key.
   const byMember = new Map();
   (data || []).forEach((ev) => {
+    if (!STAGE_KEYS.includes(ev.stage_key)) return;
     if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
     const perStage = byMember.get(ev.member_id);
-    // Last write wins → because we sorted ascending, the most recent send
-    // ends up as the stored value.
     perStage[ev.stage_key] = {
       sent_at: ev.sent_at,
       status: ev.status,
@@ -117,7 +131,6 @@ function computeConvertedWithinWindow(convertedAt, sends) {
   const convertedMs = new Date(convertedAt).getTime();
   if (!Number.isFinite(convertedMs)) return { attributed: false, stage_key: null };
   const windowMs = ATTRIBUTION_WINDOW_DAYS * DAY_MS;
-  // Last-touch: find the most-recent send before convertedAt and within the window.
   let best = null;
   STAGE_KEYS.forEach((k) => {
     const ev = sends[k];
@@ -170,7 +183,15 @@ module.exports = async function handler(req, res) {
     const limit = readLimit(req);
     const sinceIso = new Date(Date.now() - days * DAY_MS).toISOString();
 
-    const trialRows = await fetchTrialRows(sinceIso, limit);
+    const [primaryTrials, recentSendMemberIds] = await Promise.all([
+      fetchTrialRows(sinceIso, limit),
+      fetchRecentSendMemberIds(sinceIso),
+    ]);
+    const primaryIds = new Set(primaryTrials.map((r) => r.member_id));
+    const extraIds = recentSendMemberIds.filter((id) => !primaryIds.has(id));
+    const extraTrials = extraIds.length ? await fetchTrialRowsByMemberIds(extraIds) : [];
+    const trialRows = mergeTrialRows(primaryTrials, extraTrials).slice(0, limit);
+
     const memberIds = trialRows.map((r) => r.member_id);
     const [contacts, sendsByMember] = await Promise.all([
       fetchMemberContacts(memberIds),
@@ -188,6 +209,7 @@ module.exports = async function handler(req, res) {
       total: rows.length,
       stage_keys: STAGE_KEYS,
       attribution_window_days: ATTRIBUTION_WINDOW_DAYS,
+      includes_recent_sends: true,
       rows,
     });
   } catch (err) {

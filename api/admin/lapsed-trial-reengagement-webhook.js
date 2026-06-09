@@ -413,6 +413,23 @@ function buildCandidateWindow() {
   };
 }
 
+async function fetchTrialRowsByMemberIds(memberIds) {
+  if (!memberIds.length) return [];
+  const { data, error } = await supabase
+    .from("academy_trial_history")
+    .select(
+      "member_id, trial_end_at, converted_at, reengagement_send_count, reengagement_last_sent_at, reengagement_opted_out, reengagement_unsub_token"
+    )
+    .in("member_id", memberIds)
+    .order("trial_end_at", { ascending: false });
+  if (error) throw error;
+  const latest = new Map();
+  (data || []).forEach((row) => {
+    if (!latest.has(row.member_id)) latest.set(row.member_id, row);
+  });
+  return Array.from(latest.values());
+}
+
 async function fetchTrialRows(windowBounds, limit, backlogOpts = {}) {
   // Pull candidates from academy_trial_history. Per-attempt pacing is applied
   // in code (passesResendGate) so the SQL stays simple and indexable.
@@ -532,7 +549,21 @@ async function deliverEmail({ member, content }) {
   }
 }
 
-async function processCandidate(row, windowBounds, sendEmail) {
+const CORRECTED_RESEND_TAG = "corrected_resend_2026-06-09";
+
+async function correctedResendAlreadySent(supabase, memberId, stageKey) {
+  const { count } = await supabase
+    .from("academy_email_events")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("stage_key", stageKey)
+    .eq("event_detail", CORRECTED_RESEND_TAG)
+    .eq("status", "sent")
+    .eq("dry_run", false);
+  return (count || 0) > 0;
+}
+
+async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
   const contact = await fetchMemberContact(row.member_id);
   if (!contact?.email) {
     return { skipped: true, reason: "no email on file", member_id: row.member_id };
@@ -577,7 +608,18 @@ async function processCandidate(row, windowBounds, sendEmail) {
   }
 
   const stageKey = stageKeyForRewind(attempt);
-  if (sendEmail && stageKey && await memberAlreadySent(supabase, row.member_id, stageKey)) {
+  const correctedResend = !!opts.correctedResend;
+  if (sendEmail && stageKey && correctedResend) {
+    if (await correctedResendAlreadySent(supabase, row.member_id, stageKey)) {
+      return {
+        skipped: true,
+        reason: "corrected_resend_already_sent",
+        stage_key: stageKey,
+        member_id: row.member_id,
+        email: contact.email,
+      };
+    }
+  } else if (sendEmail && stageKey && (await memberAlreadySent(supabase, row.member_id, stageKey))) {
     return {
       skipped: true,
       reason: "already_sent",
@@ -588,7 +630,7 @@ async function processCandidate(row, windowBounds, sendEmail) {
   }
 
   let reserve = null;
-  if (sendEmail) {
+  if (sendEmail && !correctedResend) {
     reserve = await reserveSendSlot(row, windowBounds, token);
     if (!reserve.reserved) {
       return {
@@ -601,7 +643,15 @@ async function processCandidate(row, windowBounds, sendEmail) {
     }
   }
 
-  const result = await deliverEmail({ member: contact, content });
+  const result = await deliverEmail({
+    member: contact,
+    content: correctedResend
+      ? {
+          ...content,
+          subject: `[CORRECTED] ${content.subject}`,
+        }
+      : content,
+  });
   if (result.sent) {
     if (stageKey) {
       await logEmailEvent(supabase, {
@@ -610,8 +660,9 @@ async function processCandidate(row, windowBounds, sendEmail) {
         stage_key: stageKey,
         status: "sent",
         messageId: result.messageId,
-        subject: content.subject,
+        subject: correctedResend ? `[CORRECTED] ${content.subject}` : content.subject,
         dryRun: false,
+        eventDetail: correctedResend ? CORRECTED_RESEND_TAG : null,
       });
     }
   } else if (sendEmail && reserve?.reserved) {
@@ -677,12 +728,33 @@ function parseBacklogParams(req) {
   const rawBatch = parseInt(req.query?.batchSize || "", 10);
   const rawCount = parseInt(req.query?.sendCountEq ?? "", 10);
   const backlogRaw = String(req.query?.backlogRun || "").toLowerCase();
+  const correctedRaw = String(req.query?.correctedResend || "").toLowerCase();
   const backlogRun = ["1", "true", "yes", "on"].includes(backlogRaw);
+  const correctedResend = ["1", "true", "yes", "on"].includes(correctedRaw);
+  const memberIdsRaw = String(req.query?.memberIds || "").trim();
+  const memberIds = memberIdsRaw
+    ? memberIdsRaw.split(",").map((s) => s.trim()).filter(Boolean)
+    : null;
   return {
     backlogRun,
+    correctedResend,
+    memberIds,
     sendCountEq: Number.isFinite(rawCount) ? rawCount : null,
     batchSize: Number.isFinite(rawBatch) && rawBatch > 0 ? rawBatch : null,
   };
+}
+
+async function fetchBrokenLinkMemberIds() {
+  const { data, error } = await supabase
+    .from("academy_email_events")
+    .select("member_id")
+    .eq("stage_key", "day-plus-30")
+    .eq("status", "sent")
+    .eq("dry_run", false)
+    .gte("sent_at", "2026-06-09T12:00:00+00")
+    .lt("sent_at", "2026-06-09T13:30:00+00");
+  if (error) throw error;
+  return [...new Set((data || []).map((r) => r.member_id))];
 }
 
 // Accept either the Vercel Cron `authorization: Bearer CRON_SECRET` header
@@ -757,7 +829,7 @@ module.exports = async (req, res) => {
     return runTestMode(req, res, sendEmail);
   }
 
-  if (sendEmail && !isSingleRecipientTest && !backlog.backlogRun && !isNineAmLondon()) {
+  if (sendEmail && !isSingleRecipientTest && !backlog.backlogRun && !backlog.correctedResend && !isNineAmLondon()) {
     const londonHour = new Date().toLocaleString("en-GB", {
       timeZone: "Europe/London",
       hour: "numeric",
@@ -790,14 +862,30 @@ module.exports = async (req, res) => {
     : parseLimit(req);
 
   try {
-    const rows = await fetchTrialRows(windowBounds, limit, backlog);
-    const eligible = rows.filter((r) => passesResendGate(r, windowBounds.now));
-    const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize);
+    let rows;
+    if (backlog.correctedResend) {
+      const targetIds = backlog.memberIds?.length
+        ? backlog.memberIds
+        : await fetchBrokenLinkMemberIds();
+      rows = await fetchTrialRowsByMemberIds(targetIds);
+    } else {
+      rows = await fetchTrialRows(windowBounds, limit, backlog);
+    }
+    let eligible = backlog.correctedResend
+      ? rows.filter((r) => !r.converted_at && !r.reengagement_opted_out)
+      : rows.filter((r) => passesResendGate(r, windowBounds.now));
+    if (backlog.correctedResend && backlog.memberIds?.length) {
+      const targetIds = new Set(backlog.memberIds);
+      eligible = eligible.filter((r) => targetIds.has(r.member_id));
+    }
+    const runOpts = { correctedResend: backlog.correctedResend };
+    const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize, runOpts);
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
       send_email: sendEmail,
       backlog_run: backlog.backlogRun,
+      corrected_resend: backlog.correctedResend,
       send_count_eq: backlog.sendCountEq,
       batch_size: backlog.batchSize,
       window: {
@@ -820,7 +908,7 @@ module.exports = async (req, res) => {
   }
 };
 
-async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize) {
+async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize, runOpts = {}) {
   const results = [];
   let sent = 0;
   let failed = 0;
@@ -833,8 +921,6 @@ async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize) {
     const row = eligible[i];
     if (batchSize && sendEmail && sent >= batchSize) break;
     if (batchSize && !sendEmail && results.length >= batchSize) break;
-    // Dry-run explores the whole list (it doesn't actually send mail) so the
-    // time-budget guard only blocks live sends. This keeps previews accurate.
     if (sendEmail && Date.now() - startTs > TIME_BUDGET_MS) {
       timeBudgetExhausted = true;
       deferred = eligible.length - results.length;
@@ -845,7 +931,7 @@ async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize) {
       });
       break;
     }
-    const outcome = await processCandidate(row, windowBounds, sendEmail);
+    const outcome = await processCandidate(row, windowBounds, sendEmail, runOpts);
     results.push(outcome);
     if (outcome.sent) sent++;
     else if (!outcome.skipped) failed++;

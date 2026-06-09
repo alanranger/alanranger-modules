@@ -102,6 +102,10 @@ async function invokeBatch(sendCountEq) {
 async function runCohort(cohort, runLog) {
   const cohortLog = { label: cohort.label, sendCountEq: cohort.sendCountEq, batches: [] };
   while (true) {
+    if (fs.existsSync(path.join(__dirname, "..", "WINBACK-BACKLOG-STOP"))) {
+      cohortLog.stoppedReason = "stop_file";
+      break;
+    }
     const { status, body } = await invokeBatch(cohort.sendCountEq);
     if (status !== 200 || !body.success) {
       throw new Error(`${cohort.label} batch failed: ${JSON.stringify(body)}`);
@@ -127,6 +131,10 @@ async function runCohort(cohort, runLog) {
     if (dryRun) break;
     console.log(`Waiting ${DELAY_MS / 60000} minutes before next batch…`);
     await sleep(DELAY_MS);
+    if (fs.existsSync(path.join(__dirname, "..", "WINBACK-BACKLOG-STOP"))) {
+      cohortLog.stoppedReason = "stop_file";
+      break;
+    }
   }
   return cohortLog;
 }
