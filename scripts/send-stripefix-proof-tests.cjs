@@ -1,6 +1,9 @@
 /**
- * Send [STRIPEFIX] proof test — upgradeUrl must 302 to checkout.stripe.com with REWIND20.
- * Usage: node scripts/send-stripefix-proof-tests.cjs
+ * Send [STRIPEFIX] proof test using a PRODUCTION-signed upgradeUrl for a real
+ * expired-trial member (default info@alanranger.com). Local token signing fails
+ * on Vercel when secrets differ — always dry-run the live webhook first.
+ *
+ * Usage: node scripts/send-stripefix-proof-tests.cjs [expiredMemberEmail]
  */
 require("dotenv").config({ path: ".env.local" });
 require("dotenv").config();
@@ -8,84 +11,52 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
-const handler = require("../api/admin/lapsed-trial-reengagement-webhook");
-const { buildPersonalUpgradeUrl, REENGAGE_CHECKOUT_URL } = require("../lib/reengage-link");
 const { LIFECYCLE_BCC } = require("../lib/lifecycleEmailConfig");
 
 const TEST_TO = LIFECYCLE_BCC;
+const MEMBER_EMAIL = process.argv[2] || "info@alanranger.com";
+const API_BASE = process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
 const OUT_PATH =
   "C:/Users/alan/Google Drive/Claude shared resources/Cursor Outputs for Claude/STRIPEFIX-PROOF-LATEST.json";
 
-async function invokeWebhook(query) {
+async function fetchProductionPreview(memberEmail) {
   const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
-  const req = { method: "GET", query: { ...query, secret }, headers: {} };
-  return new Promise((resolve, reject) => {
-    const res = {
-      statusCode: 200,
-      status(code) {
-        this.statusCode = code;
-        return this;
-      },
-      json(body) {
-        resolve({ status: this.statusCode, body });
-      },
-    };
-    handler(req, res).catch(reject);
-  });
+  if (!secret) throw new Error("ORPHANED_WEBHOOK_SECRET missing — cannot call production webhook");
+  const url =
+    `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook` +
+    `?secret=${encodeURIComponent(secret)}` +
+    `&testEmail=${encodeURIComponent(memberEmail)}` +
+    `&sendEmail=false`;
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || `Production preview failed (${res.status})`);
+  }
+  return body.result;
 }
 
-async function verifyStripeHop(upgradeUrl) {
-  const usesCheckoutEndpoint = upgradeUrl.startsWith(REENGAGE_CHECKOUT_URL);
-  let location = null;
-  let isStripeCheckout = false;
-  if (!usesCheckoutEndpoint) {
-    return { usesCheckoutEndpoint, redirectStatus: null, redirectLocation: null, isStripeCheckout: false };
-  }
-
-  // Local handler test (works before Vercel deploy)
-  try {
-    const checkoutHandler = require("../api/academy/reengage-checkout");
-    const req = { method: "GET", query: { t: new URL(upgradeUrl).searchParams.get("t") } };
-    location = await new Promise((resolve, reject) => {
-      const res = {
-        statusCode: 302,
-        setHeader() {},
-        redirect(code, url) {
-          this.statusCode = code;
-          resolve(url);
-        },
-        writeHead(code, headers) {
-          this.statusCode = code;
-          resolve(headers.Location || headers.location);
-        },
-        end() {},
-      };
-      checkoutHandler(req, res).catch(reject);
-    });
-    isStripeCheckout = !!(location && location.includes("checkout.stripe.com"));
-    if (isStripeCheckout) {
-      return { usesCheckoutEndpoint, redirectStatus: 302, redirectLocation: location, isStripeCheckout, via: "local_handler" };
-    }
-  } catch (err) {
-    console.warn("[stripefix-proof] local handler test failed:", err.message);
-  }
-
+async function verifyLiveStripeHop(upgradeUrl) {
   const res = await fetch(upgradeUrl, { redirect: "manual" });
-  location = res.headers.get("location");
-  isStripeCheckout = !!(location && location.includes("checkout.stripe.com"));
-  return { usesCheckoutEndpoint, redirectStatus: res.status, redirectLocation: location, isStripeCheckout, via: "live_fetch" };
+  const location = res.headers.get("location");
+  return {
+    redirectStatus: res.status,
+    redirectLocation: location,
+    isStripeCheckout: !!(location && location.includes("checkout.stripe.com")),
+    isDashboardFallback: !!(location && location.includes("/academy/dashboard")),
+  };
 }
 
 async function main() {
-  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const memberId = "stripefix-proof-member";
-  const email = TEST_TO;
-  const upgradeUrl = buildPersonalUpgradeUrl(memberId, email, Date.now() + 7 * 86400000);
-  const hopProof = await verifyStripeHop(upgradeUrl);
+  const preview = await fetchProductionPreview(MEMBER_EMAIL);
+  const upgradeUrl = preview.upgrade_url;
+  if (!upgradeUrl) throw new Error("Production preview missing upgrade_url");
 
-  const dry = await invokeWebhook({ testEmail: email, sendEmail: "false" });
-  const renderedUrl = dry.body?.result?.upgrade_url || upgradeUrl;
-  const renderedHop = renderedUrl !== upgradeUrl ? await verifyStripeHop(renderedUrl) : hopProof;
+  const hopProof = await verifyLiveStripeHop(upgradeUrl);
+  if (!hopProof.isStripeCheckout) {
+    throw new Error(
+      `Live hop did not reach Stripe (status=${hopProof.redirectStatus}, location=${hopProof.redirectLocation})`
+    );
+  }
 
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SMTP_HOST || "smtp.gmail.com",
@@ -97,11 +68,12 @@ async function main() {
     },
   });
 
-  const subject = `[STRIPEFIX – day-plus-20] ${dry.body?.result?.preview?.subject || "REWIND20 direct Stripe test"}`;
+  const subject = `[STRIPEFIX v2 – day-plus-20] ${preview.preview?.subject || "REWIND20 direct Stripe test"}`;
   const body =
-    (dry.body?.result?.preview?.body || "") +
-    `\n\n---\nProof upgradeUrl (direct Stripe): ${renderedUrl}\n` +
-    `Expected: one click → checkout.stripe.com with REWIND20 applied, email pre-filled.\n`;
+    (preview.preview?.body || "") +
+    `\n\n---\nProof upgradeUrl (production-signed, real expired member ${MEMBER_EMAIL}):\n${upgradeUrl}\n\n` +
+    `Click logged OUT → should land on checkout.stripe.com with REWIND20 (£59), email pre-filled.\n` +
+    `Member: ${preview.member_id || preview.name || MEMBER_EMAIL} · days lapsed: ${preview.days_lapsed}\n`;
 
   const info = await transporter.sendMail({
     from: `"Alan Ranger Photography Academy" <${process.env.ORPHANED_EMAIL_FROM}>`,
@@ -112,8 +84,11 @@ async function main() {
 
   const out = {
     at: new Date().toISOString(),
-    hopProof: renderedHop,
-    upgradeUrl: renderedUrl,
+    memberEmail: MEMBER_EMAIL,
+    memberId: preview.member_id,
+    daysLapsed: preview.days_lapsed,
+    upgradeUrl,
+    hopProof,
     messageId: info.messageId,
   };
   fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
