@@ -571,9 +571,8 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
   const token = row.reengagement_unsub_token || generateUnsubToken();
   const attempt = (row.reengagement_send_count || 0) + 1;
   const daysLapsed = daysBetween(row.trial_end_at, windowBounds.now);
-  // Per-member signed link: scoped to the REWIND20 personal 7-day window so
-  // the token expires at the same moment the coupon does. Pre-fills email on
-  // login and force-opens the upgrade modal when a session is already active.
+  // Per-member signed link: scoped to the REWIND20 personal 7-day window.
+  // Points at /api/academy/reengage-checkout → Stripe Checkout with REWIND20 applied.
   const windowExpiresAtMs = windowBounds.now + CAMPAIGN.windowDays * 86400000;
   const upgradeUrl = buildPersonalUpgradeUrl(row.member_id, contact.email, windowExpiresAtMs);
   const dashboardUrl = PLAIN_DASHBOARD_URL;
