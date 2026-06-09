@@ -1,7 +1,7 @@
 // api/academy/reengage-checkout.js
 // Email-link handler: verify signed ?t= token → create Stripe Checkout with
-// REWIND20 applied → 302 to checkout.stripe.com (email pre-filled).
-// Win-back REWIND emails point {{upgradeUrl}} here — NOT the dashboard modal.
+// REWIND20/SAVE20 applied → 302 to checkout.stripe.com (email pre-filled).
+// Stateless — no Memberstack/session check; login cookies cannot change this route.
 
 const {
   createUpgradeCheckoutSession,
@@ -10,7 +10,16 @@ const {
   SUCCESS_PATH_DEFAULT,
   CANCEL_PATH_DEFAULT,
 } = require("../../lib/upgradeCheckoutSession");
-const { verifyReengageToken, DASHBOARD_URL } = require("../../lib/reengage-link");
+const { verifyReengageToken } = require("../../lib/reengage-link");
+
+function sendCheckoutError(res, status, message) {
+  res.setHeader("Cache-Control", "no-store");
+  res.status(status).send(
+    `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:32em;margin:2em auto">` +
+      `<h1>Checkout link problem</h1><p>${message}</p>` +
+      `<p>Reply to your Academy email if this keeps happening.</p></body></html>`
+  );
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -23,8 +32,11 @@ module.exports = async (req, res) => {
 
   if (!result.ok || !result.payload?.mid || !result.payload?.em) {
     console.warn(`[reengage-checkout] token rejected: ${result.reason || "missing_fields"}`);
-    res.setHeader("Cache-Control", "no-store");
-    return res.redirect(302, DASHBOARD_URL);
+    return sendCheckoutError(
+      res,
+      400,
+      "This upgrade link is invalid or has expired. Please use the link from your latest email."
+    );
   }
 
   try {
@@ -49,10 +61,17 @@ module.exports = async (req, res) => {
       `[reengage-checkout] session ${checkout.sessionId} for ${result.payload.mid} coupon=${checkout.couponCode || "none"}`
     );
     res.setHeader("Cache-Control", "no-store");
+    if (req.method === "HEAD") {
+      res.setHeader("Location", checkout.url);
+      return res.status(302).end();
+    }
     return res.redirect(302, checkout.url);
   } catch (err) {
     console.error("[reengage-checkout] failed:", err.message);
-    res.setHeader("Cache-Control", "no-store");
-    return res.redirect(302, DASHBOARD_URL);
+    return sendCheckoutError(
+      res,
+      502,
+      "We could not start Stripe checkout just now. Please try the link again in a minute."
+    );
   }
 };

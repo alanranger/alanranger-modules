@@ -19,7 +19,7 @@ const OUT_PATH =
 const PROOF_STAGES = [
   {
     stage: "day-plus-7",
-    subjectPrefix: "[PROVE – day-plus-7 SAVE20]",
+    subjectPrefix: "[ORDERFIX – day-plus-7 SAVE20]",
     coupon: "SAVE20",
     fetchPreview: (secret) =>
       `${API_BASE}/api/admin/trial-expiry-reminder-webhook?secret=${encodeURIComponent(secret)}&testEmail=${encodeURIComponent(MEMBER_EMAIL)}&forceDaysUntilExpiry=-7&sendEmail=false`,
@@ -28,7 +28,7 @@ const PROOF_STAGES = [
   },
   {
     stage: "day-plus-20",
-    subjectPrefix: "[PROVE – day-plus-20 REWIND20]",
+    subjectPrefix: "[ORDERFIX – day-plus-20 REWIND20]",
     coupon: "REWIND20",
     fetchPreview: (secret) =>
       `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook?secret=${encodeURIComponent(secret)}&testEmail=${encodeURIComponent(MEMBER_EMAIL)}&forceAttempt=1&sendEmail=false`,
@@ -37,7 +37,7 @@ const PROOF_STAGES = [
   },
   {
     stage: "day-plus-30",
-    subjectPrefix: "[PROVE – day-plus-30 REWIND20]",
+    subjectPrefix: "[ORDERFIX – day-plus-30 REWIND20]",
     coupon: "REWIND20",
     fetchPreview: (secret) =>
       `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook?secret=${encodeURIComponent(secret)}&testEmail=${encodeURIComponent(MEMBER_EMAIL)}&forceAttempt=2&sendEmail=false`,
@@ -46,7 +46,7 @@ const PROOF_STAGES = [
   },
   {
     stage: "day-plus-60",
-    subjectPrefix: "[PROVE – day-plus-60 REWIND20]",
+    subjectPrefix: "[ORDERFIX – day-plus-60 REWIND20]",
     coupon: "REWIND20",
     fetchPreview: (secret) =>
       `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook?secret=${encodeURIComponent(secret)}&testEmail=${encodeURIComponent(MEMBER_EMAIL)}&forceAttempt=3&sendEmail=false`,
@@ -55,7 +55,7 @@ const PROOF_STAGES = [
   },
   {
     stage: "day-plus-90",
-    subjectPrefix: "[PROVE – day-plus-90 REWIND20]",
+    subjectPrefix: "[ORDERFIX – day-plus-90 REWIND20]",
     coupon: "REWIND20",
     fetchPreview: (secret) =>
       `${API_BASE}/api/admin/triggered-email-webhook?secret=${encodeURIComponent(secret)}&stageKey=day-plus-90&testEmail=${encodeURIComponent(MEMBER_EMAIL)}&sendEmail=false`,
@@ -69,11 +69,16 @@ const PROOF_STAGES = [
 
 function ctaOrderOk(body) {
   if (!body) return false;
-  const upgradeIdx = body.indexOf("{{upgradeUrl}}") >= 0 ? body.indexOf("upgradeUrl") : body.search(/reengage-checkout|Come back|Pick up where|save with SAVE20|save with REWIND20/i);
-  const dashIdx = body.search(/open your dashboard|dashboardUrl/i);
-  if (upgradeIdx < 0) return null;
+  const stripeIdx = body.search(/Do this next|Upgrade now and save|reengage-checkout/i);
+  const dashIdx = body.search(/Once you've upgraded|log back into your dashboard/i);
+  if (stripeIdx < 0) return false;
   if (dashIdx < 0) return true;
-  return upgradeIdx < dashIdx;
+  return stripeIdx < dashIdx;
+}
+
+function hasProofScaffolding(body) {
+  if (!body) return false;
+  return /Proof upgradeUrl|Click logged OUT|production-signed/i.test(body);
 }
 
 async function verifyLiveHop(upgradeUrl) {
@@ -120,10 +125,11 @@ async function main() {
     }
 
     const subject = `${stage.subjectPrefix} ${preview?.subject || stage.stage}`;
-    const text =
-      (preview?.body || "") +
-      `\n\n---\nProof upgradeUrl (${stage.coupon}, production-signed):\n${upgradeUrl}\n` +
-      `Click logged OUT → checkout.stripe.com at £59 with ${stage.coupon}.\n`;
+    const text = preview?.body || "";
+
+    if (hasProofScaffolding(text)) {
+      throw new Error(`${stage.stage} body still contains proof scaffolding`);
+    }
 
     const info = await transporter.sendMail({
       from: `"Alan Ranger Photography Academy" <${process.env.ORPHANED_EMAIL_FROM}>`,
@@ -137,7 +143,8 @@ async function main() {
       coupon: stage.coupon,
       upgradeUrl,
       hopProof,
-      primaryCtaFirst: ctaOrderOk(preview?.body || text),
+      primaryCtaFirst: ctaOrderOk(text),
+      noProofScaffolding: !hasProofScaffolding(text),
       messageId: info.messageId,
       subject,
     });
