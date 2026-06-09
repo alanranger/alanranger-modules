@@ -28,6 +28,7 @@ const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
 const TRIAL_TILE_STAGES = STAGES.filter((s) => !s.key.startsWith('paid-'));
 const PAID_TILE_STAGES = STAGES.filter((s) => s.key.startsWith('paid-'));
 const MANUAL_TILE_KEY = 'manual-batch';
+const DAY_MS = 86400000;
 const TILE_SEND_LOOKBACK_MS = 7 * DAY_MS;
 const TILE_GRID_STYLE = {
   display: 'grid',
@@ -255,8 +256,6 @@ async function fireTestSend(stage, email) {
 // ─────────────────────────────────────────────────────────────────────────
 // Client-side eligibility check (keeps UI filter logic matched to webhooks)
 // ─────────────────────────────────────────────────────────────────────────
-
-const DAY_MS = 86400000;
 
 const REWIND_ATTEMPT_BY_STAGE = {
   'day-plus-20': 1,
