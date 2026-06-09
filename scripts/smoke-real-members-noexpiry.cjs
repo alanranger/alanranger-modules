@@ -11,7 +11,6 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
-const { createClient } = require("@supabase/supabase-js");
 const { LIFECYCLE_BCC } = require("../lib/lifecycleEmailConfig");
 const crypto = require("crypto");
 const {
@@ -27,45 +26,37 @@ const API_BASE = process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules
 const OUT_PATH =
   "C:/Users/alan/Google Drive/Claude shared resources/Cursor Outputs for Claude/NOEXPIRY-REAL-MEMBER-SMOKE-LATEST.json";
 
-function getSupabase() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Supabase not configured in .env.local");
-  return createClient(url, key);
+
+async function fetchRealMembersFromProduction(secret, limit) {
+  const url =
+    `${API_BASE}/api/admin/lapsed-trial-reengagement-webhook` +
+    `?secret=${encodeURIComponent(secret)}&sendEmail=false&limit=${limit * 3}`;
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok || !body.success) throw new Error(body.error || "production candidate dry-run failed");
+
+  const rows = (body.email_results || []).filter(
+    (r) =>
+      r.email &&
+      r.email.toLowerCase() !== EXCLUDE_EMAIL &&
+      r.upgrade_url &&
+      r.dry_run
+  );
+  if (!rows.length) throw new Error("No real member dry-run previews returned from production");
+  return rows.slice(0, limit).map((r) => ({
+    member_id: r.member_id,
+    email: r.email,
+    name: r.name || "",
+    days_lapsed: r.days_lapsed,
+    send_count: (r.attempt || 1) - 1,
+    upgrade_url: r.upgrade_url,
+    preview: r.preview,
+  }));
 }
 
-async function fetchRealMembers(supabase, limit) {
-  const { data: trials, error } = await supabase
-    .from("academy_trial_history")
-    .select("member_id, trial_end_at, reengagement_send_count")
-    .is("converted_at", null)
-    .eq("reengagement_opted_out", false)
-    .order("trial_end_at", { ascending: true })
-    .limit(limit * 4);
-  if (error) throw error;
-
-  const picked = [];
-  for (const row of trials || []) {
-    if (picked.length >= limit) break;
-    const { data: contact } = await supabase
-      .from("ms_members_cache")
-      .select("member_id, email, name")
-      .eq("member_id", row.member_id)
-      .maybeSingle();
-    const email = (contact?.email || "").toLowerCase();
-    if (!email || email === EXCLUDE_EMAIL) continue;
-    const daysLapsed = Math.floor((Date.now() - new Date(row.trial_end_at).getTime()) / DAY_MS);
-    if (daysLapsed < 20) continue;
-    picked.push({
-      member_id: row.member_id,
-      email: contact.email,
-      name: contact.name || "",
-      days_lapsed: daysLapsed,
-      send_count: row.reengagement_send_count || 0,
-    });
-  }
-  if (!picked.length) throw new Error("No eligible real members found (exclude info@, need 20+ days lapsed)");
-  return picked;
+async function fetchRealMembers(_supabase, limit) {
+  const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
+  return fetchRealMembersFromProduction(secret, limit);
 }
 
 async function fetchProductionPreview(secret, memberEmail, forceAttempt = 1) {
@@ -126,15 +117,20 @@ function signLegacyTokenWithPastExp(memberId, email, couponCode) {
 }
 
 async function smokeMember(secret, member) {
-  const forceAttempt = Math.min(Math.max((member.send_count || 0) + 1, 1), 3);
-  const preview = await fetchProductionPreview(secret, member.email, forceAttempt);
-  const upgradeUrl = preview.upgrade_url;
+  const upgradeUrl = member.upgrade_url;
   if (!upgradeUrl?.includes("reengage-checkout")) {
+    const forceAttempt = Math.min(Math.max((member.send_count || 0) + 1, 1), 3);
+    const preview = await fetchProductionPreview(secret, member.email, forceAttempt);
+    member.upgrade_url = preview.upgrade_url;
+    member.preview = preview.preview;
+  }
+  const finalUrl = member.upgrade_url;
+  if (!finalUrl?.includes("reengage-checkout")) {
     throw new Error(`${member.email}: missing reengage-checkout URL`);
   }
-  const token = extractToken(upgradeUrl);
+  const token = extractToken(finalUrl);
   const payload = decodeReengageTokenPayload(token);
-  const freshHop = await hopCheckout(upgradeUrl);
+  const freshHop = await hopCheckout(finalUrl);
 
   const legacyPastExpToken = signLegacyTokenWithPastExp(member.member_id, member.email, "REWIND20");
   const pastExpVerify = legacyPastExpToken ? verifyReengageToken(legacyPastExpToken) : { ok: false };
@@ -147,13 +143,13 @@ async function smokeMember(secret, member) {
     email: member.email,
     name: member.name,
     days_lapsed: member.days_lapsed,
-    upgradeUrl,
+    upgradeUrl: finalUrl,
     payload,
     hasExpField: Object.prototype.hasOwnProperty.call(payload || {}, "exp"),
     freshHop,
     pastExpVerifyLocal: pastExpVerify.ok,
     pastExpHopProduction: pastExpHop,
-    subject: preview.preview?.subject,
+    subject: member.preview?.subject,
   };
 }
 
@@ -161,8 +157,7 @@ async function main() {
   const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
   if (!secret) throw new Error("ORPHANED_WEBHOOK_SECRET missing");
 
-  const supabase = getSupabase();
-  const members = await fetchRealMembers(supabase, LIMIT);
+  const members = await fetchRealMembers(null, LIMIT);
   const results = [];
   for (const member of members) {
     results.push(await smokeMember(secret, member));
