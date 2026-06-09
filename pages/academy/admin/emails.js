@@ -25,8 +25,15 @@ const STAGES = EMAIL_STAGES.map(mapStageForUi);
 
 const STAGE_KEYS = STAGES.map((s) => s.key);
 const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
+const TRIAL_TILE_STAGES = STAGES.filter((s) => !s.key.startsWith('paid-'));
+const PAID_TILE_STAGES = STAGES.filter((s) => s.key.startsWith('paid-'));
 const MANUAL_TILE_KEY = 'manual-batch';
 const TILE_SEND_LOOKBACK_MS = 7 * DAY_MS;
+const TILE_GRID_STYLE = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+  gap: 12,
+};
 
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
@@ -425,36 +432,56 @@ function ManualBatchTile({ manualSends, statsLoadFailed, active, onClick }) {
   );
 }
 
+function TileSection({ title, children }) {
+  return (
+    <section style={{ marginBottom: 24 }}>
+      <h2 style={{
+        fontSize: 15, fontWeight: 600, margin: '0 0 10px', color: 'var(--ar-text-muted)',
+      }}
+      >
+        {title}
+      </h2>
+      <div style={TILE_GRID_STYLE}>{children}</div>
+    </section>
+  );
+}
+
 function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileClick, nowMs }) {
   const byKey = useMemo(() => {
     const m = {};
     (stats || []).forEach((s) => { m[s.key] = s; });
     return m;
   }, [stats]);
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-      gap: 12, marginBottom: 20,
-    }}>
-      {STAGES.map((s) => (
-        <StageTile
-          key={s.key}
-          stage={s}
-          stats={byKey[s.key]}
-          statsLoadFailed={statsLoadFailed}
-          active={activeKey === s.key}
-          onClick={onTileClick}
-          nowMs={nowMs}
-        />
-      ))}
-      <ManualBatchTile
-        manualSends={manualSends}
+
+  function renderStageTile(stage) {
+    return (
+      <StageTile
+        key={stage.key}
+        stage={stage}
+        stats={byKey[stage.key]}
         statsLoadFailed={statsLoadFailed}
-        active={activeKey === MANUAL_TILE_KEY}
+        active={activeKey === stage.key}
         onClick={onTileClick}
+        nowMs={nowMs}
       />
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <TileSection title="Trials">
+        {TRIAL_TILE_STAGES.map(renderStageTile)}
+        <ManualBatchTile
+          manualSends={manualSends}
+          statsLoadFailed={statsLoadFailed}
+          active={activeKey === MANUAL_TILE_KEY}
+          onClick={onTileClick}
+        />
+      </TileSection>
+      <TileSection title="Paid">
+        {PAID_TILE_STAGES.map(renderStageTile)}
+      </TileSection>
+    </>
   );
 }
 
