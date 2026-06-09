@@ -413,10 +413,10 @@ function buildCandidateWindow() {
   };
 }
 
-async function fetchTrialRows(windowBounds, limit) {
+async function fetchTrialRows(windowBounds, limit, backlogOpts = {}) {
   // Pull candidates from academy_trial_history. Per-attempt pacing is applied
   // in code (passesResendGate) so the SQL stays simple and indexable.
-  const { data, error } = await supabase
+  let query = supabase
     .from("academy_trial_history")
     .select(
       "member_id, trial_end_at, converted_at, reengagement_send_count, reengagement_last_sent_at, reengagement_opted_out, reengagement_unsub_token"
@@ -424,8 +424,12 @@ async function fetchTrialRows(windowBounds, limit) {
     .is("converted_at", null)
     .eq("reengagement_opted_out", false)
     .gte("trial_end_at", windowBounds.minEnd)
-    .lte("trial_end_at", windowBounds.maxEnd)
-    .order("trial_end_at", { ascending: false })
+    .lte("trial_end_at", windowBounds.maxEnd);
+  if (backlogOpts.sendCountEq != null && !Number.isNaN(backlogOpts.sendCountEq)) {
+    query = query.eq("reengagement_send_count", backlogOpts.sendCountEq);
+  }
+  const { data, error } = await query
+    .order("trial_end_at", { ascending: backlogOpts.backlogRun === true })
     .limit(limit);
   if (error) throw error;
   return data || [];
@@ -669,6 +673,18 @@ function parseLimit(req) {
   return Math.min(raw, CAMPAIGN.defaultLimit);
 }
 
+function parseBacklogParams(req) {
+  const rawBatch = parseInt(req.query?.batchSize || "", 10);
+  const rawCount = parseInt(req.query?.sendCountEq ?? "", 10);
+  const backlogRaw = String(req.query?.backlogRun || "").toLowerCase();
+  const backlogRun = ["1", "true", "yes", "on"].includes(backlogRaw);
+  return {
+    backlogRun,
+    sendCountEq: Number.isFinite(rawCount) ? rawCount : null,
+    batchSize: Number.isFinite(rawBatch) && rawBatch > 0 ? rawBatch : null,
+  };
+}
+
 // Accept either the Vercel Cron `authorization: Bearer CRON_SECRET` header
 // (auto-set by Vercel on scheduled invocations), the existing
 // `?secret=ORPHANED_WEBHOOK_SECRET` param / `x-webhook-secret` header, or
@@ -733,6 +749,7 @@ module.exports = async (req, res) => {
   }
 
   const sendEmail = shouldSendEmail(req);
+  const backlog = parseBacklogParams(req);
   const testEmail = req.query.testEmail;
   const isSingleRecipientTest =
     testEmail !== undefined && testEmail !== null && String(testEmail).trim() !== "";
@@ -740,7 +757,7 @@ module.exports = async (req, res) => {
     return runTestMode(req, res, sendEmail);
   }
 
-  if (sendEmail && !isSingleRecipientTest && !isNineAmLondon()) {
+  if (sendEmail && !isSingleRecipientTest && !backlog.backlogRun && !isNineAmLondon()) {
     const londonHour = new Date().toLocaleString("en-GB", {
       timeZone: "Europe/London",
       hour: "numeric",
@@ -768,16 +785,21 @@ module.exports = async (req, res) => {
   }
 
   const windowBounds = buildCandidateWindow();
-  const limit = parseLimit(req);
+  const limit = backlog.batchSize
+    ? Math.min(Math.max(backlog.batchSize * 5, 100), CAMPAIGN.defaultLimit)
+    : parseLimit(req);
 
   try {
-    const rows = await fetchTrialRows(windowBounds, limit);
+    const rows = await fetchTrialRows(windowBounds, limit, backlog);
     const eligible = rows.filter((r) => passesResendGate(r, windowBounds.now));
-    const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail);
+    const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize);
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
       send_email: sendEmail,
+      backlog_run: backlog.backlogRun,
+      send_count_eq: backlog.sendCountEq,
+      batch_size: backlog.batchSize,
       window: {
         reach_back_days: CAMPAIGN.reachBackDays,
         first_attempt_min_days_since_expiry: CAMPAIGN.firstAttemptMinDaysSinceExpiry,
@@ -798,7 +820,7 @@ module.exports = async (req, res) => {
   }
 };
 
-async function runCampaignBatch(eligible, windowBounds, sendEmail) {
+async function runCampaignBatch(eligible, windowBounds, sendEmail, batchSize) {
   const results = [];
   let sent = 0;
   let failed = 0;
@@ -807,6 +829,7 @@ async function runCampaignBatch(eligible, windowBounds, sendEmail) {
   const startTs = Date.now();
 
   for (const row of eligible) {
+    if (batchSize && sent >= batchSize) break;
     // Dry-run explores the whole list (it doesn't actually send mail) so the
     // time-budget guard only blocks live sends. This keeps previews accurate.
     if (sendEmail && Date.now() - startTs > TIME_BUDGET_MS) {
