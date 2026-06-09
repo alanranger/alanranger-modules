@@ -1,8 +1,8 @@
 // api/admin/lapsed-trial-reengagement-webhook.js
-// Win-back (REWIND20) re-engagement webhook. Designed to be called weekly by
-// Zapier (Schedule → Webhook). Identifies members whose trial ended 20–180
-// days ago, never converted, and emails them a personal £20-off offer valid
-// for 7 days from send.
+// Win-back (REWIND20) re-engagement webhook. Called daily by Vercel Cron
+// (08:00 + 09:00 UTC with London-hour gate) for day-plus-20/30/60 rungs.
+// Identifies members whose trial ended 20–180 days ago, never converted,
+// and emails them a personal £20-off offer valid for 7 days from send.
 //
 // Cadence (days since trial expiry):
 //   Attempt 1:  day 20 (earliest)           — REWIND20 coupon, 7-day window
@@ -40,6 +40,7 @@ const {
   DASHBOARD_URL: PLAIN_DASHBOARD_URL,
 } = require("../../lib/reengage-link");
 const { isWinbackExhausted } = require("../../lib/winback-exhaustion");
+const { getStageByKey } = require("../../lib/emailStages");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -640,6 +641,21 @@ async function processCandidate(row, windowBounds, sendEmail) {
 // Request handler
 // ─────────────────────────────────────────────────────────────────────────
 
+function isNineAmLondon() {
+  const hourStr = new Date().toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    hour: "numeric",
+    hour12: false,
+  });
+  return Number.parseInt(hourStr, 10) === 9;
+}
+
+function isWinbackRewindLive() {
+  return ["day-plus-20", "day-plus-30", "day-plus-60"].some(
+    (key) => getStageByKey(key)?.enabled === true
+  );
+}
+
 function shouldSendEmail(req) {
   const v = req.query?.sendEmail;
   if (v === undefined || v === null || String(v).trim() === "") return true;
@@ -717,8 +733,38 @@ module.exports = async (req, res) => {
   }
 
   const sendEmail = shouldSendEmail(req);
+  const testEmail = req.query.testEmail;
+  const isSingleRecipientTest =
+    testEmail !== undefined && testEmail !== null && String(testEmail).trim() !== "";
   if (req.query.testEmail) {
     return runTestMode(req, res, sendEmail);
+  }
+
+  if (sendEmail && !isSingleRecipientTest && !isNineAmLondon()) {
+    const londonHour = new Date().toLocaleString("en-GB", {
+      timeZone: "Europe/London",
+      hour: "numeric",
+      hour12: false,
+    });
+    console.log(
+      `[lapsed-trial-reengagement] Bulk send skipped — London hour is ${londonHour}, not 9`
+    );
+    return res.status(200).json({
+      success: true,
+      skipped: true,
+      reason: "outside_london_nine_am_window",
+      london_hour: Number.parseInt(londonHour, 10),
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  if (sendEmail && !isSingleRecipientTest && !isWinbackRewindLive()) {
+    return res.status(200).json({
+      success: true,
+      skipped: true,
+      reason: "winback_rewind_ladder_disabled",
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const windowBounds = buildCandidateWindow();

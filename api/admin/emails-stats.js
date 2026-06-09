@@ -153,10 +153,11 @@ async function statsForLegacyStage(stageDef, nowMs, contactable) {
     eligible_today: eligible,
     sent_last_24h: last24h,
     sent_last_7d: last7d,
-    next_send_at: trial ? nextLondon9AMIso(nowMs) : null,
-    schedule_source: trial
-      ? "Vercel Cron (daily 09:00 Europe/London)"
-      : "Zapier weekly trigger",
+    next_send_at: trial || rewind ? nextLondon9AMIso(nowMs) : null,
+    schedule_source:
+      trial || (rewind && stageDef.enabled)
+        ? "Vercel Cron (daily 09:00 Europe/London)"
+        : "Zapier weekly trigger",
   };
 }
 
