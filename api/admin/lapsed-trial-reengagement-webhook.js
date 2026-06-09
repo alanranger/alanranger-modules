@@ -823,9 +823,9 @@ async function runTestMode(req, res, sendEmail) {
   });
 }
 
-// EMERGENCY: set true to block ALL live win-back bulk sends (local backlog + Vercel cron).
-// Single-recipient testEmail previews still work. Remove after corrected backlog approved.
-const WINBACK_SENDS_HARD_STOP = true;
+// Emergency kill-switch: set true to block ALL live win-back bulk sends (cron + ungated scripts).
+// Gated backlog runs (backlogRun / correctedResend query params) still bypass when true.
+const WINBACK_SENDS_HARD_STOP = false;
 
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") {
