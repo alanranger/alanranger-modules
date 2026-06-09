@@ -10,8 +10,10 @@ const path = require("path");
 const nodemailer = require("nodemailer");
 const { LIFECYCLE_BCC } = require("../lib/lifecycleEmailConfig");
 const { decodeReengageTokenPayload } = require("../lib/reengage-link");
+const { htmlFromMarkdown, plainTextFromMarkdown } = require("../lib/emailHtml");
 
 const MEMBER_EMAIL = process.argv[2] || "info@alanranger.com";
+const LINKFIX_PREFIX = process.argv.includes("--linkfix") ? "[LINKFIX] " : "";
 const TEST_TO = LIFECYCLE_BCC;
 const API_BASE = process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
 const OUT_PATH =
@@ -100,6 +102,16 @@ function tokenFromUrl(upgradeUrl) {
   }
 }
 
+function assertCleanUpgradeHref(html, upgradeUrl) {
+  const matches = [...String(html).matchAll(/href="([^"]*reengage-checkout[^"]*)"/g)];
+  if (!matches.length) throw new Error("HTML missing reengage-checkout link");
+  for (const match of matches) {
+    const href = match[1];
+    if (/[\)*]$/.test(href)) throw new Error(`Corrupt upgrade href: ${href}`);
+    if (href !== upgradeUrl) throw new Error(`Upgrade href mismatch: ${href}`);
+  }
+}
+
 async function main() {
   const secret = process.env.ORPHANED_WEBHOOK_SECRET || "";
   if (!secret) throw new Error("ORPHANED_WEBHOOK_SECRET missing");
@@ -132,12 +144,15 @@ async function main() {
       throw new Error(`${stage.stage} did not 302 to Stripe`);
     }
 
-    const subject = preview?.subject || stage.stage;
-    const text = preview?.body || "";
+    const subject = `${LINKFIX_PREFIX}${preview?.subject || stage.stage}`;
+    const bodyMd = preview?.body || "";
+    const html = htmlFromMarkdown(bodyMd);
+    const text = plainTextFromMarkdown(bodyMd);
 
     if (hasProofSubject(subject)) throw new Error(`${stage.stage} subject still has proof prefix`);
-    if (hasProofScaffolding(text)) throw new Error(`${stage.stage} body still contains proof scaffolding`);
-    if (!ctaOrderOk(text)) throw new Error(`${stage.stage} CTA order wrong`);
+    if (hasProofScaffolding(bodyMd)) throw new Error(`${stage.stage} body still contains proof scaffolding`);
+    if (!ctaOrderOk(bodyMd)) throw new Error(`${stage.stage} CTA order wrong`);
+    assertCleanUpgradeHref(html, upgradeUrl);
 
     const payload = decodeReengageTokenPayload(tokenFromUrl(upgradeUrl));
     if (payload?.exp != null) {
@@ -152,6 +167,7 @@ async function main() {
       to: TEST_TO,
       subject,
       text,
+      html,
     });
 
     results.push({
@@ -160,6 +176,8 @@ async function main() {
       subject,
       messageId: info.messageId,
       upgradeUrl,
+      htmlUpgradeHref: html.match(/href="([^"]*reengage-checkout[^"]*)"/)?.[1] || null,
+      plainTextUpgradeLine: text.split("\n").find((line) => line.includes("reengage-checkout")) || null,
       tokenPayload: payload,
       hopProof,
       primaryCtaFirst: true,
