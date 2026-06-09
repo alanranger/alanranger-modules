@@ -812,7 +812,7 @@ module.exports = async (req, res) => {
       emails_failed: runOutcome.failed,
       emails_deferred: runOutcome.deferred,
       time_budget_exhausted: runOutcome.timeBudgetExhausted,
-      email_results: runOutcome.results,
+      email_results: backlog.batchSize ? undefined : runOutcome.results,
     });
   } catch (err) {
     console.error("[lapsed-trial-reengagement] fatal:", err);
