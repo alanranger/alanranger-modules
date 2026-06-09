@@ -37,6 +37,21 @@ const {
 } = require("../../lib/reengage-link");
 const { markWinbackExhausted } = require("../../lib/winback-exhaustion");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
+const {
+  buildPaidBadgeMergeVars,
+  buildPaidRenewalMergeVars,
+  recordBadgeCelebrations,
+  buildFullBadgeContext,
+  findBadgeCrossing,
+  getCelebratedBadgeRank,
+  parseRenewalContext,
+} = require("../../lib/paid-lifecycle-email");
+const {
+  PAID_BADGE_TEST_PROFILES,
+  PAID_BADGE_TEST_PREFIX,
+  PAID_RENEWAL_TEST_PROFILE,
+  PAID_RENEWAL_TEST_PREFIX,
+} = require("../../lib/paid-badge-test-profiles");
 
 const WINBACK_TRIGGER_STAGES = new Set([STAGE_KEYS.DAY_PLUS_90]);
 
@@ -102,7 +117,13 @@ function snapshotToVars(snapshot) {
   };
 }
 
-async function resolveRenderVars(stageKey, memberId, snapshot) {
+async function resolveRenderVars(stageKey, memberId, snapshot, extra = {}) {
+  if (stageKey === STAGE_KEYS.PAID_BADGE_EARNED && extra.badgeContext && extra.newBadgeKey) {
+    return buildPaidBadgeMergeVars(extra.badgeContext, extra.newBadgeKey);
+  }
+  if (stageKey === STAGE_KEYS.PAID_RENEWAL_SOON && extra.badgeContext && extra.renewal) {
+    return buildPaidRenewalMergeVars(extra.badgeContext, extra.renewal);
+  }
   if (!WINBACK_TRIGGER_STAGES.has(stageKey)) return snapshotToVars(snapshot);
   const { data: trial } = await supabase
     .from("academy_trial_history")
@@ -160,8 +181,32 @@ async function sendMail(to, subject, body) {
   });
 }
 
-async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRun) {
-  const vars = await resolveRenderVars(stageKey, memberId, snapshot);
+async function buildPaidStageExtra(stageKey, memberId, snapshot) {
+  if (stageKey === STAGE_KEYS.PAID_BADGE_EARNED) {
+    const ctx = await buildFullBadgeContext(supabase, memberId);
+    if (!ctx) return {};
+    const celebratedRank = await getCelebratedBadgeRank(supabase, memberId);
+    const crossing = findBadgeCrossing(ctx.badges, celebratedRank);
+    if (!crossing) return {};
+    return {
+      badgeContext: ctx,
+      newBadgeKey: crossing.emailBadgeKey,
+      allCrossedKeys: crossing.allCrossedKeys,
+    };
+  }
+  if (stageKey === STAGE_KEYS.PAID_RENEWAL_SOON) {
+    const ctx = await buildFullBadgeContext(supabase, memberId);
+    if (!ctx) return {};
+    const renewal = parseRenewalContext(snapshot.planSummary || {}, Date.now());
+    if (!renewal) return {};
+    return { badgeContext: ctx, renewal };
+  }
+  return {};
+}
+
+async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRun, extra = {}) {
+  const toEmail = extra.testToEmail || snapshot.email;
+  const vars = await resolveRenderVars(stageKey, memberId, snapshot, extra);
   const rendered = await renderStageEmail(supabase, stageKey, vars);
   if (!rendered) {
     return { memberId, status: "skipped", reason: "no template" };
@@ -173,16 +218,29 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
       preview: { subject: rendered.subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) },
     };
   }
-  const info = await sendMail(snapshot.email, rendered.subject, rendered.body);
-  await logEmailEvent(supabase, {
-    member_id: memberId,
-    email: snapshot.email,
-    stage_key: stageKey,
-    status: "sent",
-    messageId: info.messageId,
-    subject: rendered.subject,
-    dryRun,
-  });
+  const info = await sendMail(toEmail, rendered.subject, rendered.body);
+  if (stageKey === STAGE_KEYS.PAID_BADGE_EARNED && extra.newBadgeKey && extra.allCrossedKeys) {
+    await recordBadgeCelebrations(supabase, {
+      memberId,
+      email: snapshot.email,
+      allCrossedKeys: extra.allCrossedKeys,
+      emailedKey: extra.newBadgeKey,
+      messageId: info.messageId,
+      subject: rendered.subject,
+      dryRun,
+    });
+  } else {
+    await logEmailEvent(supabase, {
+      member_id: memberId,
+      email: snapshot.email,
+      stage_key: stageKey,
+      status: "sent",
+      messageId: info.messageId,
+      subject: rendered.subject,
+      dryRun,
+      eventDetail: extra.renewal ? extra.renewal.periodEndIso : null,
+    });
+  }
   if (WINBACK_TRIGGER_STAGES.has(stageKey)) {
     const tokenMatch = String(vars.unsubUrl || "").match(/token=([^&]+)/);
     const unsubToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : generateUnsubToken();
@@ -192,6 +250,79 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
 }
 
 async function handleDummyTest(stageKey, testEmail, sendEmail, profileKey) {
+  if (stageKey === STAGE_KEYS.PAID_BADGE_EARNED) {
+    const profile = PAID_BADGE_TEST_PROFILES[profileKey];
+    if (!profile) {
+      return { success: false, error: `Unknown dummyTest profile: ${profileKey}` };
+    }
+    const rendered = await renderStageEmail(supabase, stageKey, profile);
+    if (!rendered) return { success: false, error: "Template render failed" };
+    const prefix = PAID_BADGE_TEST_PREFIX[profileKey] || "[TEST – paid-badge-earned]";
+    const subject = `${prefix} ${rendered.subject}`;
+    if (!sendEmail) {
+      return {
+        success: true,
+        stageKey,
+        testEmail,
+        dummyTest: profileKey,
+        preview: { subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) },
+      };
+    }
+    const info = await sendMail(testEmail, subject, rendered.body);
+    await logEmailEvent(supabase, {
+      member_id: "dummy-test-paid-badge",
+      email: testEmail,
+      stage_key: stageKey,
+      status: "sent",
+      messageId: info.messageId,
+      subject,
+      dryRun: false,
+      eventDetail: profileKey,
+    });
+    return {
+      success: true,
+      stageKey,
+      testEmail,
+      dummyTest: profileKey,
+      messageId: info.messageId,
+      subject,
+    };
+  }
+
+  if (stageKey === STAGE_KEYS.PAID_RENEWAL_SOON && profileKey === "renewal") {
+    const rendered = await renderStageEmail(supabase, stageKey, PAID_RENEWAL_TEST_PROFILE);
+    if (!rendered) return { success: false, error: "Template render failed" };
+    const subject = `${PAID_RENEWAL_TEST_PREFIX} ${rendered.subject}`;
+    if (!sendEmail) {
+      return {
+        success: true,
+        stageKey,
+        testEmail,
+        dummyTest: profileKey,
+        preview: { subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) },
+      };
+    }
+    const info = await sendMail(testEmail, subject, rendered.body);
+    await logEmailEvent(supabase, {
+      member_id: "dummy-test-paid-renewal",
+      email: testEmail,
+      stage_key: stageKey,
+      status: "sent",
+      messageId: info.messageId,
+      subject,
+      dryRun: false,
+      eventDetail: "2026-06-23T00:00:00.000Z",
+    });
+    return {
+      success: true,
+      stageKey,
+      testEmail,
+      dummyTest: profileKey,
+      messageId: info.messageId,
+      subject,
+    };
+  }
+
   const profile = DAY2_DUMMY_PROFILES[profileKey];
   if (!profile) {
     return { success: false, error: `Unknown dummyTest profile: ${profileKey}` };
@@ -240,7 +371,8 @@ async function handleRealMemberPreview(stageKey, memberEmail) {
   }
   const snapshot = await buildMemberEmailSnapshot(supabase, data.member_id);
   if (!snapshot) return { success: false, error: "Snapshot build failed" };
-  const vars = await resolveRenderVars(stageKey, data.member_id, snapshot);
+  const extra = await buildPaidStageExtra(stageKey, data.member_id, snapshot);
+  const vars = await resolveRenderVars(stageKey, data.member_id, snapshot, extra);
   const rendered = await renderStageEmail(supabase, stageKey, vars);
   if (!rendered) return { success: false, error: "Template render failed" };
   const previewSubject = `${realPreviewSubjectPrefix(stageKey)} ${rendered.subject}`;
@@ -250,7 +382,7 @@ async function handleRealMemberPreview(stageKey, memberEmail) {
     stageKey,
     memberEmail,
     sendEmail: false,
-    triggerMatched: evaluateStageTrigger(snapshot, stageKey),
+    triggerMatched: await evaluateStageTrigger(supabase, snapshot, stageKey, data.member_id),
     snapshot: {
       modulesOpened: snapshot.modulesOpened,
       trialDayNumber: snapshot.trialDayNumber,
@@ -274,8 +406,16 @@ async function handleTestEmail(stageKey, testEmail, sendEmail) {
   }
   const snapshot = await buildMemberEmailSnapshot(supabase, data.member_id);
   if (!snapshot) return { success: false, error: "Snapshot build failed" };
-  const matches = evaluateStageTrigger(snapshot, stageKey);
-  const result = await processMemberStage(stageKey, data.member_id, snapshot, sendEmail, !sendEmail);
+  const extra = await buildPaidStageExtra(stageKey, data.member_id, snapshot);
+  const matches = await evaluateStageTrigger(supabase, snapshot, stageKey, data.member_id);
+  const result = await processMemberStage(
+    stageKey,
+    data.member_id,
+    snapshot,
+    sendEmail,
+    !sendEmail,
+    { ...extra, testToEmail: sendEmail ? testEmail : null }
+  );
   return {
     success: true,
     stageKey,
@@ -307,8 +447,20 @@ async function runStageBulk(stageKey, sendEmail) {
   const eligible = await listEligibleMembers(supabase, stageKey, contactable);
   const outcomes = [];
   for (const row of eligible) {
+    const extra = {};
+    if (stageKey === STAGE_KEYS.PAID_BADGE_EARNED) {
+      extra.badgeContext = row.badgeContext;
+      extra.newBadgeKey = row.newBadgeKey;
+      extra.allCrossedKeys = row.allCrossedKeys;
+    }
+    if (stageKey === STAGE_KEYS.PAID_RENEWAL_SOON) {
+      extra.badgeContext = row.badgeContext;
+      extra.renewal = row.renewal;
+    }
     try {
-      outcomes.push(await processMemberStage(stageKey, row.memberId, row.snapshot, sendEmail, !sendEmail));
+      outcomes.push(
+        await processMemberStage(stageKey, row.memberId, row.snapshot, sendEmail, !sendEmail, extra)
+      );
     } catch (err) {
       outcomes.push({ memberId: row.memberId, status: "failed", error: err.message });
       await logEmailEvent(supabase, {
