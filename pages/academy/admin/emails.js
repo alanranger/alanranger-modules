@@ -25,6 +25,8 @@ const STAGES = EMAIL_STAGES.map(mapStageForUi);
 
 const STAGE_KEYS = STAGES.map((s) => s.key);
 const STAGE_BY_KEY = Object.fromEntries(STAGES.map((s) => [s.key, s]));
+const MANUAL_TILE_KEY = 'manual-batch';
+const TILE_SEND_LOOKBACK_MS = 7 * DAY_MS;
 
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
@@ -389,18 +391,24 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
   );
 }
 
-function ManualBatchTile({ manualSends, statsLoadFailed }) {
+function ManualBatchTile({ manualSends, statsLoadFailed, active, onClick }) {
   const sent7d = statsLoadFailed ? '—' : (manualSends?.sent_last_7d ?? 0);
   const sent24 = statsLoadFailed ? '—' : (manualSends?.sent_last_24h ?? 0);
+  const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onClick(MANUAL_TILE_KEY)}
       style={{
         textAlign: 'left',
         padding: '14px 14px 12px',
         background: 'var(--ar-card)',
-        border: '1px solid var(--ar-border)',
+        border: `1px solid ${borderColor}`,
         borderRadius: 8,
         minWidth: 0,
+        cursor: 'pointer',
+        color: 'inherit',
+        font: 'inherit',
       }}
     >
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
@@ -413,7 +421,7 @@ function ManualBatchTile({ manualSends, statsLoadFailed }) {
       <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 8, lineHeight: 1.4 }}>
         Batch runs + corrected resends (logged send_source)
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -440,7 +448,12 @@ function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileC
           nowMs={nowMs}
         />
       ))}
-      <ManualBatchTile manualSends={manualSends} statsLoadFailed={statsLoadFailed} />
+      <ManualBatchTile
+        manualSends={manualSends}
+        statsLoadFailed={statsLoadFailed}
+        active={activeKey === MANUAL_TILE_KEY}
+        onClick={onTileClick}
+      />
     </div>
   );
 }
@@ -500,6 +513,39 @@ function rowHasAnySend(row) {
   return STAGE_KEYS.some((k) => !!row.sends?.[k]?.sent_at);
 }
 
+function isSentWithinTileWindow(sentAt, nowMs) {
+  if (!sentAt) return false;
+  const ms = new Date(sentAt).getTime();
+  if (!Number.isFinite(ms)) return false;
+  return ms >= nowMs - TILE_SEND_LOOKBACK_MS;
+}
+
+function isManualSendEvent(ev) {
+  if (!ev || ev.status !== 'sent' || ev.inferred) return false;
+  if (ev.send_source === 'manual_batch' || ev.send_source === 'corrected_resend') return true;
+  return ev.event_detail === 'corrected_resend_2026-06-09';
+}
+
+function rowMatchesTileFilter(row, filterKey, nowMs) {
+  if (!filterKey) return true;
+  if (filterKey === MANUAL_TILE_KEY) {
+    if (isSentWithinTileWindow(row.manual_last_sent?.sent_at, nowMs)) return true;
+    return STAGE_KEYS.some((k) => {
+      const ev = row.sends?.[k];
+      return isManualSendEvent(ev) && isSentWithinTileWindow(ev.sent_at, nowMs);
+    });
+  }
+  const ev = row.sends?.[filterKey];
+  if (!ev || ev.status !== 'sent' || ev.inferred) return false;
+  return isSentWithinTileWindow(ev.sent_at, nowMs);
+}
+
+function tileFilterLabel(filterKey) {
+  if (!filterKey) return '';
+  if (filterKey === MANUAL_TILE_KEY) return 'Manual sends (7d)';
+  return `${STAGE_BY_KEY[filterKey]?.shortLabel || filterKey} sent (7d)`;
+}
+
 function sortValueForColumn(row, column) {
   if (column === 'member') return (row.name || row.email || '').toLowerCase();
   if (column === 'trial_end') {
@@ -552,6 +598,7 @@ function SortableTh({ column, label, sortColumn, sortDir, onSort, style, title }
 function MembersTable({
   rows,
   filterStage,
+  filterManual,
   onRowClick,
   attributionWindowDays,
   sortColumn,
@@ -613,7 +660,10 @@ function MembersTable({
               sortColumn={sortColumn}
               sortDir={sortDir}
               onSort={onSort}
-              style={compactThStyle}
+              style={{
+                ...compactThStyle,
+                color: filterManual ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+              }}
               title="Last manual batch or corrected resend"
             />
             <SortableTh
@@ -664,7 +714,12 @@ function MembersTable({
                   <StageSendBadge ev={row.sends?.[s.key]} />
                 </td>
               ))}
-              <td style={compactTdStyle}>
+              <td
+                style={{
+                  ...compactTdStyle,
+                  background: filterManual ? 'rgba(74,127,255,0.08)' : 'transparent',
+                }}
+              >
                 <ManualSendBadge manualLast={row.manual_last_sent} />
               </td>
               <td style={compactTdStyle}><ConversionCell row={row} /></td>
@@ -1280,10 +1335,8 @@ export default function EmailsAdmin() {
     let rows = tableData.rows || [];
     if (tableShowFilter === 'emailed') {
       rows = rows.filter((r) => rowHasAnySend(r));
-    } else if (tableShowFilter === 'stage' && filterStageKey) {
-      rows = rows.filter(
-        (r) => isRowEligibleForStage(r, filterStageKey, nowMs) || !!r.sends?.[filterStageKey]
-      );
+    } else if (tableShowFilter === 'tile' && filterStageKey) {
+      rows = rows.filter((r) => rowMatchesTileFilter(r, filterStageKey, nowMs));
     }
     return rows;
   }, [tableData.rows, tableShowFilter, filterStageKey, nowMs]);
@@ -1344,7 +1397,8 @@ export default function EmailsAdmin() {
       ) : null}
 
       <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--ar-text-muted)' }}>
-        Click any tile to filter the members table to that stage. Large number = logged sends (7d) from{' '}
+        Click any tile to filter the members table to that tile&apos;s <strong>7-day send count</strong> (logged
+        events only — not inferred history). Large number = sends (7d) from{' '}
         <code>academy_email_events</code>. Smaller line = who matches the trigger today (not the same as sent).
         Italic dates with * are inferred from <code>academy_trial_history</code> when no event row exists (REWIND attempt history).
         Trial reminders (Day -7/-1/+7) before logging began may still appear blank. Manual column = last batch/corrected send.
@@ -1357,8 +1411,11 @@ export default function EmailsAdmin() {
         statsLoadFailed={!!loadErrors.stats}
         activeKey={filterStageKey}
         onTileClick={(key) => {
-          setFilterStageKey((prev) => (prev === key ? null : key));
-          setTableShowFilter('stage');
+          setFilterStageKey((prev) => {
+            const next = prev === key ? null : key;
+            setTableShowFilter(next ? 'tile' : 'all');
+            return next;
+          });
           setTablePage(0);
           setTestState(null);
         }}
@@ -1367,13 +1424,23 @@ export default function EmailsAdmin() {
 
       {filterStageKey ? (
         <div style={{ marginBottom: 16, fontSize: 13 }}>
-          <strong>{STAGE_BY_KEY[filterStageKey].displayName}</strong>
+          <strong>{tileFilterLabel(filterStageKey)}</strong>
+          {filterStageKey !== MANUAL_TILE_KEY && STAGE_BY_KEY[filterStageKey] ? (
+            <span style={{ color: 'var(--ar-text-muted)' }}>
+              {' '}
+              · {STAGE_BY_KEY[filterStageKey].displayName}
+            </span>
+          ) : null}
           {' · '}
-          <button type="button" onClick={() => setFilterStageKey(null)} style={{
-            background: 'transparent', border: '1px solid var(--ar-border)',
-            borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer',
-            color: 'var(--ar-text)',
-          }}>
+          <button
+            type="button"
+            onClick={() => { setFilterStageKey(null); setTableShowFilter('all'); }}
+            style={{
+              background: 'transparent', border: '1px solid var(--ar-border)',
+              borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer',
+              color: 'var(--ar-text)',
+            }}
+          >
             Clear filter
           </button>
         </div>
@@ -1461,7 +1528,7 @@ export default function EmailsAdmin() {
             >
               <option value="all">All members</option>
               <option value="emailed">Emailed only</option>
-              <option value="stage">Stage match or sent</option>
+              <option value="tile">Tile filter (7d sends)</option>
             </select>
           </label>
           <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1484,18 +1551,18 @@ export default function EmailsAdmin() {
           {filterStageKey ? (
             <button
               type="button"
-              onClick={() => setFilterStageKey(null)}
+              onClick={() => { setFilterStageKey(null); setTableShowFilter('all'); }}
               style={{
                 background: 'transparent', border: '1px solid var(--ar-border)',
                 borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer',
               }}
             >
-              Clear stage tile
+              Clear tile filter
             </button>
           ) : null}
           <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
             {sortedRows.length} matching · showing {pagedRows.length}
-            {filterStageKey ? ` · tile ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
+            {filterStageKey && tableShowFilter === 'tile' ? ` · ${tileFilterLabel(filterStageKey)}` : ''}
           </span>
         </div>
         {totalPages > 1 ? (
@@ -1523,7 +1590,8 @@ export default function EmailsAdmin() {
         ) : null}
         <MembersTable
           rows={pagedRows}
-          filterStage={filterStageKey}
+          filterStage={filterStageKey !== MANUAL_TILE_KEY ? filterStageKey : null}
+          filterManual={filterStageKey === MANUAL_TILE_KEY}
           attributionWindowDays={tableData.attributionWindowDays}
           sortColumn={sortColumn}
           sortDir={sortDir}

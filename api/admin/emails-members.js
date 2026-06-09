@@ -137,8 +137,8 @@ async function fetchMemberContacts(memberIds) {
   return map;
 }
 
-function isManualSource(source) {
-  return MANUAL_SEND_SOURCES.includes(source);
+function isManualSource(source, eventDetail) {
+  return MANUAL_SEND_SOURCES.includes(source) || eventDetail === "corrected_resend_2026-06-09";
 }
 
 async function fetchSendEvents(memberIds) {
@@ -151,7 +151,7 @@ async function fetchSendEvents(memberIds) {
     const data = await fetchPagedRows((from, to) =>
       supabase
         .from("academy_email_events")
-        .select("member_id, stage_key, sent_at, status, message_id, send_source")
+        .select("member_id, stage_key, sent_at, status, message_id, send_source, event_detail")
         .in("member_id", chunk)
         .eq("dry_run", false)
         .order("sent_at", { ascending: true })
@@ -166,9 +166,10 @@ async function fetchSendEvents(memberIds) {
         status: ev.status,
         message_id: ev.message_id,
         send_source: ev.send_source || "automated",
+        event_detail: ev.event_detail || null,
         inferred: false,
       };
-      if (isManualSource(ev.send_source) && ev.status === "sent") {
+      if (isManualSource(ev.send_source, ev.event_detail) && ev.status === "sent") {
         const ms = new Date(ev.sent_at).getTime();
         const prev = manualLastByMember.get(ev.member_id);
         if (!prev || ms > prev.ms) {
