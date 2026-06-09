@@ -8,6 +8,7 @@
 //   stage=all  — evaluate all cronEnabled trigger stages (none live yet)
 //   sendEmail  — false for dry-run preview JSON
 //   testEmail  — single-member preview/send (bypasses London gate + cronEnabled)
+//   memberEmail — real-member dry-run; never sends to member; delivers preview to LIFECYCLE_BCC
 //   secret     — ORPHANED_WEBHOOK_SECRET for manual calls
 
 const { createClient } = require("@supabase/supabase-js");
@@ -26,6 +27,7 @@ const {
   DAY2_DUMMY_PROFILES,
   DAY2_TEST_SUBJECT_PREFIX,
 } = require("../../lib/day2EmailTestProfiles");
+const { LIFECYCLE_BCC, realPreviewSubjectPrefix } = require("../../lib/lifecycleEmailConfig");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -103,8 +105,9 @@ async function sendMail(to, subject, body) {
     auth: { user: EMAIL_FROM, pass: EMAIL_PASSWORD },
   });
   return transporter.sendMail({
-    from: EMAIL_FROM,
+    from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
     to,
+    bcc: LIFECYCLE_BCC,
     subject,
     text: body,
     html: htmlFromMarkdown(body),
@@ -171,6 +174,39 @@ async function handleDummyTest(stageKey, testEmail, sendEmail, profileKey) {
     dummyTest: profileKey,
     messageId: info.messageId,
     subject,
+  };
+}
+
+async function handleRealMemberPreview(stageKey, memberEmail) {
+  const { data } = await supabase
+    .from("ms_members_cache")
+    .select("member_id")
+    .eq("email", memberEmail)
+    .maybeSingle();
+  if (!data?.member_id) {
+    return { success: false, error: `No member found for memberEmail=${memberEmail}` };
+  }
+  const snapshot = await buildMemberEmailSnapshot(supabase, data.member_id);
+  if (!snapshot) return { success: false, error: "Snapshot build failed" };
+  const rendered = await renderStageEmail(supabase, stageKey, snapshotToVars(snapshot));
+  if (!rendered) return { success: false, error: "Template render failed" };
+  const previewSubject = `${realPreviewSubjectPrefix(stageKey)} ${rendered.subject}`;
+  const info = await sendMail(LIFECYCLE_BCC, previewSubject, rendered.body);
+  return {
+    success: true,
+    stageKey,
+    memberEmail,
+    sendEmail: false,
+    triggerMatched: evaluateStageTrigger(snapshot, stageKey),
+    snapshot: {
+      modulesOpened: snapshot.modulesOpened,
+      trialDayNumber: snapshot.trialDayNumber,
+      daysSinceLastLogin: snapshot.daysSinceLastLogin,
+      currentBadge: snapshot.currentBadgeLabel,
+    },
+    preview: { subject: rendered.subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) },
+    previewDeliveredTo: LIFECYCLE_BCC,
+    previewMessageId: info.messageId,
   };
 }
 
@@ -248,10 +284,16 @@ module.exports = async function handler(req, res) {
 
   const stageKey = req.query.stageKey || req.query.stage;
   const testEmail = req.query.testEmail || null;
+  const memberEmail = req.query.memberEmail || null;
   const dummyTest = req.query.dummyTest || null;
   const sendEmail = parseBool(req.query.sendEmail, false);
 
   try {
+    if (memberEmail && stageKey && stageKey !== "all" && !sendEmail) {
+      const payload = await handleRealMemberPreview(stageKey, memberEmail);
+      return res.status(payload.success ? 200 : 400).json(payload);
+    }
+
     if (testEmail && dummyTest && stageKey && stageKey !== "all") {
       const payload = await handleDummyTest(stageKey, testEmail, sendEmail, dummyTest);
       return res.status(payload.success ? 200 : 400).json(payload);

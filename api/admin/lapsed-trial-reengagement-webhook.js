@@ -25,6 +25,7 @@
 //     emails_failed, emails_deferred, email_results, time_budget_exhausted }
 
 const { createClient } = require("@supabase/supabase-js");
+const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
@@ -550,7 +551,7 @@ async function deliverEmail({ member, content }) {
     const info = await emailTransporter.sendMail({
       from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
       to: member.email,
-      bcc: "info@alanranger.com",
+      bcc: LIFECYCLE_BCC,
       subject: content.subject,
       text: content.body,
       html: content.html,

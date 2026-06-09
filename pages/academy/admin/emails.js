@@ -735,12 +735,15 @@ function formatScheduleSummary(schedule) {
   const daysPart = days.length === 7
     ? 'daily'
     : days.map((d) => SCHEDULE_DOW_LABELS[d] || d).join('/');
-  const parts = [
-    schedule.enabled ? 'Enabled' : 'Disabled',
-    `offset ${schedule.days_offset > 0 ? '+' : ''}${schedule.days_offset}d`,
-    `${String(schedule.send_hour_london).padStart(2, '0')}:00 London`,
-    daysPart,
-  ];
+  const hourPart = `${String(schedule.send_hour_london).padStart(2, '0')}:00 London`;
+  if (schedule.stage_type === 'trigger') {
+    return [schedule.enabled ? 'Enabled' : 'Disabled', hourPart, daysPart, 'trigger'].join(' · ');
+  }
+  const parts = [schedule.enabled ? 'Enabled' : 'Disabled'];
+  if (schedule.days_offset != null) {
+    parts.push(`offset ${schedule.days_offset > 0 ? '+' : ''}${schedule.days_offset}d`);
+  }
+  parts.push(hourPart, daysPart);
   return parts.join(' · ');
 }
 

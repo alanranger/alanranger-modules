@@ -5,6 +5,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
+const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
 
 // Get Memberstack key from environment
 const MEMBERSTACK_SECRET_KEY = process.env.MEMBERSTACK_SECRET_KEY;
@@ -69,7 +70,7 @@ This is an automated message. Your account was created ${member.hours_since_crea
     const info = await emailTransporter.sendMail({
       from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
       to: member.email,
-      bcc: "info@alanranger.com", // BCC so you get notified of all emails sent
+      bcc: LIFECYCLE_BCC,
       subject: emailSubject,
       text: emailBody,
       html: emailBody.replace(/\n/g, "<br>")

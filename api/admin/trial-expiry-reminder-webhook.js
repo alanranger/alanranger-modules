@@ -39,6 +39,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
+const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 const crypto = require("crypto");
@@ -805,7 +806,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     const info = await emailTransporter.sendMail({
       from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
       to: member.email,
-      bcc: "info@alanranger.com", // BCC so you get notified of all emails sent
+      bcc: LIFECYCLE_BCC,
       subject: emailSubject,
       text: emailBody,
       html: emailBody.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")

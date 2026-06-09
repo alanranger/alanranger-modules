@@ -47,11 +47,11 @@
       "schedule": "0 4 * * 1"
     },
     {
-      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=false",
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=false",
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
       "schedule": "0 9 * * *"
     }
   ]

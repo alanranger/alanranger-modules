@@ -33,6 +33,7 @@ const {
   listStageKeys,
 } = require("../../lib/emailTemplateDefaults");
 const { getStageByKey } = require("../../lib/emailStages");
+const { synthesizeScheduleRow } = require("../../lib/emailScheduleFallback");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -66,7 +67,7 @@ async function fetchSchedules() {
 
 function buildStageRow(stageKey, templatesMap, schedulesMap) {
   const tpl = templatesMap.get(stageKey) || {};
-  const sched = schedulesMap.get(stageKey) || null;
+  const sched = schedulesMap.get(stageKey) || synthesizeScheduleRow(stageKey);
   const def = DEFAULTS[stageKey] || { label: stageKey, subject: null, body_md: null };
   const override_subject = tpl.subject || null;
   const override_body_md = tpl.body_md || null;
