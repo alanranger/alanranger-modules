@@ -28,6 +28,16 @@ const {
   DAY2_TEST_SUBJECT_PREFIX,
 } = require("../../lib/day2EmailTestProfiles");
 const { LIFECYCLE_BCC, realPreviewSubjectPrefix } = require("../../lib/lifecycleEmailConfig");
+const { buildWinbackMergeVars } = require("../../lib/winback-email-vars");
+const {
+  generateUnsubToken,
+  buildUnsubUrl,
+  DASHBOARD_URL,
+} = require("../../lib/reengage-link");
+const { markWinbackExhausted } = require("../../lib/winback-exhaustion");
+const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
+
+const WINBACK_TRIGGER_STAGES = new Set([STAGE_KEYS.DAY_PLUS_90]);
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -87,8 +97,46 @@ function snapshotToVars(snapshot) {
     daysSinceLastLogin: snapshot.daysSinceLastLogin,
     upgradeUrl: snapshot.upgradeUrl,
     activityBlock: snapshot.activityBlock,
-    dashboardUrl: snapshot.upgradeUrl,
+    dashboardUrl: DASHBOARD_URL,
   };
+}
+
+async function resolveRenderVars(stageKey, memberId, snapshot) {
+  if (!WINBACK_TRIGGER_STAGES.has(stageKey)) return snapshotToVars(snapshot);
+  const { data: trial } = await supabase
+    .from("academy_trial_history")
+    .select("reengagement_unsub_token, trial_end_at")
+    .eq("member_id", memberId)
+    .order("trial_start_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const token = trial?.reengagement_unsub_token || generateUnsubToken();
+  const sendAtMs = Date.now();
+  const daysLapsed = trial?.trial_end_at
+    ? Math.floor((sendAtMs - new Date(trial.trial_end_at).getTime()) / 86400000)
+    : null;
+  return buildWinbackMergeVars(supabase, {
+    memberId,
+    member: { name: snapshot.fullName, email: snapshot.email },
+    sendAtMs,
+    unsubUrl: buildUnsubUrl(token),
+    daysLapsed,
+  });
+}
+
+async function afterWinbackTriggerSend(stageKey, memberId, unsubToken, sendAtMs) {
+  if (stageKey !== STAGE_KEYS.DAY_PLUS_90) return;
+  const nowIso = new Date(sendAtMs).toISOString();
+  const expiresIso = new Date(sendAtMs + 7 * 86400000).toISOString();
+  await supabase
+    .from("academy_trial_history")
+    .update({
+      reengagement_last_sent_at: nowIso,
+      reengagement_expires_at: expiresIso,
+      reengagement_unsub_token: unsubToken,
+    })
+    .eq("member_id", memberId);
+  await markWinbackExhausted(supabase, memberId);
 }
 
 function htmlFromMarkdown(body) {
@@ -118,7 +166,8 @@ async function sendMail(to, subject, body) {
 }
 
 async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRun) {
-  const rendered = await renderStageEmail(supabase, stageKey, snapshotToVars(snapshot));
+  const vars = await resolveRenderVars(stageKey, memberId, snapshot);
+  const rendered = await renderStageEmail(supabase, stageKey, vars);
   if (!rendered) {
     return { memberId, status: "skipped", reason: "no template" };
   }
@@ -139,6 +188,11 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
     subject: rendered.subject,
     dryRun,
   });
+  if (WINBACK_TRIGGER_STAGES.has(stageKey)) {
+    const tokenMatch = String(vars.unsubUrl || "").match(/token=([^&]+)/);
+    const unsubToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : generateUnsubToken();
+    await afterWinbackTriggerSend(stageKey, memberId, unsubToken, Date.now());
+  }
   return { memberId, status: "sent", messageId: info.messageId };
 }
 
@@ -191,7 +245,8 @@ async function handleRealMemberPreview(stageKey, memberEmail) {
   }
   const snapshot = await buildMemberEmailSnapshot(supabase, data.member_id);
   if (!snapshot) return { success: false, error: "Snapshot build failed" };
-  const rendered = await renderStageEmail(supabase, stageKey, snapshotToVars(snapshot));
+  const vars = await resolveRenderVars(stageKey, data.member_id, snapshot);
+  const rendered = await renderStageEmail(supabase, stageKey, vars);
   if (!rendered) return { success: false, error: "Template render failed" };
   const previewSubject = `${realPreviewSubjectPrefix(stageKey)} ${rendered.subject}`;
   const info = await sendMail(LIFECYCLE_BCC, previewSubject, rendered.body);

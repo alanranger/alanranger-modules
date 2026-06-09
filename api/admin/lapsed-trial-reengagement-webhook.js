@@ -27,10 +27,17 @@
 const { createClient } = require("@supabase/supabase-js");
 const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
 const nodemailer = require("nodemailer");
-const crypto = require("crypto");
 const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
+const { buildWinbackMergeVars, REWIND_CAMPAIGN } = require("../../lib/winback-email-vars");
+const {
+  generateUnsubToken,
+  buildUnsubUrl,
+  buildPersonalUpgradeUrl,
+  DASHBOARD_URL: PLAIN_DASHBOARD_URL,
+} = require("../../lib/reengage-link");
+const { isWinbackExhausted } = require("../../lib/winback-exhaustion");
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -63,17 +70,6 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
 // ─────────────────────────────────────────────────────────────────────────
 // Campaign configuration
 // ─────────────────────────────────────────────────────────────────────────
-const DASHBOARD_URL =
-  process.env.ACADEMY_UPGRADE_URL || "https://www.alanranger.com/academy/dashboard";
-const API_BASE_URL =
-  process.env.ACADEMY_API_BASE_URL || "https://alanranger-modules.vercel.app";
-
-// Shared HMAC secret for per-member deep-link tokens. Verified by
-// api/academy/verify-reengage-token.js with the same fallback chain.
-const REENGAGE_LINK_SECRET =
-  process.env.REENGAGE_LINK_SECRET || process.env.ORPHANED_WEBHOOK_SECRET || "";
-const REENGAGE_TOKEN_VERSION = 1;
-
 const CAMPAIGN = {
   reachBackDays: 180,        // candidates: trials ended within the last 180 days
   // Attempt cadence expressed two ways:
@@ -90,11 +86,11 @@ const CAMPAIGN = {
   attemptGapDays: [null, 10, 30],
   get firstAttemptMinDaysSinceExpiry() { return this.attemptMinDaysSinceExpiry[0]; },
   maxSends: 3,
-  windowDays: 7,             // personal REWIND20 coupon window
-  annualPriceGbp: 79,
-  discountGbp: 20,
-  discountedPriceGbp: 59,
-  couponCode: "REWIND20",
+  windowDays: REWIND_CAMPAIGN.windowDays,
+  annualPriceGbp: REWIND_CAMPAIGN.annualPriceGbp,
+  discountGbp: REWIND_CAMPAIGN.discountGbp,
+  discountedPriceGbp: REWIND_CAMPAIGN.discountedPriceGbp,
+  couponCode: REWIND_CAMPAIGN.couponCode,
   defaultLimit: 500,
 };
 
@@ -357,29 +353,34 @@ function resolveRewindStageKey(attempt) {
   return null;
 }
 
-function buildRewindMergeVars({ member, daysLapsed, dashboardUrl, unsubUrl, activity }) {
-  const firstName = member?.name
-    ? member.name.split(" ")[0]
-    : "there";
-  return {
-    firstName,
-    fullName: member?.name || "there",
-    dashboardUrl,
+async function buildRewindMergeVars({ member, memberId, daysLapsed, upgradeUrl, dashboardUrl, unsubUrl, sendAtMs }) {
+  const vars = await buildWinbackMergeVars(supabase, {
+    memberId,
+    member,
+    sendAtMs,
     unsubUrl,
-    activityBlock: formatActivityBlock(activity),
     daysLapsed,
-    annualPriceGbp: CAMPAIGN.annualPriceGbp,
-    save20PriceGbp: CAMPAIGN.discountedPriceGbp,
-    save20DiscountGbp: CAMPAIGN.discountGbp,
-    couponCode: CAMPAIGN.couponCode,
+  });
+  return {
+    ...vars,
+    upgradeUrl: upgradeUrl || vars.upgradeUrl,
+    dashboardUrl: dashboardUrl || vars.dashboardUrl,
   };
 }
 
-async function buildEmailContent({ member, daysLapsed, attempt, dashboardUrl, unsubUrl, activity }) {
+async function buildEmailContent({ member, memberId, daysLapsed, attempt, upgradeUrl, dashboardUrl, unsubUrl, sendAtMs, activity }) {
   const stageKey = resolveRewindStageKey(attempt);
   if (stageKey) {
     try {
-      const vars = buildRewindMergeVars({ member, daysLapsed, dashboardUrl, unsubUrl, activity });
+      const vars = await buildRewindMergeVars({
+        member,
+        memberId,
+        daysLapsed,
+        upgradeUrl,
+        dashboardUrl,
+        unsubUrl,
+        sendAtMs,
+      });
       const rendered = await renderStageEmail(supabase, stageKey, vars);
       if (rendered?.subject && rendered?.body) {
         return { subject: rendered.subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) };
@@ -478,51 +479,6 @@ function daysBetween(fromIso, now) {
 // Per-member send pipeline
 // ─────────────────────────────────────────────────────────────────────────
 
-function generateUnsubToken() {
-  return crypto.randomBytes(24).toString("hex");
-}
-
-function buildUnsubUrl(token) {
-  return `${API_BASE_URL}/api/academy/reengagement-unsubscribe?token=${encodeURIComponent(token)}`;
-}
-
-function base64UrlEncode(input) {
-  return Buffer.from(input, "utf8")
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-// Sign a deep-link payload so the dashboard can trust {memberId, email} came
-// from this webhook. Token expires in lockstep with the REWIND20 coupon
-// window (7 days). Verified server-side by verify-reengage-token.js.
-function signReengageToken(memberId, email, expiresAtMs) {
-  if (!REENGAGE_LINK_SECRET) return null;
-  const payload = {
-    v: REENGAGE_TOKEN_VERSION,
-    mid: memberId,
-    em: email || null,
-    exp: expiresAtMs,
-  };
-  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
-  const sig = crypto
-    .createHmac("sha256", REENGAGE_LINK_SECRET)
-    .update(payloadB64)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `${payloadB64}.${sig}`;
-}
-
-function buildPersonalDashboardUrl(memberId, email, windowExpiresAtMs) {
-  const token = signReengageToken(memberId, email, windowExpiresAtMs);
-  if (!token) return DASHBOARD_URL; // secret missing — fall back gracefully
-  const sep = DASHBOARD_URL.includes("?") ? "&" : "?";
-  return `${DASHBOARD_URL}${sep}ar_rewind=${encodeURIComponent(token)}`;
-}
-
 async function stampTrialRow(row, windowBounds, token) {
   const nowIso = new Date(windowBounds.now).toISOString();
   const expiresIso = new Date(windowBounds.now + CAMPAIGN.windowDays * 86400000).toISOString();
@@ -575,21 +531,19 @@ async function processCandidate(row, windowBounds, sendEmail) {
   // the token expires at the same moment the coupon does. Pre-fills email on
   // login and force-opens the upgrade modal when a session is already active.
   const windowExpiresAtMs = windowBounds.now + CAMPAIGN.windowDays * 86400000;
-  const personalDashboardUrl = buildPersonalDashboardUrl(
-    row.member_id,
-    contact.email,
-    windowExpiresAtMs
-  );
-  // Pull activity in parallel-ish with the rest of the pipeline — one DB
-  // round-trip per candidate, but mostly cache-warm since the same member
-  // only gets emailed at most 3 times over 60+ days.
+  const upgradeUrl = buildPersonalUpgradeUrl(row.member_id, contact.email, windowExpiresAtMs);
+  const dashboardUrl = PLAIN_DASHBOARD_URL;
+  const unsubUrl = buildUnsubUrl(token);
   const activity = await fetchMemberActivity(row.member_id);
   const content = await buildEmailContent({
     member: contact,
+    memberId: row.member_id,
     daysLapsed,
     attempt,
-    dashboardUrl: personalDashboardUrl,
-    unsubUrl: buildUnsubUrl(token),
+    upgradeUrl,
+    dashboardUrl,
+    unsubUrl,
+    sendAtMs: windowBounds.now,
     activity,
   });
 
@@ -603,8 +557,9 @@ async function processCandidate(row, windowBounds, sendEmail) {
       attempt,
       days_lapsed: daysLapsed,
       preview: content,
-      dashboard_url: personalDashboardUrl,
-      unsub_url: buildUnsubUrl(token),
+      upgrade_url: upgradeUrl,
+      dashboard_url: dashboardUrl,
+      unsub_url: unsubUrl,
     };
   }
 
