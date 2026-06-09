@@ -47,7 +47,7 @@ const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEven
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
-const { buildPersonalUpgradeUrl, computeTokenExpiryMs } = require("../../lib/reengage-link");
+const { buildPersonalUpgradeUrl } = require("../../lib/reengage-link");
 const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
 const { memberAlreadySent } = require("../../lib/emailStageTriggers");
 const { getFoundationModuleMeta } = require("../../lib/foundation-module-meta");
@@ -191,9 +191,7 @@ if (EMAIL_FROM && EMAIL_PASSWORD) {
 async function generateCheckoutUrl(memberId, memberEmail, memberName, opts = {}) {
   try {
     if (!USE_STRIPE_CHECKOUT_IN_EMAIL) {
-      const sendAtMs = Date.now();
-      const windowMs = computeTokenExpiryMs(sendAtMs, opts.windowDays || 7);
-      return buildPersonalUpgradeUrl(memberId, memberEmail, windowMs, opts.couponCode || null);
+      return buildPersonalUpgradeUrl(memberId, memberEmail, null, opts.couponCode || null);
     }
 
     // Debug: Log Stripe configuration status

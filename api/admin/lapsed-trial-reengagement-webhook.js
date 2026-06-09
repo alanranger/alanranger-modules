@@ -37,7 +37,6 @@ const {
   generateUnsubToken,
   buildUnsubUrl,
   buildPersonalUpgradeUrl,
-  computeTokenExpiryMs,
   DASHBOARD_URL: PLAIN_DASHBOARD_URL,
 } = require("../../lib/reengage-link");
 const { isWinbackExhausted } = require("../../lib/winback-exhaustion");
@@ -574,11 +573,10 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
   const daysLapsed = daysBetween(row.trial_end_at, windowBounds.now);
   // Per-member signed link: scoped to the REWIND20 personal 7-day window.
   // Points at /api/academy/reengage-checkout → Stripe Checkout with REWIND20 applied.
-  const windowExpiresAtMs = computeTokenExpiryMs(windowBounds.now, CAMPAIGN.windowDays);
   const upgradeUrl = buildPersonalUpgradeUrl(
     row.member_id,
     contact.email,
-    windowExpiresAtMs,
+    null,
     CAMPAIGN.couponCode
   );
   const dashboardUrl = PLAIN_DASHBOARD_URL;

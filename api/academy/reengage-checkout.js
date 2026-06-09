@@ -34,12 +34,10 @@ module.exports = async (req, res) => {
     const reason = result.reason || "missing_fields";
     console.warn(`[reengage-checkout] token rejected: ${reason}`);
     const message =
-      reason === "expired"
-        ? "This upgrade link has expired. Please use the link from your latest email."
-        : reason === "bad_signature"
-          ? "This upgrade link is invalid. Please use the link from your latest email."
-          : "This upgrade link is invalid or has expired. Please use the link from your latest email.";
-    return sendCheckoutError(res, reason === "expired" ? 410 : 400, message);
+      reason === "bad_signature"
+        ? "This upgrade link is invalid. Please use the link from your latest email."
+        : "This upgrade link is invalid. Please use the link from your latest email.";
+    return sendCheckoutError(res, 400, message);
   }
 
   try {
