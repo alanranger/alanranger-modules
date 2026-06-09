@@ -54,7 +54,14 @@ function nextLondon9AMIso(nowMs) {
   return null;
 }
 
-function emptySentMaps() {
+const REWIND_STAGE_KEYS = new Set(["day-plus-20", "day-plus-30", "day-plus-60", "day-plus-90"]);
+const DEPRECATED_STAGE_KEYS = new Set(["paid-milestone"]);
+
+function emptyWindowCounts() {
+  return { today: 0, last_7d: 0, last_30d: 0, last_60d: 0, last_90d: 0, total: 0, last_24h: 0 };
+}
+
+function emptyStageMaps() {
   const last24h = {};
   const last7d = {};
   EMAIL_STAGES.forEach((s) => {
@@ -64,32 +71,93 @@ function emptySentMaps() {
   return { last24h, last7d };
 }
 
-async function fetchAllSentCounts(nowMs) {
-  const maps = emptySentMaps();
-  if (!supabase) return maps;
+function categoryForStageKey(key) {
+  if (!key || DEPRECATED_STAGE_KEYS.has(key)) return null;
+  if (key.startsWith("paid-")) return "paid_lifecycle";
+  if (REWIND_STAGE_KEYS.has(key)) return "rewind_ladder";
+  return "trials_scheduled";
+}
 
-  const from7dIso = new Date(nowMs - 7 * DAY_MS).toISOString();
+function londonDateKey(isoOrMs) {
+  return new Date(isoOrMs).toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+}
+
+function bumpWindowCounts(counter, sentMs, sentDayLondon, todayLondon, nowMs) {
+  counter.total += 1;
+  if (sentMs >= nowMs - DAY_MS) counter.last_24h += 1;
+  if (sentMs >= nowMs - 7 * DAY_MS) counter.last_7d += 1;
+  if (sentMs >= nowMs - 30 * DAY_MS) counter.last_30d += 1;
+  if (sentMs >= nowMs - 60 * DAY_MS) counter.last_60d += 1;
+  if (sentMs >= nowMs - 90 * DAY_MS) counter.last_90d += 1;
+  if (sentDayLondon === todayLondon) counter.today += 1;
+}
+
+function sumCategoryWindows(categories, keys) {
+  const out = emptyWindowCounts();
+  keys.forEach((key) => {
+    const src = categories[key];
+    if (!src) return;
+    out.today += src.today;
+    out.last_24h += src.last_24h;
+    out.last_7d += src.last_7d;
+    out.last_30d += src.last_30d;
+    out.last_60d += src.last_60d;
+    out.last_90d += src.last_90d;
+    out.total += src.total;
+  });
+  return out;
+}
+
+function isManualSend(row) {
+  return (
+    MANUAL_SEND_SOURCES.includes(row.send_source) ||
+    row.event_detail === "corrected_resend_2026-06-09"
+  );
+}
+
+async function fetchSentMetrics(nowMs) {
+  const stageMaps = emptyStageMaps();
+  const categories = {
+    trials_scheduled: emptyWindowCounts(),
+    rewind_ladder: emptyWindowCounts(),
+    paid_lifecycle: emptyWindowCounts(),
+    manual_batch: emptyWindowCounts(),
+  };
+  if (!supabase) {
+    return { stageMaps, categories, lifecycle_total: emptyWindowCounts() };
+  }
+
+  const todayLondon = londonDateKey(nowMs);
   const from24hMs = nowMs - DAY_MS;
   let offset = 0;
 
   while (true) {
     const { data, error } = await supabase
       .from("academy_email_events")
-      .select("stage_key, sent_at")
+      .select("stage_key, sent_at, send_source, event_detail")
       .eq("status", "sent")
       .eq("dry_run", false)
-      .gte("sent_at", from7dIso)
       .order("sent_at", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) throw new Error(`academy_email_events sent counts: ${error.message}`);
 
     for (const row of data || []) {
-      const key = row.stage_key;
-      if (!key || maps.last7d[key] == null) continue;
-      maps.last7d[key] += 1;
       const sentMs = new Date(row.sent_at).getTime();
-      if (Number.isFinite(sentMs) && sentMs >= from24hMs) {
-        maps.last24h[key] += 1;
+      if (!Number.isFinite(sentMs)) continue;
+      const sentDayLondon = londonDateKey(sentMs);
+
+      const stageKey = row.stage_key;
+      if (stageKey && stageMaps.last7d[stageKey] != null) {
+        if (sentMs >= nowMs - 7 * DAY_MS) stageMaps.last7d[stageKey] += 1;
+        if (sentMs >= from24hMs) stageMaps.last24h[stageKey] += 1;
+      }
+
+      const category = categoryForStageKey(stageKey);
+      if (category) {
+        bumpWindowCounts(categories[category], sentMs, sentDayLondon, todayLondon, nowMs);
+      }
+      if (isManualSend(row)) {
+        bumpWindowCounts(categories.manual_batch, sentMs, sentDayLondon, todayLondon, nowMs);
       }
     }
 
@@ -97,38 +165,13 @@ async function fetchAllSentCounts(nowMs) {
     offset += PAGE_SIZE;
   }
 
-  return maps;
-}
+  const lifecycle_total = sumCategoryWindows(categories, [
+    "trials_scheduled",
+    "rewind_ladder",
+    "paid_lifecycle",
+  ]);
 
-async function fetchManualSendCounts(nowMs) {
-  const out = { last24h: 0, last7d: 0 };
-  if (!supabase) return out;
-  const from7dIso = new Date(nowMs - 7 * DAY_MS).toISOString();
-  const from24hMs = nowMs - DAY_MS;
-  let offset = 0;
-  while (true) {
-    const { data, error } = await supabase
-      .from("academy_email_events")
-      .select("sent_at, send_source, event_detail")
-      .eq("status", "sent")
-      .eq("dry_run", false)
-      .gte("sent_at", from7dIso)
-      .order("sent_at", { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw new Error(`manual send counts: ${error.message}`);
-    for (const row of data || []) {
-      const isManual =
-        MANUAL_SEND_SOURCES.includes(row.send_source) ||
-        row.event_detail === "corrected_resend_2026-06-09";
-      if (!isManual) continue;
-      out.last7d += 1;
-      const sentMs = new Date(row.sent_at).getTime();
-      if (Number.isFinite(sentMs) && sentMs >= from24hMs) out.last24h += 1;
-    }
-    if (!data || data.length < PAGE_SIZE) break;
-    offset += PAGE_SIZE;
-  }
-  return out;
+  return { stageMaps, categories, lifecycle_total };
 }
 
 async function fetchContactableMemberIds() {
@@ -203,7 +246,7 @@ async function countRewindEligible(stage, nowMs, contactable) {
   return uniqueIds.size;
 }
 
-async function statsForLegacyStage(stageDef, nowMs, contactable, sentCounts) {
+async function statsForLegacyStage(stageDef, nowMs, contactable, stageMaps) {
   const trial = TRIAL_STAGES.find((s) => s.key === stageDef.key);
   const rewind = REWIND_STAGES.find((s) => s.key === stageDef.key);
   let eligible = 0;
@@ -215,8 +258,8 @@ async function statsForLegacyStage(stageDef, nowMs, contactable, sentCounts) {
     enabled: stageDef.enabled === true,
     cron_enabled: stageDef.cronEnabled === true,
     eligible_today: eligible,
-    sent_last_24h: sentCounts.last24h[stageDef.key] || 0,
-    sent_last_7d: sentCounts.last7d[stageDef.key] || 0,
+    sent_last_24h: stageMaps.last24h[stageDef.key] || 0,
+    sent_last_7d: stageMaps.last7d[stageDef.key] || 0,
     next_send_at: trial || rewind ? nextLondon9AMIso(nowMs) : null,
     schedule_source:
       trial || (rewind && stageDef.enabled)
@@ -225,7 +268,7 @@ async function statsForLegacyStage(stageDef, nowMs, contactable, sentCounts) {
   };
 }
 
-function statsForTriggerStage(stageDef, nowMs, sentCounts) {
+function statsForTriggerStage(stageDef, nowMs, stageMaps) {
   return {
     key: stageDef.key,
     enabled: stageDef.enabled === true,
@@ -233,8 +276,8 @@ function statsForTriggerStage(stageDef, nowMs, sentCounts) {
     test_mode_only: stageDef.testModeOnly === true,
     eligible_today: null,
     eligible_deferred: true,
-    sent_last_24h: sentCounts.last24h[stageDef.key] || 0,
-    sent_last_7d: sentCounts.last7d[stageDef.key] || 0,
+    sent_last_24h: stageMaps.last24h[stageDef.key] || 0,
+    sent_last_7d: stageMaps.last7d[stageDef.key] || 0,
     next_send_at: nextLondon9AMIso(nowMs),
     schedule_source: "Vercel Cron trigger check (09:00 Europe/London)",
   };
@@ -253,19 +296,16 @@ module.exports = async function handler(req, res) {
 
   try {
     const nowMs = Date.now();
-    const [sentCounts, contactable, manualCounts] = await Promise.all([
-      fetchAllSentCounts(nowMs),
-      fetchContactableMemberIds(),
-      fetchManualSendCounts(nowMs),
-    ]);
+    const { stageMaps, categories, lifecycle_total } = await fetchSentMetrics(nowMs);
+    const contactable = await fetchContactableMemberIds();
 
     const results = await Promise.all(
       EMAIL_STAGES.map(async (stageDef) => {
         if (stageDef.legacyStats) {
-          return statsForLegacyStage(stageDef, nowMs, contactable, sentCounts);
+          return statsForLegacyStage(stageDef, nowMs, contactable, stageMaps);
         }
         if (stageDef.trigger) {
-          return statsForTriggerStage(stageDef, nowMs, sentCounts);
+          return statsForTriggerStage(stageDef, nowMs, stageMaps);
         }
         return null;
       })
@@ -278,8 +318,16 @@ module.exports = async function handler(req, res) {
       manual_sends: {
         key: "manual-batch",
         label: "Manual batch / corrected resend",
-        sent_last_24h: manualCounts.last24h,
-        sent_last_7d: manualCounts.last7d,
+        sent_last_24h: categories.manual_batch.last_24h,
+        sent_last_7d: categories.manual_batch.last_7d,
+        windows: categories.manual_batch,
+      },
+      summary_by_category: {
+        trials_scheduled: categories.trials_scheduled,
+        rewind_ladder: categories.rewind_ladder,
+        paid_lifecycle: categories.paid_lifecycle,
+        manual_batch: categories.manual_batch,
+        lifecycle_total,
       },
     });
   } catch (err) {

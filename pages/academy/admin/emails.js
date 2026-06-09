@@ -170,6 +170,7 @@ async function loadStats() {
   return {
     stages: Array.isArray(data.stages) ? data.stages : [],
     manualSends: data.manual_sends || null,
+    summaryByCategory: data.summary_by_category || null,
   };
 }
 
@@ -451,6 +452,88 @@ function ManualBatchTile({ manualSends, statsLoadFailed, active, onClick }) {
   );
 }
 
+const SUMMARY_WINDOW_COLUMNS = [
+  { key: 'today', label: 'Today' },
+  { key: 'last_7d', label: '7d' },
+  { key: 'last_30d', label: '30d' },
+  { key: 'last_60d', label: '60d' },
+  { key: 'last_90d', label: '90d' },
+  { key: 'total', label: 'Total' },
+];
+
+const SUMMARY_CATEGORY_ROWS = [
+  { key: 'trials_scheduled', label: 'Trials · scheduled', hint: 'Nudges + Day -7 / -1 / +7' },
+  { key: 'rewind_ladder', label: 'Trials · REWIND ladder', hint: 'Day +20 / +30 / +60 / +90' },
+  { key: 'paid_lifecycle', label: 'Paid lifecycle', hint: 'Quiet ladder, badge, renewal' },
+  { key: 'manual_batch', label: 'Manual / batch', hint: 'How sent — overlaps REWIND', accent: true },
+  { key: 'lifecycle_total', label: 'Lifecycle total', hint: 'Scheduled + REWIND + Paid (excl. manual)', bold: true },
+];
+
+function MasterSummaryTile({ summaryByCategory, statsLoadFailed }) {
+  const fmt = (n) => (n == null ? '—' : n);
+  const cellStyle = { padding: '8px 10px', textAlign: 'right', fontSize: 14, fontVariantNumeric: 'tabular-nums' };
+  const headStyle = { ...cellStyle, fontSize: 11, color: 'var(--ar-text-muted)', fontWeight: 600 };
+
+  return (
+    <section style={{ marginBottom: 24 }}>
+      <div style={{
+        padding: '16px 18px',
+        background: 'var(--ar-card)',
+        border: '1px solid var(--ar-border)',
+        borderRadius: 10,
+        overflowX: 'auto',
+      }}
+      >
+        <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
+          EMAIL SENDS BY CATEGORY
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+          <thead>
+            <tr>
+              <th style={{ ...headStyle, textAlign: 'left', paddingLeft: 0 }}>Category</th>
+              {SUMMARY_WINDOW_COLUMNS.map((col) => (
+                <th key={col.key} style={headStyle}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SUMMARY_CATEGORY_ROWS.map((row) => {
+              const windows = summaryByCategory?.[row.key];
+              return (
+                <tr key={row.key} style={{ borderTop: '1px solid var(--ar-border)' }}>
+                  <td style={{ padding: '10px 10px 10px 0', verticalAlign: 'top' }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: row.bold ? 700 : 600,
+                      color: row.accent ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+                    }}
+                    >
+                      {row.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 2 }}>{row.hint}</div>
+                  </td>
+                  {SUMMARY_WINDOW_COLUMNS.map((col) => (
+                    <td
+                      key={col.key}
+                      style={{
+                        ...cellStyle,
+                        fontWeight: row.bold ? 700 : 600,
+                        color: row.accent ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+                      }}
+                    >
+                      {statsLoadFailed ? '—' : fmt(windows?.[col.key])}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function TileSection({ title, subtitle, children }) {
   return (
     <section style={{ marginBottom: 24 }}>
@@ -470,7 +553,7 @@ function TileSection({ title, subtitle, children }) {
   );
 }
 
-function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileClick, nowMs }) {
+function StageTilesRow({ stats, manualSends, summaryByCategory, statsLoadFailed, activeKey, onTileClick, nowMs }) {
   const byKey = useMemo(() => {
     const m = {};
     (stats || []).forEach((s) => { m[s.key] = s; });
@@ -493,6 +576,10 @@ function StageTilesRow({ stats, manualSends, statsLoadFailed, activeKey, onTileC
 
   return (
     <>
+      <MasterSummaryTile
+        summaryByCategory={summaryByCategory}
+        statsLoadFailed={statsLoadFailed}
+      />
       <TileSection
         title="Trials — scheduled (cron)"
         subtitle="Trial nudges and Day -7 / -1 / +7. LIVE = automatic 09:00 London trigger is on."
@@ -1327,6 +1414,7 @@ export default function EmailsAdmin() {
   const [members, setMembers] = useState([]);
   const [stats, setStats] = useState([]);
   const [manualSends, setManualSends] = useState(null);
+  const [summaryByCategory, setSummaryByCategory] = useState(null);
   const [tableData, setTableData] = useState({ rows: [], attributionWindowDays: 14 });
   const [templates, setTemplates] = useState([]);
   const [mergeTags, setMergeTags] = useState([]);
@@ -1359,9 +1447,10 @@ export default function EmailsAdmin() {
 
   useEffect(() => {
     loadStats()
-      .then(({ stages, manualSends: manual }) => {
+      .then(({ stages, manualSends: manual, summaryByCategory: summary }) => {
         setStats(stages);
         setManualSends(manual);
+        setSummaryByCategory(summary);
       })
       .catch((err) => setLoadErrors((e) => ({ ...e, stats: err.message })));
   }, []);
@@ -1479,6 +1568,7 @@ export default function EmailsAdmin() {
       <StageTilesRow
         stats={stats}
         manualSends={manualSends}
+        summaryByCategory={summaryByCategory}
         statsLoadFailed={!!loadErrors.stats}
         activeKey={filterStageKey}
         onTileClick={(key) => {
