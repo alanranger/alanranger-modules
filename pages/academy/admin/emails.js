@@ -157,8 +157,10 @@ async function loadStats() {
   };
 }
 
-async function loadTableRows(days = 90) {
-  const res = await fetch(`/api/admin/emails-members?days=${days}&limit=500`);
+async function loadTableRows(days = 'all', limit = 2000) {
+  const res = await fetch(
+    `/api/admin/emails-members?days=${encodeURIComponent(days)}&limit=${limit}`
+  );
   if (!res.ok) throw new Error(`members-table HTTP ${res.status}`);
   const data = await res.json();
   return {
@@ -455,7 +457,7 @@ function StageSendBadge({ ev }) {
   if (ev.inferred) titleParts.push('inferred from trial history');
   if (ev.send_source && ev.send_source !== 'automated') titleParts.push(`source: ${ev.send_source}`);
   return (
-    <span title={titleParts.join(' · ')} style={{ color, fontSize: 12, fontStyle: ev.inferred ? 'italic' : 'normal' }}>
+    <span title={titleParts.join(' · ')} style={{ color, fontSize: 10, fontStyle: ev.inferred ? 'italic' : 'normal' }}>
       {formatDateShort(ev.sent_at)}{ev.inferred ? '*' : ''}
     </span>
   );
@@ -466,7 +468,7 @@ function ManualSendBadge({ manualLast }) {
   return (
     <span
       title={`${manualLast.send_source} · ${manualLast.stage_key} · ${manualLast.sent_at}`}
-      style={{ color: 'var(--ar-accent, #4a7fff)', fontSize: 12 }}
+      style={{ color: 'var(--ar-accent, #4a7fff)', fontSize: 10 }}
     >
       {formatDateShort(manualLast.sent_at)}
     </span>
@@ -482,18 +484,80 @@ function ConversionCell({ row }) {
       ? 'var(--ar-success, #0a0)'
       : 'var(--ar-text-muted)';
     return (
-      <span style={{ color, fontSize: 12, fontWeight: row.converted_within_window ? 600 : 400 }}>
+      <span style={{ color, fontSize: 10, fontWeight: row.converted_within_window ? 600 : 400 }}>
         {label}
       </span>
     );
   }
   if (row.reengagement_opted_out) {
-    return <span style={{ color: 'var(--ar-danger, #d33)', fontSize: 12 }}>Unsubbed</span>;
+    return <span style={{ color: 'var(--ar-danger, #d33)', fontSize: 10 }}>Unsubbed</span>;
   }
-  return <span style={{ color: 'var(--ar-text-muted)', fontSize: 12 }}>No</span>;
+  return <span style={{ color: 'var(--ar-text-muted)', fontSize: 10 }}>No</span>;
 }
 
-function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) {
+function rowHasAnySend(row) {
+  if (row.manual_last_sent?.sent_at) return true;
+  return STAGE_KEYS.some((k) => !!row.sends?.[k]?.sent_at);
+}
+
+function sortValueForColumn(row, column) {
+  if (column === 'member') return (row.name || row.email || '').toLowerCase();
+  if (column === 'trial_end') {
+    const ms = row.trial_end_at ? new Date(row.trial_end_at).getTime() : NaN;
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  if (column === 'manual') {
+    const ms = row.manual_last_sent?.sent_at
+      ? new Date(row.manual_last_sent.sent_at).getTime()
+      : NaN;
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  if (column === 'converted') {
+    if (row.converted_at) return new Date(row.converted_at).getTime();
+    if (row.reengagement_opted_out) return -1;
+    return 0;
+  }
+  const ev = row.sends?.[column];
+  const ms = ev?.sent_at ? new Date(ev.sent_at).getTime() : NaN;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sortMemberRows(rows, column, dir) {
+  const mult = dir === 'desc' ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const av = sortValueForColumn(a, column);
+    const bv = sortValueForColumn(b, column);
+    if (typeof av === 'string' && typeof bv === 'string') {
+      return av.localeCompare(bv) * mult;
+    }
+    if (av === bv) return 0;
+    return (av < bv ? -1 : 1) * mult;
+  });
+}
+
+function SortableTh({ column, label, sortColumn, sortDir, onSort, style, title }) {
+  const active = sortColumn === column;
+  const arrow = active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  return (
+    <th
+      style={{ ...style, cursor: 'pointer', userSelect: 'none' }}
+      title={title || `Sort by ${label}`}
+      onClick={() => onSort(column)}
+    >
+      {label}{arrow}
+    </th>
+  );
+}
+
+function MembersTable({
+  rows,
+  filterStage,
+  onRowClick,
+  attributionWindowDays,
+  sortColumn,
+  sortDir,
+  onSort,
+}) {
   if (!rows) return null;
   if (rows.length === 0) {
     return (
@@ -505,30 +569,62 @@ function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) 
   return (
     <div style={{
       border: '1px solid var(--ar-border)', borderRadius: 8,
-      overflow: 'auto', maxHeight: 600, background: 'var(--ar-card)',
+      overflowX: 'hidden', overflowY: 'auto', maxHeight: 620, background: 'var(--ar-card)',
     }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <table style={{
+        width: '100%', borderCollapse: 'collapse', fontSize: 11,
+        tableLayout: 'fixed',
+      }}>
         <thead style={{ position: 'sticky', top: 0, background: 'var(--ar-card)', zIndex: 1 }}>
           <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
-            <th style={thStyle}>Member</th>
-            <th style={thStyle}>Trial end</th>
+            <SortableTh
+              column="member"
+              label="Member"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={onSort}
+              style={memberThStyle}
+            />
+            <SortableTh
+              column="trial_end"
+              label="Trial end"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={onSort}
+              style={compactThStyle}
+            />
             {STAGES.map((s) => (
-              <th
+              <SortableTh
                 key={s.key}
+                column={s.key}
+                label={s.shortLabel}
+                sortColumn={sortColumn}
+                sortDir={sortDir}
+                onSort={onSort}
                 style={{
-                  ...thStyle,
+                  ...compactThStyle,
                   color: filterStage === s.key ? 'var(--ar-accent, #4a7fff)' : 'inherit',
                 }}
-              >
-                {s.shortLabel}
-              </th>
+              />
             ))}
-            <th style={thStyle} title="Last manual batch or corrected resend">
-              Manual
-            </th>
-            <th style={thStyle} title={`Attribution window: ${attributionWindowDays} days`}>
-              Converted?
-            </th>
+            <SortableTh
+              column="manual"
+              label="Manual"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={onSort}
+              style={compactThStyle}
+              title="Last manual batch or corrected resend"
+            />
+            <SortableTh
+              column="converted"
+              label="Conv?"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={onSort}
+              style={compactThStyle}
+              title={`Attribution window: ${attributionWindowDays} days`}
+            />
           </tr>
         </thead>
         <tbody>
@@ -541,26 +637,37 @@ function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) 
                 cursor: onRowClick ? 'pointer' : 'default',
               }}
             >
-              <td style={tdStyle}>
-                <div style={{ fontWeight: 600 }}>{row.name || '—'}</div>
-                <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>{row.email}</div>
+              <td style={memberTdStyle}>
+                <div style={{
+                  fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+                >
+                  {row.name || '—'}
+                </div>
+                <div style={{
+                  fontSize: 10, color: 'var(--ar-text-muted)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+                >
+                  {row.email}
+                </div>
               </td>
-              <td style={tdStyle}>{formatDateShort(row.trial_end_at)}</td>
+              <td style={compactTdStyle}>{formatDateShort(row.trial_end_at)}</td>
               {STAGES.map((s) => (
                 <td
                   key={s.key}
                   style={{
-                    ...tdStyle,
+                    ...compactTdStyle,
                     background: filterStage === s.key ? 'rgba(74,127,255,0.08)' : 'transparent',
                   }}
                 >
                   <StageSendBadge ev={row.sends?.[s.key]} />
                 </td>
               ))}
-              <td style={tdStyle}>
+              <td style={compactTdStyle}>
                 <ManualSendBadge manualLast={row.manual_last_sent} />
               </td>
-              <td style={tdStyle}><ConversionCell row={row} /></td>
+              <td style={compactTdStyle}><ConversionCell row={row} /></td>
             </tr>
           ))}
         </tbody>
@@ -569,19 +676,40 @@ function MembersTable({ rows, filterStage, onRowClick, attributionWindowDays }) 
   );
 }
 
-const thStyle = {
-  padding: '10px 12px',
+const memberThStyle = {
+  padding: '8px 6px',
   textAlign: 'left',
   fontWeight: 600,
-  fontSize: 12,
+  fontSize: 11,
   textTransform: 'uppercase',
   letterSpacing: 0.3,
   color: 'var(--ar-text-muted)',
+  width: '13%',
 };
 
-const tdStyle = {
-  padding: '10px 12px',
+const compactThStyle = {
+  padding: '5px 2px',
+  textAlign: 'center',
+  fontWeight: 600,
+  fontSize: 9,
+  textTransform: 'uppercase',
+  letterSpacing: 0.2,
+  color: 'var(--ar-text-muted)',
+  lineHeight: 1.15,
+  wordBreak: 'break-word',
+};
+
+const memberTdStyle = {
+  padding: '6px 6px',
   verticalAlign: 'top',
+  overflow: 'hidden',
+};
+
+const compactTdStyle = {
+  padding: '4px 2px',
+  verticalAlign: 'middle',
+  textAlign: 'center',
+  fontSize: 10,
 };
 
 function rowMatchesMemberSearch(row, searchEmail, searchName) {
@@ -1082,6 +1210,12 @@ export default function EmailsAdmin() {
   const [loadErrors, setLoadErrors] = useState({});
 
   const [filterStageKey, setFilterStageKey] = useState(null);
+  const [tableLookback, setTableLookback] = useState('all');
+  const [tableShowFilter, setTableShowFilter] = useState('all');
+  const [tablePageSize, setTablePageSize] = useState(50);
+  const [tablePage, setTablePage] = useState(0);
+  const [sortColumn, setSortColumn] = useState('member');
+  const [sortDir, setSortDir] = useState('asc');
   const [memberEmail, setMemberEmail] = useState('');
   const [memberSearchEmail, setMemberSearchEmail] = useState('');
   const [memberSearchName, setMemberSearchName] = useState('');
@@ -1110,10 +1244,13 @@ export default function EmailsAdmin() {
   }, []);
 
   useEffect(() => {
-    loadTableRows(90)
-      .then(setTableData)
+    loadTableRows(tableLookback, 2000)
+      .then((data) => {
+        setTableData(data);
+        setTablePage(0);
+      })
       .catch((err) => setLoadErrors((e) => ({ ...e, table: err.message })));
-  }, []);
+  }, [tableLookback]);
 
   const refreshTemplates = useCallback(() => {
     loadTemplates()
@@ -1140,16 +1277,47 @@ export default function EmailsAdmin() {
   }, [selectedStage?.key, memberEmail]);
 
   const filteredRows = useMemo(() => {
-    if (!filterStageKey) return tableData.rows;
-    return tableData.rows.filter(
-      (r) => isRowEligibleForStage(r, filterStageKey, nowMs) || !!r.sends?.[filterStageKey]
-    );
-  }, [tableData.rows, filterStageKey, nowMs]);
+    let rows = tableData.rows || [];
+    if (tableShowFilter === 'emailed') {
+      rows = rows.filter((r) => rowHasAnySend(r));
+    } else if (tableShowFilter === 'stage' && filterStageKey) {
+      rows = rows.filter(
+        (r) => isRowEligibleForStage(r, filterStageKey, nowMs) || !!r.sends?.[filterStageKey]
+      );
+    }
+    return rows;
+  }, [tableData.rows, tableShowFilter, filterStageKey, nowMs]);
 
-  const displayRows = useMemo(
+  const searchedRows = useMemo(
     () => filteredRows.filter((r) => rowMatchesMemberSearch(r, memberSearchEmail, memberSearchName)),
     [filteredRows, memberSearchEmail, memberSearchName],
   );
+
+  const sortedRows = useMemo(
+    () => sortMemberRows(searchedRows, sortColumn, sortDir),
+    [searchedRows, sortColumn, sortDir],
+  );
+
+  const totalPages = useMemo(() => {
+    if (!tablePageSize || tablePageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(sortedRows.length / tablePageSize));
+  }, [sortedRows.length, tablePageSize]);
+
+  const pagedRows = useMemo(() => {
+    if (!tablePageSize || tablePageSize <= 0) return sortedRows;
+    const start = tablePage * tablePageSize;
+    return sortedRows.slice(start, start + tablePageSize);
+  }, [sortedRows, tablePage, tablePageSize]);
+
+  function handleSort(column) {
+    setTablePage(0);
+    if (sortColumn === column) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDir('asc');
+    }
+  }
 
   async function handleTestSend() {
     if (!selectedStage || !memberEmail) return;
@@ -1190,6 +1358,8 @@ export default function EmailsAdmin() {
         activeKey={filterStageKey}
         onTileClick={(key) => {
           setFilterStageKey((prev) => (prev === key ? null : key));
+          setTableShowFilter('stage');
+          setTablePage(0);
           setTestState(null);
         }}
         nowMs={nowMs}
@@ -1264,22 +1434,100 @@ export default function EmailsAdmin() {
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
-          <h2 style={{ fontSize: 18, margin: 0 }}>
-            Members (trials started in last 90 days + anyone emailed in that window)
-          </h2>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 10,
+        }}
+        >
+          <h2 style={{ fontSize: 18, margin: 0 }}>Members</h2>
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            Lookback
+            <select
+              value={tableLookback}
+              onChange={(e) => setTableLookback(e.target.value)}
+              style={{ fontSize: 12, padding: '4px 8px' }}
+            >
+              <option value="all">All time</option>
+              <option value="90">90 days</option>
+              <option value="180">180 days</option>
+              <option value="365">365 days</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            Show
+            <select
+              value={tableShowFilter}
+              onChange={(e) => { setTableShowFilter(e.target.value); setTablePage(0); }}
+              style={{ fontSize: 12, padding: '4px 8px' }}
+            >
+              <option value="all">All members</option>
+              <option value="emailed">Emailed only</option>
+              <option value="stage">Stage match or sent</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            Rows
+            <select
+              value={String(tablePageSize)}
+              onChange={(e) => {
+                setTablePageSize(parseInt(e.target.value, 10) || 50);
+                setTablePage(0);
+              }}
+              style={{ fontSize: 12, padding: '4px 8px' }}
+            >
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="0">All</option>
+            </select>
+          </label>
+          {filterStageKey ? (
+            <button
+              type="button"
+              onClick={() => setFilterStageKey(null)}
+              style={{
+                background: 'transparent', border: '1px solid var(--ar-border)',
+                borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Clear stage tile
+            </button>
+          ) : null}
           <span style={{ fontSize: 12, color: 'var(--ar-text-muted)' }}>
-            {displayRows.length} row{displayRows.length === 1 ? '' : 's'}
-            {filterStageKey ? ` · stage ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
-            {(memberSearchEmail.trim() || memberSearchName.trim())
-              ? ' · name/email filter'
-              : ''}
+            {sortedRows.length} matching · showing {pagedRows.length}
+            {filterStageKey ? ` · tile ${STAGE_BY_KEY[filterStageKey].shortLabel}` : ''}
           </span>
         </div>
+        {totalPages > 1 ? (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 12 }}>
+            <button
+              type="button"
+              disabled={tablePage <= 0}
+              onClick={() => setTablePage((p) => Math.max(0, p - 1))}
+              style={{ padding: '4px 10px', fontSize: 12 }}
+            >
+              Previous
+            </button>
+            <span style={{ color: 'var(--ar-text-muted)', alignSelf: 'center' }}>
+              Page {tablePage + 1} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={tablePage >= totalPages - 1}
+              onClick={() => setTablePage((p) => Math.min(totalPages - 1, p + 1))}
+              style={{ padding: '4px 10px', fontSize: 12 }}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
         <MembersTable
-          rows={displayRows}
+          rows={pagedRows}
           filterStage={filterStageKey}
           attributionWindowDays={tableData.attributionWindowDays}
+          sortColumn={sortColumn}
+          sortDir={sortDir}
+          onSort={handleSort}
           onRowClick={(row) => {
             if (row.email) {
               setMemberEmail(row.email);

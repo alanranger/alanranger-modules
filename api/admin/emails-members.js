@@ -13,7 +13,8 @@ const supabase =
 
 const DAY_MS = 86400000;
 const ATTRIBUTION_WINDOW_DAYS = 14;
-const DEFAULT_LIMIT = 500;
+const DEFAULT_LIMIT = 2000;
+const MAX_LIMIT = 2000;
 const TRIAL_SELECT =
   "member_id, trial_start_at, trial_end_at, converted_at, reengagement_send_count, reengagement_opted_out, reengagement_sent_at, reengagement_last_sent_at";
 
@@ -23,11 +24,13 @@ function parseInt10(raw, fallback) {
 }
 
 function readLimit(req) {
-  return Math.min(parseInt10(req.query?.limit, DEFAULT_LIMIT), DEFAULT_LIMIT);
+  return Math.min(parseInt10(req.query?.limit, DEFAULT_LIMIT), MAX_LIMIT);
 }
 
 function readDays(req) {
-  return Math.min(parseInt10(req.query?.days, 90), 365);
+  const raw = String(req.query?.days ?? "all").trim().toLowerCase();
+  if (raw === "all" || raw === "0") return null;
+  return Math.min(parseInt10(req.query?.days, 365), 3650);
 }
 
 async function fetchPagedRows(buildQuery) {
@@ -45,28 +48,30 @@ async function fetchPagedRows(buildQuery) {
 }
 
 async function fetchRecentSendMemberIds(sinceIso) {
-  const data = await fetchPagedRows((from, to) =>
-    supabase
+  const data = await fetchPagedRows((from, to) => {
+    let q = supabase
       .from("academy_email_events")
       .select("member_id")
-      .gte("sent_at", sinceIso)
       .eq("dry_run", false)
       .eq("status", "sent")
       .order("sent_at", { ascending: true })
-      .range(from, to)
-  );
+      .range(from, to);
+    if (sinceIso) q = q.gte("sent_at", sinceIso);
+    return q;
+  });
   return [...new Set(data.map((r) => r.member_id).filter(Boolean))];
 }
 
 async function fetchTrialRows(sinceIso) {
-  return fetchPagedRows((from, to) =>
-    supabase
+  return fetchPagedRows((from, to) => {
+    let q = supabase
       .from("academy_trial_history")
       .select(TRIAL_SELECT)
-      .gte("trial_start_at", sinceIso)
       .order("trial_start_at", { ascending: false })
-      .range(from, to)
-  );
+      .range(from, to);
+    if (sinceIso) q = q.gte("trial_start_at", sinceIso);
+    return q;
+  });
 }
 
 async function fetchTrialRowsByMemberIds(memberIds) {
@@ -276,7 +281,7 @@ module.exports = async function handler(req, res) {
   try {
     const days = readDays(req);
     const limit = readLimit(req);
-    const sinceIso = new Date(Date.now() - days * DAY_MS).toISOString();
+    const sinceIso = days == null ? null : new Date(Date.now() - days * DAY_MS).toISOString();
 
     const [primaryTrials, recentSendMemberIds] = await Promise.all([
       fetchTrialRows(sinceIso),
@@ -309,6 +314,7 @@ module.exports = async function handler(req, res) {
       success: true,
       generated_at: new Date().toISOString(),
       lookback_days: days,
+      lookback_all: days == null,
       limit,
       total: rows.length,
       stage_keys: STAGE_KEYS,
