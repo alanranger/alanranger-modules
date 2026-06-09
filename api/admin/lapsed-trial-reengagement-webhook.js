@@ -907,6 +907,14 @@ module.exports = async (req, res) => {
       const targetIds = new Set(backlog.memberIds);
       eligible = eligible.filter((r) => targetIds.has(r.member_id));
     }
+    if (
+      backlog.backlogRun &&
+      !backlog.correctedResend &&
+      backlog.sendCountEq === 1
+    ) {
+      const brokenIds = new Set(await fetchBrokenLinkMemberIds());
+      eligible = eligible.filter((r) => !brokenIds.has(r.member_id));
+    }
     const runOpts = { correctedResend: backlog.correctedResend, backlogRun: backlog.backlogRun };
     const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize, runOpts);
     return res.status(200).json({
