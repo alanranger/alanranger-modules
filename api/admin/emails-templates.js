@@ -32,6 +32,7 @@ const {
   MERGE_TAG_DOCS,
   listStageKeys,
 } = require("../../lib/emailTemplateDefaults");
+const { getStageByKey } = require("../../lib/emailStages");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -103,9 +104,22 @@ module.exports = async function handler(req, res) {
       fetchTemplates(),
       fetchSchedules(),
     ]);
-    const stages = listStageKeys().map((key) =>
-      buildStageRow(key, templatesMap, schedulesMap)
-    );
+    const stages = listStageKeys().map((key) => {
+      const row = buildStageRow(key, templatesMap, schedulesMap);
+      const meta = getStageByKey(key);
+      return {
+        ...row,
+        stage_meta: meta
+          ? {
+              enabled: meta.enabled === true,
+              testModeOnly: meta.testModeOnly === true,
+              cronEnabled: meta.cronEnabled === true,
+              displayName: meta.displayName,
+              triggerSummary: meta.triggerSummary || "",
+            }
+          : null,
+      };
+    });
     return res.status(200).json({
       success: true,
       generated_at: new Date().toISOString(),

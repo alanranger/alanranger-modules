@@ -100,9 +100,33 @@ function renderTemplateClient(source, vars) {
   });
 }
 
+const SNAPSHOT_MERGE_TAGS = [
+  'firstName', 'currentBadge', 'modulesOpened', 'modulesOpenedPhrase',
+  'modulesToNextBadge', 'modulesToNextBadgePhrase', 'examsToNextBadge',
+  'percentToNextBadge', 'nextBadge', 'nextModuleTitle', 'nextModuleUrl',
+  'trialDayNumber', 'trialDaysRemaining', 'daysSinceLastLogin', 'upgradeUrl',
+];
+
+function formatMergeTagHelp(mergeTags) {
+  const all = (mergeTags || []).map((t) => t.tag);
+  const snapshot = SNAPSHOT_MERGE_TAGS.filter((t) => all.includes(t));
+  const legacy = all.filter((t) => !snapshot.includes(t));
+  return `Snapshot/trigger tags: ${snapshot.join(', ')}. Legacy trial/rewind tags: ${legacy.join(', ')}.`;
+}
+
 const TEMPLATE_PREVIEW_VARS = Object.freeze({
   firstName: 'Alan',
   fullName: 'Alan Ranger',
+  currentBadge: 'Enrolled',
+  modulesOpened: 2,
+  modulesOpenedPhrase: '2 modules',
+  modulesToNextBadge: 1,
+  modulesToNextBadgePhrase: '1 module',
+  nextBadge: 'Foundation',
+  nextModuleTitle: 'Shutter Speed',
+  nextModuleUrl: 'https://www.alanranger.com/blog-on-photography/what-is-shutter-speed',
+  trialDayNumber: 2,
+  daysSinceLastLogin: 1,
   expiryDate: 'Monday, 28 April 2026',
   upgradeUrl: 'https://example.com/upgrade?preview=1',
   dashboardUrl: 'https://example.com/dashboard?preview=1',
@@ -720,6 +744,29 @@ function formatScheduleSummary(schedule) {
   return parts.join(' · ');
 }
 
+function StageTemplateStatusBadge({ stageMeta }) {
+  if (!stageMeta) return null;
+  if (stageMeta.enabled) {
+    return (
+      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ar-success, #0a0)' }}>
+        LIVE
+      </span>
+    );
+  }
+  if (stageMeta.testModeOnly) {
+    return (
+      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ar-text-muted)' }}>
+        TEST ONLY
+      </span>
+    );
+  }
+  return (
+    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ar-text-muted)' }}>
+      DISABLED
+    </span>
+  );
+}
+
 function TemplateStatusBadge({ isOverridden }) {
   const bg = isOverridden ? '#fef3c7' : '#e5e7eb';
   const color = isOverridden ? '#92400e' : '#374151';
@@ -746,8 +793,11 @@ function TemplateCard({ stage, expanded, onToggle, onUpdated }) {
         border: 'none', cursor: 'pointer', textAlign: 'left',
         color: TPL_PALETTE.cardText,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-          <span style={{ fontWeight: 600, color: TPL_PALETTE.cardText }}>{stage.label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, color: TPL_PALETTE.cardText }}>
+            {stage.stage_meta?.displayName || stage.label}
+          </span>
+          <StageTemplateStatusBadge stageMeta={stage.stage_meta} />
           <TemplateStatusBadge isOverridden={stage.is_overridden} />
           <span style={{ fontSize: 12, color: TPL_PALETTE.metaMuted }}>
             {formatScheduleSummary(stage.schedule)}
@@ -942,10 +992,9 @@ function TemplatesSection({ templates, mergeTags, loadError, onTemplatesChanged 
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginBottom: 12 }}>
-        The email templates below are what each webhook renders (DB override if set,
-        otherwise the built-in default). Click <em>Edit</em> on any card to change the
-        subject or body; save takes effect on the next scheduled send.
-        Supported merge tags: {mergeTags.map((t) => t.tag).join(', ')}.
+        All {templates.length} registered stages — DB override wins over built-in default.
+        Click <em>Edit</em> on any card to change subject/body; save applies on the next send.
+        {' '}{formatMergeTagHelp(mergeTags)}
       </div>
       {templates.map((stage) => (
         <TemplateCard

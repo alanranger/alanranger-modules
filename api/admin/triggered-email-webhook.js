@@ -22,6 +22,10 @@ const {
 const { logEmailEvent } = require("../../lib/emailEvents");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { londonHour } = require("../../lib/london-trial-days");
+const {
+  DAY2_DUMMY_PROFILES,
+  DAY2_TEST_SUBJECT_PREFIX,
+} = require("../../lib/day2EmailTestProfiles");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -132,6 +136,44 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
   return { memberId, status: "sent", messageId: info.messageId };
 }
 
+async function handleDummyTest(stageKey, testEmail, sendEmail, profileKey) {
+  const profile = DAY2_DUMMY_PROFILES[profileKey];
+  if (!profile) {
+    return { success: false, error: `Unknown dummyTest profile: ${profileKey}` };
+  }
+  const rendered = await renderStageEmail(supabase, stageKey, profile);
+  if (!rendered) return { success: false, error: "Template render failed" };
+  const prefix = DAY2_TEST_SUBJECT_PREFIX[profileKey] || "[TEST]";
+  const subject = `${prefix} ${rendered.subject}`;
+  if (!sendEmail) {
+    return {
+      success: true,
+      stageKey,
+      testEmail,
+      dummyTest: profileKey,
+      preview: { subject, body: rendered.body, html: htmlFromMarkdown(rendered.body) },
+    };
+  }
+  const info = await sendMail(testEmail, subject, rendered.body);
+  await logEmailEvent(supabase, {
+    member_id: "dummy-test",
+    email: testEmail,
+    stage_key: stageKey,
+    status: "sent",
+    messageId: info.messageId,
+    subject,
+    dryRun: false,
+  });
+  return {
+    success: true,
+    stageKey,
+    testEmail,
+    dummyTest: profileKey,
+    messageId: info.messageId,
+    subject,
+  };
+}
+
 async function handleTestEmail(stageKey, testEmail, sendEmail) {
   const { data } = await supabase
     .from("ms_members_cache")
@@ -206,9 +248,15 @@ module.exports = async function handler(req, res) {
 
   const stageKey = req.query.stageKey || req.query.stage;
   const testEmail = req.query.testEmail || null;
+  const dummyTest = req.query.dummyTest || null;
   const sendEmail = parseBool(req.query.sendEmail, false);
 
   try {
+    if (testEmail && dummyTest && stageKey && stageKey !== "all") {
+      const payload = await handleDummyTest(stageKey, testEmail, sendEmail, dummyTest);
+      return res.status(payload.success ? 200 : 400).json(payload);
+    }
+
     if (testEmail && stageKey && stageKey !== "all") {
       const payload = await handleTestEmail(stageKey, testEmail, sendEmail);
       return res.status(payload.success ? 200 : 400).json(payload);
