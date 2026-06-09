@@ -810,6 +810,10 @@ async function runTestMode(req, res, sendEmail) {
   });
 }
 
+// EMERGENCY: set true to block ALL live win-back bulk sends (local backlog + Vercel cron).
+// Single-recipient testEmail previews still work. Remove after corrected backlog approved.
+const WINBACK_SENDS_HARD_STOP = true;
+
 module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -821,10 +825,21 @@ module.exports = async (req, res) => {
   }
 
   const sendEmail = shouldSendEmail(req);
-  const backlog = parseBacklogParams(req);
   const testEmail = req.query.testEmail;
   const isSingleRecipientTest =
     testEmail !== undefined && testEmail !== null && String(testEmail).trim() !== "";
+
+  if (WINBACK_SENDS_HARD_STOP && sendEmail && !isSingleRecipientTest) {
+    console.log("[lapsed-trial-reengagement] HARD STOP — live sends blocked");
+    return res.status(200).json({
+      success: true,
+      skipped: true,
+      reason: "winback_sends_hard_stop",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const backlog = parseBacklogParams(req);
   if (req.query.testEmail) {
     return runTestMode(req, res, sendEmail);
   }

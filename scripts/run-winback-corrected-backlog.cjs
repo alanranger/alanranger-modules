@@ -29,6 +29,12 @@ const DELAY_MS = 10 * 60 * 1000;
 const LOG_PATH =
   "C:/Users/alan/Google Drive/Claude shared resources/Cursor Outputs for Claude/WINBACK-CORRECTED-RUN-LOG-LATEST.json";
 
+const STOP_FILE = path.join(__dirname, "..", "WINBACK-BACKLOG-STOP");
+if (fs.existsSync(STOP_FILE)) {
+  console.error("WINBACK-BACKLOG-STOP file present — exiting immediately.");
+  process.exit(0);
+}
+
 const dryRun = process.argv.includes("--dry-run");
 const handler = require("../api/admin/lapsed-trial-reengagement-webhook");
 

@@ -53,14 +53,6 @@
     {
       "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/admin/lapsed-trial-reengagement-webhook?sendEmail=true",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/admin/lapsed-trial-reengagement-webhook?sendEmail=true",
-      "schedule": "0 9 * * *"
     }
   ]
 }

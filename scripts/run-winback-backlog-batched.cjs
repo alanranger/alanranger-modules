@@ -32,6 +32,12 @@ const COHORTS = [
 const LOG_PATH =
   "C:/Users/alan/Google Drive/Claude shared resources/Cursor Outputs for Claude/WINBACK-BACKLOG-RUN-LOG-LATEST.json";
 
+const STOP_FILE = path.join(__dirname, "..", "WINBACK-BACKLOG-STOP");
+if (fs.existsSync(STOP_FILE)) {
+  console.error("WINBACK-BACKLOG-STOP file present — exiting immediately.");
+  process.exit(0);
+}
+
 const dryRun = process.argv.includes("--dry-run");
 const useRemote = process.argv.includes("--remote");
 const handler = useRemote ? null : require("../api/admin/lapsed-trial-reengagement-webhook");
