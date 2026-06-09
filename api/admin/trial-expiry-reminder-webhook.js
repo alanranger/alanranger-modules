@@ -48,6 +48,7 @@ const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
 const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
+const { memberAlreadySent } = require("../../lib/emailStageTriggers");
 const { getFoundationModuleMeta } = require("../../lib/foundation-module-meta");
 const { FOUNDATION_MODULE_PATHS } = require("../../lib/academy-module-paths");
 
@@ -808,6 +809,19 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     ? templateDaysAhead
     : daysUntilExpiry;
   const stageKey = stageKeyForTrialReminder(effectiveDays);
+
+  if (stageKey && member.member_id && supabase && sendEmail) {
+    const alreadySent = await memberAlreadySent(supabase, member.member_id, stageKey);
+    if (alreadySent) {
+      return {
+        sent: false,
+        skipped: true,
+        reason: "already_sent",
+        stage_key: stageKey,
+        preview,
+      };
+    }
+  }
 
   if (!sendEmail) {
     return { sent: false, skipped: true, upgrade_url: checkoutUrl, activity, preview, stage_key: stageKey };

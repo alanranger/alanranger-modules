@@ -27,6 +27,26 @@ const fetchMembersTotal = async (req, query) => {
   }
 };
 
+function isTrialShapedPlan(plan, trialPlanId) {
+  return (
+    plan.plan_id === trialPlanId ||
+    plan.plan_type === "trial" ||
+    (plan.payment_mode === "ONETIME" && plan.expiry_date)
+  );
+}
+
+function isActiveTrialPlan(plan, nowDate, trialPlanId) {
+  if (!isTrialShapedPlan(plan, trialPlanId)) return false;
+  const status = (plan.status || "").toUpperCase();
+  if (status === "CANCELED" || status === "CANCELLED" || status === "EXPIRED") return false;
+  if (status !== "ACTIVE" && status !== "TRIALING") return false;
+  if (plan.expiry_date) {
+    const expiry = new Date(plan.expiry_date);
+    if (!Number.isNaN(expiry.getTime()) && expiry <= nowDate) return false;
+  }
+  return true;
+}
+
 module.exports = async (req, res) => {
   try {
     if (req.method !== "GET") {
@@ -102,11 +122,10 @@ module.exports = async (req, res) => {
           // Memberstack uses uppercase statuses
           const status = (plan.status || '').toUpperCase();
           
-          // Trial detection: check for trial planId or ONETIME payment with expiryDate
-          const trialPlanId = "pln_academy-trial-30-days--wb7v0hbh";
-          const isTrial = plan.plan_id === trialPlanId || (plan.payment_mode === "ONETIME" && plan.expiry_date);
-          
-          if (isTrial) trials++;
+          // Trial detection: trial-shaped plan that is still active (matches Members ?plan=trial)
+          const isTrial = isTrialShapedPlan(plan, trialPlanId);
+
+          if (isActiveTrialPlan(plan, now, trialPlanId)) trials++;
           if (plan.plan_type === 'annual') annual++;
           if (plan.plan_type === 'monthly') monthly++;
           if (status === 'CANCELED' || status === 'CANCELLED') canceled++;

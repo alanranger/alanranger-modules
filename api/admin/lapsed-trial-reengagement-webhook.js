@@ -32,6 +32,7 @@ const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildWinbackMergeVars, REWIND_CAMPAIGN } = require("../../lib/winback-email-vars");
 const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
+const { memberAlreadySent } = require("../../lib/emailStageTriggers");
 const {
   generateUnsubToken,
   buildUnsubUrl,
@@ -474,24 +475,36 @@ function daysBetween(fromIso, now) {
 // Per-member send pipeline
 // ─────────────────────────────────────────────────────────────────────────
 
-async function stampTrialRow(row, windowBounds, token) {
+async function reserveSendSlot(row, windowBounds, token) {
+  const prevCount = row.reengagement_send_count || 0;
   const nowIso = new Date(windowBounds.now).toISOString();
   const expiresIso = new Date(windowBounds.now + CAMPAIGN.windowDays * 86400000).toISOString();
   const update = {
     reengagement_last_sent_at: nowIso,
     reengagement_expires_at: expiresIso,
-    reengagement_send_count: (row.reengagement_send_count || 0) + 1,
+    reengagement_send_count: prevCount + 1,
   };
   if (!row.reengagement_sent_at) update.reengagement_sent_at = nowIso;
   if (!row.reengagement_unsub_token) update.reengagement_unsub_token = token;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("academy_trial_history")
     .update(update)
-    .eq("member_id", row.member_id);
-  if (error) {
-    console.error(`[lapsed-trial-reengagement] failed to stamp row for ${row.member_id}:`, error.message);
+    .eq("member_id", row.member_id)
+    .eq("reengagement_send_count", prevCount)
+    .select("member_id")
+    .maybeSingle();
+  if (error || !data) {
+    return { reserved: false, prevCount };
   }
+  return { reserved: true, prevCount };
+}
+
+async function rollbackSendSlot(memberId, prevCount) {
+  await supabase
+    .from("academy_trial_history")
+    .update({ reengagement_send_count: prevCount })
+    .eq("member_id", memberId);
 }
 
 async function deliverEmail({ member, content }) {
@@ -558,10 +571,33 @@ async function processCandidate(row, windowBounds, sendEmail) {
     };
   }
 
-  const result = await deliverEmail({ member: contact, content });
   const stageKey = stageKeyForRewind(attempt);
+  if (sendEmail && stageKey && await memberAlreadySent(supabase, row.member_id, stageKey)) {
+    return {
+      skipped: true,
+      reason: "already_sent",
+      stage_key: stageKey,
+      member_id: row.member_id,
+      email: contact.email,
+    };
+  }
+
+  let reserve = null;
+  if (sendEmail) {
+    reserve = await reserveSendSlot(row, windowBounds, token);
+    if (!reserve.reserved) {
+      return {
+        skipped: true,
+        reason: "concurrent_reserve_failed",
+        member_id: row.member_id,
+        email: contact.email,
+        attempt,
+      };
+    }
+  }
+
+  const result = await deliverEmail({ member: contact, content });
   if (result.sent) {
-    await stampTrialRow(row, windowBounds, token);
     if (stageKey) {
       await logEmailEvent(supabase, {
         member_id: row.member_id,
@@ -573,16 +609,19 @@ async function processCandidate(row, windowBounds, sendEmail) {
         dryRun: false,
       });
     }
-  } else if (stageKey) {
-    await logEmailEvent(supabase, {
-      member_id: row.member_id,
-      email: contact.email,
-      stage_key: stageKey,
-      status: "failed",
-      error: result.error,
-      subject: content.subject,
-      dryRun: false,
-    });
+  } else if (sendEmail && reserve?.reserved) {
+    await rollbackSendSlot(row.member_id, reserve.prevCount);
+    if (stageKey) {
+      await logEmailEvent(supabase, {
+        member_id: row.member_id,
+        email: contact.email,
+        stage_key: stageKey,
+        status: "failed",
+        error: result.error,
+        subject: content.subject,
+        dryRun: false,
+      });
+    }
   }
   return {
     member_id: row.member_id,
