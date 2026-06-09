@@ -39,13 +39,16 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const memberstackAdmin = require("@memberstack/admin");
-const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
+const { LIFECYCLE_BCC, DASHBOARD_URL } = require("../../lib/lifecycleEmailConfig");
 const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEvents");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
+const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
+const { getFoundationModuleMeta } = require("../../lib/foundation-module-meta");
+const { FOUNDATION_MODULE_PATHS } = require("../../lib/academy-module-paths");
 
 // Vercel docs in this repo use SUPABASE_URL (server-only). Client builds may use NEXT_PUBLIC_SUPABASE_URL.
 const SUPABASE_URL =
@@ -698,10 +701,19 @@ function resolveTrialStageKey(stage, couponState) {
   return null;
 }
 
-function buildTrialMergeVars({ member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, couponState }) {
+async function buildTrialMergeVars({ member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, couponState }) {
   const firstName = (member.name || "").split(" ")[0] || "there";
   const daysLeft = couponState?.eligible ? couponState.daysLeft : 0;
   const daysWord = daysLeft === 1 ? "day" : "days";
+  let snapshot = null;
+  if (supabase && member.member_id) {
+    try {
+      snapshot = await buildMemberEmailSnapshot(supabase, member.member_id);
+    } catch (err) {
+      console.warn("[trial-expiry-reminder] snapshot build failed:", err.message);
+    }
+  }
+  const fallbackMeta = getFoundationModuleMeta(FOUNDATION_MODULE_PATHS[0]);
   return {
     firstName,
     fullName: member.name || "there",
@@ -716,6 +728,12 @@ function buildTrialMergeVars({ member, daysUntilExpiry, expiryDateStr, upgradeUr
     save20PriceGbp: SAVE20_PRICE_GBP,
     save20DiscountGbp: SAVE20_DISCOUNT_GBP,
     couponCode: "SAVE20",
+    modulesOpened: snapshot?.modulesOpened ?? 0,
+    modulesToNextBadge: snapshot?.modulesToNextBadge ?? 0,
+    examsToNextBadge: snapshot?.examsToNextBadge ?? 0,
+    nextBadge: snapshot?.nextBadge || "Foundation",
+    nextModuleLabel: snapshot?.nextModuleLabel || fallbackMeta.label,
+    dashboardUrl: DASHBOARD_URL,
   };
 }
 
@@ -735,7 +753,7 @@ async function buildEmailContent(member, daysUntilExpiry, expiryDateStr, upgrade
   const stageKey = resolveTrialStageKey(stage, couponState);
   if (stageKey) {
     try {
-      const vars = buildTrialMergeVars({
+      const vars = await buildTrialMergeVars({
         member, daysUntilExpiry, expiryDateStr, upgradeUrl, activity, couponState,
       });
       const rendered = await renderStageEmail(supabase, stageKey, vars);
