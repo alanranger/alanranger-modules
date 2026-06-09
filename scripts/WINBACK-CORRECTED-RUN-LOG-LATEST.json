@@ -1,0 +1,43 @@
+{
+  "mode": "live",
+  "runner": "remote",
+  "api_base": "https://alanranger-modules.vercel.app",
+  "started_at": "2026-06-09T17:36:39.501Z",
+  "batch_size": 20,
+  "delay_minutes": 10,
+  "phases": [
+    {
+      "label": "corrected-100",
+      "query": { "correctedResend": "1" },
+      "batches": [
+        { "batch": 1, "at": "2026-06-09T17:37:35.605Z", "sent": 14, "failed": 0, "eligible": 98, "corrected_resend": true },
+        { "batch": 2, "at": "2026-06-09T17:48:33.336Z", "sent": 8, "failed": 0, "eligible": 98, "corrected_resend": true },
+        { "batch": 3, "at": "2026-06-09T17:59:30.550Z", "sent": 5, "failed": 0, "eligible": 98, "corrected_resend": true },
+        { "batch": 4, "at": "2026-06-09T18:10:27.324Z", "sent": 0, "failed": 0, "eligible": 98, "corrected_resend": true }
+      ]
+    },
+    {
+      "label": "never-sent-plus-20",
+      "query": { "sendCountEq": "0" },
+      "batches": [
+        { "batch": 1, "at": "2026-06-09T18:21:19.599Z", "sent": 20, "failed": 0, "eligible": 40, "corrected_resend": false },
+        { "batch": 2, "at": "2026-06-09T18:32:06.600Z", "sent": 20, "failed": 0, "eligible": 35, "corrected_resend": false },
+        { "batch": 3, "at": "2026-06-09T18:42:30.249Z", "sent": 9, "failed": 0, "eligible": 15, "corrected_resend": false },
+        { "batch": 4, "at": "2026-06-09T18:52:32.619Z", "sent": 0, "failed": 0, "eligible": 6, "corrected_resend": false }
+      ]
+    },
+    {
+      "label": "never-sent-plus-30",
+      "query": { "sendCountEq": "1" },
+      "batches": [
+        { "batch": 1, "at": "2026-06-09T19:03:24.648Z", "sent": 20, "failed": 0, "eligible": 27, "corrected_resend": false },
+        { "batch": 2, "at": "2026-06-09T19:13:42.862Z", "sent": 5, "failed": 0, "eligible": 7, "corrected_resend": false },
+        { "batch": 3, "at": "2026-06-09T19:23:46.912Z", "sent": 0, "failed": 0, "eligible": 2, "corrected_resend": false }
+      ]
+    }
+  ],
+  "totalSent": 101,
+  "totalFailed": 0,
+  "status": "complete",
+  "finished_at": "2026-06-09T19:23:46.914Z"
+}
