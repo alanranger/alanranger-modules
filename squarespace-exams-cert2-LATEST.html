@@ -1,0 +1,1293 @@
+<!-- EXPORT squarespace-exams-cert2-LATEST.html v1.0.0 — paste BELOW Foundation block on /academy/photography-exams-certification -->
+<!-- Certificate 2: Composition & Creative — isolated from Foundation (ar-modgrid-c2 / c2- prefix / IIFE) -->
+<div id="ar-modgrid-c2">
+  <div id="c2-grid-container" style="display:block;max-width:1200px;margin:0 auto;padding:20px;">
+    <style>
+      #ar-modgrid-c2{
+        --c2-orange:#e57200;--c2-orange-hi:#f08a1f;--c2-gold:#d4a64a;--c2-champagne:#e8d9b8;
+        --c2-green:#4caf50;--c2-red:#e5484d;--c2-grey:#8a93a3;
+        --c2-bg:#0d1117;--c2-panel:#151a23;--c2-panel2:#1a2030;--c2-line:#2a3140;
+        --c2-text:#e8ebf0;--c2-dim:#aab3c0;
+        color:var(--c2-text);
+      }
+      #ar-modgrid-c2 a{color:var(--c2-gold)!important;text-decoration:none}
+      #ar-modgrid-c2 a:hover{text-decoration:underline;color:var(--c2-champagne)!important}
+      #ar-modgrid-c2 .top{display:flex;flex-direction:column;gap:16px;margin:8px 0 18px}
+      #ar-modgrid-c2 h2{margin:0;font-size:28px;line-height:1.2;font-weight:800;color:var(--c2-champagne)!important}
+      #ar-modgrid-c2 .summary{
+        width:100%;border:1.5px solid var(--c2-gold);border-radius:12px;background:var(--c2-panel);
+        padding:16px 18px;color:var(--c2-text);
+      }
+      #ar-modgrid-c2 .progressline{display:flex;justify-content:space-between;align-items:center;margin:0 0 4px}
+      #ar-modgrid-c2 .progressline .stat{font-weight:800;font-size:16px}
+      #ar-modgrid-c2 .track{margin-top:4px;height:8px;border-radius:6px;background:#222a38;overflow:hidden}
+      #ar-modgrid-c2 .bar{height:100%;width:0;background:var(--c2-gold);transition:width .4s ease;border-radius:6px}
+      #ar-modgrid-c2 .auth{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+      #ar-modgrid-c2 .badge{padding:4px 10px;border:1px solid var(--c2-line);border-radius:999px;background:var(--c2-panel2);font-weight:600;font-size:12px;color:var(--c2-dim)}
+      #ar-modgrid-c2 .btn{
+        display:inline-flex;align-items:center;justify-content:center;gap:6px;
+        padding:8px 14px;border-radius:8px;border:1.5px solid var(--c2-gold);
+        background:var(--c2-gold)!important;color:#0d1117!important;
+        font-weight:700;cursor:pointer;text-decoration:none!important;white-space:nowrap;font-size:13px;
+      }
+      #ar-modgrid-c2 .btn:hover{background:var(--c2-champagne)!important;border-color:var(--c2-champagne)!important}
+      #ar-modgrid-c2 .btn.sm{padding:6px 11px;border-radius:7px;font-size:12px}
+      #ar-modgrid-c2 .btn.secondary{background:transparent!important;color:var(--c2-gold)!important;border:1.5px solid var(--c2-gold)!important}
+      #ar-modgrid-c2 .btn.secondary:hover{color:var(--c2-champagne)!important;border-color:var(--c2-champagne)!important;background:rgba(212,166,74,.08)!important}
+      #ar-modgrid-c2 #c2-btnMasterCertificate{background:var(--c2-gold)!important;border-color:var(--c2-gold)!important;color:#0d1117!important}
+      #ar-modgrid-c2 #c2-btnMasterCertificate[disabled],#ar-modgrid-c2 .btn[disabled]{
+        background:#222a38!important;color:#8a93a3!important;border:1.5px solid #2a3140!important;
+        opacity:1!important;cursor:not-allowed!important;
+      }
+      #ar-modgrid-c2 #c2-btnMasterCertificate[disabled]::after{content:" 🔒";font-size:12px}
+      #ar-modgrid-c2 #c2-btnMasterTranscript{background:transparent!important;color:var(--c2-gold)!important;border:1.5px solid var(--c2-gold)!important}
+      #ar-modgrid-c2 .hint{margin-top:6px;color:var(--c2-dim);font-size:12px}
+      #ar-modgrid-c2 .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
+      @media(max-width:1200px){#ar-modgrid-c2 .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+      @media(max-width:980px){#ar-modgrid-c2 .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:640px){#ar-modgrid-c2 .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:480px){#ar-modgrid-c2 .grid{grid-template-columns:1fr}}
+      #ar-modgrid-c2 .card{
+        position:relative;background:#151a23;border:1.5px solid #8a7440;border-radius:12px;
+        padding:14px;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease;
+      }
+      #ar-modgrid-c2 .card:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.35);z-index:2}
+      #ar-modgrid-c2 .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+      #ar-modgrid-c2 .num{
+        min-width:28px;height:28px;border-radius:7px;border:1.5px solid var(--c2-gold);color:var(--c2-gold);
+        display:inline-flex;align-items:center;justify-content:center;font-weight:800;
+      }
+      #ar-modgrid-c2 .title{font-weight:800;font-size:16px;color:var(--c2-text)!important}
+      #ar-modgrid-c2 .chips{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:4px 0 10px;text-align:center}
+      #ar-modgrid-c2 .chip{
+        display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+        border:1px solid var(--c2-line);background:#222a38;font-size:13px;color:#fff!important;
+      }
+      #ar-modgrid-c2 .chip.pass{background:var(--c2-green)!important;border-color:var(--c2-green)!important;font-weight:700}
+      #ar-modgrid-c2 .chip.fail{background:var(--c2-red)!important;border-color:var(--c2-red)!important;font-weight:700}
+      #ar-modgrid-c2 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+      #ar-modgrid-c2 .card.passed{background:#14211a!important;border-color:#3f6b46!important}
+      #ar-modgrid-c2 .card.failed{background:#241518!important;border-color:#6b3a3f!important}
+      #ar-modgrid-c2 .tick,#ar-modgrid-c2 .xmark{position:absolute;right:12px;top:12px;font-weight:900;font-size:15px}
+      #ar-modgrid-c2 .tick{color:var(--c2-green)}#ar-modgrid-c2 .xmark{color:var(--c2-red)}
+      #ar-modgrid-c2 .toast{
+        position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;
+        background:#111;color:#fff;padding:10px 14px;border-radius:10px;display:none;
+      }
+      #ar-modgrid-c2 .toast.ok{background:var(--c2-green)}#ar-modgrid-c2 .toast.err{background:var(--c2-red)}
+      #ar-modgrid-c2 #c2-memberstackAuthMessage{
+        background:var(--c2-panel2)!important;border:1px solid var(--c2-gold)!important;color:var(--c2-text)!important;
+        padding:12px;border-radius:8px;margin-top:8px;
+      }
+      #ar-modgrid-c2 #c2-loadingSpinner{
+        display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;
+        background:rgba(21,26,35,.98);padding:30px;border-radius:12px;text-align:center;border:2px solid var(--c2-gold);
+      }
+      #ar-modgrid-c2 .c2-spinner{
+        width:40px;height:40px;border:4px solid #222a38;border-top:4px solid var(--c2-gold);
+        border-radius:50%;animation:c2spin 1s linear infinite;margin:0 auto 12px;
+      }
+      @keyframes c2spin{to{transform:rotate(360deg)}}
+      #ar-modgrid-c2 .c2-modal{background:rgba(6,8,12,.72)!important}
+      #ar-modgrid-c2 .c2-modal>div{
+        background:#151a23!important;border:1.5px solid #d4a64a!important;border-radius:12px!important;
+        box-shadow:0 24px 60px rgba(0,0,0,.45)!important;color:#e8ebf0!important;
+      }
+      #ar-modgrid-c2 .c2-modal h2,#ar-modgrid-c2 .c2-modal h3{color:#e8d9b8!important}
+      #ar-modgrid-c2 .c2-modal input[type="text"]{
+        background:#0d1117!important;border:1px solid #2a3140!important;color:#fff!important;border-radius:6px!important;
+      }
+    </style>
+
+    <div class="top">
+      <h2>Composition &amp; Creative</h2>
+      <div class="summary" id="c2-summary">
+        <div class="progressline">
+          <div class="stat"><span id="c2-passedCount">0</span>/15 Passed</div>
+          <div class="stat"><span id="c2-progressPct">0</span>%</div>
+        </div>
+        <div class="track"><div class="bar" id="c2-progressBar"></div></div>
+        <div class="auth">
+          <span class="badge" id="c2-authBadge">Checking authentication...</span>
+          <div id="c2-memberstackAuthMessage" style="display:none;">
+            <strong>Please sign in to the Academy dashboard to use exams.</strong>
+            <br><a href="/academy/login">Go to Academy Login →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid" id="c2-grid"></div>
+    <div class="toast" id="c2-toast"></div>
+    <div id="c2-loadingSpinner">
+      <div class="c2-spinner"></div>
+      <div id="c2-loadingText" style="font-weight:600;color:var(--c2-text);">Loading your progress...</div>
+    </div>
+  </div>
+
+  <div id="c2-quiz-container" style="display:none;">
+    <div id="c2-quiz" style="max-width:820px;margin:28px auto;padding:24px;border-radius:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+      <style>
+        #c2-quiz{
+          border:1.5px solid #d4a64a!important;background:#151a23!important;color:#e8ebf0!important;
+        }
+        #c2-quiz h2{color:#e8d9b8!important}#c2-quiz p{color:#aab3c0!important}#c2-quiz label{color:#e8ebf0!important}
+        #c2-quiz input[type="text"],#c2-quiz input[type="email"]{
+          width:100%;padding:10px;background:#1a2030!important;border:1px solid #2a3140!important;
+          color:#e8ebf0!important;border-radius:8px!important;
+        }
+        #c2-toast-quiz{
+          position:fixed;z-index:99999;left:50%;top:22px;transform:translateX(-50%);
+          background:#111;color:#fff;padding:12px 16px;border-radius:10px;display:none;max-width:90vw;
+        }
+        #c2-toast-quiz.success{background:#4caf50}#c2-toast-quiz.error{background:#e5484d}#c2-toast-quiz.info{background:#d4a64a}
+        #c2-quiz-form{counter-reset:c2-q-num 0}
+        .c2-field{counter-increment:c2-q-num;border:1px solid #2a3140;background:#1a2030;border-radius:10px;padding:14px;margin:12px 0}
+        .c2-qtxt{margin:0 0 10px;line-height:1.35;font-size:19px;font-weight:600;color:#e8d9b8!important}
+        #c2-quiz-form .c2-field .c2-qtxt::before{
+          content:"QUESTION " counter(c2-q-num) " OF " var(--c2-quiz-total)!important;
+          display:block!important;margin-bottom:6px;font-size:11.5px;font-weight:700;letter-spacing:2.2px;
+          text-transform:uppercase;color:#d4a64a!important;
+        }
+        .c2-opt{
+          display:flex;gap:10px;align-items:center;margin:8px 0;cursor:pointer;
+          background:#1a2030;border:1px solid #2a3140;border-radius:9px;padding:10px 12px;color:#fff;font-size:15px;
+          transition:background .15s,border-color .15s;
+        }
+        .c2-opt:hover,.c2-opt:focus-within{border-color:#d4a64a!important;background:#222a38!important}
+        .c2-opt:has(input:checked){border-color:#d4a64a!important;box-shadow:0 0 0 1px #d4a64a inset}
+        #c2-results{background:#151a23!important;border:1px solid #2a3140!important;color:#e8ebf0!important;border-radius:10px;padding:16px;margin-top:20px;display:none}
+        #c2-results h3{color:#e8d9b8!important}
+        .c2-pill{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700}
+        .c2-pill-pass{background:rgba(76,175,80,.2);color:#4caf50;border:1px solid #4caf50}
+        .c2-pill-fail{background:rgba(229,72,77,.15);color:#e5484d;border:1px solid #e5484d}
+        #c2-quizAuthMessage{background:#1a2030!important;border:1px solid #d4a64a!important;color:#e8ebf0!important;padding:8px;border-radius:6px;margin:8px 0 16px;display:none}
+        #c2-btn-submit{background:#d4a64a!important;color:#0d1117!important;border:0!important;border-radius:8px!important;font-weight:700!important;padding:12px 16px;cursor:pointer}
+        #c2-btn-retake{background:#d4a64a!important;color:#0d1117!important;border:0!important;border-radius:8px!important;font-weight:700!important;padding:12px 16px;cursor:pointer;display:none}
+        #c2-btn-pdf,#c2-btn-certificate{background:transparent!important;color:#d4a64a!important;border:1.5px solid #d4a64a!important;border-radius:8px!important;font-weight:700!important;padding:12px 16px;cursor:pointer}
+        #c2-btn-back{background:transparent!important;color:#aab3c0!important;border:1.5px solid #2a3140!important;border-radius:8px!important;font-weight:700!important;padding:12px 20px;cursor:pointer}
+        .c2-muted{color:#aab3c0!important}
+        input[type="radio"]{accent-color:#d4a64a}
+      </style>
+
+      <div id="c2-quizAuthMessage">
+        <strong>Please sign in to the Academy dashboard to use exams.</strong>
+        <br><a href="/academy/login" style="color:#d4a64a;">Go to Academy Login →</a>
+      </div>
+
+      <h2 id="c2-quiz-title" style="margin:0 0 12px;font-weight:700;">Module Assessment</h2>
+      <p style="margin:0 0 16px;">Enter your details, answer the questions, then view your score. Download your results as a PDF. If you pass, you can also download a personalised certificate.</p>
+
+      <form id="c2-learner-form" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;">
+        <div>
+          <label for="c2-name" style="display:block;font-weight:600;margin-bottom:6px;">Name</label>
+          <input id="c2-name" type="text" required placeholder="Your name">
+          <div class="c2-muted" style="font-size:12px;margin-top:4px;">Enter your full name as you'd like it on your certificate</div>
+        </div>
+        <div>
+          <label for="c2-email" style="display:block;font-weight:600;margin-bottom:6px;">Email</label>
+          <input id="c2-email" type="email" placeholder="you@example.com" readonly>
+          <div id="c2-status" class="c2-muted" style="font-size:14px;margin-top:4px;"></div>
+        </div>
+      </form>
+
+      <form id="c2-quiz-form" novalidate></form>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+        <button id="c2-btn-submit" type="button">Submit answers</button>
+        <button id="c2-btn-retake" type="button">Retake test</button>
+        <button id="c2-btn-pdf" type="button" disabled style="opacity:.6;">Download results (PDF)</button>
+        <button id="c2-btn-certificate" type="button" disabled style="opacity:.6;">Download certificate (PDF)</button>
+      </div>
+
+      <div id="c2-results">
+        <h3 style="margin:0 0 10px;font-size:18px;">Your results</h3>
+        <div id="c2-results-summary"></div>
+        <div id="c2-results-compact" class="c2-muted" style="font-size:13px;"></div>
+        <div id="c2-results-feedback" style="margin-top:8px;"></div>
+      </div>
+
+      <div id="c2-toast-quiz" role="status" aria-live="polite"></div>
+
+      <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #2a3140;">
+        <button id="c2-btn-back" type="button">← Back to Modules</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
+<script>
+(function(){
+  'use strict';
+
+  var EXAMS_API_BASE = 'https://alanranger-modules.vercel.app';
+  var CURRICULUM_NAME = 'Composition & Creative Curriculum (Modules 1–15)';
+  var MASTERY_TITLE = 'Composition & Creative — All 15 Passed';
+  var MASTERY_DESIGNATION = 'Competent Creative Photographer';
+  var PASS_MARK = 80;
+  var MASTERY_KEY = 'ar_c2_mastery_celebrated';
+
+  var C2_MODULES = [
+    {id:'c2-01-composition-rules',n:1,title:'Composition Rules',article:'https://www.alanranger.com/blog-on-photography/mastering-photography-composition-rules'},
+    {id:'c2-02-framing',n:2,title:'Framing',article:'https://www.alanranger.com/blog-on-photography/what-is-framing-in-photography'},
+    {id:'c2-03-leading-lines',n:3,title:'Leading Lines',article:'https://www.alanranger.com/blog-on-photography/what-are-leading-lines-in-photography'},
+    {id:'c2-04-negative-space',n:4,title:'Negative Space',article:'https://www.alanranger.com/blog-on-photography/what-is-negative-space-in-photography'},
+    {id:'c2-05-contrast',n:5,title:'Contrast',article:'https://www.alanranger.com/blog-on-photography/what-is-contrast-in-photography'},
+    {id:'c2-06-balance',n:6,title:'Compositional Balance',article:'https://www.alanranger.com/blog-on-photography/finding-your-compositional-balance'},
+    {id:'c2-07-macro',n:7,title:'Macro Photography',article:'https://www.alanranger.com/blog-on-photography/art-of-macro-photography'},
+    {id:'c2-08-landscape',n:8,title:'Landscape Photography',article:'https://www.alanranger.com/blog-on-photography/mastering-landscape-photography-tips-and-techniques'},
+    {id:'c2-09-product',n:9,title:'Product Photography Setup',article:'https://www.alanranger.com/blog-on-photography/product-photography-setup'},
+    {id:'c2-10-minimalist',n:10,title:'Minimalist Photography',article:'https://www.alanranger.com/blog-on-photography/what-is-minimalist-photography'},
+    {id:'c2-11-still-life',n:11,title:'Still Life Photography',article:'https://www.alanranger.com/blog-on-photography/what-is-still-life-photography'},
+    {id:'c2-12-long-exposure',n:12,title:'Long Exposure Photography',article:'https://www.alanranger.com/blog-on-photography/how-to-take-long-exposure-photos'},
+    {id:'c2-13-architecture',n:13,title:'Architecture Photography',article:'https://www.alanranger.com/blog-on-photography/architecture-photography-guide'},
+    {id:'c2-14-portrait',n:14,title:'Portrait Photography',article:'https://www.alanranger.com/blog-on-photography/what-is-portrait-photography'},
+    {id:'c2-15-black-white',n:15,title:'Black & White Photography',article:'https://www.alanranger.com/blog-on-photography/black-and-white-photography-for-beginners'}
+  ];
+
+  var branding = {
+    gold:'#D4A64A',
+    champagne:'#E8D9B8',
+    logoUrl:'https://www.alanranger.com/s/ALAN-RANGER-LOGO-and-Icon-BLACK.png',
+    academyUrl:'https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png',
+    signatureUrl:'https://www.alanranger.com/s/Alan-Ranger-black-high-res.png',
+    emblemUrl:'https://www.alanranger.com/s/academy-emblem-ndsx.png',
+    courseUrl:'https://www.alanranger.com/online-photography-course',
+    siteUrl:'https://alanranger.com'
+  };
+
+  var memberstackIdentity = null;
+  var currentQuizConfig = null;
+  var lastReport = null;
+  var moduleCache = new Map();
+  var statusCache = {};
+
+  function $(id){ return document.getElementById(id); }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];
+    });
+  }
+  function slugify(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+  function formatDate(d){ return d.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}); }
+
+  function showToast(msg,type,duration){
+    type = type || 'error';
+    duration = duration || 4000;
+    var el = $('c2-toast-quiz') || $('c2-toast');
+    if(!el){ alert(msg); return; }
+    if(el.id === 'c2-toast-quiz'){
+      el.className = type === 'success' ? 'success' : (type === 'info' ? 'info' : 'error');
+    } else {
+      el.className = 'toast ' + (type === 'success' ? 'ok' : 'err');
+    }
+    el.textContent = msg;
+    el.style.display = 'block';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ el.style.display = 'none'; }, duration);
+  }
+
+  function showSpinner(text){
+    var sp = $('c2-loadingSpinner');
+    var tx = $('c2-loadingText');
+    if(tx) tx.textContent = text || 'Loading your progress...';
+    if(sp) sp.style.display = 'block';
+  }
+  function hideSpinner(){
+    var sp = $('c2-loadingSpinner');
+    if(sp) sp.style.display = 'none';
+  }
+
+  function fireConfetti(){
+    if(typeof confetti !== 'function') return;
+    confetti({particleCount:140,spread:80,origin:{x:0.5,y:0.5}});
+    setTimeout(function(){ confetti({particleCount:100,spread:100,origin:{x:0.5,y:0.5}}); },250);
+  }
+  function fireMegaConfetti(){
+    if(typeof confetti !== 'function') return;
+    var bursts = [
+      {particleCount:180,spread:80,startVelocity:45},
+      {particleCount:120,spread:120,startVelocity:55},
+      {particleCount:200,spread:70,startVelocity:50}
+    ];
+    var t = 0;
+    bursts.forEach(function(b){
+      setTimeout(function(){ confetti(Object.assign({},b,{origin:{x:0.5,y:0.6}})); }, t);
+      t += 250;
+    });
+  }
+
+  async function getMemberstackToken(){
+    try{
+      if(window.$memberstackDom){
+        if(typeof window.$memberstackDom.getSessionToken === 'function'){
+          var tok = await window.$memberstackDom.getSessionToken();
+          if(tok) return tok;
+        }
+        var member = await window.$memberstackDom.getCurrentMember();
+        if(member && member.token) return member.token;
+        if(member && member.data && member.data.token) return member.data.token;
+      }
+      var cookies = (document.cookie || '').split(';').map(function(c){ return c.trim(); });
+      var names = ['_ms-mid','_ms_mid','ms-mid','memberstack-token'];
+      for(var i=0;i<names.length;i++){
+        var found = cookies.find(function(c){ return c.indexOf(names[i]+'=') === 0; });
+        if(found) return decodeURIComponent(found.split('=').slice(1).join('='));
+      }
+    }catch(e){}
+    return null;
+  }
+
+  async function getApiHeaders(extra){
+    var headers = Object.assign({'Content-Type':'application/json'}, extra || {});
+    var token = await getMemberstackToken();
+    if(token) headers.Authorization = 'Bearer ' + token;
+    if(memberstackIdentity && memberstackIdentity.memberstack_id){
+      headers['X-Memberstack-Id'] = memberstackIdentity.memberstack_id;
+    }
+    return headers;
+  }
+
+  async function getExamIdentity(){
+    try{
+      if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function'){
+        var member = await window.$memberstackDom.getCurrentMember();
+        if(member && member.data){
+          memberstackIdentity = {
+            memberstack_id: member.data.id,
+            email: member.data.auth && member.data.auth.email ? member.data.auth.email : null
+          };
+          var emailField = $('c2-email');
+          if(emailField && memberstackIdentity.email) emailField.value = memberstackIdentity.email;
+          return memberstackIdentity;
+        }
+      }
+      var headers = await getApiHeaders();
+      var r = await fetch(EXAMS_API_BASE + '/api/exams/whoami', {headers:headers,credentials:'include'});
+      if(!r.ok) return null;
+      memberstackIdentity = await r.json();
+      var em = $('c2-email');
+      if(em && memberstackIdentity && memberstackIdentity.email) em.value = memberstackIdentity.email;
+      return memberstackIdentity;
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function getLatestStatus(moduleId){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity) return null;
+    try{
+      var headers = await getApiHeaders();
+      var url = EXAMS_API_BASE + '/api/exams/status?moduleId=' + encodeURIComponent(moduleId);
+      var r = await fetch(url, {headers:headers,credentials:'include'});
+      if(!r.ok) return null;
+      var j = await r.json();
+      return j.latest || null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function fetchAllStatuses(){
+    var out = {};
+    for(var i=0;i<C2_MODULES.length;i++){
+      var m = C2_MODULES[i];
+      try{
+        var st = await getLatestStatus(m.id);
+        if(st){
+          out[m.id] = {score:st.score_percent,passed:st.passed,when:st.created_at};
+        }
+      }catch(e){}
+    }
+    statusCache = out;
+    return out;
+  }
+
+  function renderSummary(statusByModule){
+    var total = C2_MODULES.length;
+    var passed = Object.values(statusByModule || {}).filter(function(s){ return s && s.passed; }).length;
+    var pct = total ? Math.round((passed/total)*100) : 0;
+    var pc = $('c2-passedCount');
+    var pp = $('c2-progressPct');
+    var bar = $('c2-progressBar');
+    if(pc) pc.textContent = String(passed);
+    if(pp) pp.textContent = String(pct);
+    if(bar) bar.style.width = pct + '%';
+    ensureMasteryButtons();
+    var masterBtn = $('c2-btnMasterCertificate');
+    if(masterBtn){
+      masterBtn.disabled = passed !== total;
+      masterBtn.style.opacity = passed === total ? '1' : '.6';
+    }
+    if(total && passed === total) maybeCelebrateMastery();
+  }
+
+  function ensureMasteryButtons(){
+    var summary = $('c2-summary');
+    if(!summary || $('c2-btnMasterCertificate')) return;
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+    var btn = document.createElement('button');
+    btn.id = 'c2-btnMasterCertificate';
+    btn.className = 'btn';
+    btn.textContent = 'Download Master Certificate';
+    btn.disabled = true;
+    btn.style.opacity = '.6';
+    btn.addEventListener('click', showMasteryModal);
+    var btnT = document.createElement('button');
+    btnT.id = 'c2-btnMasterTranscript';
+    btnT.className = 'btn secondary';
+    btnT.textContent = 'Download Module Results';
+    btnT.addEventListener('click', downloadMasterTranscriptPDF);
+    wrap.appendChild(btn);
+    wrap.appendChild(btnT);
+    summary.appendChild(wrap);
+  }
+
+  function maybeCelebrateMastery(){
+    if(localStorage.getItem(MASTERY_KEY) === 'yes') return;
+    localStorage.setItem(MASTERY_KEY,'yes');
+    fireMegaConfetti();
+    showMasteryModal();
+  }
+
+  function renderGrid(statusByModule){
+    var grid = $('c2-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    C2_MODULES.forEach(function(m){
+      var st = statusByModule[m.id];
+      var passed = st && st.passed === true;
+      var failed = st && st.passed === false;
+      var card = document.createElement('div');
+      card.className = 'card' + (passed ? ' passed' : '') + (failed ? ' failed' : '');
+      card.setAttribute('data-module-id', m.id);
+      var head = document.createElement('div');
+      head.className = 'head';
+      head.innerHTML = '<div class="num">' + m.n + '</div><div class="title">' + escapeHtml(m.title) + '</div>';
+      card.appendChild(head);
+      if(passed){
+        var tick = document.createElement('div');
+        tick.className = 'tick'; tick.textContent = '✓';
+        card.appendChild(tick);
+      } else if(failed){
+        var x = document.createElement('div');
+        x.className = 'xmark'; x.textContent = '✕';
+        card.appendChild(x);
+      }
+      var scoreTxt = (typeof st?.score === 'number') ? st.score + '%' : '—';
+      var dateTxt = (typeof st?.score === 'number') ? new Date(st.when).toLocaleDateString() : 'Pass ≥ 80%';
+      var chips = document.createElement('div');
+      chips.className = 'chips';
+      chips.innerHTML =
+        '<span class="chip">Score: <strong>' + scoreTxt + '</strong></span>' +
+        '<span class="chip">' + dateTxt + '</span>' +
+        (passed ? '<span class="chip pass">Passed</span>' : (failed ? '<span class="chip fail">Failed</span>' : ''));
+      card.appendChild(chips);
+      var actions = document.createElement('div');
+      actions.className = 'actions';
+      var articleLink = document.createElement('a');
+      articleLink.className = 'btn sm';
+      articleLink.href = m.article;
+      articleLink.target = '_blank';
+      articleLink.rel = 'noopener';
+      articleLink.textContent = 'Open module';
+      actions.appendChild(articleLink);
+      var examBtn = document.createElement('button');
+      examBtn.className = passed ? 'btn sm' : 'btn sm secondary';
+      examBtn.type = 'button';
+      examBtn.textContent = passed ? 'View results' : (failed ? 'Retake exam' : 'Take exam');
+      examBtn.addEventListener('click', function(){
+        if(passed) showResultsModal(m.id);
+        else loadExam(m.id);
+      });
+      actions.appendChild(examBtn);
+      card.appendChild(actions);
+      grid.appendChild(card);
+    });
+  }
+
+  async function loadModuleFromGitHub(moduleId){
+    if(moduleCache.has(moduleId)) return moduleCache.get(moduleId);
+    var url = 'https://alanranger.github.io/alanranger-modules/modules/' + moduleId + '.json';
+    var response = await fetch(url);
+    if(!response.ok) throw new Error('Failed to load module: ' + response.status);
+    var moduleData = await response.json();
+    var legacy = {
+      moduleId: moduleData.moduleId || moduleId,
+      moduleTitle: moduleData.title,
+      passMarkPercent: moduleData.passMark || PASS_MARK,
+      questions: (moduleData.questions || []).map(function(q, idx){
+        return {
+          id: 'q' + (idx + 1),
+          text: q.question,
+          options: q.options,
+          correctIndex: q.correct,
+          reviewHint: q.reviewHint || ''
+        };
+      }),
+      feedbackMap: moduleData.feedbackMap || {topics:[],questionTopics:{},topicLinks:{}}
+    };
+    moduleCache.set(moduleId, legacy);
+    return legacy;
+  }
+
+  function clearQuizState(){
+    lastReport = null;
+    var form = $('c2-quiz-form');
+    if(form) form.innerHTML = '';
+    var rs = $('c2-results-summary');
+    var rc = $('c2-results-compact');
+    var rf = $('c2-results-feedback');
+    if(rs) rs.innerHTML = '';
+    if(rc) rc.textContent = '';
+    if(rf) rf.innerHTML = '';
+    var res = $('c2-results');
+    if(res) res.style.display = 'none';
+    var pdf = $('c2-btn-pdf');
+    var cert = $('c2-btn-certificate');
+    var sub = $('c2-btn-submit');
+    var ret = $('c2-btn-retake');
+    if(pdf){ pdf.disabled = true; pdf.style.opacity = '.6'; }
+    if(cert){ cert.disabled = true; cert.style.opacity = '.6'; }
+    if(sub){ sub.style.display = 'inline-block'; sub.disabled = false; }
+    if(ret) ret.style.display = 'none';
+    document.querySelectorAll('#c2-quiz-form input[type="radio"]').forEach(function(r){
+      r.disabled = false;
+    });
+  }
+
+  function initQuiz(){
+    if(!currentQuizConfig) return;
+    var form = $('c2-quiz-form');
+    if(!form) return;
+    form.innerHTML = '';
+    form.style.setProperty('--c2-quiz-total', '"' + currentQuizConfig.questions.length + '"');
+    var frag = document.createDocumentFragment();
+    currentQuizConfig.questions.forEach(function(q){
+      var field = document.createElement('div');
+      field.className = 'c2-field';
+      var qtxt = document.createElement('div');
+      qtxt.className = 'c2-qtxt';
+      qtxt.textContent = q.text;
+      field.appendChild(qtxt);
+      q.options.forEach(function(opt, i){
+        var id = q.id + '-' + i;
+        var label = document.createElement('label');
+        label.className = 'c2-opt';
+        label.setAttribute('for', id);
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = q.id;
+        input.id = id;
+        input.value = String(i);
+        input.required = true;
+        var span = document.createElement('span');
+        span.textContent = opt;
+        label.appendChild(input);
+        label.appendChild(span);
+        field.appendChild(label);
+      });
+      frag.appendChild(field);
+    });
+    form.appendChild(frag);
+  }
+
+  async function loadExam(moduleId){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity){
+      var msg = $('c2-quizAuthMessage');
+      if(msg) msg.style.display = 'block';
+      showToast('Please sign in to the Academy dashboard to use exams.','error');
+      return;
+    }
+    var qam = $('c2-quizAuthMessage');
+    if(qam) qam.style.display = 'none';
+    try{
+      currentQuizConfig = await loadModuleFromGitHub(moduleId);
+      clearQuizState();
+      $('c2-grid-container').style.display = 'none';
+      $('c2-quiz-container').style.display = 'block';
+      var title = $('c2-quiz-title');
+      if(title) title.textContent = currentQuizConfig.moduleTitle + ' Assessment';
+      initQuiz();
+      var mod = C2_MODULES.find(function(m){ return m.id === moduleId; });
+      var status = await getLatestStatus(moduleId);
+      var stDiv = $('c2-status');
+      if(stDiv && status){
+        var when = new Date(status.created_at).toLocaleDateString();
+        stDiv.innerHTML = status.passed
+          ? 'Status: <strong>Completed ✓</strong> (' + status.score_percent + '% on ' + when + ')'
+          : 'Last attempt ' + status.score_percent + '% on ' + when;
+      } else if(stDiv){ stDiv.textContent = ''; }
+    }catch(err){
+      showToast('Failed to load module. It may be coming soon.','error');
+    }
+  }
+
+  async function backToGrid(){
+    $('c2-quiz-container').style.display = 'none';
+    $('c2-grid-container').style.display = 'block';
+    showSpinner('Refreshing progress...');
+    try{
+      var status = await fetchAllStatuses();
+      renderSummary(status);
+      renderGrid(status);
+    }catch(e){
+      renderSummary(statusCache);
+      renderGrid(statusCache);
+    }finally{
+      hideSpinner();
+    }
+  }
+
+  function renderResultsFromReport(rpt){
+    var passPill = rpt.pass
+      ? '<span class="c2-pill c2-pill-pass">Pass</span>'
+      : '<span class="c2-pill c2-pill-fail">Fail</span>';
+    $('c2-results-summary').innerHTML =
+      '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">' +
+        '<div style="font-size:28px;font-weight:800;">' + rpt.percent + '%</div>' +
+        '<div>' + passPill + ' — ' + rpt.correct + '/' + rpt.total + ' correct (Pass mark: ' + currentQuizConfig.passMarkPercent + '%)</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;">' +
+        '<div><strong>Name:</strong> ' + escapeHtml(rpt.name) + (rpt.email ? ' | <strong>Email:</strong> ' + escapeHtml(rpt.email) : '') + '</div>' +
+        '<div><strong>Date:</strong> ' + formatDate(new Date(rpt.timestamp)) + '</div>' +
+        '<div><strong>Module:</strong> ' + escapeHtml(rpt.moduleTitle) + '</div>' +
+      '</div>';
+    $('c2-results-compact').textContent = rpt.compact || '';
+    if(!rpt.misses.length){
+      $('c2-results-feedback').innerHTML =
+        '<div style="padding:12px;border:1px solid #3f6b46;background:#14211a;border-radius:8px;">Great work — no weak topics identified.</div>';
+    } else {
+      var keys = [];
+      rpt.misses.forEach(function(m){
+        (currentQuizConfig.feedbackMap.questionTopics[m.id] || []).forEach(function(k){
+          if(keys.indexOf(k) < 0) keys.push(k);
+        });
+      });
+      $('c2-results-feedback').innerHTML =
+        '<h4 style="margin:12px 0 6px;font-size:16px;color:#e8d9b8;">Question review</h4>' +
+        '<ol style="margin:0 0 0 18px;">' +
+          rpt.misses.map(function(m){
+            return '<li style="margin:6px 0;"><strong>' + m.id.toUpperCase() + '</strong>: ' + escapeHtml(m.reviewHint || 'Please review the relevant section.') + '</li>';
+          }).join('') +
+        '</ol>' +
+        '<div style="padding:12px;border:1px dashed #8a7440;background:#1a2030;border-radius:8px;margin-top:8px;">' +
+          '<strong>Topics to review:</strong><ul style="margin:8px 0 0 18px;">' +
+          keys.map(function(k){
+            var t = (currentQuizConfig.feedbackMap.topics.find(function(x){ return x.key === k; }) || {}).label || k;
+            var href = currentQuizConfig.feedbackMap.topicLinks[k];
+            return href ? '<li><a href="' + href + '" target="_blank" rel="noopener">' + escapeHtml(t) + '</a></li>' : '<li>' + escapeHtml(t) + '</li>';
+          }).join('') +
+          '</ul></div>';
+    }
+    $('c2-results').style.display = 'block';
+    $('c2-btn-pdf').disabled = false;
+    $('c2-btn-pdf').style.opacity = '1';
+    $('c2-btn-certificate').disabled = !rpt.pass;
+    $('c2-btn-certificate').style.opacity = rpt.pass ? '1' : '.6';
+  }
+
+  async function saveResultsViaMemberstack(report){
+    if(!memberstackIdentity) throw new Error('Not authenticated');
+    var latest = await getLatestStatus(report.moduleId);
+    var attempt = latest ? (latest.attempt || 0) + 1 : 1;
+    var payload = {
+      module_id: report.moduleId,
+      score_percent: report.percent,
+      passed: report.pass,
+      attempt: attempt,
+      details: {misses: report.misses || []},
+      email: memberstackIdentity.email
+    };
+    var headers = await getApiHeaders();
+    var r = await fetch(EXAMS_API_BASE + '/api/exams/save', {
+      method:'POST',
+      headers:headers,
+      credentials:'include',
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok){
+      var errText = await r.text().catch(function(){ return 'Save failed'; });
+      throw new Error(errText);
+    }
+    return r.json();
+  }
+
+  async function handleSubmit(){
+    var learnerName = ($('c2-name').value || '').trim();
+    if(!learnerName){ alert('Please enter your name.'); return; }
+    var unanswered = currentQuizConfig.questions.filter(function(q){
+      return !document.querySelector('#c2-quiz-form input[name="' + q.id + '"]:checked');
+    });
+    if(unanswered.length){ alert('Please answer all questions before submitting.'); return; }
+
+    var correct = 0;
+    var misses = [];
+    var compactParts = [];
+    currentQuizConfig.questions.forEach(function(q, idx){
+      var chosen = +document.querySelector('#c2-quiz-form input[name="' + q.id + '"]:checked').value;
+      var ok = chosen === q.correctIndex;
+      if(ok) correct++; else misses.push({id:q.id,reviewHint:q.reviewHint});
+      compactParts.push('Q' + (idx+1) + ': ' + (ok ? 'Correct' : 'Incorrect'));
+    });
+    var total = currentQuizConfig.questions.length;
+    var pct = Math.round((correct/total)*100);
+    var pass = pct >= (currentQuizConfig.passMarkPercent || PASS_MARK);
+
+    lastReport = {
+      moduleId: currentQuizConfig.moduleId,
+      moduleTitle: currentQuizConfig.moduleTitle,
+      name: learnerName,
+      email: memberstackIdentity && memberstackIdentity.email ? memberstackIdentity.email : '',
+      percent: pct,
+      pass: pass,
+      correct: correct,
+      total: total,
+      misses: misses,
+      compact: compactParts.join(', '),
+      timestamp: new Date().toISOString()
+    };
+    renderResultsFromReport(lastReport);
+
+    document.querySelectorAll('#c2-quiz-form input[type="radio"]').forEach(function(r){
+      r.disabled = true;
+    });
+    $('c2-btn-submit').style.display = 'none';
+    $('c2-btn-retake').style.display = 'inline-block';
+
+    if(pass){
+      fireConfetti();
+      showToast('Congrats! You passed. Download your certificate now.','success',5000);
+    } else {
+      showToast('You did not pass. Review the hints, then retake.','error',6000);
+    }
+
+    if(memberstackIdentity){
+      try{
+        await saveResultsViaMemberstack(lastReport);
+        showToast('Results saved to your account.','success',3000);
+        statusCache[lastReport.moduleId] = {
+          score: lastReport.percent,
+          passed: lastReport.pass,
+          when: lastReport.timestamp
+        };
+      }catch(e){
+        showToast('Auto-save failed. Please try again.','error');
+      }
+    }
+  }
+
+  function handleRetake(){
+    var name = $('c2-name').value;
+    var email = $('c2-email').value;
+    $('c2-quiz-form').reset();
+    $('c2-results').style.display = 'none';
+    $('c2-btn-pdf').disabled = true;
+    $('c2-btn-pdf').style.opacity = '.6';
+    $('c2-btn-certificate').disabled = true;
+    $('c2-btn-certificate').style.opacity = '.6';
+    lastReport = null;
+    $('c2-name').value = name;
+    $('c2-email').value = email;
+    document.querySelectorAll('#c2-quiz-form input[type="radio"]').forEach(function(r){
+      r.disabled = false;
+    });
+    $('c2-btn-submit').style.display = 'inline-block';
+    $('c2-btn-retake').style.display = 'none';
+    showToast('Quiz reset. You can retake now.','info',3000);
+  }
+
+  /* ---------- PDF helpers ---------- */
+  var PDF_IMAGE_MAX = 1000;
+  function getImgDims(dataURL){
+    return new Promise(function(res){
+      var img = new Image();
+      img.onload = function(){ res({w:img.naturalWidth,h:img.naturalHeight}); };
+      img.src = dataURL;
+    });
+  }
+  function fitWithin(sw,sh,mw,mh){
+    var t = Math.min(mw/sw,mh/sh);
+    return {w:sw*t,h:sh*t};
+  }
+  function getPdfImageFormat(dataUrl){
+    return String(dataUrl||'').indexOf('data:image/jpeg') === 0 ? 'JPEG' : 'PNG';
+  }
+  function addPdfImage(doc,dataUrl,x,y,w,h){
+    if(doc && dataUrl) doc.addImage(dataUrl,getPdfImageFormat(dataUrl),x,y,w,h);
+  }
+  async function blobToResizedDataUrl(blob,preserve){
+    return new Promise(function(resolve){
+      var objectUrl = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var scale = Math.min(1, PDF_IMAGE_MAX/Math.max(1,img.naturalWidth), PDF_IMAGE_MAX/Math.max(1,img.naturalHeight));
+          var w = Math.max(1, Math.round(img.naturalWidth*scale));
+          var h = Math.max(1, Math.round(img.naturalHeight*scale));
+          var canvas = document.createElement('canvas');
+          var ctx = canvas.getContext('2d');
+          canvas.width = w; canvas.height = h;
+          if(!preserve){ ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h); }
+          ctx.drawImage(img,0,0,w,h);
+          resolve(canvas.toDataURL(preserve ? 'image/png' : 'image/jpeg', preserve ? undefined : 0.82));
+        }catch(e){ resolve(null); }
+        finally{ URL.revokeObjectURL(objectUrl); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(objectUrl); resolve(null); };
+      img.src = objectUrl;
+    });
+  }
+  async function toDataURL(url){
+    var res = await fetch(url,{mode:'cors'});
+    if(!res.ok) throw new Error('Image fetch failed');
+    var blob = await res.blob();
+    var optimized = await blobToResizedDataUrl(blob,false);
+    if(optimized) return optimized;
+    return new Promise(function(resolve,reject){
+      var reader = new FileReader();
+      reader.onloadend = function(){ resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  async function toDataURLWithTransparency(url){
+    try{
+      var res = await fetch(url,{mode:'cors'});
+      var blob = await res.blob();
+      return await blobToResizedDataUrl(blob,true);
+    }catch(e){ return null; }
+  }
+  function writeWrapped(doc,text,x,y,maxWidth,lineHeight){
+    var lines = doc.splitTextToSize(text,maxWidth);
+    lines.forEach(function(l){ doc.text(l,x,y); y += lineHeight; });
+    return y;
+  }
+
+  async function downloadResultsPDF(moduleId){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity){ showToast('Please sign in to download results','error'); return; }
+    var status = await getLatestStatus(moduleId);
+    if(!status) throw new Error('No results found');
+    var mod = C2_MODULES.find(function(m){ return m.id === moduleId; });
+    var modTitle = mod ? mod.title : moduleId;
+    var totalQuestions = 12;
+    try{
+      var modRes = await fetch('https://alanranger.github.io/alanranger-modules/modules/' + moduleId + '.json');
+      if(modRes.ok){
+        var modJson = await modRes.json();
+        totalQuestions = (modJson.questions || []).length || 12;
+      }
+    }catch(e){}
+    var wrong = (status.details && status.details.misses) ? status.details.misses.length : 0;
+    var correctAnswers = totalQuestions - wrong;
+    var jsp = (window.jspdf || {}).jsPDF;
+    if(!jsp) throw new Error('jsPDF not loaded');
+    var doc = new jsp({unit:'pt',format:'a4',compress:true});
+    var pw = doc.internal.pageSize.getWidth();
+    var logo = await toDataURL(branding.logoUrl).catch(function(){ return null; });
+    var academy = await toDataURL(branding.academyUrl).catch(function(){ return null; });
+    if(logo){ var d = await getImgDims(logo); var f = fitWithin(d.w,d.h,40,20); addPdfImage(doc,logo,40,20,f.w,f.h); }
+    if(academy) addPdfImage(doc,academy,pw-60,20,20,20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    doc.text('Assessment Results',40,56);
+    doc.setLineWidth(1); doc.line(40,66,pw-40,66);
+    doc.setFont('helvetica','normal'); doc.setFontSize(12);
+    doc.text('Module: ' + modTitle,40,96);
+    doc.text('Email: ' + memberstackIdentity.email,40,116);
+    doc.text('Score: ' + status.score_percent + '%',40,136);
+    doc.text('Questions: ' + correctAnswers + '/' + totalQuestions,40,156);
+    doc.text('Status: ' + (status.passed ? 'Passed' : 'Failed'),40,176);
+    doc.text('Date: ' + new Date(status.created_at).toLocaleString(),40,196);
+    doc.setFontSize(10);
+    doc.text('© Alan Ranger Photography Academy',40,820);
+    doc.text('Alan Ranger Photography Academy — Composition & Creative',pw/2,820,{align:'center'});
+    doc.save(moduleId + '-results.pdf');
+    showToast('Results PDF downloaded.','success');
+  }
+
+  async function downloadCertificatePDF(moduleId,userName){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity){ showToast('Please sign in','error'); return; }
+    var status = await getLatestStatus(moduleId);
+    if(!status || !status.passed){ showToast('Passing result required','error'); return; }
+    var nameEl = document.getElementById('c2-certificateName');
+    var learnerName = (nameEl && nameEl.value.trim()) || userName || '';
+    if(!learnerName){ showToast('Enter the name for the certificate','error'); return; }
+    var mod = C2_MODULES.find(function(m){ return m.id === moduleId; });
+    if(!mod){ showToast('Module not found','error'); return; }
+    var jsp = (window.jspdf || {}).jsPDF;
+    if(!jsp) throw new Error('jsPDF not loaded');
+    var doc = new jsp({orientation:'l',unit:'mm',format:'a4',compress:true});
+    var imgs = await Promise.all([
+      toDataURL(branding.logoUrl).catch(function(){ return null; }),
+      toDataURL(branding.academyUrl).catch(function(){ return null; }),
+      toDataURL(branding.signatureUrl).catch(function(){ return null; }),
+      toDataURLWithTransparency(branding.emblemUrl)
+    ]);
+    var logo = imgs[0], academy = imgs[1], sign = imgs[2], emblem = imgs[3];
+    doc.setDrawColor(212,166,74); doc.setLineWidth(3); doc.rect(10,10,277,187);
+    doc.setDrawColor(200,200,200); doc.setLineWidth(0.6); doc.rect(16,16,265,175);
+    if(logo){ var ld = await getImgDims(logo); var lf = fitWithin(ld.w,ld.h,50,20); addPdfImage(doc,logo,22,22,lf.w,lf.h); }
+    if(academy) addPdfImage(doc,academy,290-42,22,20,20);
+    if(emblem){ var ed = await getImgDims(emblem); var ef = fitWithin(ed.w,ed.h,40,40); addPdfImage(doc,emblem,(297-ef.w)/2,22,ef.w,ef.h); }
+    doc.setFont('times','bold'); doc.setFontSize(30);
+    doc.text('Certificate of Achievement',148.5,72,{align:'center'});
+    doc.setFont('times','normal'); doc.setFontSize(14);
+    doc.text('This certifies that',148.5,88,{align:'center'});
+    doc.setFont('times','bold'); doc.setFontSize(26); doc.setTextColor(0,0,139);
+    doc.text(learnerName,148.5,104,{align:'center'});
+    doc.setFont('times','normal'); doc.setFontSize(14); doc.setTextColor(0,0,0);
+    doc.text('has successfully passed',148.5,120,{align:'center'});
+    doc.setFont('times','bold'); doc.setFontSize(20); doc.setTextColor(0,0,139);
+    doc.text(mod.title + ' Assessment',148.5,136,{align:'center'});
+    var totalQuestions = 12;
+    try{
+      var mr = await fetch('https://alanranger.github.io/alanranger-modules/modules/' + moduleId + '.json');
+      if(mr.ok){ var mj = await mr.json(); totalQuestions = (mj.questions||[]).length || 12; }
+    }catch(e){}
+    var correctAnswers = Math.round((status.score_percent/100)*totalQuestions);
+    var line = 'with a score of ' + status.score_percent + '% (' + correctAnswers + '/' + totalQuestions + ') on ' + formatDate(new Date(status.created_at)) + '.';
+    doc.setFont('times','italic'); doc.setFontSize(13);
+    doc.text(line,148.5,150,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.text('Alan Ranger Photography Academy — Composition & Creative',148.5,160,{align:'center'});
+    doc.setFontSize(12);
+    doc.text('Instructor: Alan Ranger',22,172);
+    var siteText = 'Website: alanranger.com';
+    doc.text(siteText,22,180);
+    doc.link(22,176,doc.getTextWidth(siteText),6,{url:branding.siteUrl});
+    var sigLineY = 184;
+    if(sign){ var sd = await getImgDims(sign); var sf = fitWithin(sd.w,sd.h,104,40); addPdfImage(doc,sign,290-22-sf.w,sigLineY-sf.h+3,sf.w,sf.h); }
+    doc.setDrawColor(212,166,74); doc.setLineWidth(0.6); doc.line(290-80,sigLineY,290-22,sigLineY);
+    doc.setFontSize(11); doc.text('Signature',290-22,sigLineY+6,{align:'right'});
+    doc.setFontSize(9); doc.text('Certificate ID: ' + slugify(moduleId) + '-' + Date.now(),290-16,46,{align:'right'});
+    doc.save(moduleId + '-certificate.pdf');
+    showToast('Certificate downloaded.','success');
+  }
+
+  async function getPassedModules(){
+    var rows = [];
+    for(var i=0;i<C2_MODULES.length;i++){
+      var st = await getLatestStatus(C2_MODULES[i].id);
+      if(st && st.passed){
+        rows.push({module_id:C2_MODULES[i].id,score_percent:st.score_percent,passed:true,created_at:st.created_at});
+      }
+    }
+    return rows;
+  }
+
+  async function downloadMasterCertificatePDF(capturedName){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity || !memberstackIdentity.email){
+      showToast('Please sign in to download the Master Certificate','error');
+      return false;
+    }
+    var passed = await getPassedModules();
+    if(passed.length < C2_MODULES.length){
+      showToast('Pass all 15 modules to unlock (' + passed.length + '/15).','info');
+      return false;
+    }
+    var jsp = (window.jspdf || {}).jsPDF;
+    if(!jsp) throw new Error('jsPDF not loaded');
+    var doc = new jsp({orientation:'l',unit:'mm',format:'a4',compress:true});
+    var imgs = await Promise.all([
+      toDataURL(branding.logoUrl).catch(function(){ return null; }),
+      toDataURL(branding.academyUrl).catch(function(){ return null; }),
+      toDataURL(branding.signatureUrl).catch(function(){ return null; }),
+      toDataURLWithTransparency(branding.emblemUrl)
+    ]);
+    var logo = imgs[0], academy = imgs[1], sign = imgs[2], emblem = imgs[3];
+    doc.setDrawColor(212,166,74); doc.setLineWidth(3); doc.rect(10,10,277,187);
+    doc.setDrawColor(232,217,184); doc.setLineWidth(1.2); doc.rect(14,14,269,181);
+    doc.setDrawColor(200,200,200); doc.setLineWidth(0.6); doc.rect(16,16,265,175);
+    if(logo){ var ld = await getImgDims(logo); var lf = fitWithin(ld.w,ld.h,50,20); addPdfImage(doc,logo,22,22,lf.w,lf.h); }
+    if(academy) addPdfImage(doc,academy,290-42,22,20,20);
+    if(emblem){ var ed = await getImgDims(emblem); var ef = fitWithin(ed.w,ed.h,40,40); addPdfImage(doc,emblem,(297-ef.w)/2,22,ef.w,ef.h); }
+    doc.setFont('times','bold'); doc.setFontSize(28);
+    doc.text(MASTERY_TITLE,148.5,72,{align:'center'});
+    doc.setFont('times','normal'); doc.setFontSize(14);
+    doc.text('This certifies that',148.5,88,{align:'center'});
+    var displayName = capturedName || memberstackIdentity.email.split('@')[0] || 'Student';
+    doc.setFont('times','bold'); doc.setFontSize(26); doc.setTextColor(0,0,139);
+    doc.text(displayName,148.5,104,{align:'center'});
+    doc.setFont('times','normal'); doc.setFontSize(14); doc.setTextColor(0,0,0);
+    doc.text('has successfully completed and passed the entire',148.5,120,{align:'center'});
+    doc.setFont('times','bold'); doc.setFontSize(18); doc.setTextColor(0,0,139);
+    doc.text(CURRICULUM_NAME,148.5,136,{align:'center'});
+    doc.setFont('times','italic'); doc.setFontSize(13); doc.setTextColor(0,0,0);
+    doc.text('Awarded ' + formatDate(new Date()) + ' — ' + MASTERY_DESIGNATION,148.5,150,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.text('Alan Ranger Photography Academy — Composition & Creative',148.5,160,{align:'center'});
+    doc.setFontSize(12);
+    doc.text('Instructor: Alan Ranger',22,172);
+    var siteText = 'Website: alanranger.com';
+    doc.text(siteText,22,180);
+    doc.link(22,176,doc.getTextWidth(siteText),6,{url:branding.siteUrl});
+    var sigLineY = 184;
+    if(sign){ var sd = await getImgDims(sign); var sf = fitWithin(sd.w,sd.h,104,40); addPdfImage(doc,sign,290-22-sf.w,sigLineY-sf.h+3,sf.w,sf.h); }
+    doc.setDrawColor(212,166,74); doc.setLineWidth(0.6); doc.line(290-80,sigLineY,290-22,sigLineY);
+    doc.setFontSize(11); doc.text('Signature',290-22,sigLineY+6,{align:'right'});
+    doc.setFontSize(9);
+    doc.text('Certificate ID: c2-master-' + Date.now().toString(36),290-16,46,{align:'right'});
+    doc.save('composition-creative-master-' + slugify(displayName) + '.pdf');
+    showToast('Master Certificate downloaded.','success');
+    return true;
+  }
+
+  async function downloadMasterTranscriptPDF(){
+    if(!memberstackIdentity) memberstackIdentity = await getExamIdentity();
+    if(!memberstackIdentity){ showToast('Please sign in','error'); return; }
+    var latest = {};
+    for(var i=0;i<C2_MODULES.length;i++){
+      var st = await getLatestStatus(C2_MODULES[i].id);
+      if(st) latest[C2_MODULES[i].id] = st;
+    }
+    if(!Object.keys(latest).length){ showToast('No attempts found','error'); return; }
+    var jsp = (window.jspdf || {}).jsPDF;
+    var doc = new jsp({unit:'pt',format:'a4',compress:true});
+    var pw = doc.internal.pageSize.getWidth();
+    var logo = await toDataURL(branding.logoUrl).catch(function(){ return null; });
+    var academy = await toDataURL(branding.academyUrl).catch(function(){ return null; });
+    if(logo){ var d = await getImgDims(logo); var f = fitWithin(d.w,d.h,40,20); addPdfImage(doc,logo,40,20,f.w,f.h); }
+    if(academy) addPdfImage(doc,academy,pw-60,20,20,20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    doc.text('Assessment Results — Composition & Creative',40,56);
+    doc.setLineWidth(1); doc.line(40,66,pw-40,66);
+    doc.setDrawColor(212,166,74); doc.setLineWidth(3); doc.line(40,70,pw-40,70);
+    doc.setDrawColor(0,0,0);
+    doc.setFont('helvetica','normal'); doc.setFontSize(12);
+    doc.text('Student: ' + memberstackIdentity.email,40,96);
+    doc.text('Generated: ' + formatDate(new Date()),40,116);
+    var y = 156;
+    doc.setFont('helvetica','bold');
+    doc.text('Module',40,y); doc.text('Score',200,y); doc.text('Questions',250,y); doc.text('Status',320,y); doc.text('Date',400,y);
+    doc.setFont('helvetica','normal'); y += 20;
+    for(var j=0;j<C2_MODULES.length;j++){
+      var m = C2_MODULES[j];
+      var r = latest[m.id];
+      var score = '—';
+      var ratio = '—';
+      if(r){
+        score = r.score_percent + '%';
+        var tq = 12;
+        try{
+          var mr = await fetch('https://alanranger.github.io/alanranger-modules/modules/' + m.id + '.json');
+          if(mr.ok){ var mj = await mr.json(); tq = (mj.questions||[]).length || 12; }
+        }catch(e){}
+        var ca = Math.round((r.score_percent/100)*tq);
+        ratio = ca + '/' + tq;
+      }
+      doc.text(m.title,40,y);
+      doc.text(score,200,y);
+      doc.text(ratio,250,y);
+      doc.text(r ? (r.passed ? 'Passed' : 'Failed') : '—',320,y);
+      doc.text(r ? new Date(r.created_at).toLocaleDateString() : '—',400,y);
+      y += 20;
+      if(y > 750){ doc.addPage(); y = 40; }
+    }
+    doc.setFontSize(10);
+    doc.text('© Alan Ranger Photography Academy',40,820);
+    doc.text('Alan Ranger Photography Academy — Composition & Creative',pw/2,820,{align:'center'});
+    doc.save('composition-creative-transcript.pdf');
+    showToast('Transcript downloaded.','success');
+  }
+
+  function showResultsModal(moduleId){
+    getLatestStatus(moduleId).then(function(status){
+      if(!status){ showToast('No results found','error'); return; }
+      var mod = C2_MODULES.find(function(m){ return m.id === moduleId; });
+      if(!mod) return;
+      var modal = document.createElement('div');
+      modal.className = 'c2-modal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+      modal.innerHTML =
+        '<div style="max-width:600px;width:100%;padding:30px;border-radius:12px;max-height:80vh;overflow-y:auto;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+            '<h2 style="margin:0;">' + escapeHtml(mod.title) + ' — Results</h2>' +
+            '<button type="button" class="c2-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;">&times;</button>' +
+          '</div>' +
+          '<div style="background:#1a2030;padding:20px;border-radius:8px;margin-bottom:20px;border:1px solid #2a3140;">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">' +
+              '<div><strong>Score:</strong> ' + status.score_percent + '%</div>' +
+              '<div><strong>Status:</strong> <span style="color:' + (status.passed ? '#4caf50' : '#e5484d') + '">' + (status.passed ? 'Passed' : 'Failed') + '</span></div>' +
+              '<div><strong>Date:</strong> ' + new Date(status.created_at).toLocaleDateString() + '</div>' +
+              '<div><strong>Time:</strong> ' + new Date(status.created_at).toLocaleTimeString() + '</div>' +
+            '</div>' +
+            (status.passed ?
+              '<div style="margin-top:15px;padding:15px;border:1px solid #8a7440;border-radius:6px;">' +
+                '<label style="display:block;font-weight:600;margin-bottom:8px;color:#e8d9b8;">Name for Certificate:</label>' +
+                '<input type="text" id="c2-certificateName" placeholder="Enter your full name" style="width:100%;padding:8px 12px;" value="' + escapeHtml((memberstackIdentity && memberstackIdentity.email) ? memberstackIdentity.email.split('@')[0] : '') + '">' +
+              '</div>' : '') +
+          '</div>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
+            '<button type="button" class="btn c2-modal-results">Download Results PDF</button>' +
+            (status.passed ? '<button type="button" class="btn c2-modal-cert">Download Certificate</button>' : '') +
+            '<button type="button" class="btn secondary c2-modal-retake">Retake Exam</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('.c2-modal-close').addEventListener('click', function(){ modal.remove(); });
+      modal.addEventListener('click', function(e){ if(e.target === modal) modal.remove(); });
+      modal.querySelector('.c2-modal-results').addEventListener('click', function(){
+        downloadResultsPDF(moduleId).catch(function(e){ showToast(e.message,'error'); });
+      });
+      var certBtn = modal.querySelector('.c2-modal-cert');
+      if(certBtn){
+        certBtn.addEventListener('click', function(){
+          var nm = ($('c2-certificateName') && $('c2-certificateName').value.trim()) || '';
+          downloadCertificatePDF(moduleId, nm).catch(function(e){ showToast(e.message,'error'); });
+        });
+      }
+      modal.querySelector('.c2-modal-retake').addEventListener('click', function(){
+        modal.remove();
+        loadExam(moduleId);
+      });
+    });
+  }
+
+  function showMasteryModal(){
+    var modal = document.createElement('div');
+    modal.className = 'c2-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML =
+      '<div style="max-width:680px;width:100%;overflow:hidden;">' +
+        '<div style="padding:22px 24px;border-bottom:1px solid #2a3140;display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:40px;height:40px;border-radius:999px;background:rgba(212,166,74,.2);color:#d4a64a;display:flex;align-items:center;justify-content:center;font-size:22px;">✓</div>' +
+          '<h3 style="margin:0;font-size:20px;">' + escapeHtml(MASTERY_TITLE) + '</h3>' +
+          '<button type="button" class="c2-modal-close" style="margin-left:auto;background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;">&times;</button>' +
+        '</div>' +
+        '<div style="padding:20px 24px;line-height:1.5;">' +
+          '<p>You\'ve successfully completed and passed all 15 Composition & Creative modules.</p>' +
+          '<p>Your <strong>Master Certificate</strong> recognises you as a <em>' + escapeHtml(MASTERY_DESIGNATION) + '</em>.</p>' +
+          '<label style="display:block;font-weight:600;margin:16px 0 8px;color:#e8d9b8;">Name for Master Certificate:</label>' +
+          '<input type="text" id="c2-masterCertificateName" placeholder="Enter your full name" style="width:100%;padding:8px 12px;">' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">' +
+            '<button type="button" class="btn" id="c2-btn-modal-master-cert">Download Master Certificate</button>' +
+            '<button type="button" class="btn secondary" id="c2-btn-modal-transcript">Download Module Results</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelector('.c2-modal-close').addEventListener('click', function(){ modal.remove(); });
+    modal.addEventListener('click', function(e){ if(e.target === modal) modal.remove(); });
+    var nameInput = $('c2-masterCertificateName');
+    if(nameInput && memberstackIdentity && memberstackIdentity.email && !nameInput.value){
+      nameInput.value = memberstackIdentity.email.split('@')[0];
+    }
+    $('c2-btn-modal-master-cert').addEventListener('click', async function(){
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Generating PDF...';
+      try{
+        var nm = ($('c2-masterCertificateName') && $('c2-masterCertificateName').value.trim()) || '';
+        var ok = await downloadMasterCertificatePDF(nm);
+        if(ok) modal.remove();
+        else { btn.disabled = false; btn.textContent = 'Download Master Certificate'; }
+      }catch(e){
+        btn.disabled = false;
+        btn.textContent = 'Download Master Certificate';
+        showToast(e.message || 'Failed','error');
+      }
+    });
+    $('c2-btn-modal-transcript').addEventListener('click', function(){
+      downloadMasterTranscriptPDF().catch(function(e){ showToast(e.message,'error'); });
+    });
+  }
+
+  async function downloadQuizResultsPDF(){
+    if(!lastReport) return;
+    var jsp = (window.jspdf || {}).jsPDF;
+    var doc = new jsp({orientation:'p',unit:'mm',format:'a4',compress:true});
+    var logo = await toDataURL(branding.logoUrl).catch(function(){ return null; });
+    var academy = await toDataURL(branding.academyUrl).catch(function(){ return null; });
+    doc.setFillColor(212,166,74); doc.rect(0,0,210,24,'F');
+    if(logo){ var ld = await getImgDims(logo); var lf = fitWithin(ld.w,ld.h,20,16); addPdfImage(doc,logo,8,4,lf.w,lf.h); }
+    if(academy) addPdfImage(doc,academy,210-24,4,16,16);
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(lastReport.moduleTitle,28,15); doc.setTextColor(0,0,0);
+    var y = 34;
+    doc.setDrawColor(230,230,230); doc.roundedRect(12,y,186,38,2,2);
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.text('Name: ' + lastReport.name,18,y+9);
+    doc.text('Date: ' + formatDate(new Date(lastReport.timestamp)),18,y+16);
+    doc.text('Score: ' + lastReport.percent + '% (' + lastReport.correct + '/' + lastReport.total + ') — ' + (lastReport.pass ? 'Pass' : 'Fail'),18,y+23);
+    doc.setFontSize(10); doc.setTextColor(90,90,90);
+    doc.text(lastReport.compact || '',18,y+31);
+    doc.setTextColor(0,0,0);
+    y += 48;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Question review',12,y); y += 6; doc.setFont('helvetica','normal');
+    if(!lastReport.misses.length){
+      y = writeWrapped(doc,'Great work — no weak topics identified.',12,y,186,6);
+    } else {
+      lastReport.misses.forEach(function(m,i){
+        y = writeWrapped(doc,(i+1)+'. '+m.id.toUpperCase()+': '+(m.reviewHint||'Review the section.'),12,y,186,6);
+      });
+    }
+    doc.save(slugify(lastReport.moduleId) + '-results-' + Date.now() + '.pdf');
+  }
+
+  async function initBlock(){
+    $('c2-btn-submit').addEventListener('click', handleSubmit);
+    $('c2-btn-retake').addEventListener('click', handleRetake);
+    $('c2-btn-back').addEventListener('click', backToGrid);
+    $('c2-btn-pdf').addEventListener('click', function(){
+      if(lastReport) downloadQuizResultsPDF().catch(function(e){ showToast(e.message,'error'); });
+    });
+    $('c2-btn-certificate').addEventListener('click', function(){
+      if(lastReport && lastReport.pass){
+        downloadCertificatePDF(lastReport.moduleId, lastReport.name).catch(function(e){ showToast(e.message,'error'); });
+      }
+    });
+
+    renderSummary({});
+    renderGrid({});
+
+    var authBadge = $('c2-authBadge');
+    var authMsg = $('c2-memberstackAuthMessage');
+
+    try{
+      memberstackIdentity = await getExamIdentity();
+      if(memberstackIdentity){
+        if(authBadge){
+          authBadge.textContent = 'Signed in as ' + memberstackIdentity.email;
+          authBadge.style.background = '#3f6b46';
+          authBadge.style.color = '#fff';
+        }
+        if(authMsg) authMsg.style.display = 'none';
+        showSpinner('Loading your exam progress...');
+        var status = await fetchAllStatuses();
+        renderSummary(status);
+        renderGrid(status);
+      } else {
+        if(authBadge){
+          authBadge.textContent = 'Not signed in';
+          authBadge.style.background = '#6b3a3f';
+          authBadge.style.color = '#fff';
+        }
+        if(authMsg) authMsg.style.display = 'block';
+      }
+    }catch(e){
+      if(authBadge) authBadge.textContent = 'Not signed in';
+      if(authMsg) authMsg.style.display = 'block';
+    } finally {
+      hideSpinner();
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initBlock);
+  } else {
+    initBlock();
+  }
+
+})();
+</script>

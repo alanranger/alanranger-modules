@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-04-negative-space",
+  "title": "Negative Space",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-negative-space-in-photography"
+  },
+  "questions": [
+    {
+      "question": "What is negative space in photography?",
+      "options": [
+        "The empty or open area around the main subject",
+        "The darkest area of the photo",
+        "The blurred background only",
+        "The part of the image that is overexposed"
+      ],
+      "correct": 0,
+      "reviewHint": "Negative space is the open, uncluttered area surrounding the subject."
+    },
+    {
+      "question": "If negative space is the area around the subject, what is 'positive space'?",
+      "options": [
+        "The subject itself - the main area of interest",
+        "The brightest highlight",
+        "The frame's border",
+        "The lens hood shadow"
+      ],
+      "correct": 0,
+      "reviewHint": "Positive space is the subject; negative space is the area around it."
+    },
+    {
+      "question": "A key benefit of using negative space is that it…",
+      "options": [
+        "Emphasises and isolates the subject",
+        "Increases the megapixel count",
+        "Speeds up autofocus",
+        "Raises the dynamic range"
+      ],
+      "correct": 0,
+      "reviewHint": "Open space around the subject draws attention to it and isolates it from clutter."
+    },
+    {
+      "question": "Negative space is closely associated with which style of photography?",
+      "options": [
+        "Minimalist photography",
+        "Sports photography",
+        "Macro focus stacking",
+        "HDR bracketing"
+      ],
+      "correct": 0,
+      "reviewHint": "Minimalist images rely heavily on generous negative space."
+    },
+    {
+      "question": "Negative space can help an image by…",
+      "options": [
+        "Creating a sense of balance and calm",
+        "Adding noise to the shadows",
+        "Forcing a faster shutter speed",
+        "Changing the focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Negative space creates balance, simplicity and often a calm or contemplative mood."
+    },
+    {
+      "question": "Which is a good source of negative space?",
+      "options": [
+        "A clear sky, plain wall or smooth water",
+        "A busy, cluttered background",
+        "A bright distracting highlight behind the subject",
+        "Multiple competing subjects"
+      ],
+      "correct": 0,
+      "reviewHint": "Simple, uniform areas like sky, walls or water make effective negative space."
+    },
+    {
+      "question": "Negative space can also be used to…",
+      "options": [
+        "Evoke emotion, such as solitude or scale",
+        "Sharpen the subject automatically",
+        "Correct white balance",
+        "Reduce file size"
+      ],
+      "correct": 0,
+      "reviewHint": "Large amounts of empty space can convey isolation, freedom or scale."
+    },
+    {
+      "question": "To make negative space effective, the area around the subject should be…",
+      "options": [
+        "Relatively simple and free of distractions",
+        "Filled with competing detail",
+        "The brightest part of the frame",
+        "Always pure black"
+      ],
+      "correct": 0,
+      "reviewHint": "Keep the surrounding space clean so it supports rather than competes with the subject."
+    },
+    {
+      "question": "Combining negative space with the rule of thirds often means…",
+      "options": [
+        "Placing the subject off-centre with open space on the opposite side",
+        "Placing the subject dead centre every time",
+        "Filling the whole frame with the subject",
+        "Removing all space around the subject"
+      ],
+      "correct": 0,
+      "reviewHint": "Off-centre placement plus open space on the other side balances the frame."
+    },
+    {
+      "question": "Light and shadow can contribute to negative space by…",
+      "options": [
+        "Creating clean dark or light areas that surround the subject",
+        "Always making the subject smaller",
+        "Forcing the use of flash",
+        "Increasing ISO noise"
+      ],
+      "correct": 0,
+      "reviewHint": "Shadow or bright areas can act as effective negative space around the subject."
+    }
+  ]
+}

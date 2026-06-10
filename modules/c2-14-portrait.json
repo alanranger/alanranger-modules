@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-14-portrait",
+  "title": "Portrait Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-portrait-photography"
+  },
+  "questions": [
+    {
+      "question": "An 'environmental portrait' is one where…",
+      "options": [
+        "The subject is shown in a setting that tells you about them",
+        "Only the face fills the frame",
+        "The background is always pure white",
+        "The subject is a landscape"
+      ],
+      "correct": 0,
+      "reviewHint": "Environmental portraits include surroundings that say something about the subject."
+    },
+    {
+      "question": "A 'headshot' portrait typically frames…",
+      "options": [
+        "The head and shoulders, focusing on the face",
+        "The whole body in a scene",
+        "A wide landscape",
+        "Just the hands"
+      ],
+      "correct": 0,
+      "reviewHint": "Headshots concentrate on the face, head and shoulders."
+    },
+    {
+      "question": "For flattering portraits with a softly blurred background, photographers often use…",
+      "options": [
+        "A wide aperture (low f-number) for shallow depth of field",
+        "A very small aperture like f/22",
+        "The shortest focal length available",
+        "A high ISO only"
+      ],
+      "correct": 0,
+      "reviewHint": "Wide apertures throw the background out of focus, isolating the subject."
+    },
+    {
+      "question": "A popular portrait focal length on full frame is around…",
+      "options": [
+        "85mm (flattering perspective, comfortable working distance)",
+        "16mm",
+        "300mm",
+        "8mm fisheye"
+      ],
+      "correct": 0,
+      "reviewHint": "Short telephotos like 85mm flatter faces and give a comfortable working distance."
+    },
+    {
+      "question": "Where should focus be placed in a portrait?",
+      "options": [
+        "On the eyes (the nearest eye if the face is angled)",
+        "On the background",
+        "On the ears",
+        "Anywhere - it doesn't matter"
+      ],
+      "correct": 0,
+      "reviewHint": "Sharp eyes are critical in portraits; focus on the nearest eye when angled."
+    },
+    {
+      "question": "Very wide-angle lenses are usually avoided for close head-and-shoulders portraits because they…",
+      "options": [
+        "Can distort facial features unflatteringly up close",
+        "Are too sharp",
+        "Cannot focus on people",
+        "Always underexpose"
+      ],
+      "correct": 0,
+      "reviewHint": "Wide lenses up close exaggerate features, which is rarely flattering for faces."
+    },
+    {
+      "question": "Soft, diffused light is popular for portraits because it…",
+      "options": [
+        "Flatters skin and creates gentle shadows",
+        "Adds harsh contrast",
+        "Increases noise",
+        "Speeds up the shutter"
+      ],
+      "correct": 0,
+      "reviewHint": "Soft light gives flattering, gentle transitions on skin."
+    },
+    {
+      "question": "A 'lifestyle' portrait tends to be…",
+      "options": [
+        "Candid and natural, showing the subject in real situations",
+        "Highly posed in a studio only",
+        "Always black and white",
+        "A macro close-up"
+      ],
+      "correct": 0,
+      "reviewHint": "Lifestyle portraits feel candid and natural rather than formally posed."
+    },
+    {
+      "question": "Composition rules like the rule of thirds apply to portraits by…",
+      "options": [
+        "Helping place the subject and eyes for a balanced frame",
+        "Being irrelevant to people",
+        "Forcing the subject to the centre",
+        "Only applying to landscapes"
+      ],
+      "correct": 0,
+      "reviewHint": "Thirds, leading lines and framing all help compose a balanced portrait."
+    },
+    {
+      "question": "Catchlights in a portrait subject's eyes are…",
+      "options": [
+        "Small reflections of the light source that add life",
+        "A focusing error",
+        "A type of noise",
+        "A lens defect"
+      ],
+      "correct": 0,
+      "reviewHint": "Catchlights are reflections in the eyes that make a portrait feel alive."
+    },
+    {
+      "question": "A 'fine art' portrait is generally…",
+      "options": [
+        "A more creative, expressive image driven by the photographer's vision",
+        "A passport photo",
+        "A product shot",
+        "A wide landscape"
+      ],
+      "correct": 0,
+      "reviewHint": "Fine art portraits prioritise creative, expressive intent over documentation."
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-08-landscape",
+  "title": "Landscape Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/mastering-landscape-photography-tips-and-techniques"
+  },
+  "questions": [
+    {
+      "question": "The 'golden hour' for landscape photography is…",
+      "options": [
+        "Shortly after sunrise and before sunset, when light is warm and soft",
+        "Midday when the sun is highest",
+        "The hour after dark",
+        "Any time on an overcast day"
+      ],
+      "correct": 0,
+      "reviewHint": "Golden hour around sunrise/sunset gives warm, soft, directional light ideal for landscapes."
+    },
+    {
+      "question": "Why is midday light often less ideal for landscapes?",
+      "options": [
+        "It is harsh and overhead, creating flat or high-contrast results",
+        "It is too warm",
+        "It is always too dim",
+        "It removes all shadows permanently"
+      ],
+      "correct": 0,
+      "reviewHint": "Overhead midday sun is harsh and can flatten a scene or create unflattering contrast."
+    },
+    {
+      "question": "For front-to-back sharpness in a landscape, photographers typically use…",
+      "options": [
+        "A small aperture such as f/8-f/11",
+        "A wide aperture like f/1.8",
+        "The longest lens available",
+        "A very high ISO"
+      ],
+      "correct": 0,
+      "reviewHint": "Small apertures (f/8-f/11) give the deep depth of field landscapes usually need."
+    },
+    {
+      "question": "A tripod is valuable in landscape photography because it…",
+      "options": [
+        "Allows sharp images at slow shutter speeds and careful composition",
+        "Increases the sensor's dynamic range",
+        "Changes the focal length",
+        "Removes the need for filters"
+      ],
+      "correct": 0,
+      "reviewHint": "A tripod enables slow shutter speeds, precise framing and sharp results."
+    },
+    {
+      "question": "A graduated neutral density (grad ND) filter is used to…",
+      "options": [
+        "Balance a bright sky against a darker foreground",
+        "Increase colour saturation only",
+        "Speed up autofocus",
+        "Add sharpening in camera"
+      ],
+      "correct": 0,
+      "reviewHint": "A grad ND darkens the bright sky to balance it with the land in one exposure."
+    },
+    {
+      "question": "A standard (non-graduated) ND filter helps landscapes by…",
+      "options": [
+        "Allowing longer exposures (e.g. to blur water or clouds)",
+        "Increasing the megapixel count",
+        "Brightening shadows automatically",
+        "Correcting lens distortion"
+      ],
+      "correct": 0,
+      "reviewHint": "A plain ND cuts light so you can use long shutter speeds for motion blur in water/cloud."
+    },
+    {
+      "question": "Including a strong foreground element in a landscape mainly helps to…",
+      "options": [
+        "Add depth and lead the eye into the scene",
+        "Reduce noise",
+        "Increase shutter speed",
+        "Fix white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "A foreground anchor creates depth and draws the viewer into the frame."
+    },
+    {
+      "question": "Which focal length range is commonly associated with classic wide landscapes?",
+      "options": [
+        "Wide-angle, roughly 16-35mm",
+        "Super-telephoto 400-600mm",
+        "Macro 1:1",
+        "Fisheye only"
+      ],
+      "correct": 0,
+      "reviewHint": "Wide-angle lenses capture expansive scenes, though telephotos are also used to isolate."
+    },
+    {
+      "question": "'Blue hour' refers to…",
+      "options": [
+        "The period of soft blue light just before sunrise or after sunset",
+        "Midday under clear skies",
+        "Any cloudy afternoon",
+        "The hour around noon"
+      ],
+      "correct": 0,
+      "reviewHint": "Blue hour is the twilight period giving cool, soft, even light."
+    },
+    {
+      "question": "To keep the horizon looking professional, you should…",
+      "options": [
+        "Keep it level (straight) unless deliberately tilting for effect",
+        "Always tilt it slightly",
+        "Place it exactly in the centre every time",
+        "Remove it from the frame"
+      ],
+      "correct": 0,
+      "reviewHint": "A level horizon avoids a distracting tilt; placement is usually on a third."
+    },
+    {
+      "question": "A polarising filter is useful in landscapes to…",
+      "options": [
+        "Cut reflections and deepen skies",
+        "Lengthen the focal length",
+        "Increase ISO",
+        "Add grain"
+      ],
+      "correct": 0,
+      "reviewHint": "A polariser reduces glare/reflections and can make skies richer."
+    }
+  ]
+}

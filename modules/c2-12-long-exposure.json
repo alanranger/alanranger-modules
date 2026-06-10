@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-12-long-exposure",
+  "title": "Long Exposure Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/how-to-take-long-exposure-photos"
+  },
+  "questions": [
+    {
+      "question": "Long exposure photography uses…",
+      "options": [
+        "A slow shutter speed to capture movement over time",
+        "A very fast shutter speed to freeze motion",
+        "A wide aperture only",
+        "A high frame rate burst"
+      ],
+      "correct": 0,
+      "reviewHint": "Long exposures use slow shutter speeds so moving elements blur or smooth out."
+    },
+    {
+      "question": "Which piece of gear is essential for sharp long exposures?",
+      "options": [
+        "A sturdy tripod",
+        "A pop-up flash",
+        "A telephoto lens",
+        "A polarising filter"
+      ],
+      "correct": 0,
+      "reviewHint": "A stable tripod is essential to keep static parts of the scene sharp during a long exposure."
+    },
+    {
+      "question": "A remote shutter release (or self-timer) is used to…",
+      "options": [
+        "Avoid camera shake from pressing the shutter",
+        "Increase the ISO",
+        "Widen the aperture",
+        "Change the white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Triggering without touching the camera prevents shake during the long exposure."
+    },
+    {
+      "question": "A neutral density (ND) filter is used in long exposure to…",
+      "options": [
+        "Reduce the light entering the lens so you can use a long shutter speed in bright conditions",
+        "Add colour to the sky",
+        "Increase sharpness",
+        "Speed up autofocus"
+      ],
+      "correct": 0,
+      "reviewHint": "An ND filter cuts light, allowing long shutter speeds even in daylight."
+    },
+    {
+      "question": "When an exposure needs to be longer than 30 seconds, you typically use…",
+      "options": [
+        "Bulb mode",
+        "Aperture priority",
+        "The fastest shutter speed",
+        "Auto ISO"
+      ],
+      "correct": 0,
+      "reviewHint": "Bulb mode holds the shutter open beyond the usual 30-second limit for very long exposures."
+    },
+    {
+      "question": "Long exposures of moving water typically produce…",
+      "options": [
+        "A smooth, silky or misty effect",
+        "Frozen droplets",
+        "More noise in the water",
+        "Sharper ripples"
+      ],
+      "correct": 0,
+      "reviewHint": "Slow shutter speeds smooth flowing water into a silky, misty look."
+    },
+    {
+      "question": "Light trails from traffic at night are created by…",
+      "options": [
+        "A long exposure recording the moving lights as streaks",
+        "A fast shutter speed",
+        "A high ISO only",
+        "A wide aperture only"
+      ],
+      "correct": 0,
+      "reviewHint": "A long exposure records moving car lights as continuous streaks."
+    },
+    {
+      "question": "To keep noise low in long exposures, you should generally…",
+      "options": [
+        "Shoot at base (low) ISO",
+        "Use the highest ISO available",
+        "Always use Auto ISO",
+        "Increase ISO with exposure time"
+      ],
+      "correct": 0,
+      "reviewHint": "Low/base ISO keeps long exposures clean; the tripod allows the slow shutter."
+    },
+    {
+      "question": "A key first step before a long exposure is to…",
+      "options": [
+        "Scout and compose the shot, then lock the camera down",
+        "Raise the ISO to maximum",
+        "Remove the tripod",
+        "Switch to burst mode"
+      ],
+      "correct": 0,
+      "reviewHint": "Compose carefully and stabilise before dialling in the long-exposure settings."
+    },
+    {
+      "question": "Why focus and compose BEFORE attaching a strong ND filter?",
+      "options": [
+        "A dark ND filter can make it hard for the camera to focus or for you to see the scene",
+        "ND filters change the focal length",
+        "ND filters increase ISO",
+        "Filters must always go on first"
+      ],
+      "correct": 0,
+      "reviewHint": "Very dark NDs make focusing/composing hard, so set focus and framing first."
+    },
+    {
+      "question": "Long-exposure noise reduction (dark-frame) is most useful for…",
+      "options": [
+        "Very long exposures where sensor noise builds up",
+        "Fast daylight shots",
+        "Reducing diffraction",
+        "Fixing white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Long exposures accumulate sensor noise; in-camera long-exposure NR helps clean it."
+    }
+  ]
+}

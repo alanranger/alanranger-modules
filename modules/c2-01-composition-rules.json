@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-01-composition-rules",
+  "title": "Composition Rules",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/mastering-photography-composition-rules"
+  },
+  "questions": [
+    {
+      "question": "What does \"composition\" mean in photography?",
+      "options": [
+        "The arrangement of visual elements within the frame",
+        "The brightness and contrast of an image",
+        "The sharpness of the focal point",
+        "The choice of camera and lens"
+      ],
+      "correct": 0,
+      "reviewHint": "Composition is how the elements in the scene are arranged within the frame to guide the viewer's eye."
+    },
+    {
+      "question": "The rule of thirds divides the frame using…",
+      "options": [
+        "A single line through the centre",
+        "Two horizontal and two vertical lines (a 3x3 grid)",
+        "A diagonal from corner to corner",
+        "A circle in the middle of the frame"
+      ],
+      "correct": 1,
+      "reviewHint": "The grid of nine equal parts is formed by two horizontal and two vertical lines; place key subjects on the lines or intersections."
+    },
+    {
+      "question": "Where does the rule of thirds suggest you place a key subject or focal point?",
+      "options": [
+        "Always dead centre",
+        "On the lines or at their intersections (the \"power points\")",
+        "In the darkest part of the frame",
+        "Touching the frame edge"
+      ],
+      "correct": 1,
+      "reviewHint": "Placing the subject on a third line or intersection tends to feel more balanced than centring it."
+    },
+    {
+      "question": "What is the main purpose of leading lines?",
+      "options": [
+        "To guide the viewer's eye through the photo, often toward the subject",
+        "To increase the exposure of the scene",
+        "To blur the background",
+        "To correct white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Lines such as paths, walls or patterns create depth and direct attention toward the main subject."
+    },
+    {
+      "question": "\"Framing\" as a composition technique means…",
+      "options": [
+        "Using elements in the scene (arches, branches, light) to create a frame around the subject",
+        "Printing the photo with a border",
+        "Cropping to a square aspect ratio",
+        "Setting the camera to its widest focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Framing uses elements within the scene - architecture, trees, light and shadow - to surround and emphasise the subject."
+    },
+    {
+      "question": "Negative space in a composition refers to…",
+      "options": [
+        "The empty or uncluttered area around the subject",
+        "The darkest shadows in the image",
+        "The area that is out of focus",
+        "The part of the frame nearest the camera"
+      ],
+      "correct": 0,
+      "reviewHint": "Clean, empty space around the subject simplifies the image and draws attention to it."
+    },
+    {
+      "question": "A scene feels unbalanced because one large subject sits on the left with nothing on the right. A common fix is to…",
+      "options": [
+        "Counter-weight it with a smaller secondary element or negative space",
+        "Increase the ISO",
+        "Switch to a longer lens",
+        "Move the subject closer to the camera"
+      ],
+      "correct": 0,
+      "reviewHint": "Balance arranges visual weight across the frame - counter a dominant element with a secondary one or with space."
+    },
+    {
+      "question": "\"Layering\" a composition (foreground, middle ground, background) mainly adds…",
+      "options": [
+        "A sense of depth and three-dimensionality",
+        "More accurate colour",
+        "A faster shutter speed",
+        "Reduced noise in shadows"
+      ],
+      "correct": 0,
+      "reviewHint": "Including foreground, middle and background layers creates depth and scale in the image."
+    },
+    {
+      "question": "The page describes the rule of thirds, golden ratio and similar \"rules\" as…",
+      "options": [
+        "Guidelines that can be adapted or broken for effect, not rigid laws",
+        "Strict rules that must never be broken",
+        "Settings found in the camera menu",
+        "Rules that only apply to landscapes"
+      ],
+      "correct": 0,
+      "reviewHint": "These are guidelines - they can be adapted or deliberately broken to achieve a desired effect."
+    },
+    {
+      "question": "To make your subject stand out clearly from its background, you should ensure there is…",
+      "options": [
+        "Enough tonal or colour contrast between the subject and the background",
+        "A faster frame rate",
+        "The subject placed dead centre",
+        "The lens stopped down to f/22"
+      ],
+      "correct": 0,
+      "reviewHint": "A subject separates from its background when there's clear tonal or colour difference between them."
+    },
+    {
+      "question": "When checking the edges of your frame before shooting, you're mainly watching for…",
+      "options": [
+        "Cut-off limbs, awkward tangents or distracting mergers",
+        "Correct shutter speed",
+        "The histogram shape",
+        "Lens fingerprints"
+      ],
+      "correct": 0,
+      "reviewHint": "Check edges for clipped limbs, tangents and mergers that pull the eye or weaken the composition."
+    }
+  ]
+}

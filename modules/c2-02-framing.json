@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-02-framing",
+  "title": "Framing",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-framing-in-photography"
+  },
+  "questions": [
+    {
+      "question": "In photography, \"framing\" as a composition technique means…",
+      "options": [
+        "Using elements within the scene to surround and draw attention to the subject",
+        "Adding a printed border to the final image",
+        "Locking the exposure before you recompose",
+        "Choosing the file format before shooting"
+      ],
+      "correct": 0,
+      "reviewHint": "Framing uses elements in the scene itself to create a 'frame within the frame' around the subject."
+    },
+    {
+      "question": "Which of these is a classic example of a natural frame?",
+      "options": [
+        "Overhanging tree branches around the subject",
+        "A fast shutter speed",
+        "A high ISO setting",
+        "A polarising filter"
+      ],
+      "correct": 0,
+      "reviewHint": "Natural elements like branches, foliage or rock openings make effective frames."
+    },
+    {
+      "question": "An archway or doorway used to frame a subject is an example of…",
+      "options": [
+        "Architectural framing",
+        "Spot metering",
+        "Focus bracketing",
+        "Chromatic aberration"
+      ],
+      "correct": 0,
+      "reviewHint": "Architectural structures - arches, doorways, windows - are commonly used as frames."
+    },
+    {
+      "question": "Besides solid objects, what else can be used to frame a subject?",
+      "options": [
+        "Light and shadow",
+        "A higher megapixel count",
+        "A longer exposure time only",
+        "The camera's drive mode"
+      ],
+      "correct": 0,
+      "reviewHint": "Light and shadow can frame a subject just as physical elements can."
+    },
+    {
+      "question": "One of the main benefits of framing is that it…",
+      "options": [
+        "Adds a sense of depth to the image",
+        "Increases the dynamic range of the sensor",
+        "Reduces noise at high ISO",
+        "Speeds up autofocus"
+      ],
+      "correct": 0,
+      "reviewHint": "Framing adds depth and a feeling of looking 'into' the scene toward the subject."
+    },
+    {
+      "question": "Framing also helps a photograph by…",
+      "options": [
+        "Directing the viewer's attention to the main subject",
+        "Making colours more saturated",
+        "Widening the angle of view",
+        "Lowering the f-number automatically"
+      ],
+      "correct": 0,
+      "reviewHint": "A frame guides the eye straight to the subject it surrounds."
+    },
+    {
+      "question": "When choosing a framing element, a key best practice is to…",
+      "options": [
+        "Make sure it relates to the subject and doesn't overpower it",
+        "Always make it brighter than the subject",
+        "Place it only in the centre of the frame",
+        "Use the longest lens you own"
+      ],
+      "correct": 0,
+      "reviewHint": "The frame should complement the subject, not compete with or distract from it."
+    },
+    {
+      "question": "A risk to avoid when framing is…",
+      "options": [
+        "Letting the frame become so dominant it hides or distracts from the subject",
+        "Using too small an aperture",
+        "Shooting in RAW",
+        "Keeping the horizon level"
+      ],
+      "correct": 0,
+      "reviewHint": "If the framing element overpowers the subject, it works against the composition."
+    },
+    {
+      "question": "Framing is especially useful for…",
+      "options": [
+        "Enhancing storytelling and adding context around the subject",
+        "Freezing fast motion",
+        "Fixing white balance in mixed light",
+        "Reducing camera shake"
+      ],
+      "correct": 0,
+      "reviewHint": "A frame can add narrative context and depth, strengthening the visual story."
+    },
+    {
+      "question": "To keep the subject clear when using a frame, you should…",
+      "options": [
+        "Maintain enough separation and focus so the subject stays the clear point of interest",
+        "Always blur the subject slightly",
+        "Frame with the brightest object available",
+        "Place the subject outside the frame"
+      ],
+      "correct": 0,
+      "reviewHint": "Keep the subject distinct and well-focused so the frame supports rather than competes with it."
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-06-balance",
+  "title": "Compositional Balance",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/finding-your-compositional-balance"
+  },
+  "questions": [
+    {
+      "question": "Compositional balance is about…",
+      "options": [
+        "Distributing visual weight across the frame so it feels stable",
+        "Keeping the camera level on a tripod",
+        "Setting equal aperture and shutter values",
+        "Balancing the white balance and tint"
+      ],
+      "correct": 0,
+      "reviewHint": "Balance is the distribution of visual weight so the image feels stable rather than lopsided."
+    },
+    {
+      "question": "'Symmetrical' (formal) balance is achieved when…",
+      "options": [
+        "Elements mirror each other across an axis",
+        "One large element sits alone on one side",
+        "The subject is always off-centre",
+        "The horizon is tilted"
+      ],
+      "correct": 0,
+      "reviewHint": "Symmetrical balance mirrors elements across a central axis for a formal, stable feel."
+    },
+    {
+      "question": "'Asymmetrical' balance creates a more…",
+      "options": [
+        "Dynamic feel using different elements of equal visual weight",
+        "Static and formal feel",
+        "Blurred result",
+        "Underexposed result"
+      ],
+      "correct": 0,
+      "reviewHint": "Asymmetry balances unlike elements of similar visual weight for a dynamic look."
+    },
+    {
+      "question": "What is 'visual mass' (visual weight)?",
+      "options": [
+        "How much an element draws the eye, based on size, tone and colour",
+        "The physical weight of the camera",
+        "The file size of the image",
+        "The focal length in millimetres"
+      ],
+      "correct": 0,
+      "reviewHint": "Visual mass is how strongly an element attracts attention - larger, darker or brighter elements weigh more."
+    },
+    {
+      "question": "A small bright object can balance a large dark one because…",
+      "options": [
+        "Brightness gives it visual weight comparable to the larger element",
+        "Small objects always dominate",
+        "Dark objects have no weight",
+        "Size is the only factor in balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Bright or saturated elements carry visual weight, so a small bright object can offset a larger one."
+    },
+    {
+      "question": "The golden ratio in composition is associated with…",
+      "options": [
+        "A spiral and grid placement that feels naturally balanced",
+        "A fixed shutter speed",
+        "A specific ISO value",
+        "The crop factor of a sensor"
+      ],
+      "correct": 0,
+      "reviewHint": "The golden ratio (and golden spiral / phi grid) offers placement that feels naturally harmonious."
+    },
+    {
+      "question": "The 'phi grid' is similar to the rule-of-thirds grid but…",
+      "options": [
+        "Its lines are positioned closer to the centre",
+        "It uses only one line",
+        "It is always diagonal",
+        "It only works in portrait orientation"
+      ],
+      "correct": 0,
+      "reviewHint": "The phi grid resembles thirds but with the dividing lines nearer the centre."
+    },
+    {
+      "question": "When is breaking symmetry a good idea?",
+      "options": [
+        "When a deliberate asymmetry adds interest or focus",
+        "Never - symmetry must always be kept",
+        "Only in black and white",
+        "Only at high ISO"
+      ],
+      "correct": 0,
+      "reviewHint": "Breaking symmetry intentionally can add tension, interest or emphasis."
+    },
+    {
+      "question": "Colour can affect balance because…",
+      "options": [
+        "Saturated or warm colours carry more visual weight than muted ones",
+        "Colour has no effect on balance",
+        "Only size matters",
+        "Only tone matters"
+      ],
+      "correct": 0,
+      "reviewHint": "Colour contributes to visual weight - vivid colours pull the eye and must be balanced."
+    },
+    {
+      "question": "Balancing elements of different sizes usually means…",
+      "options": [
+        "Arranging them so their combined visual weight feels even",
+        "Making every element the same size",
+        "Removing all but one element",
+        "Placing everything in one corner"
+      ],
+      "correct": 0,
+      "reviewHint": "Harmony comes from arranging unequal elements so their visual weights offset across the frame."
+    }
+  ]
+}

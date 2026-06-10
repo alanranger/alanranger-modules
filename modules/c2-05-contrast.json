@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-05-contrast",
+  "title": "Contrast",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-contrast-in-photography"
+  },
+  "questions": [
+    {
+      "question": "In photography, contrast refers to…",
+      "options": [
+        "The difference between tones, colours or light and dark in an image",
+        "The sharpness of the subject",
+        "The number of megapixels",
+        "The focal length of the lens"
+      ],
+      "correct": 0,
+      "reviewHint": "Contrast is the degree of difference between elements - light vs dark, or colour against colour."
+    },
+    {
+      "question": "What is 'tonal contrast'?",
+      "options": [
+        "The difference between light and dark tones",
+        "The difference between two focal lengths",
+        "The difference between RAW and JPEG",
+        "The difference between two ISO values"
+      ],
+      "correct": 0,
+      "reviewHint": "Tonal contrast is about light-to-dark differences, key in black and white work."
+    },
+    {
+      "question": "Which type of contrast does black and white photography rely on most?",
+      "options": [
+        "Tonal contrast (light vs dark)",
+        "Colour contrast",
+        "White balance contrast",
+        "Shutter contrast"
+      ],
+      "correct": 0,
+      "reviewHint": "Without colour, black and white images depend on tonal (light-dark) contrast."
+    },
+    {
+      "question": "What is 'colour contrast'?",
+      "options": [
+        "The visual difference created by placing certain colours together",
+        "The difference between two shutter speeds",
+        "The contrast between sharp and blurry areas",
+        "The difference between two sensors"
+      ],
+      "correct": 0,
+      "reviewHint": "Colour contrast comes from how colours interact - especially opposites on the colour wheel."
+    },
+    {
+      "question": "Complementary colours are…",
+      "options": [
+        "Colours opposite each other on the colour wheel",
+        "Colours next to each other on the wheel",
+        "Only black and white",
+        "Colours of the same hue"
+      ],
+      "correct": 0,
+      "reviewHint": "Complementary colours sit opposite on the wheel and create strong colour contrast."
+    },
+    {
+      "question": "Warm and cool tones create contrast because…",
+      "options": [
+        "They sit on opposite sides of the colour temperature range and visually oppose each other",
+        "They are always the same brightness",
+        "They cancel each other out",
+        "They require the same exposure"
+      ],
+      "correct": 0,
+      "reviewHint": "Warm (orange/red) vs cool (blue) tones produce a pleasing, contrasting interplay."
+    },
+    {
+      "question": "'High-key' lighting produces an image that is…",
+      "options": [
+        "Mostly bright with few dark tones",
+        "Mostly dark with few highlights",
+        "Always black and white",
+        "Always high in saturation"
+      ],
+      "correct": 0,
+      "reviewHint": "High-key images are bright and low in shadow; low-key images are dark and moody."
+    },
+    {
+      "question": "'Low-key' lighting produces an image that is…",
+      "options": [
+        "Mostly dark with selective highlights, often dramatic",
+        "Mostly bright and airy",
+        "Always overexposed",
+        "Always desaturated"
+      ],
+      "correct": 0,
+      "reviewHint": "Low-key uses predominantly dark tones with a few highlights for a dramatic mood."
+    },
+    {
+      "question": "A silhouette is created by…",
+      "options": [
+        "Exposing for a bright background so the subject goes dark",
+        "Using fill flash on the subject",
+        "Shooting at base ISO only",
+        "Adding a polariser"
+      ],
+      "correct": 0,
+      "reviewHint": "Backlighting plus exposing for the bright background renders the subject as a dark silhouette."
+    },
+    {
+      "question": "Contrast affects an image's…",
+      "options": [
+        "Mood, depth and where the viewer's attention goes",
+        "Megapixel count",
+        "Memory card speed",
+        "Lens mount type"
+      ],
+      "correct": 0,
+      "reviewHint": "Contrast shapes mood and depth and helps direct attention within the frame."
+    },
+    {
+      "question": "Which tool combines multiple exposures to handle very high contrast scenes?",
+      "options": [
+        "HDR (High Dynamic Range) blending",
+        "Spot metering",
+        "A lens hood",
+        "Continuous drive mode"
+      ],
+      "correct": 0,
+      "reviewHint": "HDR merges several exposures to capture detail across a very high-contrast scene."
+    }
+  ]
+}

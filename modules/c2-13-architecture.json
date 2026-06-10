@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-13-architecture",
+  "title": "Architecture Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/architecture-photography-guide"
+  },
+  "questions": [
+    {
+      "question": "'Keystoning' (converging verticals) in architecture photos is caused by…",
+      "options": [
+        "Tilting the camera up or down so parallel lines appear to lean",
+        "Using too high an ISO",
+        "A slow shutter speed",
+        "Incorrect white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Tilting the camera makes vertical lines converge - the keystoning effect."
+    },
+    {
+      "question": "One way to reduce converging verticals is to…",
+      "options": [
+        "Keep the camera level, or correct perspective in editing",
+        "Raise the ISO",
+        "Use a faster shutter",
+        "Open the aperture fully"
+      ],
+      "correct": 0,
+      "reviewHint": "Keeping the camera level (or using perspective correction) keeps verticals straight."
+    },
+    {
+      "question": "A specialised lens designed to control perspective in architecture is a…",
+      "options": [
+        "Tilt-shift lens",
+        "Fisheye lens",
+        "Macro lens",
+        "Kit zoom"
+      ],
+      "correct": 0,
+      "reviewHint": "Tilt-shift lenses let you correct converging verticals in-camera."
+    },
+    {
+      "question": "Leading lines are valuable in architecture because buildings…",
+      "options": [
+        "Are full of strong lines that can guide the eye",
+        "Have no usable lines",
+        "Cannot be composed with thirds",
+        "Must always be centred"
+      ],
+      "correct": 0,
+      "reviewHint": "Architecture is rich in lines - use them to lead the eye through the frame."
+    },
+    {
+      "question": "Symmetry and patterns are common in architecture photography because…",
+      "options": [
+        "Buildings often contain repeating, symmetrical structures",
+        "Symmetry is impossible outdoors",
+        "Patterns reduce sharpness",
+        "They only appear at night"
+      ],
+      "correct": 0,
+      "reviewHint": "Repeating windows, columns and facades make symmetry and pattern natural subjects."
+    },
+    {
+      "question": "'Blue hour' is popular for architecture because…",
+      "options": [
+        "Ambient sky light balances nicely with building/interior lights",
+        "It is the brightest time of day",
+        "It removes all shadows",
+        "It increases dynamic range of the sensor"
+      ],
+      "correct": 0,
+      "reviewHint": "At blue hour the sky's brightness balances artificial lighting for even exposures."
+    },
+    {
+      "question": "HDR techniques help architecture shots that…",
+      "options": [
+        "Have a very wide range between bright windows and dark interiors",
+        "Are evenly lit",
+        "Are shot in a studio",
+        "Have no highlights"
+      ],
+      "correct": 0,
+      "reviewHint": "HDR blends exposures to hold detail in both bright windows and dark interiors."
+    },
+    {
+      "question": "A wide-angle lens is often chosen for architecture to…",
+      "options": [
+        "Fit large structures or interiors into the frame",
+        "Compress distant subjects",
+        "Achieve 1:1 macro",
+        "Blur the background"
+      ],
+      "correct": 0,
+      "reviewHint": "Wide lenses capture large buildings and tight interiors that won't otherwise fit."
+    },
+    {
+      "question": "A tripod and remote release help architecture work by…",
+      "options": [
+        "Enabling sharp images in low light and precise composition",
+        "Increasing the megapixels",
+        "Removing keystoning automatically",
+        "Changing the focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "They allow sharp low-light shots and careful, repeatable framing."
+    },
+    {
+      "question": "When photographing building details, a useful approach is to…",
+      "options": [
+        "Isolate textures, patterns or sections rather than always shooting the whole structure",
+        "Always include the entire building",
+        "Only shoot at midday",
+        "Avoid any lines"
+      ],
+      "correct": 0,
+      "reviewHint": "Detail shots of texture, pattern and form complement full-building images."
+    }
+  ]
+}

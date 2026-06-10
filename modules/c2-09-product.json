@@ -1,0 +1,131 @@
+{
+  "moduleId": "c2-09-product",
+  "title": "Product Photography Setup",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/product-photography-setup"
+  },
+  "questions": [
+    {
+      "question": "Why does good product photography matter for e-commerce?",
+      "options": [
+        "Clear, appealing images influence buying decisions and build trust",
+        "It increases the camera's resolution",
+        "It lowers shipping costs",
+        "It changes the product's price"
+      ],
+      "correct": 0,
+      "reviewHint": "Strong product images drive sales, build trust and can reduce returns."
+    },
+    {
+      "question": "A tripod is recommended for product photography because it…",
+      "options": [
+        "Keeps framing consistent and allows sharp images at slower shutter speeds",
+        "Increases the megapixel count",
+        "Removes the need for lighting",
+        "Changes the white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "A tripod gives consistent, repeatable framing and sharpness across a set."
+    },
+    {
+      "question": "A 'sweep' or seamless backdrop is used to…",
+      "options": [
+        "Create a clean, distraction-free background",
+        "Add colour noise",
+        "Increase the dynamic range",
+        "Speed up autofocus"
+      ],
+      "correct": 0,
+      "reviewHint": "A seamless backdrop gives a clean, professional, distraction-free background."
+    },
+    {
+      "question": "A diffuser is used in product lighting to…",
+      "options": [
+        "Soften the light and reduce harsh shadows and reflections",
+        "Make the light harsher",
+        "Increase shutter speed",
+        "Add a colour cast"
+      ],
+      "correct": 0,
+      "reviewHint": "Diffusion softens light, reducing hard shadows and hot reflections on products."
+    },
+    {
+      "question": "A reflector is used to…",
+      "options": [
+        "Bounce light back into shadow areas to fill them",
+        "Block all light from the subject",
+        "Increase ISO",
+        "Change the focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Reflectors fill shadows by bouncing light back onto the product."
+    },
+    {
+      "question": "Consistency across a set of product images is important because…",
+      "options": [
+        "It creates a professional, cohesive look across a catalogue",
+        "It increases file size",
+        "It changes the aperture automatically",
+        "It removes the need for editing"
+      ],
+      "correct": 0,
+      "reviewHint": "Matching lighting, background and framing gives a cohesive, professional catalogue."
+    },
+    {
+      "question": "Shooting tethered (camera connected to a computer) helps because…",
+      "options": [
+        "You can check focus and detail on a large screen as you shoot",
+        "It increases the sensor size",
+        "It removes the need for a tripod",
+        "It changes the lens"
+      ],
+      "correct": 0,
+      "reviewHint": "Tethering shows images large in real time so you can check sharpness and lighting."
+    },
+    {
+      "question": "For sharp product shots with good depth of field, a common choice is…",
+      "options": [
+        "A moderate to small aperture so the whole product is in focus",
+        "The widest aperture available",
+        "The highest ISO available",
+        "The slowest possible shutter handheld"
+      ],
+      "correct": 0,
+      "reviewHint": "Smaller apertures keep the whole product sharp; on a tripod, low ISO keeps quality high."
+    },
+    {
+      "question": "Reflections on shiny products are best controlled by…",
+      "options": [
+        "Diffusing the light and adjusting angles",
+        "Increasing ISO",
+        "Using a faster shutter speed only",
+        "Shooting in JPEG"
+      ],
+      "correct": 0,
+      "reviewHint": "Soft, diffused light and careful angles tame reflections on glossy surfaces."
+    },
+    {
+      "question": "Why is shooting in RAW useful for product work?",
+      "options": [
+        "It gives more flexibility to correct colour and exposure accurately",
+        "It makes files smaller",
+        "It speeds up the shoot",
+        "It removes the need for lighting"
+      ],
+      "correct": 0,
+      "reviewHint": "RAW preserves data for accurate colour and exposure correction - important for true product colour."
+    },
+    {
+      "question": "Before shooting, a key preparation step is to…",
+      "options": [
+        "Clean the product and set up the space and lighting",
+        "Raise the ISO to maximum",
+        "Remove the tripod",
+        "Switch to a telephoto lens"
+      ],
+      "correct": 0,
+      "reviewHint": "Preparation - cleaning the product, arranging the space and lighting - underpins good results."
+    }
+  ]
+}

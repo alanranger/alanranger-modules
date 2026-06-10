@@ -1,0 +1,142 @@
+{
+  "moduleId": "c2-07-macro",
+  "title": "Macro Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/art-of-macro-photography"
+  },
+  "questions": [
+    {
+      "question": "What is macro photography?",
+      "options": [
+        "Close-up photography that captures small subjects at life-size or greater magnification",
+        "Photography of large landscapes",
+        "Photography using only wide-angle lenses",
+        "Photography of distant wildlife"
+      ],
+      "correct": 0,
+      "reviewHint": "Macro is extreme close-up work, reproducing small subjects at life-size (1:1) or larger."
+    },
+    {
+      "question": "A true macro lens offers a reproduction ratio of at least…",
+      "options": [
+        "1:1 (life-size)",
+        "1:10",
+        "2:1 only",
+        "10:1 only"
+      ],
+      "correct": 0,
+      "reviewHint": "A 1:1 ratio means the subject is projected onto the sensor at its real-life size."
+    },
+    {
+      "question": "A defining challenge of macro photography is that…",
+      "options": [
+        "Depth of field becomes extremely shallow",
+        "Shutter speeds become irrelevant",
+        "ISO has no effect",
+        "White balance cannot be set"
+      ],
+      "correct": 0,
+      "reviewHint": "At close focusing distances, depth of field collapses to millimetres."
+    },
+    {
+      "question": "To increase depth of field in macro, you typically…",
+      "options": [
+        "Stop down to a smaller aperture (higher f-number)",
+        "Open up to f/1.4",
+        "Raise ISO only",
+        "Use a faster shutter speed only"
+      ],
+      "correct": 0,
+      "reviewHint": "Smaller apertures extend the very shallow macro depth of field."
+    },
+    {
+      "question": "A side effect of using very small apertures in macro is…",
+      "options": [
+        "Diffraction, which softens fine detail",
+        "Increased dynamic range",
+        "Faster autofocus",
+        "Brighter highlights"
+      ],
+      "correct": 0,
+      "reviewHint": "Stopping down too far introduces diffraction softening - a balance is needed."
+    },
+    {
+      "question": "'Working distance' in macro refers to…",
+      "options": [
+        "The distance between the front of the lens and the subject",
+        "The distance you stand from the tripod",
+        "The focal length of the lens",
+        "The distance to the background"
+      ],
+      "correct": 0,
+      "reviewHint": "Working distance is lens-front to subject; longer working distance helps avoid disturbing live subjects."
+    },
+    {
+      "question": "Focus stacking is used in macro to…",
+      "options": [
+        "Combine multiple images focused at different points for greater sharpness front-to-back",
+        "Increase the ISO automatically",
+        "Create motion blur",
+        "Correct white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Stacking blends several frames at different focus points to overcome shallow macro depth of field."
+    },
+    {
+      "question": "Why is stable support (e.g. a tripod) especially important in macro?",
+      "options": [
+        "Tiny movements are magnified, so even slight shake ruins sharpness",
+        "It changes the focal length",
+        "It increases dynamic range",
+        "It is only needed in daylight"
+      ],
+      "correct": 0,
+      "reviewHint": "At high magnification the smallest movement is exaggerated, so stability is critical."
+    },
+    {
+      "question": "Lighting is often challenging in macro because…",
+      "options": [
+        "The lens or camera can block or shade the small subject",
+        "Macro subjects are always too bright",
+        "Flash never works in macro",
+        "Light has no effect at close range"
+      ],
+      "correct": 0,
+      "reviewHint": "Being so close, the gear can cast shadows; diffused or dedicated macro lighting helps."
+    },
+    {
+      "question": "Manual focus is often preferred in macro because…",
+      "options": [
+        "It gives precise control over the very thin plane of focus",
+        "Autofocus is faster at 1:1",
+        "It increases magnification",
+        "It removes diffraction"
+      ],
+      "correct": 0,
+      "reviewHint": "With a wafer-thin focus plane, manual focus lets you place sharpness exactly."
+    },
+    {
+      "question": "Which accessory can let a normal lens focus closer for macro-style shots?",
+      "options": [
+        "Extension tubes",
+        "A lens hood",
+        "A polarising filter only",
+        "A neutral density filter"
+      ],
+      "correct": 0,
+      "reviewHint": "Extension tubes move the lens further from the sensor, allowing closer focusing."
+    },
+    {
+      "question": "A good aperture starting point for many macro subjects is around…",
+      "options": [
+        "f/8 to f/16, balancing depth of field against diffraction",
+        "f/1.4 to f/2",
+        "f/22 to f/32 always",
+        "Whatever Auto picks"
+      ],
+      "correct": 0,
+      "reviewHint": "Mid-to-small apertures (≈f/8-f/16) balance depth of field with acceptable sharpness."
+    }
+  ]
+}

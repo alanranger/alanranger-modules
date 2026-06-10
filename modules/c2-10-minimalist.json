@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-10-minimalist",
+  "title": "Minimalist Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-minimalist-photography"
+  },
+  "questions": [
+    {
+      "question": "Minimalist photography is best described as…",
+      "options": [
+        "Simplifying the image to a few essential elements",
+        "Filling the frame with as much detail as possible",
+        "Using only telephoto lenses",
+        "Shooting only in black and white"
+      ],
+      "correct": 0,
+      "reviewHint": "Minimalism strips an image back to a few essential elements for simplicity and impact."
+    },
+    {
+      "question": "Negative space in minimalist photography is usually…",
+      "options": [
+        "Generous - often most of the frame",
+        "Avoided completely",
+        "Always pure black",
+        "Limited to the corners"
+      ],
+      "correct": 0,
+      "reviewHint": "Minimalist images typically use large amounts of negative space around a small subject."
+    },
+    {
+      "question": "In minimalist work, the subject is often…",
+      "options": [
+        "Small within the frame, surrounded by space",
+        "Filling the entire frame",
+        "Always centred and large",
+        "Out of focus"
+      ],
+      "correct": 0,
+      "reviewHint": "A small subject within lots of space is a hallmark of minimalist composition."
+    },
+    {
+      "question": "A minimalist image usually works best with…",
+      "options": [
+        "A simple, limited colour palette",
+        "Many competing bright colours",
+        "Heavy texture throughout",
+        "Multiple equal subjects"
+      ],
+      "correct": 0,
+      "reviewHint": "A restrained colour palette keeps the image clean and uncluttered."
+    },
+    {
+      "question": "Why is a single strong focal point important in minimalism?",
+      "options": [
+        "With so few elements, the subject must clearly hold attention",
+        "It increases dynamic range",
+        "It speeds up autofocus",
+        "It reduces noise"
+      ],
+      "correct": 0,
+      "reviewHint": "Because there's little else in the frame, the one subject must be a clear focal point."
+    },
+    {
+      "question": "Texture in a minimalist image is generally…",
+      "options": [
+        "Kept minimal so it doesn't distract the eye",
+        "Maximised everywhere",
+        "Always added in editing",
+        "Irrelevant to the style"
+      ],
+      "correct": 0,
+      "reviewHint": "Minimal texture keeps the image clean and avoids pulling the eye from the subject."
+    },
+    {
+      "question": "Lines and shapes are used in minimalist photography to…",
+      "options": [
+        "Add structure and interest without clutter",
+        "Fill all empty space",
+        "Replace the subject",
+        "Increase saturation"
+      ],
+      "correct": 0,
+      "reviewHint": "Simple directional lines, shapes or repeating elements add interest while keeping it clean."
+    },
+    {
+      "question": "Which subject placement suits minimalism well?",
+      "options": [
+        "Off-centre with open space balancing the frame",
+        "Filling every corner",
+        "Always dead centre and large",
+        "Hidden behind other objects"
+      ],
+      "correct": 0,
+      "reviewHint": "Off-centre placement with surrounding space supports the minimalist look."
+    },
+    {
+      "question": "A common mood conveyed by minimalist images is…",
+      "options": [
+        "Calm, simplicity or stillness",
+        "Chaos and busyness",
+        "Confusion",
+        "Tension from clutter"
+      ],
+      "correct": 0,
+      "reviewHint": "Simplicity and space tend to evoke calm, stillness or contemplation."
+    },
+    {
+      "question": "Complementary colours can be used in minimalism to…",
+      "options": [
+        "Create a clean, deliberate contrast that still feels simple",
+        "Add as many colours as possible",
+        "Remove the subject",
+        "Increase noise"
+      ],
+      "correct": 0,
+      "reviewHint": "A minimal palette can still use complementary colours for clean, intentional contrast."
+    }
+  ]
+}

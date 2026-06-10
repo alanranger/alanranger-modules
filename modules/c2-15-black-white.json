@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-15-black-white",
+  "title": "Black & White Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/black-and-white-photography-for-beginners"
+  },
+  "questions": [
+    {
+      "question": "Without colour to rely on, black and white images depend most on…",
+      "options": [
+        "Tone, contrast, shape and texture",
+        "Saturation and hue",
+        "White balance",
+        "Colour temperature"
+      ],
+      "correct": 0,
+      "reviewHint": "B&W relies on tonal contrast, shapes, lines and texture rather than colour."
+    },
+    {
+      "question": "Why is shooting in RAW recommended for black and white?",
+      "options": [
+        "It keeps full colour data, giving more control over the B&W conversion",
+        "It bakes in the conversion permanently",
+        "It makes files smaller",
+        "It removes the need for editing"
+      ],
+      "correct": 0,
+      "reviewHint": "RAW retains all data so you can control the conversion and tones in editing."
+    },
+    {
+      "question": "If you set your camera's monochrome (B&W) mode while shooting RAW…",
+      "options": [
+        "The RAW still keeps colour data; only the preview/JPEG looks B&W",
+        "The colour is lost forever",
+        "The sensor changes size",
+        "Autofocus stops working"
+      ],
+      "correct": 0,
+      "reviewHint": "Monochrome mode previews in B&W but the RAW retains colour for flexible conversion."
+    },
+    {
+      "question": "Strong black and white images often emphasise…",
+      "options": [
+        "Shapes, lines and textures",
+        "Bright saturated colours",
+        "Accurate white balance",
+        "A wide colour gamut"
+      ],
+      "correct": 0,
+      "reviewHint": "Shape, line and texture carry a B&W image in the absence of colour."
+    },
+    {
+      "question": "Contrast between light and shadow is important in B&W because it…",
+      "options": [
+        "Creates depth, drama and separation between elements",
+        "Reduces sharpness",
+        "Increases the megapixels",
+        "Fixes the focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Light-to-dark contrast gives B&W images depth and impact."
+    },
+    {
+      "question": "When converting a colour image to black and white, channel/colour sliders let you…",
+      "options": [
+        "Control how each original colour translates into a grey tone",
+        "Change the aperture",
+        "Re-focus the image",
+        "Add colour back permanently"
+      ],
+      "correct": 0,
+      "reviewHint": "B&W conversion tools map each colour to a brightness, letting you tune the tones."
+    },
+    {
+      "question": "A scene may suit black and white when…",
+      "options": [
+        "Colour is distracting and tone/texture/form carry the image",
+        "The colours are the main point",
+        "It is a product shot needing accurate colour",
+        "You need true skin tones"
+      ],
+      "correct": 0,
+      "reviewHint": "B&W shines when colour distracts and the strength lies in form, tone and texture."
+    },
+    {
+      "question": "Leading lines and composition rules in B&W are…",
+      "options": [
+        "Just as important as in colour - arguably more so",
+        "Irrelevant without colour",
+        "Only for landscapes",
+        "Replaced by saturation"
+      ],
+      "correct": 0,
+      "reviewHint": "Composition matters even more in B&W since colour can't do the heavy lifting."
+    },
+    {
+      "question": "Adjusting tones and contrast in post for B&W is used to…",
+      "options": [
+        "Shape the mood and emphasise the subject",
+        "Increase the resolution",
+        "Change the lens",
+        "Reduce the file type"
+      ],
+      "correct": 0,
+      "reviewHint": "Tonal and contrast adjustments set the mood and direct attention in B&W."
+    },
+    {
+      "question": "A benefit of black and white photography is that it…",
+      "options": [
+        "Can create a timeless, emotive feel by removing colour distractions",
+        "Always increases dynamic range",
+        "Makes autofocus faster",
+        "Requires no composition"
+      ],
+      "correct": 0,
+      "reviewHint": "Stripping colour can lend a timeless, emotive quality and focus attention on form."
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "moduleId": "c2-11-still-life",
+  "title": "Still Life Photography",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-is-still-life-photography"
+  },
+  "questions": [
+    {
+      "question": "Still life photography is the art of photographing…",
+      "options": [
+        "Inanimate, arranged objects",
+        "Fast-moving sports",
+        "Distant wildlife",
+        "Large landscapes only"
+      ],
+      "correct": 0,
+      "reviewHint": "Still life captures arranged inanimate objects, giving you full control of the scene."
+    },
+    {
+      "question": "A big advantage of still life is that the photographer…",
+      "options": [
+        "Has full control over arrangement, lighting and timing",
+        "Cannot use a tripod",
+        "Must shoot quickly before the subject moves",
+        "Cannot control the light"
+      ],
+      "correct": 0,
+      "reviewHint": "Because objects don't move, you control composition, light and pace completely."
+    },
+    {
+      "question": "Soft, diffused window light is popular in still life because it…",
+      "options": [
+        "Creates gentle gradation and soft shadows",
+        "Adds harsh hotspots",
+        "Increases noise",
+        "Speeds up the shutter"
+      ],
+      "correct": 0,
+      "reviewHint": "Diffused natural light gives soft, flattering transitions and gentle shadows."
+    },
+    {
+      "question": "Choosing objects that work well together is part of…",
+      "options": [
+        "Styling and arranging the scene",
+        "Setting the ISO",
+        "Calibrating the monitor",
+        "Picking the file format"
+      ],
+      "correct": 0,
+      "reviewHint": "Selecting complementary props and arranging them is core to still life styling."
+    },
+    {
+      "question": "Colour theory helps still life by…",
+      "options": [
+        "Guiding which colours harmonise or contrast in the arrangement",
+        "Setting the shutter speed",
+        "Reducing diffraction",
+        "Choosing the lens mount"
+      ],
+      "correct": 0,
+      "reviewHint": "Understanding colour relationships helps you build harmonious or deliberately contrasting setups."
+    },
+    {
+      "question": "Creating balance and harmony in a still life arrangement means…",
+      "options": [
+        "Distributing visual weight so the composition feels settled",
+        "Filling every gap with objects",
+        "Using only one light at maximum power",
+        "Keeping all objects the same size"
+      ],
+      "correct": 0,
+      "reviewHint": "Balance and harmony come from how the objects' visual weights are arranged."
+    },
+    {
+      "question": "A reflector in a still life setup is used to…",
+      "options": [
+        "Fill shadows by bouncing light back into the scene",
+        "Block all light",
+        "Increase the ISO",
+        "Change the focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Reflectors lift shadow detail by bouncing light back onto the arrangement."
+    },
+    {
+      "question": "A tripod benefits still life because it…",
+      "options": [
+        "Allows precise, repeatable framing and sharp images at slow shutter speeds",
+        "Adds colour to the image",
+        "Removes the need for styling",
+        "Increases dynamic range"
+      ],
+      "correct": 0,
+      "reviewHint": "A tripod lets you refine the arrangement precisely and shoot sharp at low ISO."
+    },
+    {
+      "question": "Developing a consistent editing approach across still life images helps…",
+      "options": [
+        "Create a cohesive, recognisable style",
+        "Increase the sensor size",
+        "Speed up autofocus",
+        "Reduce the need for light"
+      ],
+      "correct": 0,
+      "reviewHint": "Consistent post-processing gives a cohesive, signature look across a body of work."
+    }
+  ]
+}

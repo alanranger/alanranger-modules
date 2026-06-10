@@ -1,0 +1,120 @@
+{
+  "moduleId": "c2-03-leading-lines",
+  "title": "Leading Lines",
+  "passMark": 80,
+  "links": {
+    "article": "https://www.alanranger.com/blog-on-photography/what-are-leading-lines-in-photography"
+  },
+  "questions": [
+    {
+      "question": "What are leading lines in photography?",
+      "options": [
+        "Lines in the scene that guide the viewer's eye through the image",
+        "Lines added to the photo in editing only",
+        "The edges of the camera sensor",
+        "Lines on the lens that show focal length"
+      ],
+      "correct": 0,
+      "reviewHint": "Leading lines are real elements in the scene that draw the eye through the frame, often toward the subject."
+    },
+    {
+      "question": "Which of these commonly acts as a leading line?",
+      "options": [
+        "A road, path, fence or river",
+        "The camera's histogram",
+        "A fast shutter speed",
+        "The ISO setting"
+      ],
+      "correct": 0,
+      "reviewHint": "Paths, roads, walls, rivers and similar features are classic leading lines."
+    },
+    {
+      "question": "A main reason to use leading lines is to…",
+      "options": [
+        "Create a sense of depth and draw attention to the subject",
+        "Brighten the shadows",
+        "Reduce the file size",
+        "Increase the frame rate"
+      ],
+      "correct": 0,
+      "reviewHint": "Leading lines add depth and direct the viewer toward the point of interest."
+    },
+    {
+      "question": "Diagonal leading lines tend to make a composition feel…",
+      "options": [
+        "More dynamic and energetic",
+        "Flat and static",
+        "Out of focus",
+        "Underexposed"
+      ],
+      "correct": 0,
+      "reviewHint": "Diagonals add a dynamic, energetic quality compared with flat horizontal lines."
+    },
+    {
+      "question": "Where should leading lines ideally direct the viewer?",
+      "options": [
+        "Toward the main subject or point of interest",
+        "Off the edge of the frame away from the subject",
+        "Into the darkest corner",
+        "Toward the lens flare"
+      ],
+      "correct": 0,
+      "reviewHint": "Effective leading lines guide the eye to the subject, not away from it."
+    },
+    {
+      "question": "A common mistake with leading lines is…",
+      "options": [
+        "Lines that lead the eye out of the frame or to nothing",
+        "Using a tripod",
+        "Shooting in RAW",
+        "Keeping the horizon level"
+      ],
+      "correct": 0,
+      "reviewHint": "Avoid distracting lines that pull attention away from the subject or out of the frame."
+    },
+    {
+      "question": "Converging lines (like a road narrowing into the distance) are useful because they…",
+      "options": [
+        "Create a strong sense of depth and perspective",
+        "Always blur the background",
+        "Fix colour casts",
+        "Increase dynamic range"
+      ],
+      "correct": 0,
+      "reviewHint": "Converging lines exaggerate depth and pull the eye into the scene."
+    },
+    {
+      "question": "Leading lines don't have to be straight. They can also be…",
+      "options": [
+        "Curves, such as a winding river or path",
+        "Only perfectly vertical",
+        "Only created in software",
+        "Only found in studios"
+      ],
+      "correct": 0,
+      "reviewHint": "Curved lines (S-curves, winding paths) work as leading lines too and feel more natural."
+    },
+    {
+      "question": "To position leading lines well, photographers often…",
+      "options": [
+        "Change their viewpoint or angle so the lines run toward the subject",
+        "Raise the ISO as high as possible",
+        "Switch to the smallest aperture",
+        "Turn off stabilisation"
+      ],
+      "correct": 0,
+      "reviewHint": "Moving your position changes how lines run through the frame - use it to aim them at the subject."
+    },
+    {
+      "question": "Leading lines can also support a photograph by…",
+      "options": [
+        "Helping tell a story and connecting elements in the scene",
+        "Increasing the shutter speed",
+        "Reducing high-ISO noise",
+        "Setting the white balance"
+      ],
+      "correct": 0,
+      "reviewHint": "Lines can link foreground to subject and add to the visual narrative."
+    }
+  ]
+}
