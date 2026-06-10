@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.27) — Squarespace Snippet
+Academy Dashboard UI (v1.3.28) — Squarespace Snippet
+v1.3.28: Fix C — after assignment PDF open, clear engagement cache + refresh do-next strip (Practitioner count updates without reload).
 v1.3.27: Stack stats + footnote under progress gauge (single right column).
 v1.3.26: Catalog footnote sits under progress gauge; stats+gauge cluster aligned right (no middle float).
 v1.3.25: Catalog summary — left-align stats footnote with “190 links / Your opens” line.
@@ -4811,6 +4812,20 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
      * writes via the Memberstack Admin API are authoritative and guaranteed to
      * complete even after the user has navigated away.
      */
+    function refreshDoNextStripAfterAssignmentOpen() {
+      try {
+        if (openedProgressMemberId) {
+          sessionStorage.removeItem("ar-engagement-" + openedProgressMemberId);
+        }
+      } catch (e) { /* ignore */ }
+      if (globalThis.__arMsReader && typeof globalThis.__arMsReader.invalidate === "function") {
+        globalThis.__arMsReader.invalidate();
+      }
+      if (typeof window.__arDoNextStripRefresh === "function") {
+        window.__arDoNextStripRefresh();
+      }
+    }
+
     function sendTileOpenBeacon(section, key, linkEl) {
       try {
         if (!openedProgressMemberId || !section || !key) return;
@@ -7184,6 +7199,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
                   if (progressTitleEl) {
                     progressTitleEl.textContent = uniqueOpenedModuleCount + '/60 opened';
                   }
+                  if (isPdf) refreshDoNextStripAfterAssignmentOpen();
                 } catch (err) {
                   console.error('[Module Progress] Failed to save module to Memberstack:', err);
                   cubeEl.classList.remove('status-opened');

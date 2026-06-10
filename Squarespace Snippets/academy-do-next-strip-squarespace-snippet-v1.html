@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.57 — Fix A: pdfAssignmentsOpened uses Math.max(live, engagement) — stale cache cannot zero Practitioner count; expose __arDoNextStripRefresh for dashboard assignment opens.
 v1.3.56 — Runtime align journey strip inner to dashboard column (fixes legacy gutter / viewport drift).
 v1.3.55 — Remove legacy Members Guide gutter offset; align journey strip with dashboard column (margin 0 auto).
 v1.3.54 — Foundation progress: 80/20 modules/days weighting; breakdown line under %
@@ -2735,7 +2736,12 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       merged.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
 
-      if (typeof engagement.pdfAssignmentsOpened === "number") merged.pdfAssignmentsOpened = engagement.pdfAssignmentsOpened;
+      if (typeof engagement.pdfAssignmentsOpened === "number") {
+        merged.pdfAssignmentsOpened = Math.max(
+          stats.pdfAssignmentsOpened,
+          engagement.pdfAssignmentsOpened
+        );
+      }
 
     } else {
 
@@ -6084,6 +6090,10 @@ function computeTrackFillPct(badges, progressPct) {
 
 
   watchStripFocusRefresh();
+
+  window.__arDoNextStripRefresh = function() {
+    setTimeout(init, 300);
+  };
 
   window.addEventListener("scroll", function(){ scheduleLayout(); }, { passive: true });
 
