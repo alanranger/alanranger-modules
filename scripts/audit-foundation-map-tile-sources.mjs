@@ -29,14 +29,43 @@ function normalizePath(p) {
   return s;
 }
 
-function extractJsonArray(html, marker) {
+function extractPathArray(html, marker) {
   const start = html.indexOf(marker);
   if (start < 0) return [];
   const jsonStart = start + marker.length;
-  const jsonEnd = html.indexOf(";\n", jsonStart);
-  return JSON.parse(html.slice(jsonStart, jsonEnd));
+  const jsonEnd = html.indexOf("];", jsonStart);
+  if (jsonEnd < 0) return [];
+  const block = html.slice(jsonStart, jsonEnd + 2);
+  const paths = [];
+  const re = /"(\/[^"]+)"/g;
+  let m;
+  while ((m = re.exec(block))) paths.push(m[1]);
+  return paths;
 }
 
+function extractFpSectionSpecs(html) {
+  const marker = "var FP_MAP_SECTION_SPECS = ";
+  const start = html.indexOf(marker);
+  if (start < 0) return [];
+  const jsonStart = start + marker.length;
+  const tail = html.indexOf(";\n  var FP_COLLAPSE_KEY", jsonStart);
+  if (tail < 0) return [];
+  return JSON.parse(html.slice(jsonStart, tail));
+}
+
+function extractDashModulePaths(html) {
+  const marker = "const DEFINITIVE_MODULE_URLS = [";
+  const start = html.indexOf(marker);
+  if (start < 0) return [];
+  const blockStart = start + marker.length;
+  const blockEnd = html.indexOf("];", blockStart);
+  const block = html.slice(blockStart, blockEnd);
+  const paths = [];
+  const re = /'(\/[^']+)'|"(\/[^"]+)"/g;
+  let m;
+  while ((m = re.exec(block))) paths.push(m[1] || m[2]);
+  return paths;
+}
 function extractHrefKeyedRows(html, idAttr) {
   const re = new RegExp(
     `<a[^>]*href="([^"]+)"[^>]*${idAttr}="([^"]+)"|<a[^>]*${idAttr}="([^"]+)"[^>]*href="([^"]+)"`,
@@ -68,11 +97,11 @@ function fpVersion(html) {
 
 const fpHtml = read(fpFile);
 const dashHtml = read(dashFile);
-const foundationPaths = extractJsonArray(fpHtml, "var FOUNDATION_PATHS = ");
-const practicePackPaths = extractJsonArray(fpHtml, "var PRACTICE_PACK_URLS = ");
-const checklistPaths = extractJsonArray(fpHtml, "var CHECKLIST_URLS = ");
-const specs = extractJsonArray(fpHtml, "var FP_MAP_SECTION_SPECS = ");
-const dashModules = extractJsonArray(dashHtml, "const DEFINITIVE_MODULE_URLS = [");
+const foundationPaths = extractPathArray(fpHtml, "var FOUNDATION_PATHS = ");
+const practicePackPaths = extractPathArray(fpHtml, "var PRACTICE_PACK_URLS = ");
+const checklistPaths = extractPathArray(fpHtml, "var CHECKLIST_URLS = ");
+const specs = extractFpSectionSpecs(fpHtml);
+const dashModules = extractDashModulePaths(dashHtml);
 
 const appliedDash = extractHrefKeyedRows(dashHtml, "data-applied-id");
 const rpsDash = extractHrefKeyedRows(dashHtml, "data-rps-link");
