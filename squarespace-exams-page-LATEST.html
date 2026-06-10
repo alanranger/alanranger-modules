@@ -1,8 +1,8 @@
-﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.63 quiz polish -->
+﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.64 question total JS -->
 <!-- Updated: 2026-06-10 — question eyebrow style + answer row hover -->
 <!-- Canonical paste for /academy/photography-exams-certification -->
 <!-- Pre-reskin backup: Exams Module/BACKUP-2026-06-10-pre-reskin/ -->
-<!-- AR Assessment v2.63 — quiz question eyebrow + answer hover, CSS-only — 2026-06-10 -->
+<!-- AR Assessment v2.64 — question total + prefix removal (first approved JS) — 2026-06-10 -->
 <div id="ar-modgrid">
   <!-- Grid View -->
   <div id="grid-container" style="display:block; max-width:1200px; margin:0 auto; padding:20px;">
@@ -329,7 +329,7 @@
       margin:0 0 10px;line-height:1.35;font-size:19px;font-weight:600;color:#e8d9b8!important;
     }
     .ar-qtxt::before{
-      content:"QUESTION " counter(ar-q-num);
+      content:"QUESTION " counter(ar-q-num) " OF " var(--ar-quiz-total);
       display:block;margin-bottom:6px;font-size:11.5px;font-weight:700;letter-spacing:2.2px;
       text-transform:uppercase;color:#d4a64a;
     }
@@ -2398,13 +2398,14 @@ function initQuiz(){
     debugLog("❌ Quiz form not found");
     return;
   }
+  quizForm.style.setProperty('--ar-quiz-total', String(currentQuizConfig.questions.length));
   
   debugLog('📝 Rendering', currentQuizConfig.questions.length, 'questions for module:', currentQuizConfig.moduleId);
   
   const frag = document.createDocumentFragment();
   currentQuizConfig.questions.forEach((q, idx) => {
     const field = document.createElement("div"); field.className = "ar-field";
-    const qtxt = document.createElement("div"); qtxt.className = "ar-qtxt"; qtxt.textContent = `Q${idx+1}. ${q.text}`;
+    const qtxt = document.createElement("div"); qtxt.className = "ar-qtxt"; qtxt.textContent = q.text;
     field.appendChild(qtxt);
     q.options.forEach((opt, i) => {
       const id = `${q.id}-${i}`;
