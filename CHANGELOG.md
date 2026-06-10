@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-06-10] - Cert 2 Stages 1–3 (registry, progress API, dashboard tile)
+
+### Changed (real repo files — see `Docs/CERT2-STAGED-BUILD-FILES.md`)
+
+| Stage | Files |
+|-------|-------|
+| 1 | `lib/academy-exam-modules.js` |
+| 2 | `api/exams/progress.js` |
+| 3 | `Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html`, `lib/academy-dashboard-catalog.js`, `scripts/audit-dashboard-links.mjs` |
+
+### Paste (Alan)
+
+- **D 1.3.29** → `/academy/dashboard` code block 2 (`academy-dashboard-squarespace-snippet-v1.html`)
+
+### Not started
+
+- Stage 4: `academy-foundation-page-squarespace-snippet-v1.html` (modules map)
+- Stage 5: `academy-do-next-strip-squarespace-snippet-v1.html`
+
+---
+
 ## [2026-06-08] - Bookmark B 1.3.17: lesson page background white
 
 ### Changed
