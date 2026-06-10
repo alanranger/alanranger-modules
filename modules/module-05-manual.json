@@ -37,15 +37,15 @@
       "reviewHint": "Start with your creative priority—set aperture first, then match exposure."
     },
     {
-      "question": "In pure Manual with Auto ISO OFF, what does Exposure Compensation (±) do?",
+      "question": "When shooting a series in Manual, what keeps your exposures consistent shot to shot?",
       "options": [
-        "It changes brightness by itself",
-        "It changes ISO automatically",
-        "Nothing—it's ignored",
-        "It changes white balance"
+        "Lock your settings and change only one variable at a time",
+        "Let the camera re-meter and adjust each frame",
+        "Use a different aperture for every shot",
+        "Judge exposure from the LCD brightness each time"
       ],
-      "correct": 2,
-      "reviewHint": "Exposure compensation in Manual only has effect if Auto ISO is ON."
+      "correct": 0,
+      "reviewHint": "Manual's big advantage: lock the look and change only one variable at a time so a whole series matches."
     },
     {
       "question": "Your test shot is too dark by about one stop. You need to keep the same depth of field and your shutter is still safe. What's the easiest fix?",
@@ -125,44 +125,101 @@
       "reviewHint": "Equivalent exposures—to keep shutter (motion) the same, raise ISO one stop."
     },
     {
-      "question": "Sunny 16: On a sunny day at ISO 100, a typical starting exposure near f/16 is:",
+      "question": "What setting order does the guide recommend in Manual mode?",
       "options": [
-        "1/100s at f/16",
-        "1/1000s at f/16",
-        "1/100s at f/2.8",
-        "1/30s at f/16"
+        "Aperture for depth → shutter for motion → ISO to meet the meter",
+        "ISO first → then aperture → then shutter",
+        "Shutter first → then white balance → then aperture",
+        "Set white balance first, then exposure"
       ],
       "correct": 0,
-      "reviewHint": "Sunny 16—start around 1/ISO at f/16 (≈1/100s at ISO 100)."
+      "reviewHint": "The guide's workflow: 1) aperture for depth, 2) shutter for motion, 3) ISO to meet the meter."
     }
   ],
   "feedbackMap": {
     "topics": [
-      {"key":"manual-overview","label":"Manual mode overview"},
-      {"key":"when-to-use","label":"When to use Manual"},
-      {"key":"shutter-brightness","label":"Shutter & brightness"},
-      {"key":"ec-autoiso","label":"Exposure compensation & Auto ISO"},
-      {"key":"stops","label":"Stops & exposure"},
-      {"key":"freeze-motion","label":"Freezing motion"},
-      {"key":"aperture-dof","label":"Aperture & depth of field"},
-      {"key":"iso-exposure","label":"ISO & exposure"},
-      {"key":"backlit","label":"Backlit subjects"},
-      {"key":"equivalents","label":"Equivalent exposures"},
-      {"key":"sunny16","label":"Sunny 16 rule"}
+      {
+        "key": "manual-overview",
+        "label": "Manual mode overview"
+      },
+      {
+        "key": "when-to-use",
+        "label": "When to use Manual"
+      },
+      {
+        "key": "shutter-brightness",
+        "label": "Shutter & brightness"
+      },
+      {
+        "key": "ec-autoiso",
+        "label": "Exposure compensation & Auto ISO"
+      },
+      {
+        "key": "stops",
+        "label": "Stops & exposure"
+      },
+      {
+        "key": "freeze-motion",
+        "label": "Freezing motion"
+      },
+      {
+        "key": "aperture-dof",
+        "label": "Aperture & depth of field"
+      },
+      {
+        "key": "iso-exposure",
+        "label": "ISO & exposure"
+      },
+      {
+        "key": "backlit",
+        "label": "Backlit subjects"
+      },
+      {
+        "key": "equivalents",
+        "label": "Equivalent exposures"
+      },
+      {
+        "key": "sunny16",
+        "label": "Sunny 16 rule"
+      }
     ],
     "questionTopics": {
-      "q1":["manual-overview"],
-      "q2":["when-to-use"],
-      "q3":["aperture-dof"],
-      "q4":["ec-autoiso"],
-      "q5":["stops"],
-      "q6":["freeze-motion"],
-      "q7":["aperture-dof"],
-      "q8":["iso-exposure"],
-      "q9":["backlit"],
-      "q10":["ec-autoiso"],
-      "q11":["equivalents"],
-      "q12":["sunny16"]
+      "q1": [
+        "manual-overview"
+      ],
+      "q2": [
+        "when-to-use"
+      ],
+      "q3": [
+        "aperture-dof"
+      ],
+      "q4": [
+        "ec-autoiso"
+      ],
+      "q5": [
+        "stops"
+      ],
+      "q6": [
+        "freeze-motion"
+      ],
+      "q7": [
+        "aperture-dof"
+      ],
+      "q8": [
+        "iso-exposure"
+      ],
+      "q9": [
+        "backlit"
+      ],
+      "q10": [
+        "ec-autoiso"
+      ],
+      "q11": [
+        "equivalents"
+      ],
+      "q12": [
+        "sunny16"
+      ]
     },
     "topicLinks": {
       "manual-overview": "https://www.alanranger.com/blog-on-photography/what-is-manual-exposure-in-photography",

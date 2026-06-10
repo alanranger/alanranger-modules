@@ -73,15 +73,15 @@
       "reviewHint": "Higher ISO increases noise."
     },
     {
-      "question": "What does +1 EV exposure compensation do to your photo in Av/Tv?",
+      "question": "Which file format gives you the most flexibility to correct exposure afterwards?",
       "options": [
-        "Makes it darker",
-        "Makes it brighter",
-        "Changes white balance",
-        "Zooms the lens"
+        "RAW",
+        "JPEG",
+        "PNG",
+        "GIF"
       ],
-      "correct": 1,
-      "reviewHint": "+1 EV = one stop brighter."
+      "correct": 0,
+      "reviewHint": "RAW preserves all the sensor data, giving the most latitude to fix exposure in editing."
     },
     {
       "question": "If the histogram is bunched to the left, what does that suggest?",
@@ -106,15 +106,15 @@
       "reviewHint": "Right clipping = lost highlight detail."
     },
     {
-      "question": "What is depth of field?",
+      "question": "To get a blurred background (shallow depth of field), which should you choose?",
       "options": [
-        "The camera’s dynamic range",
-        "The range of distances that appears acceptably sharp in the photo",
-        "The amount of background blur caused by zooming",
-        "The distance your lens can focus at infinity"
+        "A wide aperture / low f-number (e.g. f/2.8)",
+        "A narrow aperture / high f-number (e.g. f/16)",
+        "A faster shutter speed",
+        "A lower ISO"
       ],
-      "correct": 1,
-      "reviewHint": "Depth of field = zone of acceptable sharpness."
+      "correct": 0,
+      "reviewHint": "Wide aperture (low f-number) = shallow depth of field = blurred background."
     }
   ]
 }

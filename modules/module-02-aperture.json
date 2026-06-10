@@ -95,26 +95,26 @@
       "reviewHint": "The widest aperture (smallest f-stop number) creates the shallowest depth of field."
     },
     {
-      "question": "What is the primary purpose of the diaphragm in a camera lens?",
+      "question": "At the same f-stop, how does a longer focal length (e.g. 100mm vs 50mm) affect depth of field?",
       "options": [
-        "To focus the image",
-        "To control the aperture opening",
-        "To stabilize the lens",
-        "To filter light colors"
-      ],
-      "correct": 1,
-      "reviewHint": "The diaphragm is the mechanical component that opens and closes to control the aperture size."
-    },
-    {
-      "question": "What is the term used to describe the circular opening that controls the aperture?",
-      "options": [
-        "Diaphragm",
-        "Lens cap",
-        "Shutter",
-        "Filter"
+        "It makes depth of field shallower (more background blur)",
+        "It makes depth of field deeper (more in focus)",
+        "It has no effect on depth of field",
+        "It only changes exposure, not depth of field"
       ],
       "correct": 0,
-      "reviewHint": "The diaphragm is the mechanical device that creates the aperture opening."
+      "reviewHint": "At the same aperture, a longer focal length gives a shallower depth of field and more background blur."
+    },
+    {
+      "question": "Why should you avoid using the smallest apertures (f/22–f/32) unless necessary?",
+      "options": [
+        "Diffraction can soften image detail",
+        "They make the background more blurred",
+        "They always overexpose the image",
+        "They disable autofocus"
+      ],
+      "correct": 0,
+      "reviewHint": "Very small apertures (f/22–f/32) can cause diffraction, which softens fine detail."
     },
     {
       "question": "If you change the aperture from f/5.6 to f/16, how does this affect exposure time?",
@@ -128,15 +128,15 @@
       "reviewHint": "Moving to a smaller aperture (higher f-stop) requires longer exposure time to collect the same amount of light."
     },
     {
-      "question": "What is the 'sweet spot' of a lens?",
+      "question": "Which mode lets you set the aperture while the camera sets the shutter speed?",
       "options": [
-        "The widest aperture of the lens",
-        "The aperture at which the lens produces the sharpest image",
-        "The aperture with the most bokeh",
-        "The smallest aperture of the lens"
+        "Aperture Priority (A/Av)",
+        "Shutter Priority (S/Tv)",
+        "Program (P)",
+        "Manual (M)"
       ],
-      "correct": 1,
-      "reviewHint": "The sweet spot is typically 2-3 stops down from the widest aperture, where the lens performs at its sharpest."
+      "correct": 0,
+      "reviewHint": "Aperture Priority (A/Av): you pick the aperture, the camera sets the shutter speed."
     }
   ],
   "feedbackMap": {
@@ -179,18 +179,45 @@
       }
     ],
     "questionTopics": {
-      "q1": ["aperture-basics"],
-      "q2": ["f-stop-numbers"],
-      "q3": ["depth-of-field"],
-      "q4": ["depth-of-field", "photography-applications"],
-      "q5": ["light-collection"],
-      "q6": ["f-stop-numbers"],
-      "q7": ["bokeh-background", "depth-of-field"],
-      "q8": ["depth-of-field"],
-      "q9": ["photography-applications", "bokeh-background"],
-      "q10": ["lens-mechanics"],
-      "q11": ["exposure-relationship"],
-      "q12": ["lens-sweet-spot"]
+      "q1": [
+        "aperture-basics"
+      ],
+      "q2": [
+        "f-stop-numbers"
+      ],
+      "q3": [
+        "depth-of-field"
+      ],
+      "q4": [
+        "depth-of-field",
+        "photography-applications"
+      ],
+      "q5": [
+        "light-collection"
+      ],
+      "q6": [
+        "f-stop-numbers"
+      ],
+      "q7": [
+        "bokeh-background",
+        "depth-of-field"
+      ],
+      "q8": [
+        "depth-of-field"
+      ],
+      "q9": [
+        "photography-applications",
+        "bokeh-background"
+      ],
+      "q10": [
+        "lens-mechanics"
+      ],
+      "q11": [
+        "exposure-relationship"
+      ],
+      "q12": [
+        "lens-sweet-spot"
+      ]
     },
     "topicLinks": {
       "aperture-basics": "https://www.alanranger.com/blog-on-photography/what-is-aperture-in-photography",

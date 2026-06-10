@@ -4,15 +4,15 @@
   "passMark": 80,
   "questions": [
     {
-      "question": "What does ISO actually control in a digital camera?",
+      "question": "What does ISO control in your photos?",
       "options": [
-        "The physical sensitivity of the sensor",
-        "The amount of light the lens transmits",
-        "The amplification of the sensor's signal after capture",
-        "The color temperature of the image"
+        "The lens opening (aperture)",
+        "How long the shutter stays open",
+        "How bright or dark the image is — the sensor's sensitivity to light",
+        "The white balance / colour temperature"
       ],
       "correct": 2,
-      "reviewHint": "ISO = signal gain, not lens light or white balance."
+      "reviewHint": "ISO sets the sensor's sensitivity to light — it brightens or darkens the image."
     },
     {
       "question": "Going from ISO 100 → ISO 400 equals…",
@@ -81,15 +81,15 @@
       "reviewHint": "Auto ISO tries to hold your min shutter by increasing ISO."
     },
     {
-      "question": "Does ISO change depth of field or perspective?",
+      "question": "Why is base ISO (around 100) preferred when there is plenty of light?",
       "options": [
-        "Yes, higher ISO gives shallower depth of field",
-        "No—ISO doesn't change DoF or perspective",
-        "Yes, higher ISO compresses perspective",
-        "Yes, lower ISO increases background blur"
+        "It produces the cleanest image with the least noise",
+        "It blurs the background more",
+        "It makes the shutter faster automatically",
+        "It changes the white balance"
       ],
-      "correct": 1,
-      "reviewHint": "ISO only affects signal gain/brightness, not optics."
+      "correct": 0,
+      "reviewHint": "Base ISO (≈100) gives the highest image quality with minimal noise — use it when light allows."
     },
     {
       "question": "Your photo at ISO 6400 looks noisy. Next time, what helps reduce noise most?",
@@ -103,15 +103,15 @@
       "reviewHint": "Lower ISO generally = cleaner file (if you can stabilize)."
     },
     {
-      "question": "With manual flash power fixed, increasing ISO from 200 → 400 will…",
+      "question": "In bright daylight, which ISO does the guide suggest starting at?",
       "options": [
-        "Brighten ambient but not flash exposure",
-        "Brighten both ambient and flash-lit areas by one stop",
-        "Only change white balance",
-        "Reduce the effective flash power"
+        "ISO 100–200",
+        "ISO 1600",
+        "ISO 6400",
+        "ISO 12,800"
       ],
-      "correct": 1,
-      "reviewHint": "ISO boosts all recorded light, including flash."
+      "correct": 0,
+      "reviewHint": "In bright daylight use a low ISO (100–200) for the cleanest files."
     },
     {
       "question": "Which statement about Auto ISO is accurate?",
@@ -138,32 +138,92 @@
   ],
   "feedbackMap": {
     "topics": [
-      {"key":"iso-basics","label":"ISO basics"},
-      {"key":"stops-doubling","label":"Stops and doubling ISO"},
-      {"key":"noise-impact","label":"Noise and ISO"},
-      {"key":"practical-choice","label":"Choosing ISO in practice"},
-      {"key":"base-iso","label":"Base/Native ISO"},
-      {"key":"freezing-action-iso","label":"Using ISO to freeze motion"},
-      {"key":"auto-iso-min-shutter","label":"Auto ISO & minimum shutter"},
-      {"key":"iso-and-dof","label":"What ISO does NOT change"},
-      {"key":"reduce-noise","label":"Ways to reduce noise"},
-      {"key":"flash-and-iso","label":"Flash exposure & ISO"},
-      {"key":"auto-iso-overview","label":"Auto ISO overview"},
-      {"key":"exposure-equivalence","label":"Exposure equivalence (trade-offs)"}
+      {
+        "key": "iso-basics",
+        "label": "ISO basics"
+      },
+      {
+        "key": "stops-doubling",
+        "label": "Stops and doubling ISO"
+      },
+      {
+        "key": "noise-impact",
+        "label": "Noise and ISO"
+      },
+      {
+        "key": "practical-choice",
+        "label": "Choosing ISO in practice"
+      },
+      {
+        "key": "base-iso",
+        "label": "Base/Native ISO"
+      },
+      {
+        "key": "freezing-action-iso",
+        "label": "Using ISO to freeze motion"
+      },
+      {
+        "key": "auto-iso-min-shutter",
+        "label": "Auto ISO & minimum shutter"
+      },
+      {
+        "key": "iso-and-dof",
+        "label": "What ISO does NOT change"
+      },
+      {
+        "key": "reduce-noise",
+        "label": "Ways to reduce noise"
+      },
+      {
+        "key": "flash-and-iso",
+        "label": "Flash exposure & ISO"
+      },
+      {
+        "key": "auto-iso-overview",
+        "label": "Auto ISO overview"
+      },
+      {
+        "key": "exposure-equivalence",
+        "label": "Exposure equivalence (trade-offs)"
+      }
     ],
     "questionTopics": {
-      "q1":["iso-basics"],
-      "q2":["stops-doubling"],
-      "q3":["noise-impact"],
-      "q4":["practical-choice"],
-      "q5":["base-iso"],
-      "q6":["freezing-action-iso"],
-      "q7":["auto-iso-min-shutter"],
-      "q8":["iso-and-dof"],
-      "q9":["reduce-noise"],
-      "q10":["flash-and-iso"],
-      "q11":["auto-iso-overview"],
-      "q12":["exposure-equivalence"]
+      "q1": [
+        "iso-basics"
+      ],
+      "q2": [
+        "stops-doubling"
+      ],
+      "q3": [
+        "noise-impact"
+      ],
+      "q4": [
+        "practical-choice"
+      ],
+      "q5": [
+        "base-iso"
+      ],
+      "q6": [
+        "freezing-action-iso"
+      ],
+      "q7": [
+        "auto-iso-min-shutter"
+      ],
+      "q8": [
+        "iso-and-dof"
+      ],
+      "q9": [
+        "reduce-noise"
+      ],
+      "q10": [
+        "flash-and-iso"
+      ],
+      "q11": [
+        "auto-iso-overview"
+      ],
+      "q12": [
+        "exposure-equivalence"
+      ]
     },
     "topicLinks": {
       "iso-basics": "https://www.alanranger.com/blog-on-photography/what-is-iso-in-photography",

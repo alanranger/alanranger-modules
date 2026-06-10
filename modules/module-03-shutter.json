@@ -47,14 +47,15 @@
       "correct": 3
     },
     {
-      "question": "At what shutter speed is it generally recommended to use a tripod to avoid camera shake?",
+      "question": "To capture a silky waterfall with smooth, blurred water, which shutter speed range works best?",
       "options": [
-        "1/500",
-        "1/250",
-        "1/60",
-        "1/30"
+        "1/4 – 2 seconds",
+        "1/1000s",
+        "1/250s",
+        "1/60s"
       ],
-      "correct": 3
+      "correct": 0,
+      "reviewHint": "Silky water needs a slow shutter — the guide suggests roughly 1/4–2 seconds (use a tripod)."
     },
     {
       "question": "In which camera mode does the photographer set the shutter speed while the camera selects the appropriate aperture?",
@@ -67,14 +68,15 @@
       "correct": 2
     },
     {
-      "question": "Which shutter speed is best suited for capturing a sharp image of a person running at moderate speed?",
+      "question": "Which shutter speed is best for a sharp photo of someone running?",
       "options": [
-        "1/60",
         "1/125",
-        "1/30",
-        "1/15"
+        "1/250",
+        "1/500",
+        "1/1000"
       ],
-      "correct": 1
+      "correct": 3,
+      "reviewHint": "Fast motion like running needs a fast shutter — around 1/1000s (the page lists sport at 1/1000–1/2000s)."
     },
     {
       "question": "What is the effect of using a shutter speed slower than 1/60 without a tripod?",
@@ -107,14 +109,15 @@
       "correct": 2
     },
     {
-      "question": "What is the minimum shutter speed typically recommended for handheld photography to avoid camera shake?",
+      "question": "What rule does the guide recommend for the slowest handheld shutter speed to avoid camera shake?",
       "options": [
-        "1/1000",
-        "1/250",
-        "1/60",
-        "1/15"
+        "At least 1 / (2 × the lens focal length)",
+        "Always 1/60s regardless of lens",
+        "The same number as your ISO",
+        "Twice the aperture f-number"
       ],
-      "correct": 2
+      "correct": 0,
+      "reviewHint": "The guide's handheld rule is to start at 1/(2× focal length) — e.g. ~1/100s for a 50mm lens."
     },
     {
       "question": "What happens to the exposure when you decrease the shutter speed from 1/500 to 1/250, with no changes to aperture and ISO?",
