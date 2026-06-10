@@ -1,8 +1,8 @@
-﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.60 fixes -->
-<!-- Updated: 2026-06-10 — whole-page dark shell + card tints + locked disabled buttons -->
+﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.62 polish -->
+<!-- Updated: 2026-06-10 — chip contrast + results modal reskin + card hover wobble -->
 <!-- Canonical paste for /academy/photography-exams-certification -->
 <!-- Pre-reskin backup: Exams Module/BACKUP-2026-06-10-pre-reskin/ -->
-<!-- AR Assessment v2.60 — whole-page dark shell + card state tints + locked disabled buttons, CSS-only — 2026-06-10 -->
+<!-- AR Assessment v2.62 — chip contrast + results modal Option B reskin + card hover wobble, CSS-only — 2026-06-10 -->
 <div id="ar-modgrid">
   <!-- Grid View -->
   <div id="grid-container" style="display:block; max-width:1200px; margin:0 auto; padding:20px;">
@@ -110,6 +110,26 @@
       #ar-modgrid .card{
         position:relative;background:#151a23;border:1.5px solid #8a7440;border-radius:12px;
         padding:14px;box-shadow:none;overflow:hidden;color:var(--ar-text);
+        transition:transform .2s ease,box-shadow .2s ease;
+      }
+      #ar-modgrid .card:hover{
+        animation:ar-exam-card-wobble .55s ease-in-out;
+        transform:translateY(-3px);
+        box-shadow:0 10px 24px rgba(0,0,0,.35);
+        z-index:2;
+        overflow:visible;
+      }
+      @keyframes ar-exam-card-wobble{
+        0%,100%{transform:translateY(-3px) rotate(0deg)}
+        15%{transform:translateY(-3px) rotate(-1.1deg)}
+        30%{transform:translateY(-3px) rotate(.9deg)}
+        45%{transform:translateY(-3px) rotate(-.7deg)}
+        60%{transform:translateY(-3px) rotate(.5deg)}
+        75%{transform:translateY(-3px) rotate(-.25deg)}
+      }
+      @media (prefers-reduced-motion:reduce){
+        #ar-modgrid .card{transition:none}
+        #ar-modgrid .card:hover{animation:none;transform:none;box-shadow:none}
       }
       #ar-modgrid .card::before{display:none}
       #ar-modgrid .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -123,8 +143,9 @@
       #ar-modgrid .chip{
         display:inline-flex;align-items:center;justify-content:center;gap:6px;
         padding:4px 10px;border-radius:999px;border:1px solid var(--ar-line);
-        background:#222a38;font-size:13px;color:var(--ar-grey);
+        background:#222a38;font-size:13px;color:#ffffff!important;
       }
+      #ar-modgrid .chip strong{color:#ffffff!important;font-weight:700!important}
       #ar-modgrid .chip.pass{background:var(--ar-green)!important;border-color:var(--ar-green)!important;color:#fff!important;font-weight:700}
       #ar-modgrid .chip.fail{background:var(--ar-red)!important;border-color:var(--ar-red)!important;color:#fff!important;font-weight:700}
       #ar-modgrid .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
@@ -176,7 +197,43 @@
       .debug-value.error{color:#f44}
       .debug-value.warning{color:#ffa500}
       .debug-value.info{color:#4af}
-    </style>    </style>
+      /* View-results + mastery modals — Option B v2.62 (overrides JS inline styles) */
+      .modal{background:rgba(6,8,12,.72)!important}
+      .modal > div{
+        background:#151a23!important;border:1.5px solid #d4a64a!important;border-radius:12px!important;
+        box-shadow:0 24px 60px rgba(0,0,0,.45)!important;color:#e8ebf0!important;
+      }
+      .modal > div h2,.modal > div h3{color:#e8d9b8!important}
+      .modal > div > div:first-child button{color:#aab3c0!important;background:none!important;border:none!important}
+      .modal > div > div:first-child button:hover{color:#ffffff!important}
+      .modal > div > div:nth-child(2){
+        background:#1a2030!important;border:1px solid #2a3140!important;border-radius:8px!important;
+        color:#ffffff!important;
+      }
+      .modal > div > div:nth-child(2) div{color:#ffffff!important;font-weight:700}
+      .modal > div > div:nth-child(2) strong{color:#aab3c0!important;font-weight:600!important}
+      .modal > div > div:nth-child(2) div[style*="margin-top: 15px"],
+      .modal > div > div:nth-child(2) > div[style*="margin-top"]{
+        background:#1a2030!important;border:1px solid #3f6b46!important;border-radius:6px!important;
+      }
+      .modal > div > div:nth-child(2) label{color:#e8d9b8!important}
+      .modal > div > div:nth-child(2) div[style*="font-size: 12px"]{color:#aab3c0!important;font-weight:400!important}
+      .modal #certificateName,.modal #masterCertificateName{
+        background:#0d1117!important;border:1px solid #2a3140!important;color:#ffffff!important;border-radius:6px!important;
+      }
+      .modal > div > div:last-child button[onclick*="downloadResultsPDF"]{
+        background:#e57200!important;color:#ffffff!important;border:none!important;border-radius:8px!important;font-weight:700!important;
+      }
+      .modal #btn-modal-cert,.modal #btn-modal-master-cert:not([disabled]){
+        background:#4caf50!important;color:#ffffff!important;border:none!important;border-radius:8px!important;font-weight:700!important;
+      }
+      .modal #btn-modal-transcript,.modal #btn-modal-transcript.btn{
+        background:transparent!important;color:#d4a64a!important;border:1.5px solid #d4a64a!important;border-radius:8px!important;font-weight:700!important;
+      }
+      .modal > div > div:first-child{border-bottom:1px solid #2a3140!important}
+      .modal > div p{color:#e8ebf0!important}
+      .modal > div > div:nth-child(2) > div[style*="padding:20px"] p,.modal > div > div[style*="padding:20px"] p{color:#e8ebf0!important}
+    </style>
     
     <div class="top">
       <h2>15 Camera Settings - Exams and Certification</h2>
