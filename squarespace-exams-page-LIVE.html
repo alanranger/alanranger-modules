@@ -1,8 +1,8 @@
-﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.64 question total JS -->
+﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.66 eyebrow string-var fix -->
 <!-- Updated: 2026-06-10 — question eyebrow style + answer row hover -->
 <!-- Canonical paste for /academy/photography-exams-certification -->
 <!-- Pre-reskin backup: Exams Module/BACKUP-2026-06-10-pre-reskin/ -->
-<!-- AR Assessment v2.64 — question total + prefix removal (first approved JS) — 2026-06-10 -->
+<!-- AR Assessment v2.66 — eyebrow fix: --ar-quiz-total as CSS string for valid content — 2026-06-10 -->
 <div id="ar-modgrid">
   <!-- Grid View -->
   <div id="grid-container" style="display:block; max-width:1200px; margin:0 auto; padding:20px;">
@@ -328,10 +328,11 @@
     .ar-qtxt{
       margin:0 0 10px;line-height:1.35;font-size:19px;font-weight:600;color:#e8d9b8!important;
     }
-    .ar-qtxt::before{
-      content:"QUESTION " counter(ar-q-num) " OF " var(--ar-quiz-total);
-      display:block;margin-bottom:6px;font-size:11.5px;font-weight:700;letter-spacing:2.2px;
-      text-transform:uppercase;color:#d4a64a;
+    /* v2.66: var(--ar-quiz-total) must be a CSS string (set in initQuiz with quoted value). */
+    #quiz-form .ar-field .ar-qtxt::before{
+      content:"QUESTION " counter(ar-q-num) " OF " var(--ar-quiz-total)!important;
+      display:block!important;margin-bottom:6px;font-size:11.5px;font-weight:700;letter-spacing:2.2px;
+      text-transform:uppercase;color:#d4a64a!important;
     }
     .ar-opt{
       display:flex;gap:10px;align-items:center;margin:8px 0;cursor:pointer;
@@ -2398,7 +2399,7 @@ function initQuiz(){
     debugLog("❌ Quiz form not found");
     return;
   }
-  quizForm.style.setProperty('--ar-quiz-total', String(currentQuizConfig.questions.length));
+  quizForm.style.setProperty('--ar-quiz-total', '"' + currentQuizConfig.questions.length + '"');
   
   debugLog('📝 Rendering', currentQuizConfig.questions.length, 'questions for module:', currentQuizConfig.moduleId);
   
