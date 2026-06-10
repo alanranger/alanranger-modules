@@ -1,26 +1,48 @@
-﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.59 reskin -->
-<!-- Updated: 2026-06-10 11:05 UTC -->
+﻿<!-- EXPORT: squarespace-exams-page-LATEST.html — Option B v2.60 fixes -->
+<!-- Updated: 2026-06-10 — whole-page dark shell + card tints + locked disabled buttons -->
 <!-- Canonical paste for /academy/photography-exams-certification -->
 <!-- Pre-reskin backup: Exams Module/BACKUP-2026-06-10-pre-reskin/ -->
-<!-- AR Assessment v2.59 — Option B dark reskin (gold frame / champagne), CSS-only — 2026-06-10 -->
+<!-- AR Assessment v2.60 — whole-page dark shell + card state tints + locked disabled buttons, CSS-only — 2026-06-10 -->
 <div id="ar-modgrid">
   <!-- Grid View -->
   <div id="grid-container" style="display:block; max-width:1200px; margin:0 auto; padding:20px;">
     <style>
-      /* Option B tokens — CSS-only reskin v2.59 */
+      /* Option B tokens — CSS-only reskin v2.60 */
       :root{
         --ar-orange:#e57200; --ar-orange-hi:#f08a1f; --ar-gold:#d4a64a; --ar-champagne:#e8d9b8;
         --ar-green:#4caf50; --ar-red:#e5484d; --ar-grey:#8a93a3;
         --ar-bg:#0d1117; --ar-panel:#151a23; --ar-panel2:#1a2030; --ar-line:#2a3140;
         --ar-text:#e8ebf0; --ar-dim:#aab3c0; --ar-gray:#2a3140;
       }
-      /* Page shell (skip in Squarespace edit mode) */
-      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode) body:has(#ar-modgrid){
-        background:#0d1117!important;color:var(--ar-text);
+      /* Whole-page dark shell (Squarespace section layers — skip edit mode) */
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid),
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) body,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) #siteWrapper,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .Site,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .Site-inner,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .Content-outer,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) #content,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) main.Main,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .Main--page,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .Main-content,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) #page,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) #sections,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) #canvas,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .page-section,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .section-background,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .section-background-content,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .content-wrapper,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-layout{
+        background:#0d1117!important;background-color:#0d1117!important;
       }
-      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode) .content-wrapper:has(#ar-modgrid),
-      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode) .page-section:has(#ar-modgrid){
-        background:#0d1117!important;
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) body{color:var(--ar-text)}
+      /* Stray Squarespace text outside code blocks (e.g. page H2 heading) */
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-block:not(:has(#ar-modgrid)):not(:has(#ar-exams-header)) h1,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-block:not(:has(#ar-modgrid)):not(:has(#ar-exams-header)) h2,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-block:not(:has(#ar-modgrid)):not(:has(#ar-exams-header)) h3,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-block:not(:has(#ar-modgrid)):not(:has(#ar-exams-header)) p,
+      html:not(.sqs-edit-mode-active):not(.sqs-edit-mode):has(#ar-modgrid) .sqs-block:not(:has(#ar-modgrid)):not(:has(#ar-exams-header)) li{
+        color:var(--ar-champagne)!important;
       }
       #ar-modgrid{color:var(--ar-text)}
       #ar-modgrid #grid-container{background:transparent}
@@ -63,6 +85,19 @@
       #ar-modgrid #btnMasterCertificate{
         background:var(--ar-orange)!important;border-color:var(--ar-orange)!important;color:#fff!important;
       }
+      #ar-modgrid #btnMasterCertificate[disabled],
+      #ar-modgrid #btnMasterCertificate:disabled,
+      #ar-modgrid #btn-modal-master-cert[disabled],
+      #ar-modgrid #btn-modal-master-cert:disabled,
+      #ar-modgrid .btn[disabled],
+      #ar-modgrid .btn:disabled{
+        background:#222a38!important;color:#8a93a3!important;border:1.5px solid #2a3140!important;
+        opacity:1!important;cursor:not-allowed!important;box-shadow:none!important;
+      }
+      #ar-modgrid #btnMasterCertificate[disabled]::after,
+      #ar-modgrid #btnMasterCertificate:disabled::after{
+        content:" 🔒";font-size:12px;
+      }
       #ar-modgrid #btnMasterTranscript{
         background:transparent!important;color:var(--ar-gold)!important;border:1.5px solid var(--ar-gold)!important;
       }
@@ -73,7 +108,7 @@
       @media (max-width:640px){#ar-modgrid .top{grid-template-columns:1fr}#ar-modgrid .grid{grid-template-columns:repeat(2,minmax(0,1fr))}#ar-modgrid .summary{max-width:none}}
       @media (max-width:480px){#ar-modgrid .grid{grid-template-columns:1fr}}
       #ar-modgrid .card{
-        position:relative;background:var(--ar-panel);border:1px solid var(--ar-line);border-radius:12px;
+        position:relative;background:#151a23;border:1.5px solid #8a7440;border-radius:12px;
         padding:14px;box-shadow:none;overflow:hidden;color:var(--ar-text);
       }
       #ar-modgrid .card::before{display:none}
@@ -93,8 +128,8 @@
       #ar-modgrid .chip.pass{background:var(--ar-green)!important;border-color:var(--ar-green)!important;color:#fff!important;font-weight:700}
       #ar-modgrid .chip.fail{background:var(--ar-red)!important;border-color:var(--ar-red)!important;color:#fff!important;font-weight:700}
       #ar-modgrid .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
-      #ar-modgrid .card.passed{background:var(--ar-panel);border-color:#3a5a3d}
-      #ar-modgrid .card.failed{background:var(--ar-panel);border-color:#5a3134}
+      #ar-modgrid .card.passed{background:#14211a!important;border:1.5px solid #3f6b46!important}
+      #ar-modgrid .card.failed{background:#241518!important;border:1.5px solid #6b3a3f!important}
       #ar-modgrid .tick{
         position:absolute;right:12px;top:12px;width:auto;height:auto;border-radius:0;
         background:transparent;border:none;color:var(--ar-green);font-weight:900;font-size:15px;
