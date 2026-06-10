@@ -46,7 +46,7 @@ const bySection = catalog.reduce((acc, link) => {
 const report = {
   auditedAt: new Date().toISOString(),
   totalTrackableLinks: catalog.length,
-  catalogSlotsIncludingPlaceholders: 190,
+  catalogSlotsIncludingPlaceholders: 205,
   rpsComingSoonNotTracked: 4,
   bySection,
   mismatches,
@@ -55,7 +55,7 @@ const report = {
 
 console.log(JSON.stringify(report, null, 2));
 
-const expectedTrackable = 186;
+const expectedTrackable = 201;
 if (catalog.length !== expectedTrackable) {
   console.error(`FAIL: expected ${expectedTrackable} trackable links, got ${catalog.length}`);
   process.exit(1);
