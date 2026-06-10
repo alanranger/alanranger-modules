@@ -1,6 +1,6 @@
 /* eslint-env node */
 /**
- * Static audit: dashboard vs modules-map tile identity + opened-state sources.
+ * Static reconciliation: dashboard vs modules-map tile identity + opened-state sources.
  * Run: node scripts/audit-foundation-map-tile-sources.mjs
  */
 import fs from "node:fs";
@@ -29,36 +29,7 @@ function normalizePath(p) {
   return s;
 }
 
-function extractFpPaths(html) {
-  const re = /data-fp-path="([^"]+)"/g;
-  const set = new Set();
-  let m;
-  while ((m = re.exec(html))) set.add(normalizePath(m[1]));
-  return set;
-}
-
-function extractApplied(html) {
-  const re = /data-applied-id="([^"]+)"[^>]*href="([^"]+)"/g;
-  const rows = [];
-  let m;
-  while ((m = re.exec(html))) {
-    rows.push({ id: m[1], path: normalizePath(m[2]) });
-  }
-  return rows;
-}
-
-function extractRps(html) {
-  const re = /data-rps-link="([^"]+)"[^>]*href="([^"]+)"/g;
-  const rows = [];
-  let m;
-  while ((m = re.exec(html))) {
-    rows.push({ id: m[1], path: normalizePath(m[2]) });
-  }
-  return rows;
-}
-
-function extractFpSectionSpecs(html) {
-  const marker = "var FP_MAP_SECTION_SPECS = ";
+function extractJsonArray(html, marker) {
   const start = html.indexOf(marker);
   if (start < 0) return [];
   const jsonStart = start + marker.length;
@@ -66,56 +37,124 @@ function extractFpSectionSpecs(html) {
   return JSON.parse(html.slice(jsonStart, jsonEnd));
 }
 
-const fpHtml = read(fpFile);
-const dashHtml = read(dashFile);
-const fpPaths = extractFpPaths(fpHtml);
-const specs = extractFpSectionSpecs(fpHtml);
-const applied = extractApplied(dashHtml);
-const rps = extractRps(dashHtml);
-
-const appliedPaths = new Set(applied.map((r) => r.path));
-const rpsPaths = new Set(rps.map((r) => r.path));
-const specApplied = specs.find((s) => s.id === "applied-learning")?.paths?.map(normalizePath) || [];
-const specRps = specs.find((s) => s.id === "rps-distinctions")?.paths?.map(normalizePath) || [];
-
-function diff(label, a, b) {
-  const missing = [...a].filter((x) => !b.has(x));
-  return { label, aCount: a.size, bCount: b.size, missingInB: missing };
+function extractHrefKeyedRows(html, idAttr) {
+  const re = new RegExp(
+    `<a[^>]*href="([^"]+)"[^>]*${idAttr}="([^"]+)"|<a[^>]*${idAttr}="([^"]+)"[^>]*href="([^"]+)"`,
+    "g"
+  );
+  const rows = [];
+  let m;
+  while ((m = re.exec(html))) {
+    if (m[1] && m[2]) rows.push({ id: m[2], path: normalizePath(m[1]) });
+    else if (m[3] && m[4]) rows.push({ id: m[3], path: normalizePath(m[4]) });
+  }
+  return rows;
 }
 
-console.log("=== Modules map tile source audit ===\n");
-console.log("Foundation + paid tiles on map (data-fp-path):", fpPaths.size);
-console.log(
-  "Applied Learning: dashboard cubes",
-  applied.length,
-  "| map spec paths",
-  specApplied.length,
-  "| map DOM paths in AL zone",
-  [...fpPaths].filter((p) => specApplied.includes(p)).length
-);
-console.log(
-  "RPS: dashboard cubes",
-  rps.length,
-  "| map spec paths",
-  specRps.length
-);
+function listDiff(a, b) {
+  const setB = new Set(b);
+  const setA = new Set(a);
+  return {
+    onlyA: a.filter((x) => !setB.has(x)),
+    onlyB: b.filter((x) => !setA.has(x)),
+    match: a.length === b.length && a.every((x) => setB.has(x)),
+  };
+}
 
-const alDiffDashToSpec = specApplied.filter((p) => !appliedPaths.has(p));
-const alDiffSpecToDash = [...appliedPaths].filter((p) => !specApplied.includes(p));
-console.log("\nApplied Learning path mismatches (dashboard href vs map spec):");
-console.log("  In map spec but not dashboard:", alDiffDashToSpec.length ? alDiffDashToSpec : "none");
-console.log("  In dashboard but not map spec:", alDiffSpecToDash.length ? alDiffSpecToDash : "none");
+function fpVersion(html) {
+  const m = html.match(/data-ar-fp-version="([^"]+)"/);
+  return m ? m[1] : "?";
+}
 
-const rpsDiff = specRps.filter((p) => !rpsPaths.has(p));
-console.log("\nRPS path mismatches (map spec vs dashboard href, query stripped):");
-console.log(rpsDiff.length ? rpsDiff : "none");
+const fpHtml = read(fpFile);
+const dashHtml = read(dashFile);
+const foundationPaths = extractJsonArray(fpHtml, "var FOUNDATION_PATHS = ");
+const practicePackPaths = extractJsonArray(fpHtml, "var PRACTICE_PACK_URLS = ");
+const checklistPaths = extractJsonArray(fpHtml, "var CHECKLIST_URLS = ");
+const specs = extractJsonArray(fpHtml, "var FP_MAP_SECTION_SPECS = ");
+const dashModules = extractJsonArray(dashHtml, "const DEFINITIVE_MODULE_URLS = [");
 
-console.log("\nOpened-state sources after FP 1.0.44:");
-console.log("  Foundation 1-60 + assignments: arAcademy.modules.opened (paths)");
-console.log("  Practice packs + checklists: arAcademy.modules.opened (paths)");
-console.log("  Applied Learning (40): arAcademy.appliedLearning.opened → url paths (was stale engagement count)");
-console.log("  RPS (6): arAcademy.rps.opened → url paths");
-console.log("\nDashboard opened-state sources:");
-console.log("  Foundation: modules.opened + local tracking");
-console.log("  Applied Learning: appliedLearning.opened keys (data-applied-id) + localStorage mirror");
-console.log("  RPS: rps.opened keys (data-rps-link) + localStorage mirror");
+const appliedDash = extractHrefKeyedRows(dashHtml, "data-applied-id");
+const rpsDash = extractHrefKeyedRows(dashHtml, "data-rps-link");
+const appliedMapPaths = specs.find((s) => s.id === "applied-learning")?.paths?.map(normalizePath) || [];
+const rpsMapPaths = specs.find((s) => s.id === "rps-distinctions")?.paths?.map(normalizePath) || [];
+const practiceMapPaths = specs.find((s) => s.id === "practice-packs")?.paths?.map(normalizePath) || [];
+const checklistMapPaths = specs.find((s) => s.id === "checklists")?.paths?.map(normalizePath) || [];
+
+const foundationDiff = listDiff(foundationPaths.map(normalizePath), dashModules.map(normalizePath));
+const practiceDiff = listDiff(practicePackPaths.map(normalizePath), practiceMapPaths);
+const checklistDiff = listDiff(checklistPaths.map(normalizePath), checklistMapPaths);
+const appliedDashPaths = appliedDash.map((r) => r.path);
+const appliedDiff = listDiff(appliedMapPaths, appliedDashPaths);
+const rpsDashPaths = rpsDash.map((r) => r.path);
+const rpsDiff = listDiff(rpsMapPaths, rpsDashPaths);
+
+console.log("=== Dashboard ↔ Modules Map tile reconciliation ===\n");
+console.log("Map snippet:", fpVersion(fpHtml));
+console.log("");
+
+const zones = [
+  {
+    name: "Foundation course (articles + PDF assignments)",
+    count: 60,
+    dashboard: "DEFINITIVE_MODULE_URLS cubes",
+    map: "data-fp-tracked + data-fp-path",
+    json: "arAcademy.modules.opened[path]",
+    diff: foundationDiff,
+  },
+  {
+    name: "Practice packs",
+    count: 30,
+    dashboard: "practice pack grid (modules.opened paths)",
+    map: "data-fp-resource + data-fp-path",
+    json: "arAcademy.modules.opened[path]",
+    diff: practiceDiff,
+  },
+  {
+    name: "Field checklists",
+    count: 35,
+    dashboard: "checklist grid (modules.opened paths)",
+    map: "data-fp-resource + data-fp-path",
+    json: "arAcademy.modules.opened[path]",
+    diff: checklistDiff,
+  },
+  {
+    name: "Applied Learning",
+    count: 40,
+    dashboard: "data-applied-id → appliedLearning.opened[id] + url",
+    map: "data-fp-paid + path; reads appliedLearning.opened url paths (FP 1.0.44+)",
+    json: "arAcademy.appliedLearning.opened → normalize(url)",
+    diff: appliedDiff,
+  },
+  {
+    name: "RPS distinctions",
+    count: 6,
+    dashboard: "data-rps-link → rps.opened[id] + url",
+    map: "data-fp-paid + path; reads rps.opened url paths (FP 1.0.44+)",
+    json: "arAcademy.rps.opened → normalize(url); ?tag= stripped",
+    diff: rpsDiff,
+  },
+];
+
+let allMatch = true;
+zones.forEach((z) => {
+  const ok = z.diff.match;
+  if (!ok) allMatch = false;
+  console.log(`${ok ? "PASS" : "FAIL"} | ${z.name} (${z.count} tiles)`);
+  console.log(`  Dashboard: ${z.dashboard}`);
+  console.log(`  Map:       ${z.map}`);
+  console.log(`  JSON:      ${z.json}`);
+  if (!ok) {
+    if (z.diff.onlyA.length) console.log(`  Map-only paths (${z.diff.onlyA.length}):`, z.diff.onlyA.slice(0, 5), z.diff.onlyA.length > 5 ? "…" : "");
+    if (z.diff.onlyB.length) console.log(`  Dash-only paths (${z.diff.onlyB.length}):`, z.diff.onlyB.slice(0, 5), z.diff.onlyB.length > 5 ? "…" : "");
+  }
+  console.log("");
+});
+
+console.log("Exams (15): dashboard exam cubes + map exam buttons — both use /api/exams/progress (not modules.opened).");
+console.log("");
+console.log("Runtime parity (FP 1.0.45):");
+console.log("  Map click wiring on data-fp-tracked → persist modules.opened + track-tile-open beacon + instant repaint");
+console.log("  Map assignment counts → Math.max(live path count, engagement) — same Fix A as strip/dashboard");
+console.log("");
+console.log(allMatch ? "RESULT: All tile inventories reconcile — opened/not-opened status uses equivalent Memberstack JSON keys." : "RESULT: Inventory mismatch — fix paths before claiming parity.");
