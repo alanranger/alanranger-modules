@@ -1,0 +1,60 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "api/admin/lapsed-trial-reengagement-webhook.js": { "maxDuration": 300 },
+    "api/admin/trial-expiry-reminder-webhook.js": { "maxDuration": 60 },
+    "api/admin/triggered-email-webhook.js": { "maxDuration": 60 },
+    "api/admin/orphaned-members-webhook.js": { "maxDuration": 60 },
+    "api/admin/emails-stats.js": { "maxDuration": 60 },
+    "api/admin/emails-members.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    {
+      "path": "/api/admin/cleanup-cron",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/admin/refresh",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=7&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=7&sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=1&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=1&sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=-7&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/trial-expiry-reminder-webhook?daysAhead=-7&sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/activation-snapshot-cron",
+      "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

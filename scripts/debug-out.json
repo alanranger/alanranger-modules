@@ -1,0 +1,221 @@
+{
+  "pathname": "/academy/dashboard",
+  "pinStack": true,
+  "headerPos": "fixed",
+  "stripDisplay": "block",
+  "fillerTop": 3809,
+  "rowOffsetHeight": 30892,
+  "badgeCount": 6,
+  "badges": [
+    {
+      "i": 0,
+      "offsetHeight": 1512,
+      "childCount": 3,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "offsetHeight": 2972,
+      "childCount": 4,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__stars",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "offsetHeight": 4416,
+      "childCount": 4,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__stars",
+          "oh": 2888
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "offsetHeight": 5860,
+      "childCount": 4,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__stars",
+          "oh": 4332
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    },
+    {
+      "i": 4,
+      "offsetHeight": 7304,
+      "childCount": 4,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__stars",
+          "oh": 5776
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    },
+    {
+      "i": 5,
+      "offsetHeight": 8748,
+      "childCount": 4,
+      "kids": [
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__circle",
+          "oh": 1444
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__label",
+          "oh": 18
+        },
+        {
+          "tag": "DIV",
+          "cls": "ar-do-next-badge__stars",
+          "oh": 7220
+        },
+        {
+          "tag": "P",
+          "cls": "ar-do-next-badge__sublabel",
+          "oh": 18
+        }
+      ]
+    }
+  ],
+  "stripParent": true,
+  "matchedCircleRules": [],
+  "stripRuleCount": 0,
+  "stripRuleSample": [],
+  "htmlClass": "ar-academy ar-dashboard-pin-stack",
+  "rowFlexDirection": "row",
+  "rowAlignItems": "normal",
+  "badgeFlex": "0 1 auto",
+  "circleComputed": {
+    "width": "1438px",
+    "height": "1442px",
+    "display": "block",
+    "flex": "0 1 auto"
+  },
+  "parts": [
+    {
+      "sel": "ar-do-next-strip",
+      "offsetHeight": 31064,
+      "scrollHeight": 31064,
+      "position": "fixed"
+    },
+    {
+      "sel": ".ar-do-next-strip__inner",
+      "offsetHeight": 31048,
+      "scrollHeight": 31048,
+      "position": "static"
+    },
+    {
+      "sel": ".ar-do-next-strip__card",
+      "offsetHeight": 31048,
+      "scrollHeight": 31048,
+      "position": "static"
+    },
+    {
+      "sel": "#ar-do-next-badge-rail",
+      "offsetHeight": 30960,
+      "scrollHeight": 30960,
+      "position": "static"
+    },
+    {
+      "sel": "#ar-do-next-status",
+      "offsetHeight": 36,
+      "scrollHeight": 36,
+      "position": "static"
+    },
+    {
+      "sel": "#ar-do-next-tiles",
+      "offsetHeight": 36,
+      "scrollHeight": 36,
+      "position": "static"
+    }
+  ],
+  "hasCircleCss": true
+}

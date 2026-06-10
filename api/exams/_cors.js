@@ -11,7 +11,7 @@ function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Memberstack-Id");
   res.setHeader("Vary", "Origin");
 }
 
@@ -59,10 +59,34 @@ function getMemberstackToken(req) {
   return getCookie(cookieHeader, "_ms-mid");
 }
 
+/**
+ * Get Memberstack member ID from request (header fallback when token is missing)
+ * @param {object} req - Request object
+ * @returns {string|null} - Member ID or null
+ */
+function getMemberstackMemberId(req) {
+  // Vercel serverless functions: headers are lowercased
+  // Try multiple variations to be absolutely sure
+  const memberId = req.headers["x-memberstack-id"] 
+    || req.headers["x-memberstackid"]
+    || (req.headers["X-Memberstack-Id"] && req.headers["X-Memberstack-Id"]) // Original case (unlikely but possible)
+    || null;
+    
+  if (memberId) {
+    console.log("[getMemberstackMemberId] ✅ Found member ID in header:", memberId);
+  } else {
+    console.log("[getMemberstackMemberId] ❌ No member ID header found");
+    console.log("[getMemberstackMemberId] All header keys:", Object.keys(req.headers || {}));
+    console.log("[getMemberstackMemberId] Headers starting with 'x':", Object.keys(req.headers || {}).filter(h => h.toLowerCase().startsWith('x-')));
+  }
+  return memberId;
+}
+
 module.exports = {
   setCorsHeaders,
   handlePreflight,
   getCookie,
   getMemberstackToken,
+  getMemberstackMemberId,
   ALLOWED_ORIGIN
 };

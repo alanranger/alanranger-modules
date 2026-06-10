@@ -70,10 +70,17 @@ Headers:
     "score_percent": 100,
     "passed": true,
     "attempt": 3,
-    "created_at": "2026-01-01T12:00:00Z"
+    "created_at": "2026-01-01T12:00:00Z",
+    "details": {
+      "missed_questions": [3, 7],
+      "total_questions": 10,
+      "answers": [...]
+    }
   }
 }
 ```
+
+**Note**: The `details` field (JSONB) contains complete exam information including missed questions, answers, and other exam details. This field is required for PDF generation and detailed results display.
 
 **Response (200 OK - No results):**
 ```json

@@ -1,0 +1,1268 @@
+<!--
+Academy Header Elements — Squarespace Code Block v1.4.33 (snippet version stamp under brand logo)
+For injection into Squarespace Header (Code Injection → Header)
+Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
+
+Snippet versions shown live (update all four when re-pasting blocks):
+  Header H = 1.4.33 | Strip S = 1.3.56 | Dashboard D = 1.3.27 | Bookmark B = 1.3.16 | Footer F = 1.3.3
+v1.4.33: Stamp sync — Dashboard D 1.3.27 (catalog gauge column layout).
+v1.4.32: Dashboard layout sync — align fixed journey strip column to .ar-academy-dashboard__inner (runtime measure).
+v1.4.26: Stamp updated for Bookmark B 1.3.10 (shared next-unopened) + Footer F 1.3.1. No functional header change.
+v1.4.25: Stamp updated for Footer F 1.2.0 (champagne member panel + live stats). No functional header change.
+v1.4.24: Stamp updated for Footer F 1.1.0 (Will Myers load-target delivery). No functional header change.
+v1.4.23: Stamp updated for Footer F 1.0.2 (.sqs-layout body anchor fix). No functional header change.
+v1.4.22: Stamp updated for Footer F 1.0.1 (foot-of-article relocation + inline white logo). No functional header change.
+v1.4.21: Stamp updated for Footer F 1.0.0 + Bookmark B 1.3.9 (shared module nav global). No functional header change.
+v1.4.20: Stamp updated for Bookmark B 1.3.8 (black/gold non-member CTA + final copy). No functional header change.
+v1.4.19: Stamp updated for Bookmark B 1.3.7 (lesson grey bg + gold non-member CTA). No functional header change.
+v1.4.18: Stamp updated for Dashboard D 1.3.15 (modules grid ReferenceError fix). No functional header change.
+v1.4.17: Stamp updated for Strip S 1.3.48 + Dashboard D 1.3.14 (ghost session lifecycle — clear stale context on plain load). No functional header change.
+v1.4.16: Stamp updated for Strip S 1.3.47 + Dashboard D 1.3.13 (ghost grid + module-count sync). No functional header change.
+v1.4.15: Stamp updated for Strip S 1.3.46 (ghostMode flag sync + write-guard invariant). No functional header change.
+v1.4.14: Stamp updated for Strip S 1.3.45 (ghost mode member-id resolution). No functional header change.
+v1.4.12: Version stamp text colour changed to gold (#f5b301) for readability on the dark header.
+v1.4.11: Stamp updated for Strip S 1.3.43 (stepped milestone track on Your Journey rail). No functional header change.
+v1.4.10: Stamp updated for Strip S 1.3.42 (badge-aware progress bar + proximity for all six rungs). No functional header change.
+v1.4.9: Stamp updated for Strip S 1.3.41 (tile-4 Goal: Master fix). No functional header change.
+v1.4.8: Stamp updated for Strip S 1.3.40 (banner badge gold/stars fix + preview lastActivityAt). No functional header change.
+v1.4.7: Stamp updated for Strip S 1.3.39 (badge rail gold Master + stars regression fix). Also corrects the stamp which was stale at S 1.3.37 while the live strip was S 1.3.38. No functional header change.
+v1.4.6: Stamp updated for Strip S 1.3.37 (Graduate + Master points-layer gates). No functional header change.
+v1.4.5: Corrected live version stamp to reflect the open-tracking beacon (was stale at S 1.3.34 / D 1.3.10 / B 1.3.4 after the live restore, while the beacon files were already at S 1.3.35 / D 1.3.11 / B 1.3.5). No functional header change.
+v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundle per page (Academy + articles).
+-->
+
+<script>
+(function initArMemberstackReader() {
+  if (globalThis.__arMsReader) return;
+  var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+  function unwrapMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+  function normalizeMemberJsonPayload(jsonRes) {
+    var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+    if (raw && raw.json && typeof raw.json === "object") return raw.json;
+    return raw || {};
+  }
+  function mergeMemberWithJson(member, jsonRes) {
+    var m = unwrapMember(member);
+    if (!m || !m.data || !jsonRes) return m;
+    var mj = unwrapMember(jsonRes);
+    if (!mj) return m;
+    if (!m.id && mj.id) m.id = mj.id;
+    if (!m.data) m.data = {};
+    if (mj.data) mergeMissingFields(m.data, mj.data);
+    mergeMissingFields(m.data, mj);
+    return m;
+  }
+  globalThis.__arMsReader = {
+    invalidate: function() {
+      state.member = null; state.rawJson = null; state.memberJson = null;
+      state.inflight = null; state.at = 0;
+    },
+    patchJson: function(memberJson, rawJson) {
+      if (memberJson) state.memberJson = memberJson;
+      if (rawJson) state.rawJson = rawJson;
+      state.at = Date.now();
+    },
+    fetchBundle: function(ms, opts) {
+      opts = opts || {};
+      if (!ms) return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+      if (!opts.force && state.at && state.rawJson) {
+        return Promise.resolve({ member: state.member, rawJson: state.rawJson, memberJson: state.memberJson });
+      }
+      if (!opts.force && state.inflight) return state.inflight;
+      var memberCall = (typeof ms.getCurrentMember === "function")
+        ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+        : Promise.resolve(null);
+      state.inflight = Promise.resolve(memberCall).then(function(res) {
+        var m = unwrapMember(res);
+        if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        }
+        return ms.getMemberJSON().then(function(jsonRes) {
+          var merged = mergeMemberWithJson(m, jsonRes);
+          state.member = merged; state.rawJson = jsonRes;
+          state.memberJson = normalizeMemberJsonPayload(jsonRes);
+          state.at = Date.now(); state.inflight = null;
+          return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+        }).catch(function() {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        });
+      }).catch(function(err) { state.inflight = null; throw err; });
+      return state.inflight;
+    }
+  };
+})();
+</script>
+
+<style id="ar-academy-header-style">
+  /* No horizontal scroll on Academy pages (100vw bleed elsewhere is banned) */
+  html.ar-academy {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  html.ar-academy body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Hide Squarespace site chrome — injected Academy header replaces it (dashboard + foundation) */
+  html.ar-academy {
+    --ar-sqsp-nav-offset: 0px;
+  }
+  html.ar-academy #header,
+  html.ar-academy header.Header,
+  html.ar-academy .Mobile-bar,
+  html.ar-academy .sqs-mobile-info-bar,
+  html.ar-academy .Header-nav--primary,
+  html.ar-academy .Header-nav--secondary,
+  html.ar-academy .Header--bottom,
+  html.ar-academy .Mobile-overlay-nav--primary,
+  html.ar-academy .Mobile-bar-menu {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
+  /* Academy header — sticky below Squarespace nav on non-dashboard pages */
+  #ar-academy-header-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 32px;
+    background: #000;
+    color: #fff;
+    position: sticky;
+    top: var(--ar-sqsp-nav-offset, 0px);
+    left: 0;
+    right: 0;
+    z-index: 998;
+    min-height: 80px;
+    box-sizing: border-box;
+    box-shadow: none;
+    border: none;
+    margin: 0;
+  }
+
+  /* Dashboard: fixed pin-stack below Sqsp nav (header injection + page blocks stay separate) */
+  html.ar-dashboard-pin-stack #ar-academy-header-container {
+    position: fixed !important;
+    top: var(--ar-sqsp-nav-offset, 0px) !important;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 !important;
+    z-index: 998;
+  }
+
+  /* Header injection spacers are never used (header sits outside page blocks) */
+  #ar-academy-header-spacer {
+    display: none !important;
+    height: 0 !important;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #ar-do-next-strip-spacer {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  /* Left: Welcome message (+ optional journey badge from block 2) */
+  #ar-academy-header-welcome {
+    grid-column: 1;
+    justify-self: start;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    max-width: 100%;
+    z-index: 3;
+  }
+
+  #ar-academy-header-welcome-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage {
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle {
+    width: 52px;
+    height: 52px;
+  }
+
+  #ar-academy-header-welcome #ar-do-next-banner-stage .ar-do-next-banner-stage__circle svg {
+    width: 26px;
+    height: 26px;
+  }
+  
+  #ar-academy-header-welcome-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.3;
+  }
+  
+  #ar-academy-header-welcome-name {
+    color: #fff;
+    font-weight: 500;
+    font-size: 14px;
+  }
+  
+  #ar-academy-header-last-login {
+    font-size: 13px;
+    color: #8b9099;
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  
+  /* Center: Academy Dashboard title */
+  #ar-academy-header-center {
+    grid-column: 2;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-width: 0;
+    max-width: min(560px, 100%);
+    text-align: center;
+    z-index: 1;
+  }
+  
+  #ar-academy-header-logo-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  
+  #ar-academy-header-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  
+  #ar-academy-header-subtitle {
+    font-size: 13px;
+    color: #8b9099;
+    margin: 4px 0 0 0;
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  
+  /* Right: Logo and Logout */
+  #ar-academy-header-right {
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+    z-index: 3;
+  }
+  
+  #ar-academy-header-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  #ar-academy-header-brand-logo {
+    width: 180px;
+    height: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+
+  #ar-academy-header-snippet-version {
+    font-size: 10px;
+    font-weight: 600;
+    color: #f5b301;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    user-select: all;
+  }
+  
+  #ar-academy-header-logout-btn {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+  
+  #ar-academy-header-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
+  }
+  
+  /* Responsive adjustments - match dashboard breakpoint at 1200px */
+  @media (max-width: 1200px) {
+    #ar-academy-header-container {
+      grid-template-columns: 1fr;
+      row-gap: 10px;
+      padding: 14px 20px;
+      min-height: auto;
+    }
+    
+    #ar-academy-header-welcome {
+      grid-column: 1;
+      justify-self: stretch;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    
+    #ar-academy-header-center {
+      grid-column: 1;
+      justify-self: center;
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      gap: 10px;
+    }
+    
+    #ar-academy-header-right {
+      grid-column: 1;
+      justify-self: stretch;
+      gap: 12px;
+      width: 100%;
+      justify-content: space-between;
+      margin-top: 0;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    #ar-academy-header-container {
+      padding: 12px 16px;
+    }
+    
+    #ar-academy-header-welcome {
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 14px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 14px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 13px;
+    }
+    
+    #ar-academy-header-center {
+      width: 100%;
+      margin: 0;
+      gap: 8px;
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    #ar-academy-header-logo-icon {
+      width: 36px;
+      height: 36px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 4px 0;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 13px;
+      margin: 2px 0 0 0;
+    }
+    
+    #ar-academy-header-right {
+      width: 100%;
+      margin-top: 0;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 120px;
+    }
+
+    #ar-academy-header-snippet-version {
+      font-size: 9px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    #ar-academy-header-container {
+      padding: 10px 12px;
+    }
+    
+    #ar-academy-header-welcome-text {
+      font-size: 14px;
+    }
+    
+    #ar-academy-header-welcome-name {
+      font-size: 14px;
+    }
+    
+    #ar-academy-header-last-login {
+      font-size: 13px;
+    }
+    
+    #ar-academy-header-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    #ar-academy-header-subtitle {
+      font-size: 12px;
+    }
+    
+    #ar-academy-header-brand-logo {
+      width: 100px;
+    }
+
+    #ar-academy-header-snippet-version {
+      font-size: 8px;
+    }
+    
+    #ar-academy-header-logout-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+  }
+</style>
+
+<template id="ar-academy-header-template">
+<div id="ar-academy-header-container">
+  <!-- Left: Welcome message -->
+  <div id="ar-academy-header-welcome">
+    <div id="ar-academy-header-welcome-copy">
+      <div id="ar-academy-header-welcome-text">
+        Welcome back, <span id="ar-academy-header-welcome-name">...</span>
+      </div>
+      <div id="ar-academy-header-last-login"></div>
+    </div>
+  </div>
+  
+  <!-- Center: Academy Dashboard title -->
+  <div id="ar-academy-header-center">
+    <img
+      id="ar-academy-header-logo-icon"
+      src="https://www.alanranger.com/s/alan-ranger-photography-academy-logo.png"
+      alt="Academy"
+      loading="eager"
+    />
+    <div>
+      <h1 id="ar-academy-header-title">Your Personal Academy Dashboard</h1>
+      <p id="ar-academy-header-subtitle">Your hub for modules, exams, practice packs and account status.</p>
+    </div>
+  </div>
+  
+  <!-- Right: Logo and Logout -->
+  <div id="ar-academy-header-right">
+    <div id="ar-academy-header-brand">
+      <a
+        id="ar-academy-header-brand-link"
+        href="https://www.alanranger.com/"
+        aria-label="Back to AlanRanger.com homepage"
+      >
+        <img
+          id="ar-academy-header-brand-logo"
+          src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w"
+          alt="Alan Ranger Photography"
+          loading="eager"
+        />
+      </a>
+      <span
+        id="ar-academy-header-snippet-version"
+        title="Header / Do-next strip / Dashboard snippet versions"
+      >H 1.4.32 · S 1.3.56 · D 1.3.23 · B 1.3.16 · F 1.3.3</span>
+    </div>
+    <button
+      id="ar-academy-header-logout-btn"
+      type="button"
+      data-ms-action="logout"
+    >
+      Log out
+    </button>
+  </div>
+</div>
+</template>
+
+<script>
+(function() {
+  // Only run on Academy pages
+  var path = (window.location && window.location.pathname) ? window.location.pathname : "";
+  var isAcademy = (path === "/academy" || path.indexOf("/academy/") === 0);
+  if (!isAcademy) return;
+
+  function isFoundationCoursePath() {
+    var p = path.replace(/\/+$/, "") || "/";
+    return p === "/academy/online-photography-course";
+  }
+
+  function mountAcademyHeaderContainer() {
+    var el = document.getElementById("ar-academy-header-container");
+    var tpl = document.getElementById("ar-academy-header-template");
+    if (!el && tpl && tpl.content && tpl.content.firstElementChild) {
+      el = tpl.content.firstElementChild.cloneNode(true);
+    }
+    if (!el) return null;
+    var page = document.getElementById("page") || document.getElementById("siteWrapper") || document.body;
+    if (page && (el.parentElement === tpl || !page.contains(el))) {
+      page.insertBefore(el, page.firstChild);
+    }
+    el.style.display = "grid";
+    applyFoundationHeaderCopy();
+    return el;
+  }
+
+  function applyFoundationHeaderCopy() {
+    if (!isFoundationCoursePath()) return;
+    var title = document.getElementById("ar-academy-header-title");
+    var sub = document.getElementById("ar-academy-header-subtitle");
+    if (title) title.textContent = "Photography Course Modules Map";
+    if (sub) sub.textContent = "Your photography Academy";
+  }
+
+  document.documentElement.classList.add("ar-academy");
+  mountAcademyHeaderContainer();
+  applyFoundationHeaderCopy();
+
+  window.__arAcademyHeader = {
+    mount: mountAcademyHeaderContainer,
+    applyFoundationCopy: applyFoundationHeaderCopy
+  };
+
+  var DASHBOARD_SESSION_KEY = "ar-dashboard-session-v1";
+  var AUTH_LOGIN_ALLOW_KEY = "ar-auth-login-allow-v1";
+  var AUTH_TRACE_KEY = "ar-auth-trace";
+
+  function hasRecentDashboardSession() {
+    try {
+      var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && parsed.id && parsed.at && (Date.now() - parsed.at < 4 * 60 * 60 * 1000));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function hasCachedDashboardAccess() {
+    try {
+      var raw = sessionStorage.getItem(DASHBOARD_SESSION_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.accessConfirmed || !parsed.id || !parsed.at) return false;
+      if (Date.now() - parsed.at >= 4 * 60 * 60 * 1000) return false;
+      return !!(parsed.hasAccess || (parsed.planCount && parsed.planCount > 0));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isIntentionalLoginRedirect() {
+    try {
+      var raw = sessionStorage.getItem(AUTH_LOGIN_ALLOW_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && parsed.at && (Date.now() - parsed.at < 4000));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function appendAuthTraceHeader(record) {
+    try {
+      var raw = sessionStorage.getItem(AUTH_TRACE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      var entry = record || {};
+      if (!entry.ts) entry.ts = new Date().toISOString();
+      arr.push(entry);
+      if (arr.length > 50) arr = arr.slice(-50);
+      sessionStorage.setItem(AUTH_TRACE_KEY, JSON.stringify(arr));
+    } catch (e) { /* no-op */ }
+  }
+
+  function bounceBackFromFalseLogin() {
+    var normalPath = path.replace(/\/+$/, "") || "/";
+    if (normalPath !== "/academy/login") return;
+    if (!hasCachedDashboardAccess() && !hasRecentDashboardSession()) return;
+    if (isIntentionalLoginRedirect()) return;
+    var qs = (window.location && window.location.search) ? window.location.search : "";
+    if (qs.indexOf("reason=timeout") !== -1) return;
+    if (qs.indexOf("trial=not-activated") !== -1) return;
+    appendAuthTraceHeader({
+      tag: "login-bounce-back",
+      stage: "header",
+      reason: "ms-false-login-redirect",
+      sessionMarkerPresent: true
+    });
+    window.location.replace("/academy/dashboard");
+  }
+
+  bounceBackFromFalseLogin();
+  
+  // Wait for Memberstack to load
+  function waitForMemberstack() {
+    return new Promise(function(resolve) {
+      var start = Date.now();
+      function check() {
+        if (window.$memberstackDom) {
+          resolve(window.$memberstackDom);
+        } else if (Date.now() - start < 8000) {
+          setTimeout(check, 100);
+        } else {
+          resolve(null);
+        }
+      }
+      check();
+    });
+  }
+  
+  // Get member name from customFields
+  function getMemberName(member) {
+    if (!member || !member.data) return null;
+    var customFields = member.data.customFields || {};
+    var firstName = customFields["first-name"] || customFields.firstName || customFields.first_name || "";
+    var lastName = customFields["last-name"] || customFields.lastName || customFields.last_name || "";
+    if (firstName && lastName) return firstName + " " + lastName;
+    if (firstName) return firstName;
+    if (lastName) return lastName;
+    // Fallback to email if no name
+    var email = member.data.email || "";
+    if (email) return email.split("@")[0];
+    return "Member";
+  }
+  
+  // Format last login date
+  function formatLastLogin(dateStr) {
+    if (!dateStr) return "First visit";
+    try {
+      var date = new Date(dateStr);
+      var day = date.getDate();
+      var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var month = monthNames[date.getMonth()];
+      var year = date.getFullYear();
+      var hours = String(date.getHours()).padStart(2, '0');
+      var minutes = String(date.getMinutes()).padStart(2, '0');
+      return "Last logged in " + day + " " + month + " " + year + " at " + hours + ":" + minutes;
+    } catch (e) {
+      return "Last logged in: " + dateStr;
+    }
+  }
+
+  function lastLoginCacheKey(memberId) {
+    return 'ar-display-last-login-' + memberId;
+  }
+
+  function getCachedLastLogin(memberId) {
+    if (!memberId) return null;
+    try {
+      return sessionStorage.getItem(lastLoginCacheKey(memberId));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setCachedLastLogin(memberId, iso) {
+    if (!memberId || !iso) return;
+    try {
+      sessionStorage.setItem(lastLoginCacheKey(memberId), iso);
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearLastLoginCache(memberId) {
+    if (!memberId) return;
+    try {
+      sessionStorage.removeItem(lastLoginCacheKey(memberId));
+    } catch (e) { /* ignore */ }
+  }
+
+  function setLastLoginDisplay(iso, memberId, allowCache) {
+    var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+    if (!lastLoginEl) return;
+    if (iso) {
+      lastLoginEl.textContent = formatLastLogin(iso);
+      if (allowCache !== false && memberId) setCachedLastLogin(memberId, iso);
+      return;
+    }
+    lastLoginEl.textContent = 'First visit';
+  }
+
+  async function fetchLastLoginFromApi(memberId) {
+    if (!memberId) return null;
+    try {
+      var response = await fetch(
+        'https://alanranger-modules.vercel.app/api/academy/member-data?memberId=' + encodeURIComponent(memberId)
+      );
+      if (!response.ok) return null;
+      var memberData = await response.json();
+      return memberData.last_login || null;
+    } catch (e) {
+      console.debug('[Academy Header] Error fetching last login:', e);
+      return null;
+    }
+  }
+  
+  function withTimeout(promise, ms, fallback) {
+    return Promise.race([
+      promise,
+      new Promise(function(resolve) {
+        setTimeout(function() { resolve(fallback); }, ms);
+      })
+    ]);
+  }
+
+  function unwrapHeaderMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id || res.data.customFields)) return res;
+    if (res.email || res.planConnections || res.customFields) {
+      return { id: res.id || null, data: res };
+    }
+    if (res.data && res.data.data) return res.data;
+    return res;
+  }
+
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== 'object' || !source || typeof source !== 'object') return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+
+  async function resolveHeaderMember(ms) {
+    var member = null;
+    try {
+      var current = null;
+      if (typeof ms.getCurrentMember === 'function') {
+        try {
+          current = await withTimeout(ms.getCurrentMember({ useCache: false }), 5000, null);
+        } catch (e1) {
+          current = await withTimeout(ms.getCurrentMember(), 3000, null);
+        }
+      }
+      member = unwrapHeaderMember(current);
+    } catch (e) { /* ignore */ }
+
+    if (typeof ms.getMemberJSON === 'function') {
+      try {
+        var jsonRes = await withTimeout(ms.getMemberJSON(), 4000, null);
+        var mj = unwrapHeaderMember(jsonRes);
+        if (mj) {
+          if (!member) member = { id: mj.id || null, data: {} };
+          if (!member.data) member.data = {};
+          if (!member.id && mj.id) member.id = mj.id;
+          if (mj.data) mergeMissingFields(member.data, mj.data);
+          mergeMissingFields(member.data, mj);
+        }
+      } catch (e2) { /* ignore */ }
+    }
+    return member;
+  }
+
+  function applyWelcomeFromMember(member, ms) {
+    if (!member || !member.data) return false;
+    var nameEl = document.getElementById('ar-academy-header-welcome-name');
+    var lastLoginEl = document.getElementById('ar-academy-header-last-login');
+    var welcomeEl = document.getElementById('ar-academy-header-welcome');
+    if (welcomeEl) welcomeEl.style.display = '';
+    var name = getMemberName(member);
+    if (nameEl && name) nameEl.textContent = name;
+    return true;
+  }
+
+  // Load member data and update header
+  async function loadHeaderData() {
+    var ms = await waitForMemberstack();
+    if (!ms) {
+      // Hide welcome if Memberstack not available
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+      return;
+    }
+    
+    try {
+      // Check if we're in ghost mode - if dashboard has overridden getCurrentMember, use that
+      // Otherwise, check URL params for ghost mode
+      var ghostMemberId = null;
+      var ghostEmail = null;
+      try {
+        var urlParams = new URLSearchParams(String(window.location && window.location.search || ""));
+        ghostMemberId = urlParams.get("ghost");
+        ghostEmail = urlParams.get("ghostEmail");
+      } catch(e) { /* ignore */ }
+      
+      // If in ghost mode and getCurrentMember has been overridden by dashboard, it will return ghost member
+      // Otherwise, get the normal member (admin)
+      var member = await resolveHeaderMember(ms);
+      
+      // If we're in ghost mode, check if we got the admin member instead of ghost member
+      // The dashboard script will override getCurrentMember, but header might run first
+      if ((ghostMemberId || ghostEmail) && member) {
+        var memberEmail = (member.data && member.data.email) || (member.data && member.data.auth && member.data.auth.email) || '';
+        var isAdminEmail = memberEmail && (memberEmail.toLowerCase() === 'info@alanranger.com' || memberEmail.toLowerCase() === 'marketing@alanranger.com');
+        
+        // If we got admin member but we're in ghost mode, wait for dashboard to override
+        // Retry up to 5 times (2.5 seconds total)
+        var retryCount = parseInt(sessionStorage.getItem('ar-header-ghost-retry') || '0', 10);
+        if (isAdminEmail && retryCount < 5) {
+          console.log('[Academy Header] Ghost mode detected, waiting for dashboard to override getCurrentMember... (retry ' + (retryCount + 1) + '/5)');
+          sessionStorage.setItem('ar-header-ghost-retry', String(retryCount + 1));
+          setTimeout(loadHeaderData, 500);
+          return;
+        } else if (retryCount >= 5) {
+          // Clear retry count after max retries
+          sessionStorage.removeItem('ar-header-ghost-retry');
+        }
+      } else {
+        // Not in ghost mode or got ghost member - clear retry count
+        sessionStorage.removeItem('ar-header-ghost-retry');
+      }
+      if (!member || !member.data) {
+        // Not logged in - hide welcome
+        var welcomeEl = document.getElementById('ar-academy-header-welcome');
+        if (welcomeEl) welcomeEl.style.display = 'none';
+        return;
+      }
+      
+      applyWelcomeFromMember(member, ms);
+      var nameEl = document.getElementById('ar-academy-header-welcome-name');
+      
+      // Get last login - try multiple sources
+      var lastLogin = null;
+      var memberId = member.id || (member.data && member.data.id);
+      var memberEmail = (member.data && member.data.email) || null;
+      
+      var now = Date.now();
+      var lastTracked = sessionStorage.getItem('ar-login-tracked-' + memberId);
+      var shouldTrack = memberId && !lastTracked;
+      var cachedLastLogin = memberId ? getCachedLastLogin(memberId) : null;
+
+      if (cachedLastLogin) {
+        setLastLoginDisplay(cachedLastLogin, memberId, false);
+      } else if (!shouldTrack && memberId) {
+        lastLogin = await fetchLastLoginFromApi(memberId);
+        if (lastLogin) {
+          setLastLoginDisplay(lastLogin, memberId, true);
+        } else {
+          setLastLoginDisplay(null, memberId, false);
+        }
+      }
+
+      if (shouldTrack) {
+        console.log('[Academy Header] Tracking login event for member:', memberId, 'email:', memberEmail);
+
+        fetch('https://alanranger-modules.vercel.app/api/academy/track-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            member_id: memberId,
+            email: memberEmail
+          })
+        }).then(function(response) {
+          if (response.ok) {
+            return response.json();
+          }
+          return response.text().then(function(text) {
+            throw new Error('HTTP ' + response.status + ': ' + text);
+          });
+        }).then(function(payload) {
+          sessionStorage.setItem('ar-login-tracked-' + memberId, String(now));
+          sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
+          console.log('[Academy Header] Login event tracked successfully:', payload);
+
+          var loginIso = null;
+          if (payload && payload.data && payload.data[0] && payload.data[0].created_at) {
+            loginIso = payload.data[0].created_at;
+          }
+          if (loginIso) {
+            setLastLoginDisplay(loginIso, memberId, true);
+          } else {
+            fetchLastLoginFromApi(memberId).then(function(apiLastLogin) {
+              if (apiLastLogin) {
+                setLastLoginDisplay(apiLastLogin, memberId, true);
+              }
+            });
+          }
+        }).catch(function(err) {
+          console.error('[Academy Header] Error tracking login event:', err);
+        });
+      } else if (memberId) {
+        sessionStorage.setItem('ar-last-activity-' + memberId, String(now));
+      }
+      
+      // Wire up logout button
+      var logoutBtn = document.getElementById('ar-academy-header-logout-btn');
+      if (logoutBtn && !logoutBtn.hasAttribute('data-wired')) {
+        logoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Track logout event before logging out
+          // Use sendBeacon for reliable tracking even during page unload
+          if (memberId) {
+            var email = memberEmail || null;
+            
+            // Try to get fresh member data, but don't wait too long
+            if (ms && typeof ms.getCurrentMember === 'function') {
+              var memberPromise = ms.getCurrentMember().catch(function() { return null; });
+              var timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 100); });
+              
+              Promise.race([memberPromise, timeoutPromise]).then(function(currentMember) {
+                if (currentMember && currentMember.data && currentMember.data.email) {
+                  email = currentMember.data.email;
+                }
+                
+                // Use sendBeacon for reliable delivery during navigation
+                var data = JSON.stringify({
+                  member_id: memberId,
+                  email: email
+                });
+                
+                if (navigator.sendBeacon) {
+                  var blob = new Blob([data], { type: 'application/json' });
+                  navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+                  console.log('[Academy Header] Logout event sent via sendBeacon');
+                } else {
+                  // Fallback to fetch with keepalive
+                  fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: data,
+                    keepalive: true
+                  }).catch(function(err) {
+                    console.warn('[Academy Header] Error tracking logout:', err);
+                  });
+                }
+              });
+            } else {
+              // No Memberstack, use what we have
+              var data = JSON.stringify({
+                member_id: memberId,
+                email: email
+              });
+              
+              if (navigator.sendBeacon) {
+                var blob = new Blob([data], { type: 'application/json' });
+                navigator.sendBeacon('https://alanranger-modules.vercel.app/api/academy/track-logout', blob);
+              } else {
+                fetch('https://alanranger-modules.vercel.app/api/academy/track-logout', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: data,
+                  keepalive: true
+                }).catch(function(err) {
+                  console.warn('[Academy Header] Error tracking logout:', err);
+                });
+              }
+            }
+            
+            // Clear session storage
+            sessionStorage.removeItem('ar-login-tracked-' + memberId);
+            sessionStorage.removeItem('ar-last-activity-' + memberId);
+            sessionStorage.removeItem(DASHBOARD_SESSION_KEY);
+            clearLastLoginCache(memberId);
+          }
+
+          try {
+            sessionStorage.setItem(AUTH_LOGIN_ALLOW_KEY, JSON.stringify({
+              reason: "user-click",
+              at: Date.now()
+            }));
+          } catch (e) { /* ignore */ }
+          
+          if (ms && typeof ms.logout === 'function') {
+            ms.logout().then(function() {
+              window.location.href = '/academy/login';
+            }).catch(function(err) {
+              console.error('[Academy Header] Logout error:', err);
+              window.location.href = '/academy/login';
+            });
+          } else {
+            window.location.href = '/academy/login';
+          }
+        });
+        logoutBtn.setAttribute('data-wired', 'true');
+      }
+    } catch (err) {
+      console.error('[Academy Header] Error loading member data:', err);
+      // Hide welcome on error
+      var welcomeEl = document.getElementById('ar-academy-header-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'none';
+    }
+  }
+  
+  function getSqspNavOffset() {
+    var academyHeader = document.getElementById('ar-academy-header-container');
+    var selectors = [
+      '#header',
+      'header.Header',
+      'header.header',
+      '.header-nav-wrapper',
+      '.sqs-site-header',
+      '#siteWrapper header',
+      'body > header'
+    ];
+    var best = 0;
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (!el || (academyHeader && el.contains(academyHeader))) continue;
+      var rect = el.getBoundingClientRect();
+      var h = Math.ceil(rect.height) || Math.ceil(el.offsetHeight) || 0;
+      if (h < 40 || h > 240) continue;
+      if (rect.top <= 8) best = Math.max(best, h);
+    }
+    return best >= 40 ? best : 71;
+  }
+
+  function clearFixedLayout(el) {
+    if (!el || !el.style) return;
+    ['position', 'top', 'left', 'right', 'width', 'margin-left', 'margin-right', 'z-index'].forEach(function(prop) {
+      el.style.removeProperty(prop);
+    });
+  }
+  if (!window.__arAcademyLayout || window.__arAcademyLayout.pinVersion !== 2) {
+  window.__arAcademyLayout = (function() {
+    var state = { busy: false, raf: 0 };
+    function isDashboardPath() {
+      var p = (window.location && window.location.pathname) ? window.location.pathname : '';
+      p = p.replace(/\/+$/, '') || '/';
+      return p === '/academy/dashboard';
+    }
+    function ensureSpacer(id, anchor, height) {
+      if (!anchor) return;
+      var spacer = document.getElementById(id);
+      if (!height) {
+        if (spacer) spacer.style.height = '0px';
+        return;
+      }
+      if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = id;
+        spacer.setAttribute('aria-hidden', 'true');
+        anchor.insertAdjacentElement('afterend', spacer);
+      }
+      spacer.style.height = height + 'px';
+    }
+    function measureStripHeight(strip) {
+      if (!strip || !strip.classList.contains('is-ready')) return 0;
+      var inner = strip.querySelector('.ar-do-next-strip__inner') || strip;
+      var h = Math.ceil(inner.offsetHeight) || 0;
+      if (h > 0 && h < 2000) return h;
+      var card = strip.querySelector('.ar-do-next-strip__card');
+      if (card) {
+        h = Math.ceil(card.offsetHeight) || 0;
+        if (h > 0 && h < 2000) return h;
+      }
+      return 0;
+    }
+    function clearStripInnerAlign() {
+      var stripInner = document.querySelector('#ar-do-next-strip .ar-do-next-strip__inner');
+      if (!stripInner || !stripInner.style) return;
+      ['width', 'max-width', 'margin-left', 'margin-right'].forEach(function(prop) {
+        stripInner.style.removeProperty(prop);
+      });
+    }
+    function alignStripInnerToDashboard() {
+      var stripInner = document.querySelector('#ar-do-next-strip .ar-do-next-strip__inner');
+      var dashInner = document.querySelector('.ar-academy-dashboard__inner');
+      if (!stripInner) return;
+      if (!dashInner) {
+        clearStripInnerAlign();
+        return;
+      }
+      var rect = dashInner.getBoundingClientRect();
+      if (!rect.width || rect.width < 200) return;
+      stripInner.style.setProperty('width', Math.round(rect.width) + 'px', 'important');
+      stripInner.style.setProperty('max-width', Math.round(rect.width) + 'px', 'important');
+      stripInner.style.setProperty('margin-left', Math.round(rect.left) + 'px', 'important');
+      stripInner.style.setProperty('margin-right', '0', 'important');
+    }
+    function syncLayout() {
+      if (state.busy) return;
+      var root = document.documentElement;
+      var header = document.getElementById('ar-academy-header-container');
+      var strip = document.getElementById('ar-do-next-strip');
+      var sqspTop = getSqspNavOffset();
+      root.style.setProperty('--ar-sqsp-nav-offset', sqspTop + 'px');
+      if (!isDashboardPath()) {
+        root.classList.remove('ar-dashboard-pin-stack');
+        root.classList.remove('ar-dashboard-in-flow');
+        clearFixedLayout(header);
+        clearFixedLayout(strip);
+        clearStripInnerAlign();
+        ensureSpacer('ar-academy-header-spacer', header, 0);
+        ensureSpacer('ar-do-next-strip-spacer', strip, 0);
+        return;
+      }
+      if (!header) return;
+      state.busy = true;
+      try {
+        var headerH = Math.ceil(header.offsetHeight) || 88;
+        var stripH = measureStripHeight(strip);
+        root.style.setProperty('--ar-academy-header-height', headerH + 'px');
+        root.style.setProperty('--ar-do-next-strip-height', stripH + 'px');
+        root.style.setProperty('--ar-academy-sticky-stack-height', (sqspTop + headerH + stripH) + 'px');
+        root.classList.remove('ar-dashboard-in-flow');
+        root.classList.add('ar-dashboard-pin-stack');
+        header.style.setProperty('position', 'fixed', 'important');
+        header.style.setProperty('top', sqspTop + 'px', 'important');
+        header.style.setProperty('left', '0', 'important');
+        header.style.setProperty('right', '0', 'important');
+        header.style.setProperty('width', '100%', 'important');
+        header.style.setProperty('max-width', '100%', 'important');
+        header.style.setProperty('margin-top', '0', 'important');
+        header.style.setProperty('z-index', '998', 'important');
+        if (strip && strip.classList.contains('is-ready')) {
+          strip.style.setProperty('position', 'fixed', 'important');
+          strip.style.setProperty('top', (sqspTop + headerH) + 'px', 'important');
+          strip.style.setProperty('left', '0', 'important');
+          strip.style.setProperty('right', '0', 'important');
+          strip.style.setProperty('width', '100%', 'important');
+          strip.style.setProperty('max-width', '100%', 'important');
+          strip.style.setProperty('margin-left', '0', 'important');
+          strip.style.setProperty('margin-right', '0', 'important');
+          strip.style.setProperty('z-index', '997', 'important');
+        } else {
+          clearFixedLayout(strip);
+        }
+        ensureSpacer('ar-academy-header-spacer', header, 0);
+        if (strip) ensureSpacer('ar-do-next-strip-spacer', strip, stripH);
+        alignStripInnerToDashboard();
+      } finally {
+        state.busy = false;
+      }
+      document.dispatchEvent(new CustomEvent('ar-academy-layout-sync'));
+    }
+    return {
+      pinVersion: 2,
+      schedule: function() {
+        if (state.raf) return;
+        state.raf = requestAnimationFrame(function() {
+          state.raf = 0;
+          syncLayout();
+        });
+      },
+      sync: syncLayout,
+      alignStrip: alignStripInnerToDashboard
+    };
+  })();
+  }
+
+  function watchAcademyHeaderHeight() {
+    var el = document.getElementById('ar-academy-header-container');
+    if (!el) return;
+    window.__arAcademyLayout.schedule();
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(function() { window.__arAcademyLayout.schedule(); }).observe(el);
+      var dashInner = document.querySelector('.ar-academy-dashboard__inner');
+      if (dashInner) {
+        new ResizeObserver(function() { window.__arAcademyLayout.schedule(); }).observe(dashInner);
+      }
+    }
+    window.addEventListener('resize', function() { window.__arAcademyLayout.schedule(); });
+    window.addEventListener('scroll', function() { window.__arAcademyLayout.schedule(); }, { passive: true });
+  }
+
+  document.addEventListener('ar-academy-member-ready', function(ev) {
+    if (ev && ev.detail && ev.detail.member) {
+      waitForMemberstack().then(function(ms) {
+        if (!ms) return;
+        applyWelcomeFromMember(ev.detail.member, ms);
+        loadHeaderData();
+      });
+      return;
+    }
+    loadHeaderData();
+  });
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      mountAcademyHeaderContainer();
+      loadHeaderData();
+      watchAcademyHeaderHeight();
+    });
+  } else {
+    mountAcademyHeaderContainer();
+    loadHeaderData();
+    watchAcademyHeaderHeight();
+  }
+  
+  // Also try after a delay (Memberstack sometimes loads late)
+  setTimeout(loadHeaderData, 1000);
+  setTimeout(loadHeaderData, 2000);
+  setTimeout(loadHeaderData, 4000);
+  setTimeout(loadHeaderData, 8000);
+  setTimeout(function() { window.__arAcademyLayout.schedule(); }, 100);
+  setTimeout(function() { window.__arAcademyLayout.schedule(); }, 1000);
+})();
+</script>
+
+<!--
+END: Academy Header Elements
+-->

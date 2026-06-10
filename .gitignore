@@ -1,1 +1,13 @@
 node_modules/
+.env.local
+.env
+*.log
+.DS_Store
+.next
+.vercel
+.env*.local
+
+# Office lock files (~$foo.xlsx) that Excel creates while files are open
+~$*
+.git-commit-msg.tmp
+supabase/.temp/

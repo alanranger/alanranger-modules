@@ -1,0 +1,1051 @@
+<!-- ===========================
+AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.17 Lesson bg reverted #f1efe9 -> #ffffff (seam/patchiness fix on light images).
+v1.3.16 Foundation link label → "Browse the Modules" (matches dashboard CTA).
+v1.3.15 Guest signup CTA deep gold #b8860b + white text 700
+v1.3.14 Button typography 600/15px; guest CTA gold; exam green outline
+v1.3.13 Member Next = next-unopened via shared __arAcademyModuleNav (applied once in wireMemberStrip)
+v1.3.9 Expose __arAcademyModuleNav + __arAcademyMemberAccess globals for footer CTA (canonical module array)
+v1.3.8 Non-member CTA: black/gold styling + single copy "Get all 60 modules + certificates - free"
+v1.3.7 Lesson-page soft grey bg (body.ar-academy-lesson) + gold numbered non-member CTA (last in row)
+v1.3.6 Re-ship of the B 1.3.5 module-open beacon on the restored baseline (logic unchanged); version stamp sync with D 1.3.12 / S 1.3.36 for post-restore verification
+v1.3.5 Module-open beacon on lesson visit (engagement dashboard) via cached __arMsReader member id
+v1.3.4 Single __arMsReader bundle per article page — stops MS read flood on lesson visit (fast-return bounce fix)
+v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
+- Pins widget under the first H1 (or top of main)
+- Forces visibility (prevents Sqsp fade/opacity hiding)
+- Keeps Memberstack save logic; next/exam use plain <a href> only
+=========================== -->
+
+<style id="ar-bookmark-style">
+  /* Lesson bg — only when widget init adds body.ar-academy-lesson (not from stylesheet alone) */
+  body.ar-academy-lesson{
+    background-color:#ffffff !important;
+  }
+  body.ar-academy-lesson #sections,
+  body.ar-academy-lesson .page-section,
+  body.ar-academy-lesson .content-wrapper,
+  body.ar-academy-lesson main,
+  body.ar-academy-lesson article{
+    background-color:transparent !important;
+  }
+
+  /* Force the widget to remain visible even if Sqsp applies fade-in rules */
+  #ar-bookmark-widget,
+  #ar-bookmark-widget *{
+    opacity:1 !important;
+    visibility:visible !important;
+    display:initial;
+  }
+  #ar-bookmark-widget{
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    flex-wrap:wrap !important;
+    position:relative !important;
+    z-index:9999 !important;
+    margin:12px 0 !important;
+    pointer-events:auto !important;
+  }
+
+  /* Make buttons consistent and "bulletproof" */
+  #ar-bookmark-widget .ar-btn{
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    padding:10px 20px !important;
+    border:none !important;
+    border-radius:8px !important;
+    cursor:pointer !important;
+    font-weight:600 !important;
+    font-size:15px !important;
+    line-height:1 !important;
+    text-decoration:none !important;
+    background:#E57200 !important;
+    color:#fff !important;
+    user-select:none !important;
+    -webkit-font-smoothing:antialiased;
+  }
+  #ar-bookmark-widget .ar-btn:visited{ color:#fff !important; }
+  #ar-bookmark-widget .ar-btn:hover{ filter:brightness(0.95); }
+  #ar-bookmark-widget .ar-btn:active{ transform:translateY(1px); }
+  #ar-bookmark-widget .ar-btn.is-hidden{ display:none !important; }
+  /* Forward: Next = solid green; Exam = green outline on light page */
+  #ar-bookmark-widget #ar-next-module-btn{
+    background:#166534 !important;
+    border:2px solid #14532d !important;
+    color:#fff !important;
+    box-shadow:none;
+  }
+  #ar-bookmark-widget #ar-next-module-btn:hover{
+    background:#15803d !important;
+    filter:none;
+  }
+  #ar-bookmark-widget #ar-take-exam-btn{
+    background:transparent !important;
+    border:1.5px solid #166534 !important;
+    color:#166534 !important;
+    box-shadow:none;
+  }
+  #ar-bookmark-widget #ar-take-exam-btn:hover{
+    background:rgba(22,101,52,0.08) !important;
+    filter:none;
+  }
+  #ar-bookmark-widget #ar-take-exam-btn:visited{ color:#166534 !important; }
+
+  #ar-bookmark-widget .ar-help{
+    width:100%;
+    margin-top:6px;
+    color:#111827;
+    font-size:13px;
+    font-weight:700;
+  }
+  #ar-lesson-member-strip{
+    margin:0;
+    flex:0 0 auto;
+  }
+  #ar-lesson-member-strip.is-hidden{ display:none !important; }
+  #ar-lesson-member-strip.is-progress{
+    width:100%;
+    flex:0 0 100%;
+    margin-top:8px;
+  }
+  #ar-lesson-member-strip .ar-lesson-signup-cta{
+    display:inline-flex !important;
+    align-items:center;
+    gap:10px;
+    padding:10px 20px;
+    border-radius:8px;
+    border:none;
+    background:#b8860b;
+    color:#ffffff !important;
+    font-size:15px;
+    font-weight:700;
+    line-height:1;
+    text-decoration:none !important;
+    box-shadow:none;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+  #ar-lesson-member-strip .ar-lesson-signup-cta:hover{
+    background:#a0780a;
+    color:#ffffff !important;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-stats{
+    margin:0 0 6px;
+    font-size:13px;
+    font-weight:700;
+    color:#111827;
+    line-height:1.4;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-bar{
+    width:100%;
+    max-width:320px;
+    height:6px;
+    border-radius:999px;
+    background:#e5e7eb;
+    overflow:hidden;
+  }
+  #ar-lesson-member-strip .ar-lesson-progress-bar__fill{
+    height:100%;
+    background:#6b7280;
+    border-radius:999px;
+    width:0%;
+    transition:width 0.25s ease;
+  }
+</style>
+
+<div id="ar-bookmark-widget">
+  <button id="bookmark-btn" class="ar-btn" type="button">
+    ⭐ <span>Bookmark this page</span>
+  </button>
+
+  <a class="ar-btn" id="back-to-modules-btn"
+     href="https://www.alanranger.com/academy/online-photography-course">
+    ← <span>Browse the Modules</span>
+  </a>
+
+  <a class="ar-btn" id="back-to-dashboard-btn"
+     href="https://www.alanranger.com/academy/dashboard">
+    ← <span>Back to Dashboard</span>
+  </a>
+
+  <a class="ar-btn is-hidden" id="ar-next-module-btn" href="#" aria-hidden="true">
+    <span>Next module</span>
+  </a>
+
+  <a class="ar-btn is-hidden" id="ar-take-exam-btn" href="#" aria-hidden="true">
+    <span>Take the exam</span>
+  </a>
+
+  <div id="ar-lesson-member-strip" class="is-hidden" aria-hidden="true"></div>
+
+  <div id="bookmark-help" class="ar-help">
+    Saves to your Academy Dashboard. Maximum 20 bookmarks per account.
+  </div>
+</div>
+
+<script>
+(function initArMemberstackReader(){
+  if (globalThis.__arMsReader) return;
+  var state = { member: null, rawJson: null, memberJson: null, inflight: null, at: 0 };
+  function unwrapMember(res) {
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+  function mergeMissingFields(target, source) {
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+  function normalizeMemberJsonPayload(jsonRes) {
+    var raw = (jsonRes && jsonRes.data) ? jsonRes.data : {};
+    if (raw && raw.json && typeof raw.json === "object") return raw.json;
+    return raw || {};
+  }
+  function mergeMemberWithJson(member, jsonRes) {
+    var m = unwrapMember(member);
+    if (!m || !m.data || !jsonRes) return m;
+    var mj = unwrapMember(jsonRes);
+    if (!mj) return m;
+    if (!m.id && mj.id) m.id = mj.id;
+    if (!m.data) m.data = {};
+    if (mj.data) mergeMissingFields(m.data, mj.data);
+    mergeMissingFields(m.data, mj);
+    return m;
+  }
+  globalThis.__arMsReader = {
+    invalidate: function() {
+      state.member = null; state.rawJson = null; state.memberJson = null;
+      state.inflight = null; state.at = 0;
+    },
+    patchJson: function(memberJson, rawJson) {
+      if (memberJson) state.memberJson = memberJson;
+      if (rawJson) state.rawJson = rawJson;
+      state.at = Date.now();
+    },
+    fetchBundle: function(ms, opts) {
+      opts = opts || {};
+      if (!ms) return Promise.resolve({ member: null, rawJson: null, memberJson: null });
+      if (!opts.force && state.at && state.rawJson) {
+        return Promise.resolve({ member: state.member, rawJson: state.rawJson, memberJson: state.memberJson });
+      }
+      if (!opts.force && state.inflight) return state.inflight;
+      var memberCall = (typeof ms.getCurrentMember === "function")
+        ? ms.getCurrentMember(opts.useCache === false ? { useCache: false } : undefined)
+        : Promise.resolve(null);
+      state.inflight = Promise.resolve(memberCall).then(function(res) {
+        var m = unwrapMember(res);
+        if (!m || !m.data || typeof ms.getMemberJSON !== "function") {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        }
+        return ms.getMemberJSON().then(function(jsonRes) {
+          var merged = mergeMemberWithJson(m, jsonRes);
+          state.member = merged; state.rawJson = jsonRes;
+          state.memberJson = normalizeMemberJsonPayload(jsonRes);
+          state.at = Date.now(); state.inflight = null;
+          return { member: merged, rawJson: jsonRes, memberJson: state.memberJson };
+        }).catch(function() {
+          state.member = m; state.at = Date.now(); state.inflight = null;
+          return { member: m, rawJson: state.rawJson, memberJson: state.memberJson };
+        });
+      }).catch(function(err) { state.inflight = null; throw err; });
+      return state.inflight;
+    }
+  };
+})();
+</script>
+<script>
+(function(){
+  // Prevent multiple runs if snippet is injected more than once
+  if (window.__arBookmarkWidgetInit) return;
+  window.__arBookmarkWidgetInit = true;
+
+  function normAbsUrl(){
+    return window.location.origin + window.location.pathname;
+  }
+
+  function normalizePath(url){
+    if (!url || typeof url !== "string") return "/";
+    var path = url;
+    if (path.indexOf("http://") === 0 || path.indexOf("https://") === 0) {
+      try { path = new URL(path).pathname; } catch (e) {
+        var m = path.match(/https?:\/\/[^/]+(\/.*)/);
+        if (m) path = m[1];
+      }
+    }
+    path = path.split("?")[0].split("#")[0];
+    path = path.replace(/\/+$/, "") || "/";
+    if (path.charAt(0) !== "/") path = "/" + path;
+    return path;
+  }
+
+  var SITE = "https://www.alanranger.com";
+  var API_BASE = "https://alanranger-modules.vercel.app";
+  var TRACK_URL = API_BASE + "/api/academy/track-page-view";
+  var TRACK_TILE_OPEN_URL = API_BASE + "/api/academy/track-tile-open";
+  var PROGRESS_URL = API_BASE + "/api/exams/progress";
+  var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+  var MODULES_TOTAL = 60;
+  var LS_SEEN_MEMBER = "arpAcademySeenMember";
+  var SIGNUP_URL = SITE + "/free-online-photography-course";
+  var FOUNDATION_URL = SITE + "/academy/online-photography-course";
+  var EXAM_BASE = SITE + "/academy/photography-exams-certification";
+  var TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
+  var ANNUAL_PLAN_ID = "pln_academy-annual-membership-h57x0h8g";
+  var ANNUAL_PRICE_ID = "prc_annual-membership-jj7y0h89";
+  var ANNUAL_WITH_TRIAL_PRICE_ID = "prc_annual-membership-with-30-day-trial-881h0iui";
+
+  var ARTICLE_MODULES = [
+    { p: "/blog-on-photography/what-is-exposure-in-photography", t: "01 What Is Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-aperture-in-photography", t: "02 What Is Aperture In Photography" },
+    { p: "/blog-on-photography/what-is-shutter-speed", t: "03 What Is Shutter Speed" },
+    { p: "/blog-on-photography/what-is-iso-in-photography", t: "04 What Is Iso In Photography" },
+    { p: "/blog-on-photography/what-is-manual-exposure-in-photography", t: "05 What Is Manual Exposure In Photography" },
+    { p: "/blog-on-photography/what-is-metering-in-photography", t: "06 What Is Metering In Photography" },
+    { p: "/blog-on-photography/exposure-bracketing-a-guide-for-photographers", t: "07 Exposure Bracketing A Guide For Photographers" },
+    { p: "/blog-on-photography/what-is-focus-in-photography", t: "08 What Is Focus In Photography" },
+    { p: "/blog-on-photography/what-is-depth-of-field", t: "09 What Is Depth Of Field" },
+    { p: "/blog-on-photography/what-is-dynamic-range-in-photography", t: "10 What Is Dynamic Range In Photography" },
+    { p: "/blog-on-photography/what-is-white-balance-in-photography", t: "11 What Is White Balance In Photography" },
+    { p: "/blog-on-photography/what-are-camera-drive-modes", t: "12 What Are Camera Drive Modes" },
+    { p: "/blog-on-photography/jpeg-vs-raw-the-key-differences", t: "13 Jpeg Vs Raw The Key Differences" },
+    { p: "/blog-on-photography/full-frame-vs-cropped-sensor", t: "14 Full Frame Vs Cropped Sensor" },
+    { p: "/blog-on-photography/what-is-focal-length-in-photography", t: "15 What Is Focal Length In Photography" },
+    { p: "/blog-on-photography/tripod-for-cameras-essential-guide", t: "16 Tripod For Cameras Essential Guide" },
+    { p: "/blog-on-photography/are-camera-uv-filters-worth-it", t: "17 Are Camera Uv Filters Worth It" },
+    { p: "/blog-on-photography/10-basic-camera-settings-for-camera", t: "18 10 Basic Camera Settings For Camera" },
+    { p: "/blog-on-photography/camera-sensor-cleaning-guide", t: "19 Camera Sensor Cleaning Guide" },
+    { p: "/blog-on-photography/best-camera-bags-for-different-trips", t: "20 Best Camera Bags For Different Trips" },
+    { p: "/blog-on-photography/what-do-camera-lens-filters-do", t: "21 What Do Camera Lens Filters Do" },
+    { p: "/blog-on-photography/camera-lenses-hire-or-buy", t: "22 Camera Lenses Hire Or Buy" },
+    { p: "/blog-on-photography/are-mirrorless-cameras-better-than-dslrs", t: "23 Are Mirrorless Cameras Better Than Dslrs" },
+    { p: "/blog-on-photography/photo-editing-software", t: "24 Photo Editing Software" },
+    { p: "/blog-on-photography/7-essential-camera-accessories", t: "25 7 Essential Camera Accessories" },
+    { p: "/blog-on-photography/mastering-photography-composition-rules", t: "26 Mastering Photography Composition Rules" },
+    { p: "/blog-on-photography/what-is-framing-in-photography", t: "27 What Is Framing In Photography" },
+    { p: "/blog-on-photography/the-art-of-storytelling-photography", t: "28 The Art Of Storytelling Photography" },
+    { p: "/blog-on-photography/what-are-leading-lines-in-photography", t: "29 What Are Leading Lines In Photography" },
+    { p: "/blog-on-photography/what-is-negative-space-in-photography", t: "30 What Is Negative Space In Photography" },
+    { p: "/blog-on-photography/what-is-contrast-in-photography", t: "31 What Is Contrast In Photography" },
+    { p: "/blog-on-photography/finding-your-compositional-balance", t: "32 Finding Your Compositional Balance" },
+    { p: "/blog-on-photography/photography-is-an-art-of-observation", t: "33 Photography Is An Art Of Observation" },
+    { p: "/blog-on-photography/how-to-improve-your-photography-composition", t: "34 How To Improve Your Photography Composition" },
+    { p: "/blog-on-photography/how-to-find-your-photography-style", t: "35 How To Find Your Photography Style" },
+    { p: "/blog-on-photography/art-of-macro-photography", t: "36 Art Of Macro Photography" },
+    { p: "/blog-on-photography/mastering-landscape-photography-tips-and-techniques", t: "37 Mastering Landscape Photography Tips And Techniques" },
+    { p: "/blog-on-photography/product-photography-setup", t: "38 Product Photography Setup" },
+    { p: "/blog-on-photography/what-is-minimalist-photography", t: "39 What Is Minimalist Photography" },
+    { p: "/blog-on-photography/what-is-still-life-photography", t: "40 What Is Still Life Photography" },
+    { p: "/blog-on-photography/how-to-take-long-exposure-photos", t: "41 How To Take Long Exposure Photos" },
+    { p: "/blog-on-photography/architecture-photography-guide", t: "42 Architecture Photography Guide" },
+    { p: "/blog-on-photography/what-is-portrait-photography", t: "43 What Is Portrait Photography" },
+    { p: "/blog-on-photography/black-and-white-photography-for-beginners", t: "44 Black And White Photography For Beginners" },
+    { p: "/blog-on-photography/street-photography-tips", t: "45 Street Photography Tips" }
+  ];
+
+  var FOUNDATION_MODULE_PATHS = ARTICLE_MODULES.map(function(m){ return m.p; }).concat([
+    "/s/Photography-Practice-Assignment-depth-of-field.pdf",
+    "/s/Photography-Practice-Assignment-Movement-hp37.pdf",
+    "/s/Photography-Practice-Assignment-Triptych.pdf",
+    "/s/Photography-Practice-Assignment-MINIMALISM.pdf",
+    "/s/Photography-Practice-Assignment-Dice-Roll.pdf",
+    "/s/Photography-Practice-Assignment-PORTRAITS.pdf",
+    "/s/Photography-Practice-Assignment-LANDSCAPES.pdf",
+    "/s/CLOSE-UP-OR-MACRO-photography-assignment.pdf",
+    "/s/Still-life-photography-assignment.pdf",
+    "/s/Street-photography-assignment.pdf",
+    "/s/Abstract-photography-Assignment.pdf",
+    "/s/Black-and-white-photography-assignment.pdf",
+    "/s/Architecture-photography-assignment.pdf",
+    "/s/Shadows-photography-Assignment.pdf",
+    "/s/THE-SEASONS-photography-Assignment.pdf"
+  ]);
+
+  var EXAM_MODULE_IDS = [
+    "module-01-exposure", "module-02-aperture", "module-03-shutter", "module-04-iso",
+    "module-05-manual", "module-06-metering", "module-07-bracketing", "module-08-focusing",
+    "module-09-dof", "module-10-drange", "module-11-wb", "module-12-drive",
+    "module-13-jpeg-raw", "module-14-sensors", "module-15-focal"
+  ];
+
+  function findArticleIndex(path){
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+      if (ARTICLE_MODULES[i].p === path) return i;
+    }
+    return -1;
+  }
+
+  function examButtonLabel(title){
+    var shortTitle = String(title || "")
+      .replace(/\bWhat Is /gi, "")
+      .replace(/\bWhat Are /gi, "");
+    return "Take the " + shortTitle + " exam \u2192";
+  }
+
+  function buildOpenedSet(normalized){
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var set = new Set();
+    Object.keys(opened).forEach(function(key){
+      var p = normalizePath(key);
+      if (p) set.add(p);
+    });
+    return set;
+  }
+
+  function findNextUnopenedModule(openedSet, currentIdx){
+    if (!openedSet) openedSet = new Set();
+    var start = currentIdx >= 0 ? currentIdx + 1 : 0;
+    var i;
+    for (i = start; i < ARTICLE_MODULES.length; i++) {
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) {
+        return { index: i, path: ARTICLE_MODULES[i].p, title: ARTICLE_MODULES[i].t };
+      }
+    }
+    for (i = 0; i < ARTICLE_MODULES.length; i++) {
+      if (currentIdx >= 0 && i > currentIdx) break;
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) {
+        return { index: i, path: ARTICLE_MODULES[i].p, title: ARTICLE_MODULES[i].t };
+      }
+    }
+    return null;
+  }
+
+  function allArticleModulesOpened(openedSet){
+    if (!openedSet) openedSet = new Set();
+    for (var i = 0; i < ARTICLE_MODULES.length; i++) {
+      if (!openedSet.has(ARTICLE_MODULES[i].p)) return false;
+    }
+    return true;
+  }
+
+  function resolveNextUnopened(currentIdx, openedSet){
+    var next = findNextUnopenedModule(openedSet, currentIdx);
+    if (next) {
+      return {
+        kind: "module",
+        href: SITE + next.path,
+        label: "Next: " + next.title + " \u2192"
+      };
+    }
+    if (allArticleModulesOpened(openedSet)) {
+      return { kind: "foundation", href: FOUNDATION_URL, label: "Foundation course home \u2192" };
+    }
+    return null;
+  }
+
+  function applyMemberNextButton(normalized){
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    if (!nextBtn) return;
+    var idx = findArticleIndex(normalizePath(window.location.pathname));
+    if (idx === -1) return;
+    var resolved = resolveNextUnopened(idx, buildOpenedSet(normalized));
+    if (!resolved) return;
+    var nextSpan = nextBtn.querySelector("span");
+    nextBtn.href = resolved.href;
+    if (nextSpan) nextSpan.textContent = resolved.label;
+  }
+
+  globalThis.__arAcademyModuleNav = {
+    normalizePath: normalizePath,
+    findArticleIndex: findArticleIndex,
+    examButtonLabel: examButtonLabel,
+    buildOpenedSet: buildOpenedSet,
+    findNextUnopenedModule: findNextUnopenedModule,
+    allArticleModulesOpened: allArticleModulesOpened,
+    resolveNextUnopened: resolveNextUnopened,
+    get articleModules() { return ARTICLE_MODULES; },
+    get examModuleIds() { return EXAM_MODULE_IDS; }
+  };
+
+  function wireNextModuleButtons(){
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    var examBtn = document.getElementById("ar-take-exam-btn");
+    if (!nextBtn || !examBtn || nextBtn.dataset.wired === "1") return;
+
+    var idx = findArticleIndex(normalizePath(window.location.pathname));
+    if (idx === -1) {
+      nextBtn.classList.add("is-hidden");
+      examBtn.classList.add("is-hidden");
+      nextBtn.dataset.wired = "1";
+      examBtn.dataset.wired = "1";
+      return;
+    }
+
+    var nextSpan = nextBtn.querySelector("span");
+    if (idx < 44) {
+      var nextMod = ARTICLE_MODULES[idx + 1];
+      nextBtn.href = SITE + nextMod.p;
+      if (nextSpan) nextSpan.textContent = "Next: " + nextMod.t + " \u2192";
+    } else {
+      nextBtn.href = FOUNDATION_URL;
+      if (nextSpan) nextSpan.textContent = "Foundation course home \u2192";
+    }
+    nextBtn.classList.remove("is-hidden");
+    nextBtn.removeAttribute("aria-hidden");
+
+    if (idx <= 14 && EXAM_MODULE_IDS[idx]) {
+      var examSpan = examBtn.querySelector("span");
+      var mod = ARTICLE_MODULES[idx];
+      examBtn.href = EXAM_BASE + "?module=" + EXAM_MODULE_IDS[idx];
+      if (examSpan && mod) examSpan.textContent = examButtonLabel(mod.t);
+      examBtn.classList.remove("is-hidden");
+      examBtn.removeAttribute("aria-hidden");
+    } else {
+      examBtn.classList.add("is-hidden");
+    }
+
+    nextBtn.dataset.wired = "1";
+    examBtn.dataset.wired = "1";
+  }
+
+  function findInsertPoint(){
+    var h1 =
+      document.querySelector('main h1') ||
+      document.querySelector('article h1') ||
+      document.querySelector('h1');
+    if (h1 && h1.parentElement) return { mode: "after-h1", el: h1 };
+
+    var main =
+      document.querySelector('main') ||
+      document.querySelector('#page') ||
+      document.querySelector('body');
+    return main ? { mode: "prepend", el: main } : null;
+  }
+
+  function moveWidgetOnce(){
+    var w = document.getElementById('ar-bookmark-widget');
+    if (!w) return false;
+    if (w.dataset.moved === "1") return true;
+
+    var target = findInsertPoint();
+    if (!target) return false;
+
+    if (target.mode === "after-h1") target.el.insertAdjacentElement('afterend', w);
+    else target.el.insertAdjacentElement('afterbegin', w);
+
+    w.dataset.moved = "1";
+    return true;
+  }
+
+  async function waitForMemberstack(){
+    var start = Date.now();
+    while (!window.$memberstackDom || typeof window.$memberstackDom.getMemberJSON !== "function"){
+      if (Date.now() - start > 8000) return null;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return window.$memberstackDom;
+  }
+
+  async function fetchWhoami(){
+    try {
+      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function memberFromWhoami(identity){
+    if (!identity || !identity.memberstack_id) return null;
+    return {
+      id: String(identity.memberstack_id),
+      data: {
+        id: String(identity.memberstack_id),
+        email: identity.email || null,
+        planConnections: identity.planConnections || []
+      }
+    };
+  }
+
+  function seenMemberFlag(){
+    try { return localStorage.getItem(LS_SEEN_MEMBER) === "1"; } catch (e) { return false; }
+  }
+
+  function hasAcademyJsonData(normalized){
+    return !!(normalized && normalized.arAcademy && typeof normalized.arAcademy === "object");
+  }
+
+  async function resolveMemberIdentity(ms){
+    var out = { member: null, memberId: "", idSource: "none", normalized: {} };
+    if (ms && globalThis.__arMsReader) {
+      try {
+        var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+        if (bundle && bundle.rawJson) {
+          out.normalized = normalizeMemberJson(bundle.rawJson);
+          out.member = bundle.member || unwrapMember(bundle.rawJson);
+          var bundleId = getMemberId(out.member);
+          if (bundleId) {
+            out.memberId = bundleId;
+            out.idSource = "ms-bundle";
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (!out.memberId && ms && globalThis.__arMsReader) {
+      try {
+        var retryBundle = await globalThis.__arMsReader.fetchBundle(ms, { force: true });
+        if (retryBundle && retryBundle.member) {
+          out.member = retryBundle.member;
+          var retryId = getMemberId(retryBundle.member);
+          if (retryId) {
+            out.memberId = retryId;
+            out.idSource = "ms-bundle-retry";
+            if (retryBundle.rawJson) out.normalized = normalizeMemberJson(retryBundle.rawJson);
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (!out.memberId) {
+      var identity = await fetchWhoami();
+      var wm = memberFromWhoami(identity);
+      if (wm) {
+        out.memberId = wm.id;
+        out.idSource = "whoami";
+        out.member = wm;
+      }
+    }
+    if (!out.memberId && seenMemberFlag() && hasAcademyJsonData(out.normalized)) {
+      out.idSource = "localStorage:arpAcademySeenMember";
+    }
+    return out;
+  }
+
+  function unwrapMember(res){
+    if (!res) return null;
+    if (res.data && (res.data.email || res.data.planConnections || res.data.id)) return res;
+    if (res.email || res.planConnections) return { id: res.id || null, data: res };
+    if (res.data && res.data.data && (res.data.data.email || res.data.data.planConnections)) return res.data;
+    return res;
+  }
+
+  function mergeMissingFields(target, source){
+    if (!target || typeof target !== "object" || !source || typeof source !== "object") return;
+    for (var k in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, k)) continue;
+      if (target[k] == null) target[k] = source[k];
+    }
+  }
+
+  function getMemberId(member){
+    if (!member) return "";
+    if (member.id) return String(member.id);
+    if (member.data && member.data.id) return String(member.data.id);
+    return "";
+  }
+
+  function unwrapStoredJson(obj){
+    var cur = obj;
+    for (var i = 0; i < 10; i++) {
+      if (!cur || typeof cur !== "object") break;
+      if (!cur.data || typeof cur.data !== "object") break;
+      var d = cur.data;
+      var looks = (d.history && Array.isArray(d.history)) ||
+        (d.bookmarks && Array.isArray(d.bookmarks)) ||
+        (d.arAcademy && typeof d.arAcademy === "object");
+      if (looks) { cur = d; continue; }
+      break;
+    }
+    return cur || {};
+  }
+
+  function normalizeMemberJson(jsonRes){
+    if (!jsonRes || typeof jsonRes !== "object") return {};
+    var stored = (jsonRes.data && typeof jsonRes.data === "object") ? jsonRes.data : jsonRes;
+    return unwrapStoredJson(stored);
+  }
+
+  function getPlanConnections(member){
+    if (!member) return [];
+    var out = [];
+    var seen = {};
+    function addList(list){
+      if (!Array.isArray(list)) return;
+      for (var i = 0; i < list.length; i++) {
+        var pc = list[i];
+        if (!pc) continue;
+        var key = String(pc.planId || pc.id || i);
+        if (seen[key]) continue;
+        seen[key] = true;
+        out.push(pc);
+      }
+    }
+    if (member.data && Array.isArray(member.data.planConnections)) addList(member.data.planConnections);
+    if (Array.isArray(member.planConnections)) addList(member.planConnections);
+    return out;
+  }
+
+  function planConnectionPriceId(pc){
+    if (!pc) return "";
+    return String((pc.payment && pc.payment.priceId) || pc.priceId || "");
+  }
+
+  function isActivePlanConnection(pc){
+    if (!pc) return false;
+    if (pc.active === false) return false;
+    var status = String(pc.status || "").toUpperCase();
+    if (status === "CANCELED" || status === "CANCELLED" || status === "EXPIRED" || status === "ENDED") return false;
+    return true;
+  }
+
+  function hasTrialAccess(member){
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId === TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
+  }
+
+  function hasAnnualAccess(member){
+    var pcs = getPlanConnections(member);
+    for (var i = 0; i < pcs.length; i++) {
+      var pc = pcs[i];
+      if (!isActivePlanConnection(pc)) continue;
+      if (pc.planId === ANNUAL_PLAN_ID) return true;
+      var priceId = planConnectionPriceId(pc);
+      if (priceId === ANNUAL_PRICE_ID || priceId === ANNUAL_WITH_TRIAL_PRICE_ID) return true;
+    }
+    var data = member && member.data ? member.data : null;
+    if (!data) return false;
+    for (var k in data) {
+      if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+      var v = data[k];
+      if (!Array.isArray(v)) continue;
+      for (var j = 0; j < v.length; j++) {
+        var item = v[j];
+        if (!item || typeof item !== "object") continue;
+        if (item.priceId === ANNUAL_PRICE_ID || item.priceId === ANNUAL_WITH_TRIAL_PRICE_ID) return true;
+      }
+    }
+    return false;
+  }
+
+  function hasAnyNonTrialPlan(member){
+    return getPlanConnections(member).some(function(pc){
+      return pc && pc.planId && pc.planId !== TRIAL_PLAN_ID && isActivePlanConnection(pc);
+    });
+  }
+
+  function evaluateAccess(member, ctx){
+    var result = { loggedIn: false, hasAccess: false, reason: "not_logged_in", idSource: (ctx && ctx.idSource) || "none" };
+    ctx = ctx || {};
+    var memberId = getMemberId(member) || ctx.memberId || "";
+    if (!memberId && ctx.idSource === "localStorage:arpAcademySeenMember" && hasAcademyJsonData(ctx.normalized)) {
+      result.loggedIn = true;
+      result.hasAccess = true;
+      result.reason = "seen_member_json";
+      return result;
+    }
+    if (!member) return result;
+    result.loggedIn = !!memberId;
+    if (!memberId) {
+      result.reason = "missing_member_id";
+      return result;
+    }
+    try {
+      if (hasTrialAccess(member)) {
+        result.hasAccess = true;
+        result.reason = "trial";
+        return result;
+      }
+      if (hasAnnualAccess(member)) {
+        result.hasAccess = true;
+        result.reason = "annual";
+        return result;
+      }
+      if (hasAnyNonTrialPlan(member)) {
+        result.hasAccess = true;
+        result.reason = "non_trial_plan";
+        return result;
+      }
+      result.reason = "no_active_plan";
+      return result;
+    } catch (e) {
+      var pcs = getPlanConnections(member);
+      if (pcs.some(function(pc){ return isActivePlanConnection(pc); })) {
+        result.hasAccess = true;
+        result.reason = "fail_open_active_plan";
+        return result;
+      }
+      result.reason = "access_error";
+      return result;
+    }
+  }
+
+  function hasAccess(member){
+    return evaluateAccess(member).hasAccess;
+  }
+
+  globalThis.__arAcademyMemberAccess = {
+    resolveMemberIdentity: resolveMemberIdentity,
+    evaluateAccess: evaluateAccess,
+    waitForMemberstack: waitForMemberstack
+  };
+
+  function countOpenedModules(normalized){
+    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+    var set = new Set();
+    Object.keys(opened).forEach(function(key){
+      var p = normalizePath(key);
+      for (var i = 0; i < FOUNDATION_MODULE_PATHS.length; i++) {
+        if (FOUNDATION_MODULE_PATHS[i] === p) { set.add(p); break; }
+      }
+    });
+    return set.size;
+  }
+
+  async function fetchExamProgress(memberId){
+    if (!memberId) return null;
+    try {
+      var res = await fetch(PROGRESS_URL, {
+        headers: { "X-Memberstack-Id": memberId },
+        credentials: "omit"
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function passedExamCount(progressData){
+    var n = 0;
+    var mods = progressData && Array.isArray(progressData.modules) ? progressData.modules : [];
+    mods.forEach(function(m){
+      if (m && m.status === "passed") n++;
+    });
+    if (n === 0 && progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+      n = progressData.summary.passedCount;
+    }
+    return n;
+  }
+
+  function placeStripAfterForwardButtons(strip){
+    var widget = document.getElementById("ar-bookmark-widget");
+    var examBtn = document.getElementById("ar-take-exam-btn");
+    var nextBtn = document.getElementById("ar-next-module-btn");
+    var anchor = examBtn && !examBtn.classList.contains("is-hidden") ? examBtn
+      : (nextBtn && !nextBtn.classList.contains("is-hidden") ? nextBtn : null);
+    if (!widget || !strip) return;
+    if (anchor && anchor.parentElement === widget) {
+      anchor.insertAdjacentElement("afterend", strip);
+      return;
+    }
+    var help = document.getElementById("bookmark-help");
+    if (help && help.parentElement === widget) help.insertAdjacentElement("beforebegin", strip);
+  }
+
+  var SIGNUP_CTA_COPY = "Get all 60 modules + certificates - free \u2192";
+
+  function applyLessonPageBodyClass(){
+    if (document.body && !document.body.classList.contains("ar-academy-lesson")) {
+      document.body.classList.add("ar-academy-lesson");
+    }
+  }
+
+  function renderSignupStrip(el){
+    el.classList.remove("is-progress");
+    el.innerHTML = '<a class="ar-lesson-signup-cta" href="' + SIGNUP_URL + '">\uD83D\uDD12 ' + SIGNUP_CTA_COPY + '</a>';
+    el.classList.remove("is-hidden");
+    el.removeAttribute("aria-hidden");
+    placeStripAfterForwardButtons(el);
+  }
+
+  function renderProgressStrip(el, openedCount, examsPassed){
+    var pct = Math.round((openedCount / MODULES_TOTAL) * 100);
+    el.classList.add("is-progress");
+    el.innerHTML =
+      '<p class="ar-lesson-progress-stats">Modules opened: ' + openedCount + '/' + MODULES_TOTAL + ' - Exams passed: ' + examsPassed + '/15</p>' +
+      '<div class="ar-lesson-progress-bar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100">' +
+      '<div class="ar-lesson-progress-bar__fill" style="width:' + pct + '%;"></div></div>';
+    el.classList.remove("is-hidden");
+    el.removeAttribute("aria-hidden");
+    placeStripAfterForwardButtons(el);
+  }
+
+  function trackLessonPageView(memberId, email){
+    if (!memberId) return;
+    var path = normalizePath(window.location.pathname);
+    if (path.indexOf("/blog-on-photography/") !== 0) return;
+    var key = "ar-pv-lesson-" + memberId + "-" + path;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch (e) { /* ignore */ }
+
+    fetch(TRACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "omit",
+      body: JSON.stringify({
+        member_id: memberId,
+        email: email || null,
+        path: path,
+        title: document.title || null,
+        category: "lesson",
+        meta: { source: "lesson-widget", surface: "lesson" }
+      })
+    }).catch(function(){ /* non-blocking */ });
+  }
+
+  function trackLessonModuleOpen(memberId, path){
+    if (!memberId || !path) return;
+    var key = "ar-mo-lesson-" + memberId + "-" + path;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch (e) { /* ignore */ }
+
+    fetch(TRACK_TILE_OPEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "omit",
+      keepalive: true,
+      body: JSON.stringify({
+        member_id: memberId,
+        section: "modules",
+        key: path,
+        title: document.title || "",
+        url: SITE + path,
+        category: "lesson"
+      })
+    }).catch(function(){ /* non-blocking */ });
+  }
+
+  async function wireMemberStrip(){
+    var strip = document.getElementById("ar-lesson-member-strip");
+    if (!strip) return;
+    if (strip.dataset.wired === "1" && strip.dataset.wiredFinal === "1") return;
+
+    var ms = await waitForMemberstack();
+    var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
+    if (ms) {
+      try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
+    }
+
+    var access = evaluateAccess(ctx.member, ctx);
+    access.idSource = ctx.idSource;
+    access.modulesTotal = MODULES_TOTAL;
+    window.__arLessonAccess = access;
+
+    if (!access.loggedIn || !access.hasAccess) {
+      renderSignupStrip(strip);
+      if (access.reason !== "missing_member_id") {
+        strip.dataset.wired = "1";
+        strip.dataset.wiredFinal = "1";
+      }
+      return;
+    }
+
+    var memberId = ctx.memberId || getMemberId(ctx.member);
+    var openedCount = countOpenedModules(ctx.normalized);
+    var progressData = await fetchExamProgress(memberId);
+    var examsPassed = passedExamCount(progressData);
+    renderProgressStrip(strip, openedCount, examsPassed);
+    applyMemberNextButton(ctx.normalized);
+    access.modulesOpened = openedCount;
+    window.__arLessonAccess = access;
+
+    var member = ctx.member || {};
+    var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
+    var lessonPath = normalizePath(window.location.pathname);
+    trackLessonPageView(memberId, email);
+    if (lessonPath.indexOf("/blog-on-photography/") === 0) {
+      trackLessonModuleOpen(memberId, lessonPath);
+    }
+    strip.dataset.wired = "1";
+    strip.dataset.wiredFinal = "1";
+  }
+
+  function kickMemberStrip(){
+    var strip = document.getElementById("ar-lesson-member-strip");
+    if (strip && strip.dataset.wiredFinal === "1") return;
+    wireMemberStrip();
+    setTimeout(function() {
+      var s = document.getElementById("ar-lesson-member-strip");
+      if (s && s.dataset.wiredFinal !== "1") wireMemberStrip();
+    }, 1500);
+  }
+
+  async function wireBookmark(){
+    var btn = document.getElementById('bookmark-btn');
+    if (!btn || btn.dataset.wired === "1") return;
+
+    btn.addEventListener('click', async () => {
+      btn.querySelector('span').textContent = "Saving...";
+
+      const ms = await waitForMemberstack();
+      if (!ms) { btn.querySelector('span').textContent = "Try again"; return; }
+
+      // Memberstack JSON is sometimes nested; handle both shapes safely
+      const bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      const mj = bundle.rawJson;
+      const root = (mj && typeof mj === "object" && mj.data) ? mj.data : mj;
+      const memberJson = (root && root.data && typeof root.data === "object") ? root.data : (root || {});
+
+      let bookmarks = Array.isArray(memberJson.bookmarks) ? memberJson.bookmarks : [];
+
+      const page = { title: document.title, url: normAbsUrl() };
+
+      if (!bookmarks.find(b => (b && b.url) === page.url)) {
+        bookmarks.push(page);
+        if (bookmarks.length > 20) bookmarks = bookmarks.slice(bookmarks.length - 20);
+
+        memberJson.bookmarks = bookmarks;
+
+        // Write back preserving wrapper if present
+        if (root && root.data && typeof root.data === "object") root.data = memberJson;
+
+        await ms.updateMemberJSON({ json: (mj && mj.data) ? mj : memberJson });
+        globalThis.__arMsReader.patchJson(memberJson, mj);
+
+        btn.style.background = "#28a745";
+        btn.querySelector('span').textContent = "Bookmarked!";
+      } else {
+        btn.querySelector('span').textContent = "Already Bookmarked";
+      }
+    });
+
+    btn.dataset.wired = "1";
+  }
+
+  applyLessonPageBodyClass();
+
+  // Use MutationObserver so it doesn't "flash then vanish" when Sqsp reflows content
+  function init(){
+    applyLessonPageBodyClass();
+    moveWidgetOnce();
+    wireBookmark();
+    wireNextModuleButtons();
+    kickMemberStrip();
+
+    var obs = new MutationObserver(function(){
+      moveWidgetOnce();
+      wireBookmark();
+      wireNextModuleButtons();
+      var strip = document.getElementById("ar-lesson-member-strip");
+      if (!strip || strip.dataset.wiredFinal !== "1") kickMemberStrip();
+    });
+
+    obs.observe(document.documentElement, { childList:true, subtree:true });
+
+    // Stop observing after 15s (prevents any performance issues)
+    setTimeout(function(){ obs.disconnect(); }, 15000);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<!-- ===========================
+END: AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM
+=========================== -->

@@ -1,0 +1,288 @@
+<!--
+  Academy Upgrade — Squarespace Code Block (v1.1)
+  Page: /academy/upgrade
+
+  Requires: Memberstack script loaded site-wide (same as /academy/login).
+  Annual price: prc_annual-membership-jj7y0h89
+
+  Zapier / emails: link ONLY to https://www.alanranger.com/academy/upgrade
+  (never raw Stripe checkout URLs — Memberstack must run checkout.)
+
+  If /academy/upgrade still redirects to /academy/login: Squarespace Footer injection
+  likely has "ARP Academy — Stable Routing" v4.3.2 — it forces login on all /academy/*
+  except login + trial-expired. Replace with Academy/academy-stable-routing-ui-suppression-v4.3.3.html
+  (also ensure dashboard snippet is v1.2+ if that block is shared across pages).
+-->
+<div id="arp-academy-upgrade">
+  <style>
+    #arp-academy-upgrade {
+      --arp-orange: #E57200;
+      --arp-blue: #2563eb;
+      --arp-text: #111827;
+      --arp-muted: #6b7280;
+      --arp-border: rgba(17, 24, 39, 0.12);
+      --arp-card: #ffffff;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 18px 36px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--arp-text);
+      line-height: 1.55;
+    }
+    #arp-academy-upgrade * { box-sizing: border-box; }
+    #arp-academy-upgrade .arp-hero {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    #arp-academy-upgrade .arp-hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.55rem, 4vw, 2rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--arp-text);
+    }
+    #arp-academy-upgrade .arp-lead {
+      margin: 0 auto;
+      max-width: 38rem;
+      font-size: 1.05rem;
+      color: var(--arp-muted);
+      font-weight: 600;
+    }
+    #arp-academy-upgrade .arp-price {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(229, 114, 0, 0.12);
+      color: #9a3412;
+      font-weight: 900;
+      font-size: 1.05rem;
+      border: 1px solid rgba(229, 114, 0, 0.28);
+    }
+    #arp-academy-upgrade .arp-panel {
+      margin-top: 22px;
+      padding: 22px 20px;
+      border: 1px solid var(--arp-border);
+      border-radius: 16px;
+      background: var(--arp-card);
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
+    }
+    #arp-academy-upgrade .arp-panel h2 {
+      margin: 0 0 14px;
+      font-size: 1.15rem;
+      font-weight: 900;
+    }
+    #arp-academy-upgrade .arp-benefits {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    #arp-academy-upgrade .arp-benefits li {
+      position: relative;
+      padding: 10px 0 10px 34px;
+      border-top: 1px solid rgba(17, 24, 39, 0.08);
+      font-weight: 650;
+    }
+    #arp-academy-upgrade .arp-benefits li:first-child { border-top: 0; padding-top: 0; }
+    #arp-academy-upgrade .arp-benefits li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: #fff;
+      background: var(--arp-orange);
+    }
+    #arp-academy-upgrade .arp-benefits li:first-child::before { top: 0; }
+    #arp-academy-upgrade .arp-time {
+      margin-top: 16px;
+      padding: 14px 14px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.07);
+      border: 1px solid rgba(37, 99, 235, 0.18);
+      color: #1e3a8a;
+      font-weight: 750;
+      font-size: 0.98rem;
+    }
+    #arp-academy-upgrade .arp-cta {
+      margin-top: 22px;
+      text-align: center;
+    }
+    #arp-academy-upgrade .arp-cta-note {
+      margin: 0 0 14px;
+      color: var(--arp-muted);
+      font-size: 0.95rem;
+      font-weight: 650;
+    }
+    #arp-academy-upgrade .arp-btn-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    #arp-academy-upgrade .arp-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 26px;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: rgba(0, 0, 0, 0.16) 0 4px 14px;
+      transition: transform 0.15s ease, filter 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 200px;
+      text-decoration: none;
+    }
+    #arp-academy-upgrade .arp-btn:hover { transform: translateY(-1px); filter: brightness(1.03); }
+    #arp-academy-upgrade .arp-btn:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 2px;
+    }
+    #arp-academy-upgrade .arp-btn--primary {
+      background: var(--arp-orange);
+      color: #fff;
+    }
+    #arp-academy-upgrade .arp-btn--secondary {
+      background: var(--arp-blue);
+      color: #fff;
+    }
+    #arp-academy-upgrade .arp-foot {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--arp-muted);
+      font-weight: 600;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #arp-academy-upgrade .arp-btn { transition: none; }
+    }
+  </style>
+
+  <div class="arp-hero">
+    <h1>Upgrade to full Academy access</h1>
+    <p class="arp-lead">
+      One simple payment unlocks everything for a full year — structured learning, assessments, and tools you can use in the field.
+    </p>
+    <div class="arp-price" role="text">£79 · 12 months · full membership</div>
+  </div>
+
+  <div class="arp-panel">
+    <h2>What you get as an annual member</h2>
+    <ul class="arp-benefits">
+      <li><strong>All modules</strong> — work through the Academy curriculum at your pace, with clear progression.</li>
+      <li><strong>Exams &amp; assessments</strong> — test your understanding and build confidence.</li>
+      <li><strong>Tools &amp; resources</strong> — practical helpers built for real-world shooting.</li>
+      <li><strong>Practise packs</strong> — structured exercises to reinforce what you learn.</li>
+      <li><strong>Field checklists</strong> — quick references you can rely on when you are out with your camera.</li>
+    </ul>
+    <p class="arp-time">
+      <strong>Why a year?</strong> Twelve months is more than enough time for most members to work through the modules, sit the exams, and genuinely develop their photography — without rushing. You are paying for depth and flexibility, not a deadline.
+    </p>
+  </div>
+
+  <div class="arp-cta">
+    <p class="arp-cta-note">
+      Use the <strong>same email and password</strong> as your Academy trial. If you are not logged in yet, log in first — then tap upgrade.
+    </p>
+    <div class="arp-btn-row">
+      <button
+        type="button"
+        class="arp-btn arp-btn--secondary"
+        data-ms-modal="login"
+        aria-label="Log in to the Academy"
+      >
+        Log in
+      </button>
+      <button
+        type="button"
+        id="arp-upgrade-checkout-btn"
+        class="arp-btn arp-btn--primary"
+        aria-label="Upgrade to annual membership for 79 pounds"
+      >
+        Upgrade now — £79 / year
+      </button>
+    </div>
+    <p class="arp-foot">
+      Secure checkout runs through Memberstack and Stripe. Your trial plan is replaced by annual membership when payment completes successfully.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var PRICE_ID = "prc_annual-membership-jj7y0h89";
+  var root = document.getElementById("arp-academy-upgrade");
+  var btn = document.getElementById("arp-upgrade-checkout-btn");
+  if (!root || !btn || btn.getAttribute("data-arp-upgrade-wired") === "1") return;
+  btn.setAttribute("data-arp-upgrade-wired", "1");
+
+  function originBase() {
+    return (window.location && window.location.origin) ? window.location.origin : "https://www.alanranger.com";
+  }
+
+  function waitMs(fn, tries) {
+    tries = tries || 0;
+    var ms = window.$memberstackDom;
+    if (ms && typeof ms.purchasePlansWithCheckout === "function") {
+      fn(ms);
+      return;
+    }
+    if (tries > 80) {
+      fn(null);
+      return;
+    }
+    setTimeout(function () { waitMs(fn, tries + 1); }, 100);
+  }
+
+  btn.addEventListener(
+    "click",
+    function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Opening checkout...";
+      waitMs(function (ms) {
+        if (!ms) {
+          btn.disabled = false;
+          btn.textContent = label;
+          window.alert("Checkout is not ready yet. Please refresh the page and try again.");
+          return;
+        }
+        ms.purchasePlansWithCheckout({
+          priceId: PRICE_ID,
+          successUrl: originBase() + "/academy/dashboard?upgrade=success",
+          cancelUrl: originBase() + "/academy/upgrade"
+        })
+          .then(function (result) {
+            var url = result && result.data && result.data.url;
+            if (url) {
+              window.location.assign(url);
+              return;
+            }
+            throw new Error("no checkout url");
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = label;
+            window.alert(
+              "Could not start checkout. Open Log in, sign in with your trial email, then tap Upgrade again."
+            );
+          });
+      });
+    },
+    true
+  );
+})();
+</script>

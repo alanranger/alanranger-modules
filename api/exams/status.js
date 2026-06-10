@@ -3,7 +3,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
-const { setCorsHeaders, handlePreflight, getMemberstackToken } = require("./_cors");
+const { setCorsHeaders, handlePreflight, getMemberstackToken, getMemberstackMemberId } = require("./_cors");
 
 module.exports = async (req, res) => {
   // Handle OPTIONS preflight
@@ -14,12 +14,31 @@ module.exports = async (req, res) => {
 
   try {
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+    
+    // Try token-based auth first
+    let memberId = null;
+    
     const token = getMemberstackToken(req);
-    if (!token) {
+    if (token) {
+      try {
+        const { id } = await memberstack.verifyToken({ token });
+        memberId = id;
+      } catch (e) {
+        console.error("[status] Token verification failed:", e.message);
+        // Fall through to member ID fallback
+      }
+    }
+    
+    // Fallback: Use member ID header
+    if (!memberId) {
+      memberId = getMemberstackMemberId(req);
+      // Don't verify member exists - just use the memberId to query results
+      // If memberId is invalid, the query will just return empty results
+    }
+    
+    if (!memberId) {
       return res.status(401).json({ error: "Not logged in" });
     }
-
-    const { id: memberId } = await memberstack.verifyToken({ token });
 
     const moduleId = req.query.moduleId;
     if (!moduleId) {
@@ -28,9 +47,13 @@ module.exports = async (req, res) => {
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+    console.log("[status] Querying module_results_ms for memberId:", memberId, "moduleId:", moduleId);
+    
+    // Get the latest attempt (regardless of pass/fail) - this shows the most recent activity
+    // Include details field for results modal and PDF generation
     const { data, error } = await supabase
       .from("module_results_ms")
-      .select("score_percent,passed,attempt,created_at")
+      .select("score_percent,passed,attempt,created_at,details")
       .eq("memberstack_id", memberId)
       .eq("module_id", moduleId)
       .order("attempt", { ascending: false })
@@ -40,6 +63,14 @@ module.exports = async (req, res) => {
       console.error("[status] Supabase error:", error);
       return res.status(500).json({ error: error.message });
     }
+    
+    console.log("[status] Query result - found", data?.length || 0, "results for", moduleId);
+    if (data && data.length > 0) {
+      console.log("[status] Returning latest result:", JSON.stringify(data[0]));
+    } else {
+      console.log("[status] No results found for memberId:", memberId, "moduleId:", moduleId);
+    }
+    
     return res.status(200).json({ latest: data?.[0] || null });
   } catch (e) {
     console.error("[status] Error:", e);

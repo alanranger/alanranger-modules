@@ -116,3 +116,22 @@ If issues occur:
 - API routes verify token server-side using `@memberstack/admin`
 - Service role key bypasses RLS (Row Level Security) for server operations
 - Migration is one-time per user (tracked in `exam_member_links`)
+
+## Recent Enhancements (2026-01-16)
+
+### Admin Dashboard
+- **Sortable Tables**: Most Active Members table now has sortable columns with visual indicators
+- All columns support ascending/descending sort with icons
+- See [ADMIN_DASHBOARD_README.md](./ADMIN_DASHBOARD_README.md) for details
+
+### Security Features
+- **Inactivity Logout**: Automatic logout after 30 minutes of inactivity on Academy pages
+- Implemented in `academy-dashboard-squarespace-snippet-v1.html`
+- Tracks user activity and resets timer on interaction
+- See [README.md](./README.md) for details
+
+### Member Management
+- **Utility Scripts**: Member deletion and cleanup scripts in `scripts/` directory
+- Supports deletion from both Supabase and Memberstack
+- Comprehensive error handling and safety checks
+- See [ADMIN_DASHBOARD_README.md](./ADMIN_DASHBOARD_README.md#member-management-scripts) for full documentation

@@ -3,7 +3,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
-const { setCorsHeaders, handlePreflight, getMemberstackToken } = require("./_cors");
+const { setCorsHeaders, handlePreflight, getMemberstackToken, getMemberstackMemberId } = require("./_cors");
 
 module.exports = async (req, res) => {
   // Handle OPTIONS preflight
@@ -18,32 +18,100 @@ module.exports = async (req, res) => {
     }
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
+    
+    // Try token-based auth first
+    let memberId = null;
+    let member = null;
+    
     const token = getMemberstackToken(req);
-    if (!token) {
-      return res.status(401).json({ error: "Not logged in" });
+    if (token) {
+      try {
+        const { id } = await memberstack.verifyToken({ token });
+        memberId = id;
+        const { data } = await memberstack.members.retrieve({ id });
+        member = data;
+      } catch (e) {
+        console.error("[save] Token verification failed:", e.message);
+        // Fall through to member ID fallback
+      }
+    }
+    
+    // Fallback: Use member ID header
+    if (!memberId) {
+      memberId = getMemberstackMemberId(req);
+      if (memberId) {
+        try {
+          const { data } = await memberstack.members.retrieve({ id: memberId });
+          member = data;
+        } catch (e) {
+          console.error("[save] Member ID retrieval failed:", e.message);
+          // Don't return error - continue with memberId only
+          console.warn("[save] Continuing with memberId only (no member object)");
+        }
+      }
+    }
+    
+    if (!memberId) {
+      return res.status(401).json({ error: "Not logged in - no member ID" });
+    }
+    
+    // Parse request body once
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const { module_id, score_percent, passed, attempt, details, email: bodyEmail } = body || {};
+    
+    // Log received payload for debugging
+    console.log("[save] Received payload:", {
+      module_id,
+      score_percent,
+      passed,
+      attempt,
+      score_percent_type: typeof score_percent,
+      passed_type: typeof passed,
+      attempt_type: typeof attempt,
+      has_email: !!bodyEmail
+    });
+    
+    // Get email from member object OR request body (fallback)
+    let email = null;
+    if (member && member.auth && member.auth.email) {
+      email = member.auth.email;
+      console.log("[save] Using email from member object:", email);
+    } else if (bodyEmail) {
+      email = bodyEmail;
+      console.log("[save] Using email from request body (fallback):", email);
     }
 
-    const { id: memberId } = await memberstack.verifyToken({ token });
-    const { data: member } = await memberstack.members.retrieve({ id: memberId });
-
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const { module_id, score_percent, passed, attempt, details } = body || {};
-
-    if (!module_id || typeof score_percent !== "number" || typeof passed !== "boolean" || typeof attempt !== "number") {
-      return res.status(400).json({ error: "Invalid payload" });
+    // Validate payload with detailed error messages
+    if (!module_id) {
+      console.error("[save] Validation failed: module_id is missing");
+      return res.status(400).json({ error: "Invalid payload: module_id is required" });
+    }
+    if (typeof score_percent !== "number") {
+      console.error("[save] Validation failed: score_percent is not a number", { score_percent, type: typeof score_percent });
+      return res.status(400).json({ error: `Invalid payload: score_percent must be a number (got ${typeof score_percent})` });
+    }
+    if (typeof passed !== "boolean") {
+      console.error("[save] Validation failed: passed is not a boolean", { passed, type: typeof passed });
+      return res.status(400).json({ error: `Invalid payload: passed must be a boolean (got ${typeof passed})` });
+    }
+    if (typeof attempt !== "number") {
+      console.error("[save] Validation failed: attempt is not a number", { attempt, type: typeof attempt });
+      return res.status(400).json({ error: `Invalid payload: attempt must be a number (got ${typeof attempt})` });
     }
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     const { error } = await supabase.from("module_results_ms").insert([{
       memberstack_id: memberId,
-      email: member?.auth?.email || null,
+      email: email || null,
       module_id,
       score_percent,
       passed,
       attempt,
       details: details ?? null
     }]);
+    
+    console.log("[save] Inserting result:", { memberstack_id: memberId, email, module_id, score_percent, passed, attempt });
 
     if (error) {
       console.error("[save] Supabase error:", error);

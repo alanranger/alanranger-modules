@@ -1,0 +1,152 @@
+<!--
+  ================================================================
+  AR | Academy Login — REWIND20 deep-link email prefill
+  ================================================================
+  Purpose:
+    When a lapsed-trial member clicks the personal link inside the
+    REWIND20 win-back email, the dashboard (academy-dashboard-
+    squarespace-snippet-v1.html) stashes their email address and
+    redirects them here if their Memberstack session has expired:
+
+      /academy/login?ar_rewind_email=<urlencoded email>
+
+    This snippet watches the page for the Memberstack login form,
+    pre-fills the email input, and briefly flashes the field so
+    the member can confirm and just type their password.
+
+  Install:
+    Squarespace → Edit /academy/login page → Settings → Advanced →
+    Page Header Code Injection → paste this entire block.
+
+  Safe to leave installed forever: it's a no-op on any visit that
+  doesn't carry ?ar_rewind_email=, and it never submits the form.
+  ================================================================
+-->
+<script>
+(function(){
+  "use strict";
+
+  function readRewindEmail() {
+    try {
+      var params = new URLSearchParams(String(window.location.search || ""));
+      var raw = params.get("ar_rewind_email");
+      if (!raw) return null;
+      var trimmed = String(raw).trim();
+      if (!trimmed || trimmed.indexOf("@") < 0) return null;
+      return trimmed;
+    } catch (e) { return null; }
+  }
+
+  // Only match the Memberstack login modal — never the newsletter signup
+  // form that also lives on this page. Priority list of specific-first
+  // selectors; the wider fallbacks require a dialog/modal ancestor so we
+  // can't accidentally write into a mailing-list form.
+  function isInsideMemberstackModal(el) {
+    if (!el) return false;
+    if (typeof el.closest !== "function") return false;
+    return !!(
+      el.closest('form[data-ms-form="login"]') ||
+      el.closest('[data-ms-modal]') ||
+      el.closest('[data-ms-content]') ||
+      el.closest('[role="dialog"]') ||
+      el.closest('[aria-modal="true"]') ||
+      el.closest('dialog')
+    );
+  }
+
+  function findEmailInput(root) {
+    var scope = root || document;
+    var specific = [
+      'form[data-ms-form="login"] input[data-ms-member="email"]',
+      'form[data-ms-form="login"] input[type="email"]',
+      'input[data-ms-member="email"]'
+    ];
+    for (var i = 0; i < specific.length; i++) {
+      var el = scope.querySelector(specific[i]);
+      if (el) return el;
+    }
+    // Generic fallback: pick the first email input that lives inside a
+    // dialog / modal context. This catches Memberstack 2.0 deployments
+    // whose form doesn't carry data-ms-* attributes on the input itself.
+    var candidates = scope.querySelectorAll('input[type="email"], input[name="email"]');
+    for (var j = 0; j < candidates.length; j++) {
+      if (isInsideMemberstackModal(candidates[j])) return candidates[j];
+    }
+    return null;
+  }
+
+  function applyValue(input, email) {
+    if (!input || input.value === email) return false;
+    input.value = email;
+    try {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (e) { /* older browsers: value is still set */ }
+    input.setAttribute("data-ar-rewind-prefilled", "1");
+    try { input.style.transition = "box-shadow 600ms ease"; } catch (e) {}
+    input.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.35)";
+    setTimeout(function(){
+      try { input.style.boxShadow = ""; } catch (e) {}
+    }, 1200);
+    return true;
+  }
+
+  function focusPasswordAfterPrefill(emailInput) {
+    // Walk up from the email input to find the nearest form / dialog, then
+    // grab the password field inside it. Guarantees we focus the Memberstack
+    // modal's password box rather than any unrelated one on the page.
+    var scope = null;
+    if (emailInput && typeof emailInput.closest === "function") {
+      scope = emailInput.closest('form[data-ms-form="login"]')
+           || emailInput.closest('form')
+           || emailInput.closest('[role="dialog"]')
+           || emailInput.closest('[aria-modal="true"]')
+           || emailInput.closest('dialog');
+    }
+    var pw = (scope && scope.querySelector('input[type="password"]'))
+          || document.querySelector('form[data-ms-form="login"] input[type="password"]');
+    if (pw && typeof pw.focus === "function") {
+      try { pw.focus({ preventScroll: false }); } catch (e) { pw.focus(); }
+    }
+  }
+
+  var email = readRewindEmail();
+  if (!email) return;
+
+  function attempt() {
+    var input = findEmailInput();
+    if (input && applyValue(input, email)) {
+      focusPasswordAfterPrefill(input);
+      return true;
+    }
+    return false;
+  }
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    if (attempt()) return;
+  } else {
+    document.addEventListener("DOMContentLoaded", attempt, { once: true });
+  }
+
+  // Memberstack's login form is rendered into a modal that may only appear
+  // when the user clicks "Log in" — often well after page load. Keep the
+  // observer alive until we successfully prefill (then disconnect). Also
+  // re-attempt on any click anywhere on the page, in case Memberstack
+  // swaps the modal contents rather than inserting new nodes.
+  var observer = new MutationObserver(function(){
+    if (attempt()) { observer.disconnect(); }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  document.addEventListener("click", function onClickRetry(){
+    if (attempt()) {
+      try { observer.disconnect(); } catch (e) {}
+      document.removeEventListener("click", onClickRetry, true);
+    }
+  }, true);
+
+  // Final safety net: if something exotic keeps the modal off-DOM, give up
+  // silently after five minutes so the observer can be GC'd.
+  setTimeout(function(){ try { observer.disconnect(); } catch (e) {} }, 300000);
+})();
+</script>
