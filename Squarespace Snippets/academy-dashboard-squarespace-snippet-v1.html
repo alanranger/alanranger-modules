@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.35) — Squarespace Snippet
+Academy Dashboard UI (v1.3.36) — Squarespace Snippet
+v1.3.36: 4a horizontal full-width badge bars + label colours; 4b larger modal/table fonts (layout only).
 v1.3.35: Fix 4a stuck on “Badge progress loading…” — path length stubs in BADGE-GATES-SYNC + listen for ar-do-next-badge-view-ready.
 v1.3.34: Badge progress strip (4a) + badge requirements modal (4b) — display-only; reads do-next strip gate stats.
 v1.3.33: Membership Status — exam stats out of 30 (both tracks), summed attempts; last 5 logins one per day (latest time that day).
@@ -307,17 +308,10 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       min-width: 0;
     }
     html.ar-academy .ar-academy-dashboard__badge-progress {
-      flex: 0 1 240px;
-      min-width: 190px;
-      max-width: 280px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 6px;
-      padding: 8px 10px;
-      background: #0e0e0e;
-      border: 1px solid var(--ar-border);
-      border-radius: 10px;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: none;
+      width: auto;
     }
     html.ar-academy .ar-academy-dashboard__tiles-help-lead .ar-academy-dashboard__course-cta {
       flex: 0 0 auto;
@@ -343,6 +337,18 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     width: 100%;
     display: flex;
     justify-content: flex-end;
+  }
+  html.ar-academy .ar-academy-dashboard__badge-progress {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #0e0e0e;
+    border: 1px solid var(--ar-border);
+    border-radius: 10px;
+    box-sizing: border-box;
   }
   html.ar-academy .ar-catalog-metrics {
     display: flex;
@@ -1849,35 +1855,44 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   /* Badge progress strip (4a) + requirements modal (4b) — reuse existing journey tokens */
   html.ar-academy .ar-badge-progress__bars {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 6px;
-    min-height: 72px;
-  }
-  html.ar-academy .ar-badge-progress__bar {
-    flex: 1 1 0;
-    display: flex;
     flex-direction: column;
+    gap: 7px;
+    width: 100%;
+  }
+  html.ar-academy .ar-badge-progress__row {
+    display: grid;
+    grid-template-columns: minmax(72px, 108px) minmax(0, 1fr) minmax(28px, 40px);
     align-items: center;
-    gap: 4px;
-    min-width: 0;
+    gap: 10px;
+    width: 100%;
+  }
+  html.ar-academy .ar-badge-progress__name {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--ar-text-muted);
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-badge-progress__value {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: right;
+    color: var(--ar-text-muted);
   }
   html.ar-academy .ar-badge-progress__track {
     width: 100%;
-    max-width: 34px;
-    height: 56px;
-    border-radius: 6px;
+    height: 11px;
+    border-radius: 999px;
     background: rgba(15, 23, 42, 0.85);
     border: 1px solid rgba(148, 163, 184, 0.25);
-    display: flex;
-    align-items: flex-end;
     overflow: hidden;
   }
   html.ar-academy .ar-badge-progress__fill {
-    width: 100%;
-    border-radius: 4px 4px 0 0;
-    min-height: 2px;
-    transition: height 0.25s ease;
+    height: 100%;
+    border-radius: 999px;
+    min-width: 3px;
+    transition: width 0.25s ease;
   }
   html.ar-academy .ar-badge-progress__fill--earned {
     background: #166534;
@@ -1891,17 +1906,26 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   html.ar-academy .ar-badge-progress__fill--master-future {
     background: repeating-linear-gradient(135deg, var(--ar-gold) 0, var(--ar-gold) 5px, #92400e 5px, #92400e 10px);
   }
-  html.ar-academy .ar-badge-progress__label {
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--ar-text-muted);
-    text-align: center;
-    word-break: break-word;
+  html.ar-academy .ar-badge-progress__row--earned .ar-badge-progress__name,
+  html.ar-academy .ar-badge-progress__row--earned .ar-badge-progress__value {
+    color: #166534;
   }
-  html.ar-academy .ar-badge-progress__label strong {
-    color: var(--ar-text);
-    font-weight: 800;
+  html.ar-academy .ar-badge-progress__row--current .ar-badge-progress__name,
+  html.ar-academy .ar-badge-progress__row--current .ar-badge-progress__value {
+    color: var(--ar-brand);
+  }
+  html.ar-academy .ar-badge-progress__row--future .ar-badge-progress__name,
+  html.ar-academy .ar-badge-progress__row--future .ar-badge-progress__value {
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-badge-progress__row--master-future .ar-badge-progress__name,
+  html.ar-academy .ar-badge-progress__row--master-future .ar-badge-progress__value {
+    color: var(--ar-gold);
+  }
+  html.ar-academy .ar-badge-progress__loading {
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--ar-text-muted);
   }
   html.ar-academy .ar-badge-progress__link-wrap {
     margin-top: 2px;
@@ -1922,6 +1946,16 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     text-decoration: underline;
     outline: none;
   }
+  @media (max-width: 700px) {
+    html.ar-academy .ar-badge-progress__row {
+      grid-template-columns: minmax(64px, 92px) minmax(0, 1fr) 32px;
+      gap: 8px;
+    }
+    html.ar-academy .ar-badge-progress__name,
+    html.ar-academy .ar-badge-progress__value {
+      font-size: 11px;
+    }
+  }
 
   #ar-badge-requirements-modal {
     display: none;
@@ -1938,13 +1972,13 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   #ar-badge-requirements-modal .ar-badge-req__card {
     background: #0e0e0e;
     color: var(--ar-text);
-    max-width: 760px;
+    max-width: min(980px, 94vw);
     width: 100%;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 32px);
     overflow-y: auto;
     border: 1px solid var(--ar-border);
     border-radius: 14px;
-    padding: 24px 20px 20px;
+    padding: 32px 28px 24px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
     position: relative;
   }
@@ -1966,29 +2000,29 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     cursor: pointer;
   }
   #ar-badge-requirements-modal h2 {
-    margin: 0 0 8px 0;
-    font-size: 20px;
+    margin: 0 0 10px 0;
+    font-size: 26px;
     color: var(--ar-brand);
   }
   #ar-badge-requirements-modal .ar-badge-req__sub {
-    margin: 0 0 14px 0;
-    font-size: 13px;
+    margin: 0 0 18px 0;
+    font-size: 15px;
     color: var(--ar-text-muted);
-    line-height: 1.45;
+    line-height: 1.5;
   }
   #ar-badge-requirements-modal .ar-badge-req__table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 12px;
-    line-height: 1.35;
+    font-size: 15px;
+    line-height: 1.45;
     border: 1px solid var(--ar-border);
     border-radius: 10px;
     overflow: hidden;
   }
   #ar-badge-requirements-modal .ar-badge-req__table th,
   #ar-badge-requirements-modal .ar-badge-req__table td {
-    padding: 8px 10px;
+    padding: 12px 14px;
     border-top: 1px solid rgba(55, 65, 81, 0.75);
     vertical-align: middle;
     text-align: center;
@@ -1996,7 +2030,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   #ar-badge-requirements-modal .ar-badge-req__table thead th {
     background: rgba(55, 65, 81, 0.45);
     color: var(--ar-brand);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -2020,12 +2054,12 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   #ar-badge-requirements-modal .ar-badge-req__tick {
     color: #166534;
     font-weight: 900;
-    font-size: 15px;
+    font-size: 18px;
   }
   #ar-badge-requirements-modal .ar-badge-req__footnote {
-    margin: 12px 0 0 0;
-    font-size: 11.5px;
-    line-height: 1.45;
+    margin: 16px 0 0 0;
+    font-size: 14px;
+    line-height: 1.5;
     color: var(--ar-text-muted);
   }
 
@@ -4710,7 +4744,7 @@ function computeTrackFillPct(badges, progressPct) {
       if (!mount) return;
       var view = getDoNextBadgeView();
       if (!view) {
-        mount.innerHTML = '<div class="ar-badge-progress__label">Badge progress loading…</div>';
+        mount.innerHTML = '<div class="ar-badge-progress__loading">Badge progress loading…</div>';
         return;
       }
 
@@ -4734,13 +4768,16 @@ function computeTrackFillPct(badges, progressPct) {
         var pct = Math.max(0, Math.min(100, progress.pct || 0));
         var visual = getBadgeBarVisualState(badge, view.badges);
         var fillClass = "ar-badge-progress__fill--" + visual;
-        var labelPct = badge.earned ? "✓" : (pct + "%");
+        var rowClass = "ar-badge-progress__row ar-badge-progress__row--" + visual;
+        var fillWidth = badge.earned ? 100 : pct;
+        var valueText = badge.earned ? "✓" : (pct + "%");
         barsHtml +=
-          '<div class="ar-badge-progress__bar">' +
+          '<div class="' + rowClass + '">' +
+          '<span class="ar-badge-progress__name">' + escapeHtml(BADGE_PROGRESS_LABELS[key]) + "</span>" +
           '<div class="ar-badge-progress__track" aria-hidden="true">' +
-          '<div class="ar-badge-progress__fill ' + fillClass + '" style="height:' + pct + '%"></div>' +
+          '<div class="ar-badge-progress__fill ' + fillClass + '" style="width:' + fillWidth + '%"></div>' +
           "</div>" +
-          '<div class="ar-badge-progress__label"><strong>' + escapeHtml(BADGE_PROGRESS_LABELS[key]) + "</strong><br>" + escapeHtml(labelPct) + "</div>" +
+          '<span class="ar-badge-progress__value">' + escapeHtml(valueText) + "</span>" +
           "</div>";
       }
 
