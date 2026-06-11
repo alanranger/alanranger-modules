@@ -45,6 +45,7 @@ const {
   computeNextBadgeProgress,
   computeTrackFillPct,
   normaliseStats,
+  isFoundationGateEarned,
 } = gates;
 
 const APPLIED_LEARNING_TOTAL = longevity.APPLIED_LEARNING_TOTAL;
@@ -308,4 +309,31 @@ test("badge display fields unchanged (Phase 1)", () => {
     const stage = JOURNEY_STAGES.find((s) => s.key === badge.key);
     assert.equal(badge.sublabel, stage.sublabel);
   });
+});
+
+test("client longevity merge preserves module01Opened and compositionExamsPassed", () => {
+  const base = fixtureStats({
+    module01Opened: true,
+    compositionExamsPassed: 4,
+    foundationModulesOpened: 5,
+    examsPassed: 6,
+    cameraOpened: 9,
+  });
+  const merged = {
+    foundationModulesOpened: base.foundationModulesOpened,
+    cameraOpened: base.cameraOpened,
+    compositionOpened: base.compositionOpened,
+    pdfAssignmentsOpened: base.pdfAssignmentsOpened,
+    totalModulesOpened: base.totalModulesOpened,
+    examsPassed: base.examsPassed,
+    compositionExamsPassed: base.compositionExamsPassed || 0,
+    module01Opened: base.module01Opened === true,
+    appliedLearningOpened: 1,
+    practicePacksOpened: 2,
+    distinctActiveMonthsAllTime: 3,
+  };
+  const safe = normaliseStats(merged);
+  assert.equal(safe.module01Opened, true);
+  assert.equal(safe.compositionExamsPassed, 4);
+  assert.equal(isFoundationGateEarned(safe, 3, false), true);
 });

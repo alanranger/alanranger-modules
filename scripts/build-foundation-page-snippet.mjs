@@ -1200,7 +1200,18 @@ ${rpsZoneHtml}
     for (var i = 0; i < list.length; i++) { if (openedSet.has(list[i])) n += 1; }
     return n;
   }
-  function buildGateStats(openedSet, examsPassed, engagement, normalized){
+  function countCompositionExamsPassed(examData){
+    if (!examData || !examData.tracks || !examData.tracks.composition_creative) return 0;
+    var modules = examData.tracks.composition_creative.modules;
+    if (!modules || !modules.length) return 0;
+    var n = 0;
+    for (var i = 0; i < modules.length; i++) {
+      if (modules[i] && modules[i].status === "passed") n += 1;
+    }
+    return n;
+  }
+  function buildGateStats(openedSet, examsPassed, engagement, normalized, examData){
+    var exposurePath = CAMERA_MODULE_PATHS[0] ? normalizePath(CAMERA_MODULE_PATHS[0]) : "";
     var stats = {
       foundationModulesOpened: countFoundationOpens(openedSet),
       cameraOpened: countOpenedInList(openedSet, CAMERA_MODULE_PATHS),
@@ -1208,6 +1219,8 @@ ${rpsZoneHtml}
       pdfAssignmentsOpened: countOpenedInList(openedSet, PDF_ASSIGNMENT_PATHS),
       totalModulesOpened: countFoundationOpens(openedSet),
       examsPassed: examsPassed,
+      compositionExamsPassed: countCompositionExamsPassed(examData),
+      module01Opened: exposurePath ? openedSet.has(exposurePath) : false,
       appliedLearningOpened: null,
       practicePacksOpened: null,
       distinctActiveMonthsAllTime: null
@@ -1749,7 +1762,7 @@ ${rpsZoneHtml}
     var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;
     renderMembershipBadge(member, engagement);
     syncHeaderWelcome(member);
-    var gateStats = buildGateStats(openedSet, examsPassed, engagement, normalized);
+    var gateStats = buildGateStats(openedSet, examsPassed, engagement, normalized, examData);
     try {
       var badges = computeJourneyBadges(gateStats, activeDays, engagementDegraded, { hasConverted: !!(engagement && engagement.hasConverted), lastActivityAt: engagement ? engagement.lastActivityAt : null, nowMs: Date.now() });
       var progress = computeNextBadgeProgress(badges, gateStats, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);

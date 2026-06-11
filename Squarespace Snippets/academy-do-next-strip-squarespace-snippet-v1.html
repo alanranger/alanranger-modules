@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.66 — FIX: mergeLongevityIntoStats now preserves module01Opened + compositionExamsPassed (Foundation was stuck at Enrolled).
 v1.3.65 — HOTFIX: sync transform broke paths.every (parse error killed strip); verified node --check.
 v1.3.64 — Phase 2 badge gate display: new journey sublabels, Tile 4 criteria, proximity copy, composition exam stats wiring.
 v1.3.63 — Tile 4 inset flexes for up to 4 criteria rows (no clip); trial line white on orange.
@@ -2962,6 +2963,10 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
       totalModulesOpened: stats.totalModulesOpened,
 
       examsPassed: stats.examsPassed,
+
+      compositionExamsPassed: stats.compositionExamsPassed || 0,
+
+      module01Opened: stats.module01Opened === true,
 
       appliedLearningOpened: null,
 
