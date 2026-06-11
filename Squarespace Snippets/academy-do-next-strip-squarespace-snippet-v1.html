@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.60 — Tile 4 goal checklist: per-requirement mini-bars (orange in progress, green when met); header shows next-badge %.
 v1.3.59 — Dispatch ar-do-next-badge-view-ready when gate snapshot updates (fixes dashboard 4a loading race).
 v1.3.58 — Expose __arDoNextStripBadgeView for dashboard badge progress strip (4a) + requirements modal (4b).
 v1.3.57 — Fix A: pdfAssignmentsOpened uses Math.max(live, engagement) — stale cache cannot zero Practitioner count; expose __arDoNextStripRefresh for dashboard assignment opens.
@@ -853,6 +854,98 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
     stroke:#f8fafc !important;
 
     stroke-width:1.75;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-criteria-row{
+
+    flex-direction:column;
+
+    align-items:stretch;
+
+    gap:4px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__head{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:6px;
+
+    width:100%;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__label{
+
+    flex:1 1 auto;
+
+    min-width:0;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__value{
+
+    flex:0 0 auto;
+
+    font-weight:700;
+
+    margin-left:4px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row--met .ar-do-next-criteria-row__value{
+
+    color:#166534;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__bar-track{
+
+    width:100%;
+
+    height:6px;
+
+    margin-left:22px;
+
+    box-sizing:border-box;
+
+    border-radius:999px;
+
+    background:rgba(0,0,0,0.35);
+
+    border:1px solid rgba(255,255,255,0.08);
+
+    overflow:hidden;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__bar-fill{
+
+    display:block;
+
+    height:100%;
+
+    border-radius:999px;
+
+    min-width:2px;
+
+    transition:width 0.25s ease;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__bar-fill--met{
+
+    background:#166534;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-criteria-row__bar-fill--unmet{
+
+    background:#E57200;
 
   }
 
@@ -3408,6 +3501,80 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
+  function goalCriteriaBarPct(row){
+
+    if (row.met) return 100;
+
+    var target = row.target;
+
+    if (!target || target <= 0) return 0;
+
+    var current = row.current != null ? row.current : 0;
+
+    return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+
+  }
+
+
+
+  function appendGoalCriteriaContent(parent, criteria){
+
+    if (!criteria || criteria.type === "soft") {
+
+      appendCriteriaContent(parent, criteria);
+
+      return;
+
+    }
+
+    var list = document.createElement("ul");
+
+    list.className = "ar-do-next-criteria-list";
+
+    criteria.rows.forEach(function(row){
+
+      var li = document.createElement("li");
+
+      li.className = "ar-do-next-criteria-row " + (row.met ? "ar-do-next-criteria-row--met" : "ar-do-next-criteria-row--unmet");
+
+      var head = document.createElement("div");
+
+      head.className = "ar-do-next-criteria-row__head";
+
+      head.innerHTML = (row.met ? CRITERIA_CHECK_SVG : CRITERIA_EMPTY_SVG) +
+
+        '<span class="ar-do-next-criteria-row__label">' + row.label + " (" + row.current + "/" + row.target + ")</span>" +
+
+        '<span class="ar-do-next-criteria-row__value">' + (row.met ? "✓" : "") + "</span>";
+
+      var track = document.createElement("div");
+
+      track.className = "ar-do-next-criteria-row__bar-track";
+
+      track.setAttribute("aria-hidden", "true");
+
+      var fill = document.createElement("div");
+
+      fill.className = "ar-do-next-criteria-row__bar-fill ar-do-next-criteria-row__bar-fill--" + (row.met ? "met" : "unmet");
+
+      fill.style.width = goalCriteriaBarPct(row) + "%";
+
+      track.appendChild(fill);
+
+      li.appendChild(head);
+
+      li.appendChild(track);
+
+      list.appendChild(li);
+
+    });
+
+    parent.appendChild(list);
+
+  }
+
+
+
   function isUpcomingBadge(badges, badgeKey){
 
     var next = getNextUnearnedBadge(badges);
@@ -4708,6 +4875,28 @@ function computeTrackFillPct(badges, progressPct) {
 
     tile.label = "4 - Goal: Next badge — " + next.label;
 
+    var badgePct = computeBadgeProgressForKey(
+
+      next.key,
+
+      stats,
+
+      activeDays,
+
+      engagementDegraded,
+
+      stats.totalModulesOpened,
+
+      MODULES_TOTAL
+
+    );
+
+    if (badgePct && typeof badgePct.pct === "number") {
+
+      tile.label += " — " + badgePct.pct + "%";
+
+    }
+
     tile.criteria = buildBadgeCriteriaContent(next.key, stats, activeDays, engagementDegraded);
 
     var rows = tile.criteria.type === "rows" ? tile.criteria.rows : [];
@@ -4764,7 +4953,7 @@ function computeTrackFillPct(badges, progressPct) {
 
       box.appendChild(eyebrow);
 
-      appendCriteriaContent(box, tile.criteria);
+      appendGoalCriteriaContent(box, tile.criteria);
 
       if (tile.trialLine) {
 
