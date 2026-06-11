@@ -23,6 +23,7 @@ const fnNames = [
   "countAppliedLearningOpenedFromJson",
   "mergeLongevityIntoStats",
   "buildGateContext",
+  "resolveGateActiveDays",
   "computeGateStats",
   "buildAcademyBadgeView",
 ];
@@ -74,9 +75,7 @@ function buildInjected(includeExamIds) {
     "  var foundationOpenedSet = opts.foundationOpenedSet || getFoundationOpenedSet(normalized);",
     "  var examInfo = opts.examInfo || parseExamProgress(examProgressData);",
     "  var gateStats = computeGateStats(normalized, foundationOpenedSet, examInfo, opts.preview || null);",
-    "  var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === \"number\"",
-    "    ? engagement.distinctActiveDaysFirst14d",
-    "    : 0;",
+    "  var activeDays = resolveGateActiveDays(engagement, 0);",
     "  var engagementDegraded = !engagement;",
     "  var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, foundationOpenedSet, engagement);",
     "  var gateContext = buildGateContext(engagement);",

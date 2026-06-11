@@ -1495,6 +1495,18 @@ function buildGateContext(engagement) {
   };
 }
 
+function resolveGateActiveDays(engagement, fallback) {
+  if (engagement && engagement.distinctActiveDaysFirst14d != null) {
+    var n = Number(engagement.distinctActiveDaysFirst14d);
+    if (!Number.isNaN(n)) return n;
+  }
+  if (fallback != null) {
+    var fb = Number(fallback);
+    if (!Number.isNaN(fb)) return fb;
+  }
+  return 0;
+}
+
 function computeGateStats(normalized, foundationOpenedSet, examInfo, preview) {
   var exposurePath = normalizePath(FOUNDATION_REQUIRED_MODULE_PATH);
   return {
@@ -1517,9 +1529,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
   var foundationOpenedSet = opts.foundationOpenedSet || getFoundationOpenedSet(normalized);
   var examInfo = opts.examInfo || parseExamProgress(examProgressData);
   var gateStats = computeGateStats(normalized, foundationOpenedSet, examInfo, opts.preview || null);
-  var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
-    ? engagement.distinctActiveDaysFirst14d
-    : 0;
+  var activeDays = resolveGateActiveDays(engagement, 0);
   var engagementDegraded = !engagement;
   var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, foundationOpenedSet, engagement);
   var gateContext = buildGateContext(engagement);

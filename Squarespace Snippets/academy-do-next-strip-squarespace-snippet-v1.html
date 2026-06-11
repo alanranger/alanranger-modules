@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.69 — FIX: Tile 4 + proximity/breakdown read canonical engagement distinctActiveDaysFirst14d (display cap at target when met).
 v1.3.68 — Certified requires paid conversion (synced gate logic; Practitioner last trial badge).
 v1.3.67 — Shared buildAcademyBadgeView with foundation module map (lib/academy-client-gate-view.js); stats cannot drift.
 v1.3.66 — FIX: mergeLongevityIntoStats now preserves module01Opened + compositionExamsPassed (Foundation was stuck at Enrolled).
@@ -3519,6 +3520,18 @@ function buildGateContext(engagement) {
   };
 }
 
+function resolveGateActiveDays(engagement, fallback) {
+  if (engagement && engagement.distinctActiveDaysFirst14d != null) {
+    var n = Number(engagement.distinctActiveDaysFirst14d);
+    if (!Number.isNaN(n)) return n;
+  }
+  if (fallback != null) {
+    var fb = Number(fallback);
+    if (!Number.isNaN(fb)) return fb;
+  }
+  return 0;
+}
+
 function computeGateStats(normalized, foundationOpenedSet, examInfo, preview) {
   var exposurePath = normalizePath(FOUNDATION_REQUIRED_MODULE_PATH);
   return {
@@ -3541,9 +3554,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
   var foundationOpenedSet = opts.foundationOpenedSet || getFoundationOpenedSet(normalized);
   var examInfo = opts.examInfo || parseExamProgress(examProgressData);
   var gateStats = computeGateStats(normalized, foundationOpenedSet, examInfo, opts.preview || null);
-  var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
-    ? engagement.distinctActiveDaysFirst14d
-    : 0;
+  var activeDays = resolveGateActiveDays(engagement, 0);
   var engagementDegraded = !engagement;
   var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, foundationOpenedSet, engagement);
   var gateContext = buildGateContext(engagement);
@@ -3625,7 +3636,21 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function buildBadgeCriteriaContent(stageKey, stats, activeDays, engagementDegraded){
+  function foundationActiveDaysDisplay(activeDays, engagementDegraded) {
+    var target = FOUNDATION_GATE.minActiveDays;
+    if (engagementDegraded) {
+      return { current: 0, target: target, met: false };
+    }
+    var n = safeNum(activeDays, 0);
+    var met = n >= target;
+    return {
+      current: met ? Math.min(n, target) : n,
+      target: target,
+      met: met,
+    };
+  }
+
+  function buildBadgeCriteriaContent(stageKey, stats, activeDays, engagementDegraded, engagement){
 
     if (stageKey === "enrolled") return { type: "soft", text: "Joined - automatic" };
 
@@ -3674,6 +3699,8 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
     }
 
     if (stageKey === "foundation") {
+      var gateActiveDays = resolveGateActiveDays(engagement, activeDays);
+      var activeDaysRow = foundationActiveDaysDisplay(gateActiveDays, engagementDegraded);
 
       return {
 
@@ -3685,7 +3712,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
           { label: "Modules opened", current: stats.foundationModulesOpened, target: FOUNDATION_GATE.minModules, met: stats.foundationModulesOpened >= FOUNDATION_GATE.minModules },
 
-          { label: "Active days", current: engagementDegraded ? 0 : activeDays, target: FOUNDATION_GATE.minActiveDays, met: !engagementDegraded && activeDays >= FOUNDATION_GATE.minActiveDays }
+          { label: "Active days", current: activeDaysRow.current, target: activeDaysRow.target, met: activeDaysRow.met }
 
         ]
 
@@ -4031,9 +4058,9 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function attachBadgeTooltip(item, circle, badgeKey, stats, activeDays, engagementDegraded, badges){
+  function attachBadgeTooltip(item, circle, badgeKey, stats, activeDays, engagementDegraded, badges, engagement){
 
-    var criteria = buildBadgeCriteriaContent(badgeKey, stats, activeDays, engagementDegraded);
+    var criteria = buildBadgeCriteriaContent(badgeKey, stats, activeDays, engagementDegraded, engagement);
 
     var trigger = document.createElement("button");
 
@@ -4135,7 +4162,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext, badges){
+  function buildBadgeRail(stats, activeDays, engagementDegraded, gateContext, badges, engagement){
 
     wireBadgeTooltipDismiss();
 
@@ -4167,7 +4194,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
       applyBadgeCircleStyle(circle, badge.colour, badge.earned, badge.key);
 
-      if (isUpcomingBadge(badges, badge.key)) attachBadgeTooltip(item, circle, badge.key, stats, activeDays, engagementDegraded, badges);
+      if (isUpcomingBadge(badges, badge.key)) attachBadgeTooltip(item, circle, badge.key, stats, activeDays, engagementDegraded, badges, engagement);
 
       else item.appendChild(circle);
 
@@ -4605,9 +4632,10 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function formatFoundationProximity(stats, activeDays, engagementDegraded){
+  function formatFoundationProximity(stats, activeDays, engagementDegraded, engagement){
 
     var safe = normaliseStats(stats);
+    var gateActiveDays = resolveGateActiveDays(engagement, activeDays);
 
     if (!safe.module01Opened) {
 
@@ -4625,7 +4653,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     }
 
-    var dayShort = Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+    var dayShort = Math.max(0, FOUNDATION_GATE.minActiveDays - gateActiveDays);
 
     if (!modShort && !dayShort) return "";
 
@@ -4843,7 +4871,9 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function computeMomentumRag(badges, stats, activeDays, engagementDegraded){
+  function computeMomentumRag(badges, stats, activeDays, engagementDegraded, engagement){
+
+    var gateActiveDays = resolveGateActiveDays(engagement, activeDays);
 
     var foundation = badges.filter(function(b){ return b.key === "foundation"; })[0];
 
@@ -4851,11 +4881,11 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
       var modShort = Math.max(0, FOUNDATION_GATE.minModules - stats.foundationModulesOpened);
 
-      var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
+      var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - gateActiveDays);
 
-      var proximity = formatFoundationProximity(stats, activeDays, engagementDegraded);
+      var proximity = formatFoundationProximity(stats, gateActiveDays, engagementDegraded, engagement);
 
-      if (!stats.module01Opened && (!activeDays || engagementDegraded)) {
+      if (!stats.module01Opened && (!gateActiveDays || engagementDegraded)) {
 
         return { state: "red", label: proximity || "Open module 01 Exposure to get started", color: RAG_COLORS.red };
 
@@ -5101,13 +5131,15 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     }
 
+    var gateActiveDays = resolveGateActiveDays(engagement, activeDays);
+
     var badgePct = computeBadgeProgressForKey(
 
       next.key,
 
       stats,
 
-      activeDays,
+      gateActiveDays,
 
       engagementDegraded,
 
@@ -5123,7 +5155,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     tile.badgePct = badgePct && typeof badgePct.pct === "number" ? badgePct.pct : 0;
 
-    tile.criteria = buildBadgeCriteriaContent(next.key, stats, activeDays, engagementDegraded);
+    tile.criteria = buildBadgeCriteriaContent(next.key, stats, gateActiveDays, engagementDegraded, engagement);
 
     var rows = tile.criteria.type === "rows" ? tile.criteria.rows : [];
 
@@ -5341,12 +5373,17 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
     });
     var gateStatsWithLongevity = badgeView.stats;
     var gateStats = badgeView.gateStats;
-    var badges = badgeView.badges;
-    var activeDays = badgeView.activeDays;
     var engagementDegraded = badgeView.engagementDegraded;
     var openedCount = badgeView.openedCount;
     var examsPassed = badgeView.examInfo.examsPassed;
     var gateContext = badgeView.gateContext;
+    var activeDays = resolveGateActiveDays(engagement, badgeView.activeDays);
+    var badges = badgeView.badges;
+    var progress = badgeView.progress;
+    if (activeDays !== badgeView.activeDays) {
+      badges = computeJourneyBadges(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+      progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+    }
 
     window.__arDoNextStripBadgeView = {
       badges: badges,
@@ -5361,11 +5398,9 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
       document.dispatchEvent(new CustomEvent("ar-do-next-badge-view-ready"));
     } catch (e) { /* ignore */ }
 
-    var progress = badgeView.progress;
+    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext, badges, engagement);
 
-    var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext, badges);
-
-    var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded);
+    var rag = computeMomentumRag(badgeRail.badges, gateStatsWithLongevity, activeDays, engagementDegraded, engagement);
 
     var pct = progress.pct;
 

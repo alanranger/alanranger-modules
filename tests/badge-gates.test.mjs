@@ -393,3 +393,10 @@ test("buildAcademyBadgeView matches strip stats pipeline", () => {
   assert.equal(view.progress.nextKey, "practitioner");
   assert.ok(view.progress.pct > 0);
 });
+
+test("resolveGateActiveDays prefers engagement distinctActiveDaysFirst14d", () => {
+  assert.equal(gateView.resolveGateActiveDays({ distinctActiveDaysFirst14d: 5 }, 1), 5);
+  assert.equal(gateView.resolveGateActiveDays({ distinctActiveDaysFirst14d: "5" }, 1), 5);
+  assert.equal(gateView.resolveGateActiveDays(null, 2), 2);
+  assert.equal(gateView.buildAcademyBadgeView({}, { distinctActiveDaysFirst14d: "5" }, null).activeDays, 5);
+});
