@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.41) — Squarespace Snippet
+Academy Dashboard UI (v1.3.42) — Squarespace Snippet
+v1.3.42: 4b modal — ensureBadgeRequirementsModal injects modal if HTML block missing; delegated click on badge progress mount.
 v1.3.41: HOTFIX — re-sync BADGE-GATES-SYNC (paths.every parse error in script block 3).
 v1.3.40: Badge requirements modal — Phase 2 gates (composition exams feed badges, combined pool, 190/270 points) + Summary column.
 v1.3.39: Badge requirements modal — add Foundation column (3 modules, 3 active days from FOUNDATION_GATE).
@@ -5046,7 +5047,7 @@ function computeTrackFillPct(badges, progressPct) {
     }
 
     function openBadgeRequirementsModal() {
-      var modal = document.getElementById("ar-badge-requirements-modal");
+      var modal = ensureBadgeRequirementsModal();
       if (!modal) return;
       renderBadgeRequirementsTable();
       modal.classList.add("is-open");
@@ -5060,7 +5061,39 @@ function computeTrackFillPct(badges, progressPct) {
       document.body.style.overflow = "";
     }
 
+    function ensureBadgeRequirementsModal() {
+      var modal = document.getElementById("ar-badge-requirements-modal");
+      if (modal) return modal;
+      modal = document.createElement("div");
+      modal.id = "ar-badge-requirements-modal";
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
+      modal.setAttribute("aria-labelledby", "ar-badge-requirements-title");
+      modal.innerHTML =
+        '<div class="ar-badge-req__card">' +
+        '<button type="button" class="ar-badge-req__close" id="ar-badge-requirements-close" aria-label="Close">&times;</button>' +
+        '<h2 id="ar-badge-requirements-title">Badge requirements</h2>' +
+        '<p class="ar-badge-req__sub">Requirements for each badge stage. Cells show the target for that stage — not your personal progress.</p>' +
+        '<div id="ar-badge-requirements-body"></div>' +
+        '<p class="ar-badge-req__footnote">Graduate and Master are points-gated (190 / 270) via weighted longevity — applied&times;2, packs&times;2, assignments&times;4, months&times;7. Cells show targets, not your personal progress.</p>' +
+        "</div>";
+      document.body.appendChild(modal);
+      badgeRequirementsModalReady = false;
+      return modal;
+    }
+
     function wireBadgeRequirementsModal() {
+      ensureBadgeRequirementsModal();
+      var mount = document.getElementById("ar-dashboard-badge-progress");
+      if (mount && !mount.__arBadgeReqClickBound) {
+        mount.__arBadgeReqClickBound = true;
+        mount.addEventListener("click", function(evt) {
+          var btn = evt.target && evt.target.closest ? evt.target.closest("#ar-badge-requirements-open") : null;
+          if (!btn) return;
+          evt.preventDefault();
+          openBadgeRequirementsModal();
+        });
+      }
       var openBtn = document.getElementById("ar-badge-requirements-open");
       if (openBtn && !openBtn.__arWired) {
         openBtn.__arWired = true;
@@ -5070,15 +5103,22 @@ function computeTrackFillPct(badges, progressPct) {
       badgeRequirementsModalReady = true;
       var modal = document.getElementById("ar-badge-requirements-modal");
       var closeBtn = document.getElementById("ar-badge-requirements-close");
-      if (closeBtn) closeBtn.addEventListener("click", closeBadgeRequirementsModal);
-      if (modal) {
+      if (closeBtn && !closeBtn.__arWired) {
+        closeBtn.__arWired = true;
+        closeBtn.addEventListener("click", closeBadgeRequirementsModal);
+      }
+      if (modal && !modal.__arBackdropWired) {
+        modal.__arBackdropWired = true;
         modal.addEventListener("click", function(evt) {
           if (evt.target === modal) closeBadgeRequirementsModal();
         });
       }
-      document.addEventListener("keydown", function(evt) {
-        if (evt.key === "Escape") closeBadgeRequirementsModal();
-      });
+      if (!window.__arBadgeReqEscapeWired) {
+        window.__arBadgeReqEscapeWired = true;
+        document.addEventListener("keydown", function(evt) {
+          if (evt.key === "Escape") closeBadgeRequirementsModal();
+        });
+      }
     }
 
     function getExamSummaryForMembershipStats() {
