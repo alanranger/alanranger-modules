@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.59 — Dispatch ar-do-next-badge-view-ready when gate snapshot updates (fixes dashboard 4a loading race).
 v1.3.58 — Expose __arDoNextStripBadgeView for dashboard badge progress strip (4a) + requirements modal (4b).
 v1.3.57 — Fix A: pdfAssignmentsOpened uses Math.max(live, engagement) — stale cache cannot zero Practitioner count; expose __arDoNextStripRefresh for dashboard assignment opens.
 v1.3.56 — Runtime align journey strip inner to dashboard column (fixes legacy gutter / viewport drift).
@@ -2861,8 +2862,6 @@ var MASTER_TARGETS = {
 
 var KEEPALIVE_DECAY_DAYS = 60;
 
-
-
 function safeNum(value, fallback) {
   return typeof value === "number" && !Number.isNaN(value) ? value : fallback;
 }
@@ -4896,6 +4895,9 @@ function computeTrackFillPct(badges, progressPct) {
       modulesTotal: MODULES_TOTAL,
       hasConverted: !!(gateContext && gateContext.hasConverted)
     };
+    try {
+      document.dispatchEvent(new CustomEvent("ar-do-next-badge-view-ready"));
+    } catch (e) { /* ignore */ }
 
     var progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
 

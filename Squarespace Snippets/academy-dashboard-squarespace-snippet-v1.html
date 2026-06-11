@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.34) — Squarespace Snippet
+Academy Dashboard UI (v1.3.35) — Squarespace Snippet
+v1.3.35: Fix 4a stuck on “Badge progress loading…” — path length stubs in BADGE-GATES-SYNC + listen for ar-do-next-badge-view-ready.
 v1.3.34: Badge progress strip (4a) + badge requirements modal (4b) — display-only; reads do-next strip gate stats.
 v1.3.33: Membership Status — exam stats out of 30 (both tracks), summed attempts; last 5 logins one per day (latest time that day).
 v1.3.32: Composition exam pills use same green/red/grey status colours as Foundation (removed ar-exam-module-pill--gold overrides).
@@ -4335,7 +4336,10 @@ var MASTER_TARGETS = {
 
 var KEEPALIVE_DECAY_DAYS = 60;
 
-
+  // Path length stubs for synced gate maths (strip defines full path arrays separately).
+var CAMERA_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.cameraModules };
+var COMPOSITION_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.compositionGuides };
+var PDF_ASSIGNMENT_PATHS = { length: BADGE_SECTION_TOTALS.pdfAssignments };
 
 function safeNum(value, fallback) {
   return typeof value === "number" && !Number.isNaN(value) ? value : fallback;
@@ -4751,10 +4755,15 @@ function computeTrackFillPct(badges, progressPct) {
     function scheduleBadgeProgressRefresh() {
       for (var i = 0; i < badgeProgressTimers.length; i++) clearTimeout(badgeProgressTimers[i]);
       badgeProgressTimers = [];
-      var delays = [0, 400, 1200, 3000, 6500];
+      var delays = [0, 400, 1200, 3000, 6500, 10000, 15000];
       for (var j = 0; j < delays.length; j++) {
         badgeProgressTimers.push(setTimeout(renderBadgeProgressStrip, delays[j]));
       }
+    }
+
+    if (!window.__arBadgeProgressViewListener) {
+      window.__arBadgeProgressViewListener = true;
+      document.addEventListener("ar-do-next-badge-view-ready", renderBadgeProgressStrip);
     }
 
     function formatReqCell(met, value) {

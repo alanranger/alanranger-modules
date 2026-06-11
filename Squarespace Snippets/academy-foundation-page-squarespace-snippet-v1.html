@@ -1113,7 +1113,10 @@ var MASTER_TARGETS = {
 
 var KEEPALIVE_DECAY_DAYS = 60;
 
-
+  // Path length stubs for synced gate maths (strip defines full path arrays separately).
+var CAMERA_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.cameraModules };
+var COMPOSITION_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.compositionGuides };
+var PDF_ASSIGNMENT_PATHS = { length: BADGE_SECTION_TOTALS.pdfAssignments };
 
 function safeNum(value, fallback) {
   return typeof value === "number" && !Number.isNaN(value) ? value : fallback;

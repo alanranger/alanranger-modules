@@ -113,16 +113,29 @@ function requireLib() {
 }
 
 const lib = requireLib();
-const injected = [
-  BEGIN,
-  "  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)",
-  ...gateConsts.map((c) => c.replace(/^const /, "var ").replace(/^var var /, "var ")),
-  "",
-  ...fnNames.map((name) => toStripFn(extractFunction(lib, name))),
-  END,
-].join("\n\n");
 
-function syncFile(filePath, label) {
+const pathLengthStubs = [
+  "  // Path length stubs for synced gate maths (strip defines full path arrays separately).",
+  "var CAMERA_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.cameraModules };",
+  "var COMPOSITION_MODULE_PATHS = { length: BADGE_SECTION_TOTALS.compositionGuides };",
+  "var PDF_ASSIGNMENT_PATHS = { length: BADGE_SECTION_TOTALS.pdfAssignments };",
+].join("\n");
+
+function buildInjected(includePathStubs) {
+  return [
+    BEGIN,
+    "  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)",
+    ...gateConsts.map((c) => c.replace(/^const /, "var ").replace(/^var var /, "var ")),
+    includePathStubs ? pathLengthStubs : "",
+    "",
+    ...fnNames.map((name) => toStripFn(extractFunction(lib, name))),
+    END,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function syncFile(filePath, label, includePathStubs) {
   const content = fs.readFileSync(filePath, "utf8");
   const beginIdx = content.indexOf(BEGIN);
   const endIdx = content.indexOf(END);
@@ -130,11 +143,14 @@ function syncFile(filePath, label) {
     console.error(`${label} missing BADGE-GATES-SYNC markers`);
     process.exit(1);
   }
-  const updated = content.slice(0, beginIdx) + injected + content.slice(endIdx + END.length);
+  const updated =
+    content.slice(0, beginIdx) +
+    buildInjected(includePathStubs) +
+    content.slice(endIdx + END.length);
   fs.writeFileSync(filePath, updated, "utf8");
   console.log(`OK: synced badge gate logic into ${label}`);
 }
 
-syncFile(STRIP_SNIPPET, "strip");
-syncFile(FOUNDATION_SNIPPET, "foundation page");
-syncFile(DASHBOARD_SNIPPET, "dashboard");
+syncFile(STRIP_SNIPPET, "strip", false);
+syncFile(FOUNDATION_SNIPPET, "foundation page", true);
+syncFile(DASHBOARD_SNIPPET, "dashboard", true);
