@@ -53,13 +53,13 @@
     {
       "question": "\"Framing\" as a composition technique means…",
       "options": [
-        "Using elements in the scene (arches, branches, light) to create a frame around the subject",
         "Printing the photo with a border",
         "Cropping to a square aspect ratio",
+        "Controlling everything inside the four edges to lead the eye — not just shooting through a doorway or arch",
         "Setting the camera to its widest focal length"
       ],
-      "correct": 0,
-      "reviewHint": "Framing uses elements within the scene - architecture, trees, light and shadow - to surround and emphasise the subject."
+      "correct": 2,
+      "reviewHint": "Framing is the craft of controlling what's inside the frame; the frame-within-a-frame (a doorway or arch) is one minor option, not the definition."
     },
     {
       "question": "Negative space in a composition refers to…",

@@ -7,114 +7,114 @@
   },
   "questions": [
     {
-      "question": "In photography, \"framing\" as a composition technique means…",
+      "question": "What does \"framing\" really mean in photography, as taught here?",
       "options": [
-        "Using elements within the scene to surround and draw attention to the subject",
+        "Shooting your subject through a doorway, arch or gap in the branches",
+        "Controlling everything inside your four edges — what's in, what's out, and how it relates",
         "Adding a printed border to the final image",
-        "Locking the exposure before you recompose",
-        "Choosing the file format before shooting"
+        "Locking exposure before you recompose"
       ],
-      "correct": 0,
-      "reviewHint": "Framing uses elements in the scene itself to create a 'frame within the frame' around the subject."
+      "correct": 1,
+      "reviewHint": "Framing is the craft of deciding what sits inside the frame and how it works together — not one trick."
     },
     {
-      "question": "Which of these is a classic example of a natural frame?",
+      "question": "The single most useful framing habit for a beginner is to…",
       "options": [
-        "Overhanging tree branches around the subject",
-        "A fast shutter speed",
-        "A high ISO setting",
-        "A polarising filter"
+        "Always find an archway to shoot through",
+        "Place the subject dead centre every time",
+        "Run your eye round all four edges before shooting, clearing mergers and distractions",
+        "Use the widest lens you own"
       ],
-      "correct": 0,
-      "reviewHint": "Natural elements like branches, foliage or rock openings make effective frames."
+      "correct": 2,
+      "reviewHint": "Checking the edges for mergers, bright distractions and half-cut objects is the habit worth making automatic."
     },
     {
-      "question": "An archway or doorway used to frame a subject is an example of…",
+      "question": "Before anything else, a strong frame needs…",
       "options": [
-        "Architectural framing",
-        "Spot metering",
-        "Focus bracketing",
-        "Chromatic aberration"
+        "A frame-within-a-frame element",
+        "A clear subject — you can name what the photo is of",
+        "The highest possible megapixel count",
+        "A fast shutter speed"
       ],
-      "correct": 0,
-      "reviewHint": "Architectural structures - arches, doorways, windows - are commonly used as frames."
+      "correct": 1,
+      "reviewHint": "Decide what the photograph is of first; everything else serves the subject."
     },
     {
-      "question": "Besides solid objects, what else can be used to frame a subject?",
+      "question": "\"Balance\" in framing is best understood as…",
       "options": [
-        "Light and shadow",
-        "A higher megapixel count",
-        "A longer exposure time only",
-        "The camera's drive mode"
+        "Keeping the camera level on a tripod",
+        "Setting equal aperture and shutter values",
+        "Always centring the subject",
+        "The distribution of visual weight — a matter of feel you can deliberately break"
       ],
-      "correct": 0,
-      "reviewHint": "Light and shadow can frame a subject just as physical elements can."
+      "correct": 3,
+      "reviewHint": "Balance is feel, not symmetry — once you can feel it, deliberate imbalance becomes a tool."
     },
     {
-      "question": "One of the main benefits of framing is that it…",
+      "question": "What is the role of the \"frame-within-a-frame\" (a doorway or arch) in good framing?",
       "options": [
-        "Adds a sense of depth to the image",
-        "Increases the dynamic range of the sensor",
-        "Reduces noise at high ISO",
-        "Speeds up autofocus"
+        "The definition of framing itself",
+        "One minor optional technique — useful when it quietly does the real jobs, not the headline",
+        "A required element in every well-framed photo",
+        "The first thing to look for in any scene"
       ],
-      "correct": 0,
-      "reviewHint": "Framing adds depth and a feeling of looking 'into' the scene toward the subject."
+      "correct": 1,
+      "reviewHint": "Use it when it genuinely helps; don't let hunting for an arch override a strong subject."
     },
     {
-      "question": "Framing also helps a photograph by…",
+      "question": "Your subject should usually be…",
       "options": [
-        "Directing the viewer's attention to the main subject",
-        "Making colours more saturated",
-        "Widening the angle of view",
-        "Lowering the f-number automatically"
+        "The darkest object in the scene",
+        "Always smaller than the frame element",
+        "The strongest thing in the frame, unless you decide otherwise",
+        "Placed outside the frame"
       ],
-      "correct": 0,
-      "reviewHint": "A frame guides the eye straight to the subject it surrounds."
+      "correct": 2,
+      "reviewHint": "Watch that nothing brighter, sharper or louder steals the eye from your subject."
     },
     {
-      "question": "When choosing a framing element, a key best practice is to…",
+      "question": "\"Pathways\" in a frame (lines, light, repeated shapes) are used to…",
       "options": [
-        "Make sure it relates to the subject and doesn't overpower it",
-        "Always make it brighter than the subject",
-        "Place it only in the centre of the frame",
-        "Use the longest lens you own"
+        "Add a printed border",
+        "Carry the eye toward the subject — leading lines are one kind, not a rule",
+        "Increase dynamic range",
+        "Freeze motion"
       ],
-      "correct": 0,
-      "reviewHint": "The frame should complement the subject, not compete with or distract from it."
+      "correct": 1,
+      "reviewHint": "Pathways guide attention; sometimes you want the viewer to wander instead."
     },
     {
-      "question": "A risk to avoid when framing is…",
+      "question": "A supporting element (foreground, background, props) earns its place if it…",
       "options": [
-        "Letting the frame become so dominant it hides or distracts from the subject",
-        "Using too small an aperture",
-        "Shooting in RAW",
-        "Keeping the horizon level"
+        "Is brighter than the subject",
+        "Fills every empty corner",
+        "Is always a natural frame",
+        "Adds context, depth, a pathway or balance — otherwise remove it"
       ],
-      "correct": 0,
-      "reviewHint": "If the framing element overpowers the subject, it works against the composition."
+      "correct": 3,
+      "reviewHint": "Keep asking what each element is doing; lose it if the answer is \"nothing\"."
     },
     {
-      "question": "Framing is especially useful for…",
+      "question": "Tonal or contrast \"breaks\" in a frame should be…",
       "options": [
-        "Enhancing storytelling and adding context around the subject",
-        "Freezing fast motion",
-        "Fixing white balance in mixed light",
-        "Reducing camera shake"
+        "Always removed completely",
+        "Noticed and judged — do they help or pull the eye off the subject?",
+        "Always placed in the centre",
+        "Ignored entirely"
       ],
-      "correct": 0,
-      "reviewHint": "A frame can add narrative context and depth, strengthening the visual story."
+      "correct": 1,
+      "reviewHint": "A strong break is sometimes the whole point; notice it and decide on purpose."
     },
     {
-      "question": "To keep the subject clear when using a frame, you should…",
+      "question": "Why learn these framing habits at all?",
       "options": [
-        "Maintain enough separation and focus so the subject stays the clear point of interest",
-        "Always blur the subject slightly",
-        "Frame with the brightest object available",
-        "Place the subject outside the frame"
+        "So you can apply them as fixed rules forever",
+        "So every photo has an archway in it",
+        "So you never have to check the edges again",
+        "So they become instinct — and you can break them deliberately, knowing why"
       ],
-      "correct": 0,
-      "reviewHint": "Keep the subject distinct and well-focused so the frame supports rather than competes with it."
+      "correct": 3,
+      "reviewHint": "Rules you've absorbed are the ones you get to break well — that's framing as a craft."
     }
   ]
 }
