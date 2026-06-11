@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { STRIP_SNIPPET, FOUNDATION_SNIPPET } from "./snippet-paths.mjs";
+import { STRIP_SNIPPET, FOUNDATION_SNIPPET, DASHBOARD_SNIPPET } from "./snippet-paths.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -36,6 +36,7 @@ const fnNames = [
   "graduateRequirementsMet",
   "masterRequirementsMet",
   "componentRatio",
+  "computeBadgeProgressForKey",
   "computeNextBadgeProgress",
   "computeTrackFillPct",
 ];
@@ -94,6 +95,8 @@ function extractConstBlock(source, name) {
 }
 
 const gateConsts = [
+  "FOUNDATION_EXAMS_TOTAL",
+  "BADGE_SECTION_TOTALS",
   "FOUNDATION_GATE",
   "PRACTITIONER_GATE",
   "CERTIFIED_GATE",
@@ -134,3 +137,4 @@ function syncFile(filePath, label) {
 
 syncFile(STRIP_SNIPPET, "strip");
 syncFile(FOUNDATION_SNIPPET, "foundation page");
+syncFile(DASHBOARD_SNIPPET, "dashboard");

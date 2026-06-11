@@ -11,23 +11,35 @@ import { fileURLToPath } from "url";
 const require = createRequire(import.meta.url);
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gates = require(path.join(root, "lib/academy-badge-gates.js"));
+const modulePaths = require(path.join(root, "lib/academy-module-paths.js"));
+const longevity = require(path.join(root, "lib/academy-longevity-stats.js"));
 
 const {
   CAMERA_MODULE_PATHS,
   COMPOSITION_MODULE_PATHS,
+  PDF_ASSIGNMENT_PATHS,
+  PRACTICE_PACK_URLS,
+  FOUNDATION_MODULE_PATHS,
+} = modulePaths;
+
+const {
   GRADUATE_TARGETS,
   MASTER_TARGETS,
   KEEPALIVE_DECAY_DAYS,
   JOURNEY_STAGES,
+  BADGE_SECTION_TOTALS,
   evaluateBadges,
   computeLongevityPoints,
   getCurrentStage,
   getNextUnearnedBadge,
   graduateRequirementsMet,
   masterRequirementsMet,
+  computeBadgeProgressForKey,
   computeNextBadgeProgress,
   computeTrackFillPct,
 } = gates;
+
+const APPLIED_LEARNING_TOTAL = longevity.APPLIED_LEARNING_TOTAL;
 
 const DAY_MS = 86400000;
 
@@ -401,4 +413,30 @@ test("27. all badges earned -> track fill 100%", () => {
   const stats = masterCountsStats();
   const result = evaluateBadges(stats, 10, false, paidContext());
   assert.equal(computeTrackFillPct(result.badges, 100), 100);
+});
+
+test("28. BADGE_SECTION_TOTALS match academy-module-paths lengths", () => {
+  assert.equal(BADGE_SECTION_TOTALS.cameraModules, CAMERA_MODULE_PATHS.length);
+  assert.equal(BADGE_SECTION_TOTALS.compositionGuides, COMPOSITION_MODULE_PATHS.length);
+  assert.equal(BADGE_SECTION_TOTALS.foundationModules, FOUNDATION_MODULE_PATHS.length);
+  assert.equal(BADGE_SECTION_TOTALS.pdfAssignments, PDF_ASSIGNMENT_PATHS.length);
+  assert.equal(BADGE_SECTION_TOTALS.appliedLearning, APPLIED_LEARNING_TOTAL);
+  assert.equal(BADGE_SECTION_TOTALS.practicePacks, PRACTICE_PACK_URLS.length);
+});
+
+test("29. computeBadgeProgressForKey — later badge can exceed current (non-linear)", () => {
+  const stats = fixtureStats({
+    foundationModulesOpened: 30,
+    cameraOpened: CAMERA_MODULE_PATHS.length,
+    compositionOpened: COMPOSITION_MODULE_PATHS.length,
+    pdfAssignmentsOpened: 5,
+    totalModulesOpened: 30,
+    examsPassed: 5,
+    appliedLearningOpened: 14,
+    practicePacksOpened: 9,
+    distinctActiveMonthsAllTime: 4,
+  });
+  const practitioner = computeBadgeProgressForKey("practitioner", stats, 10, false, 30, 60);
+  const graduate = computeBadgeProgressForKey("graduate", stats, 10, false, 30, 60);
+  assert.ok(graduate.pct > practitioner.pct);
 });

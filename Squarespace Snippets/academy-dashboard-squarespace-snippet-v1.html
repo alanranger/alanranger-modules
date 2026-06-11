@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.33) — Squarespace Snippet
+Academy Dashboard UI (v1.3.34) — Squarespace Snippet
+v1.3.34: Badge progress strip (4a) + badge requirements modal (4b) — display-only; reads do-next strip gate stats.
 v1.3.33: Membership Status — exam stats out of 30 (both tracks), summed attempts; last 5 logins one per day (latest time that day).
 v1.3.32: Composition exam pills use same green/red/grey status colours as Foundation (removed ar-exam-module-pill--gold overrides).
 v1.3.31: Cert 2 Stage 3 — exams tile summary chips sum foundation + composition_creative tracks (combined passed/failed/not started).
@@ -303,6 +304,19 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     html.ar-academy .ar-academy-dashboard__tiles-help-metrics {
       flex: 1 1 280px;
       min-width: 0;
+    }
+    html.ar-academy .ar-academy-dashboard__badge-progress {
+      flex: 0 1 240px;
+      min-width: 190px;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      padding: 8px 10px;
+      background: #0e0e0e;
+      border: 1px solid var(--ar-border);
+      border-radius: 10px;
     }
     html.ar-academy .ar-academy-dashboard__tiles-help-lead .ar-academy-dashboard__course-cta {
       flex: 0 0 auto;
@@ -1823,6 +1837,197 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   }
   #ar-upgrade-banner .ar-upgrade-banner__cta:hover { background: #fef3c7; }
 
+  html.ar-academy .ar-catalog-foot {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--ar-text-muted);
+    text-align: left;
+  }
+
+  /* Badge progress strip (4a) + requirements modal (4b) — reuse existing journey tokens */
+  html.ar-academy .ar-badge-progress__bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 72px;
+  }
+  html.ar-academy .ar-badge-progress__bar {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  html.ar-academy .ar-badge-progress__track {
+    width: 100%;
+    max-width: 34px;
+    height: 56px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+  html.ar-academy .ar-badge-progress__fill {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    transition: height 0.25s ease;
+  }
+  html.ar-academy .ar-badge-progress__fill--earned {
+    background: #166534;
+  }
+  html.ar-academy .ar-badge-progress__fill--current {
+    background: var(--ar-brand);
+  }
+  html.ar-academy .ar-badge-progress__fill--future {
+    background: repeating-linear-gradient(135deg, #166534 0, #166534 5px, #142819 5px, #142819 10px);
+  }
+  html.ar-academy .ar-badge-progress__fill--master-future {
+    background: repeating-linear-gradient(135deg, var(--ar-gold) 0, var(--ar-gold) 5px, #92400e 5px, #92400e 10px);
+  }
+  html.ar-academy .ar-badge-progress__label {
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ar-text-muted);
+    text-align: center;
+    word-break: break-word;
+  }
+  html.ar-academy .ar-badge-progress__label strong {
+    color: var(--ar-text);
+    font-weight: 800;
+  }
+  html.ar-academy .ar-badge-progress__link-wrap {
+    margin-top: 2px;
+    text-align: right;
+  }
+  html.ar-academy .ar-badge-progress__link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ar-brand);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  html.ar-academy .ar-badge-progress__link:hover,
+  html.ar-academy .ar-badge-progress__link:focus-visible {
+    text-decoration: underline;
+    outline: none;
+  }
+
+  #ar-badge-requirements-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(4px);
+  }
+  #ar-badge-requirements-modal.is-open { display: flex; }
+  #ar-badge-requirements-modal .ar-badge-req__card {
+    background: #0e0e0e;
+    color: var(--ar-text);
+    max-width: 760px;
+    width: 100%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    border: 1px solid var(--ar-border);
+    border-radius: 14px;
+    padding: 24px 20px 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    position: relative;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 50%;
+    color: #e2e8f0;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #ar-badge-requirements-modal h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: var(--ar-brand);
+  }
+  #ar-badge-requirements-modal .ar-badge-req__sub {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    color: var(--ar-text-muted);
+    line-height: 1.45;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    border: 1px solid var(--ar-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table th,
+  #ar-badge-requirements-modal .ar-badge-req__table td {
+    padding: 8px 10px;
+    border-top: 1px solid rgba(55, 65, 81, 0.75);
+    vertical-align: middle;
+    text-align: center;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table thead th {
+    background: rgba(55, 65, 81, 0.45);
+    color: var(--ar-brand);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-top: none;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table tbody tr:first-child td,
+  #ar-badge-requirements-modal .ar-badge-req__table tbody tr:first-child th {
+    border-top: none;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table .ar-badge-req__feature {
+    text-align: left;
+    color: var(--ar-text);
+    font-weight: 650;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__table .ar-badge-req__parallel td {
+    text-align: center;
+    font-style: italic;
+    color: var(--ar-text-muted);
+    background: rgba(15, 23, 42, 0.55);
+  }
+  #ar-badge-requirements-modal .ar-badge-req__tick {
+    color: #166534;
+    font-weight: 900;
+    font-size: 15px;
+  }
+  #ar-badge-requirements-modal .ar-badge-req__footnote {
+    margin: 12px 0 0 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--ar-text-muted);
+  }
+
   #ar-upgrade-modal {
     display: none;
     position: fixed;
@@ -2103,6 +2308,12 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             href="https://www.alanranger.com/academy/online-photography-course/"
           >&#8250;&#8250; Browse the Modules &#8250;&#8250;</a>
         </div>
+        <div
+          class="ar-academy-dashboard__badge-progress"
+          id="ar-dashboard-badge-progress"
+          aria-label="Badge progress by stage"
+          aria-live="polite"
+        ></div>
         <div
           class="ar-academy-dashboard__tiles-help-metrics"
           id="ar-dashboard-catalog-summary"
@@ -2676,6 +2887,16 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   <!-- ===========================
   END: AR | DASHBOARD: EXPIRED-TRIAL UPGRADE
   =========================== -->
+
+  <div id="ar-badge-requirements-modal" role="dialog" aria-modal="true" aria-labelledby="ar-badge-requirements-title">
+    <div class="ar-badge-req__card">
+      <button type="button" class="ar-badge-req__close" id="ar-badge-requirements-close" aria-label="Close">&times;</button>
+      <h2 id="ar-badge-requirements-title">Badge requirements</h2>
+      <p class="ar-badge-req__sub">Targets for each badge stage. Green ticks show what you have already met on your account.</p>
+      <div id="ar-badge-requirements-body"></div>
+      <p class="ar-badge-req__footnote">Graduate and Master are points-gated (98 / 163) via weighted longevity — applied&times;2, packs&times;2, assignments&times;4, months&times;7. Rows show targets, not hard cut-offs for each line alone.</p>
+    </div>
+  </div>
 
   <script>
   (function(){
@@ -4051,6 +4272,635 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       });
     }
 
+    // BEGIN BADGE-GATES-SYNC
+
+  // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)
+
+var FOUNDATION_EXAMS_TOTAL = 15;
+
+var BADGE_SECTION_TOTALS = {
+  cameraModules: 15,
+  compositionGuides: 10,
+  foundationModules: 60,
+  pdfAssignments: 15,
+  foundationExams: FOUNDATION_EXAMS_TOTAL,
+  compositionExams: FOUNDATION_EXAMS_TOTAL,
+  appliedLearning: 40,
+  practicePacks: 30,
+};
+
+var FOUNDATION_GATE = {
+  minModules: 3,
+  minActiveDays: 3,
+  bonusModules: 6,
+  bonusActiveDays: 5,
+};
+
+var PRACTITIONER_GATE = {
+  requireAllCamera: true,
+  requireAllComposition: true,
+  minPdfAssignments: 3,
+  minExamsPassed: 8,
+};
+
+var CERTIFIED_GATE = {
+  requireAllExamsPassed: true,
+  minModulesOpened: 30,
+};
+
+var POINTS_WEIGHTS = {
+  appliedLearning: 2,
+  practicePack: 2,
+  pdfAssignment: 4,
+  activeMonth: 7,
+};
+
+var GRADUATE_GATE = { minPoints: 98 };
+
+var MASTER_GATE = { minPoints: 163 };
+
+var GRADUATE_TARGETS = {
+  appliedLearning: 15,
+  practicePacks: 10,
+  pdfAssignments: 5,
+  activeMonths: 4,
+};
+
+var MASTER_TARGETS = {
+  appliedLearning: 22,
+  practicePacks: 17,
+  pdfAssignments: 9,
+  activeMonths: 7,
+};
+
+var KEEPALIVE_DECAY_DAYS = 60;
+
+
+
+function safeNum(value, fallback) {
+  return typeof value === "number" && !Number.isNaN(value) ? value : fallback;
+}
+
+function normaliseStats(raw) {
+  var stats = raw || {};
+  return {
+    foundationModulesOpened: safeNum(stats.foundationModulesOpened, 0),
+    cameraOpened: safeNum(stats.cameraOpened, 0),
+    compositionOpened: safeNum(stats.compositionOpened, 0),
+    pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
+    totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
+    examsPassed: safeNum(stats.examsPassed, 0),
+    appliedLearningOpened: stats.appliedLearningOpened == null ? null : safeNum(stats.appliedLearningOpened, 0),
+    practicePacksOpened: stats.practicePacksOpened == null ? null : safeNum(stats.practicePacksOpened, 0),
+    distinctActiveMonthsAllTime:
+      stats.distinctActiveMonthsAllTime == null ? null : safeNum(stats.distinctActiveMonthsAllTime, 0),
+  };
+}
+
+function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded) {
+  if (modulesOpened < FOUNDATION_GATE.minModules) return false;
+  if (engagementDegraded) return true;
+  return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
+}
+
+function isPractitionerGateEarned(stats) {
+  if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) {
+    return false;
+  }
+  if (
+    PRACTITIONER_GATE.requireAllComposition &&
+    stats.compositionOpened < COMPOSITION_MODULE_PATHS.length
+  ) {
+    return false;
+  }
+  if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
+  if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
+  return true;
+}
+
+function isCertifiedGateEarned(stats) {
+  if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
+  if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+  return true;
+}
+
+function isLongevityDegraded(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened == null ||
+    safe.practicePacksOpened == null ||
+    safe.distinctActiveMonthsAllTime == null
+  );
+}
+
+function computeLongevityPoints(stats) {
+  var safe = normaliseStats(stats);
+  return (
+    safe.appliedLearningOpened * POINTS_WEIGHTS.appliedLearning +
+    safe.practicePacksOpened * POINTS_WEIGHTS.practicePack +
+    safe.pdfAssignmentsOpened * POINTS_WEIGHTS.pdfAssignment +
+    safe.distinctActiveMonthsAllTime * POINTS_WEIGHTS.activeMonth
+  );
+}
+
+function warnLongevityDegraded() {
+  if (console.warn) {
+    console.warn("[badge-gates] engagementDegraded: Graduate/Master blocked (longevity fields missing)");
+  }
+}
+
+function isGraduateGateEarned(stats, hasConverted, engagementDegraded) {
+  if (!hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= GRADUATE_GATE.minPoints;
+}
+
+function isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded) {
+  if (!graduateEarned || !hasConverted) return false;
+  if (engagementDegraded || isLongevityDegraded(stats)) {
+    warnLongevityDegraded();
+    return false;
+  }
+  return computeLongevityPoints(stats) >= MASTER_GATE.minPoints;
+}
+
+function daysSinceActivity(lastActivityAt, nowMs) {
+  if (!lastActivityAt) return Infinity;
+  var t = new Date(lastActivityAt).getTime();
+  if (Number.isNaN(t)) return Infinity;
+  var DAY_MS_LOCAL = 86400000;
+  return Math.floor((nowMs - t) / DAY_MS_LOCAL);
+}
+
+function isSummitBadgePaused(earned, badgeKey, lastActivityAt, nowMs) {
+  if (!earned || (badgeKey !== "graduate" && badgeKey !== "master")) return false;
+  return daysSinceActivity(lastActivityAt, nowMs) >= KEEPALIVE_DECAY_DAYS;
+}
+
+function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gateContext) {
+  var ctx = gateContext || {};
+  var hasConverted = ctx.hasConverted === true;
+  var graduateEarned = ctx.graduateEarned === true;
+
+  if (stage.alwaysEarned) return true;
+  if (stage.foundationGate) {
+    return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
+  }
+  if (stage.practitionerGate) return isPractitionerGateEarned(stats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(stats);
+  if (stage.graduateGate) return isGraduateGateEarned(stats, hasConverted, engagementDegraded);
+  if (stage.masterGate) return isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded);
+  if (stage.minExams) return stats.examsPassed >= stage.minExams;
+  return false;
+}
+
+function computeJourneyBadges(stats, activeDays, engagementDegraded, gateContext) {
+  var safeStats = normaliseStats(stats);
+  var safeDays = safeNum(activeDays, 0);
+  var degraded = engagementDegraded === true;
+  var ctx = gateContext || {};
+  var nowMs = typeof ctx.nowMs === "number" ? ctx.nowMs : Date.now();
+  var canEarnHigher = true;
+  var graduateEarned = false;
+
+  return JOURNEY_STAGES.map(function(stage){
+    var earned = false;
+    var stageCtx = Object.assign({}, ctx, { graduateEarned });
+    if (canEarnHigher) {
+      earned = isStageConditionsMet(stage, safeStats, safeDays, degraded, stageCtx);
+      if (!earned) canEarnHigher = false;
+    }
+    if (stage.key === "graduate" && earned) graduateEarned = true;
+    var paused = isSummitBadgePaused(earned, stage.key, ctx.lastActivityAt, nowMs);
+    return {
+      key: stage.key,
+      label: stage.label,
+      earned,
+      paused: paused === true,
+      colour: stage.colour,
+      stars: stage.stars,
+      iconClass: stage.iconClass,
+      sublabel: stage.sublabel,
+    };
+  });
+}
+
+function getHighestConsecutiveEarned(badges) {
+  var current = badges[0];
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) current = badges[i];
+    else break;
+  }
+  return current;
+}
+
+function getCurrentStage(badges) {
+  var current = getHighestConsecutiveEarned(badges);
+  return {
+    key: current.key,
+    label: current.label,
+    levelIndex: JOURNEY_STAGES.findIndex(function(s){ return s.key === current.key; }) + 1,
+    levelTotal: JOURNEY_STAGES.length,
+    colour: current.colour,
+    stars: current.stars,
+    iconClass: current.iconClass,
+    sublabel: current.sublabel,
+    paused: current.paused === true,
+  };
+}
+
+function getNextUnearnedBadge(badges) {
+  for (var i = 0; i < badges.length; i += 1) {
+    if (!badges[i].earned) return badges[i];
+  }
+  return null;
+}
+
+function practitionerRequirementsMet(stats) {
+  var safeStats = normaliseStats(stats);
+  var total = 4;
+  var met = 0;
+  if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) {
+    met += 1;
+  }
+  if (
+    !PRACTITIONER_GATE.requireAllComposition ||
+    safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length
+  ) {
+    met += 1;
+  }
+  if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met += 1;
+  if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met += 1;
+  return { met, total };
+}
+
+function graduateRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = GRADUATE_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function masterRequirementsMet(stats) {
+  var safe = normaliseStats(stats);
+  var targets = MASTER_TARGETS;
+  var rows = [
+    { key: "appliedLearning", current: safe.appliedLearningOpened, target: targets.appliedLearning },
+    { key: "practicePacks", current: safe.practicePacksOpened, target: targets.practicePacks },
+    { key: "pdfAssignments", current: safe.pdfAssignmentsOpened, target: targets.pdfAssignments },
+    { key: "activeMonths", current: safe.distinctActiveMonthsAllTime, target: targets.activeMonths },
+  ];
+  var met = 0;
+  rows.forEach(function(row){
+    if (row.current != null && row.current >= row.target) met += 1;
+  });
+  return { met, total: rows.length, rows, targets };
+}
+
+function componentRatio(current, target) {
+  if (target <= 0) return 100;
+  var val = current == null ? 0 : current;
+  return Math.min(100, (val / target) * 100);
+}
+
+function computeBadgeProgressForKey(badgeKey, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+  var safe = normaliseStats(stats);
+  var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
+
+  if (badgeKey === "enrolled") {
+    return { pct: 100, label: "100%", degraded: false, breakdown: null };
+  }
+
+  if ((badgeKey === "graduate" || badgeKey === "master") && isLongevityDegraded(stats)) {
+    var pct = Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+    return { pct, label: `${pct}%`, degraded: true, breakdown: null };
+  }
+
+  var ratios = [];
+  if (badgeKey === "foundation") {
+    var moduleRatio = componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules);
+    if (!engagementDegraded) {
+      var daysRatio = componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
+      var pct = Math.round(moduleRatio * 0.8 + daysRatio * 0.2);
+      var mod = Math.min(safeNum(safe.foundationModulesOpened, 0), FOUNDATION_GATE.minModules);
+      var days = Math.min(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
+      var breakdown = `Foundation: ${mod}/${FOUNDATION_GATE.minModules} modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
+      return { pct, label: `${pct}%`, degraded: false, breakdown };
+    }
+    return { pct: Math.round(moduleRatio), label: `${Math.round(moduleRatio)}%`, degraded: false, breakdown: null };
+  }
+  if (badgeKey === "practitioner") {
+    ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
+    ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minExamsPassed));
+  } else if (badgeKey === "certified") {
+    ratios.push(componentRatio(safe.examsPassed, FOUNDATION_EXAMS_TOTAL));
+    ratios.push(componentRatio(safe.totalModulesOpened, CERTIFIED_GATE.minModulesOpened));
+  } else if (badgeKey === "graduate") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, GRADUATE_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, GRADUATE_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, GRADUATE_TARGETS.activeMonths));
+  } else if (badgeKey === "master") {
+    ratios.push(componentRatio(safe.appliedLearningOpened, MASTER_TARGETS.appliedLearning));
+    ratios.push(componentRatio(safe.practicePacksOpened, MASTER_TARGETS.practicePacks));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, MASTER_TARGETS.pdfAssignments));
+    ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, MASTER_TARGETS.activeMonths));
+  }
+
+  var pct = ratios.length
+    ? Math.round(ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length)
+    : Math.round((safeNum(openedCount, 0) / modTotal) * 100);
+  return { pct, label: `${pct}%`, degraded: false, breakdown: null };
+}
+
+function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+  var next = getNextUnearnedBadge(badges);
+  if (!next) {
+    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null, breakdown: null };
+  }
+
+  var result = computeBadgeProgressForKey(
+    next.key,
+    stats,
+    activeDays,
+    engagementDegraded,
+    openedCount,
+    modulesTotal
+  );
+  if ((next.key === "graduate" || next.key === "master") && result.degraded) {
+    return {
+      pct: result.pct,
+      label: `${result.pct}% of the foundations course`,
+      degraded: true,
+      nextKey: next.key,
+      breakdown: null,
+    };
+  }
+  return {
+    pct: result.pct,
+    label: `${result.pct}% to ${next.label}`,
+    degraded: result.degraded,
+    nextKey: next.key,
+    breakdown: result.breakdown || null,
+  };
+}
+
+function computeTrackFillPct(badges, progressPct) {
+  if (!badges || !badges.length) return 0;
+  var segmentCount = badges.length - 1;
+  if (segmentCount <= 0) return 100;
+  if (!getNextUnearnedBadge(badges)) return 100;
+  var lastEarnedIdx = -1;
+  for (var i = 0; i < badges.length; i += 1) {
+    if (badges[i].earned) lastEarnedIdx = i;
+    else break;
+  }
+  var fillUnits = lastEarnedIdx + safeNum(progressPct, 0) / 100;
+  return Math.min(100, Math.round((fillUnits / segmentCount) * 100));
+}
+
+  // END BADGE-GATES-SYNC
+
+    var BADGE_PROGRESS_KEYS = ["foundation", "practitioner", "certified", "graduate", "master"];
+    var BADGE_PROGRESS_LABELS = {
+      foundation: "Foundation",
+      practitioner: "Practitioner",
+      certified: "Certified",
+      graduate: "Graduate",
+      master: "Master"
+    };
+    var badgeProgressTimers = [];
+    var badgeRequirementsModalReady = false;
+    var lastBadgeRequirementsView = null;
+
+    function getDoNextBadgeView() {
+      var view = window.__arDoNextStripBadgeView;
+      if (!view || !view.badges || !view.stats) return null;
+      return view;
+    }
+
+    function getBadgeBarVisualState(badge, badges) {
+      if (badge.earned) return "earned";
+      var next = getNextUnearnedBadge(badges);
+      if (next && next.key === badge.key) return "current";
+      if (badge.key === "master") return "master-future";
+      return "future";
+    }
+
+    function renderBadgeProgressStrip() {
+      var mount = document.getElementById("ar-dashboard-badge-progress");
+      if (!mount) return;
+      var view = getDoNextBadgeView();
+      if (!view) {
+        mount.innerHTML = '<div class="ar-badge-progress__label">Badge progress loading…</div>';
+        return;
+      }
+
+      // Non-linear by design: later badges can show higher % than the current target badge.
+      var barsHtml = "";
+      for (var i = 0; i < BADGE_PROGRESS_KEYS.length; i++) {
+        var key = BADGE_PROGRESS_KEYS[i];
+        var badge = null;
+        for (var b = 0; b < view.badges.length; b++) {
+          if (view.badges[b].key === key) { badge = view.badges[b]; break; }
+        }
+        if (!badge) continue;
+        var progress = computeBadgeProgressForKey(
+          key,
+          view.stats,
+          view.activeDays,
+          view.engagementDegraded,
+          view.openedCount,
+          view.modulesTotal
+        );
+        var pct = Math.max(0, Math.min(100, progress.pct || 0));
+        var visual = getBadgeBarVisualState(badge, view.badges);
+        var fillClass = "ar-badge-progress__fill--" + visual;
+        var labelPct = badge.earned ? "✓" : (pct + "%");
+        barsHtml +=
+          '<div class="ar-badge-progress__bar">' +
+          '<div class="ar-badge-progress__track" aria-hidden="true">' +
+          '<div class="ar-badge-progress__fill ' + fillClass + '" style="height:' + pct + '%"></div>' +
+          "</div>" +
+          '<div class="ar-badge-progress__label"><strong>' + escapeHtml(BADGE_PROGRESS_LABELS[key]) + "</strong><br>" + escapeHtml(labelPct) + "</div>" +
+          "</div>";
+      }
+
+      mount.innerHTML =
+        '<div class="ar-badge-progress__bars" role="img" aria-label="Badge progress bars">' + barsHtml + "</div>" +
+        '<div class="ar-badge-progress__link-wrap">' +
+        '<button type="button" class="ar-badge-progress__link" id="ar-badge-requirements-open">Badge requirements →</button>' +
+        "</div>";
+      wireBadgeRequirementsModal();
+    }
+
+    function scheduleBadgeProgressRefresh() {
+      for (var i = 0; i < badgeProgressTimers.length; i++) clearTimeout(badgeProgressTimers[i]);
+      badgeProgressTimers = [];
+      var delays = [0, 400, 1200, 3000, 6500];
+      for (var j = 0; j < delays.length; j++) {
+        badgeProgressTimers.push(setTimeout(renderBadgeProgressStrip, delays[j]));
+      }
+    }
+
+    function formatReqCell(met, value) {
+      if (met) return '<span class="ar-badge-req__tick" aria-label="Met">✓</span>';
+      return escapeHtml(String(value));
+    }
+
+    function renderBadgeRequirementsTable(view) {
+      var body = document.getElementById("ar-badge-requirements-body");
+      if (!body || !view) return;
+      lastBadgeRequirementsView = view;
+      var stats = view.stats;
+      var hasConverted = view.hasConverted === true;
+
+      function met(current, target) {
+        return current != null && current >= target;
+      }
+
+      var rows = [
+        {
+          feature: "Camera modules (of " + BADGE_SECTION_TOTALS.cameraModules + ")",
+          practitioner: formatReqCell(met(stats.cameraOpened, BADGE_SECTION_TOTALS.cameraModules), BADGE_SECTION_TOTALS.cameraModules),
+          certified: "—",
+          graduate: "—",
+          master: "—"
+        },
+        {
+          feature: "Composition guides (of " + BADGE_SECTION_TOTALS.compositionGuides + ")",
+          practitioner: formatReqCell(met(stats.compositionOpened, BADGE_SECTION_TOTALS.compositionGuides), BADGE_SECTION_TOTALS.compositionGuides),
+          certified: "—",
+          graduate: "—",
+          master: "—"
+        },
+        {
+          feature: "Modules opened (of " + BADGE_SECTION_TOTALS.foundationModules + ")",
+          practitioner: "—",
+          certified: formatReqCell(met(stats.totalModulesOpened, CERTIFIED_GATE.minModulesOpened), CERTIFIED_GATE.minModulesOpened),
+          graduate: "—",
+          master: "—"
+        },
+        {
+          feature: "Assignments (of " + BADGE_SECTION_TOTALS.pdfAssignments + ")",
+          practitioner: formatReqCell(met(stats.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments), PRACTITIONER_GATE.minPdfAssignments),
+          certified: "—",
+          graduate: formatReqCell(met(stats.pdfAssignmentsOpened, GRADUATE_TARGETS.pdfAssignments), GRADUATE_TARGETS.pdfAssignments),
+          master: formatReqCell(met(stats.pdfAssignmentsOpened, MASTER_TARGETS.pdfAssignments), MASTER_TARGETS.pdfAssignments)
+        },
+        {
+          feature: "Foundation exams (of " + BADGE_SECTION_TOTALS.foundationExams + ")",
+          practitioner: formatReqCell(met(stats.examsPassed, PRACTITIONER_GATE.minExamsPassed), PRACTITIONER_GATE.minExamsPassed),
+          certified: formatReqCell(met(stats.examsPassed, FOUNDATION_EXAMS_TOTAL), FOUNDATION_EXAMS_TOTAL),
+          graduate: "—",
+          master: "—"
+        },
+        {
+          parallel: true,
+          feature: "Composition exams (of " + BADGE_SECTION_TOTALS.compositionExams + ")",
+          note: "Parallel — feeds no badge today"
+        },
+        {
+          feature: "Applied learning (of " + BADGE_SECTION_TOTALS.appliedLearning + ")",
+          practitioner: "—",
+          certified: "—",
+          graduate: formatReqCell(met(stats.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning), GRADUATE_TARGETS.appliedLearning),
+          master: formatReqCell(met(stats.appliedLearningOpened, MASTER_TARGETS.appliedLearning), MASTER_TARGETS.appliedLearning)
+        },
+        {
+          feature: "Practice packs (of " + BADGE_SECTION_TOTALS.practicePacks + ")",
+          practitioner: "—",
+          certified: "—",
+          graduate: formatReqCell(met(stats.practicePacksOpened, GRADUATE_TARGETS.practicePacks), GRADUATE_TARGETS.practicePacks),
+          master: formatReqCell(met(stats.practicePacksOpened, MASTER_TARGETS.practicePacks), MASTER_TARGETS.practicePacks)
+        },
+        {
+          feature: "Active months",
+          practitioner: "—",
+          certified: "—",
+          graduate: formatReqCell(met(stats.distinctActiveMonthsAllTime, GRADUATE_TARGETS.activeMonths), GRADUATE_TARGETS.activeMonths),
+          master: formatReqCell(met(stats.distinctActiveMonthsAllTime, MASTER_TARGETS.activeMonths), MASTER_TARGETS.activeMonths)
+        },
+        {
+          feature: "Paid conversion",
+          practitioner: "—",
+          certified: "—",
+          graduate: formatReqCell(hasConverted, "✓"),
+          master: formatReqCell(hasConverted, "✓")
+        }
+      ];
+
+      var tbody = "";
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (row.parallel) {
+          tbody +=
+            '<tr class="ar-badge-req__parallel"><th scope="row" class="ar-badge-req__feature">' + escapeHtml(row.feature) +
+            '</th><td colspan="4">' + escapeHtml(row.note) + "</td></tr>";
+          continue;
+        }
+        tbody +=
+          "<tr><th scope=\"row\" class=\"ar-badge-req__feature\">" + escapeHtml(row.feature) + "</th>" +
+          "<td>" + row.practitioner + "</td><td>" + row.certified + "</td><td>" + row.graduate + "</td><td>" + row.master + "</td></tr>";
+      }
+
+      body.innerHTML =
+        '<table class="ar-badge-req__table" role="table">' +
+        "<thead><tr><th scope=\"col\">Requirement</th><th scope=\"col\">Practitioner</th><th scope=\"col\">Certified</th><th scope=\"col\">Graduate</th><th scope=\"col\">Master</th></tr></thead>" +
+        "<tbody>" + tbody + "</tbody></table>";
+    }
+
+    function openBadgeRequirementsModal() {
+      var modal = document.getElementById("ar-badge-requirements-modal");
+      if (!modal) return;
+      var view = getDoNextBadgeView();
+      if (view) renderBadgeRequirementsTable(view);
+      modal.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeBadgeRequirementsModal() {
+      var modal = document.getElementById("ar-badge-requirements-modal");
+      if (!modal) return;
+      modal.classList.remove("is-open");
+      document.body.style.overflow = "";
+    }
+
+    function wireBadgeRequirementsModal() {
+      var openBtn = document.getElementById("ar-badge-requirements-open");
+      if (openBtn && !openBtn.__arWired) {
+        openBtn.__arWired = true;
+        openBtn.addEventListener("click", openBadgeRequirementsModal);
+      }
+      if (badgeRequirementsModalReady) return;
+      badgeRequirementsModalReady = true;
+      var modal = document.getElementById("ar-badge-requirements-modal");
+      var closeBtn = document.getElementById("ar-badge-requirements-close");
+      if (closeBtn) closeBtn.addEventListener("click", closeBadgeRequirementsModal);
+      if (modal) {
+        modal.addEventListener("click", function(evt) {
+          if (evt.target === modal) closeBadgeRequirementsModal();
+        });
+      }
+      document.addEventListener("keydown", function(evt) {
+        if (evt.key === "Escape") closeBadgeRequirementsModal();
+      });
+    }
+
     function getExamSummaryForMembershipStats() {
       var data = globalThis.examProgressData;
       if (!data || typeof data !== "object") return null;
@@ -4994,6 +5844,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       if (typeof window.__arDoNextStripRefresh === "function") {
         window.__arDoNextStripRefresh();
       }
+      scheduleBadgeProgressRefresh();
     }
 
     function sendTileOpenBeacon(section, key, linkEl) {
@@ -5494,6 +6345,8 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       ensureAcademyCourseCta();
       initDashboardCatalogSummaryObserver();
       scheduleDashboardCatalogSummary();
+      wireBadgeRequirementsModal();
+      scheduleBadgeProgressRefresh();
       var dashboardEl = document.querySelector(".ar-academy-dashboard");
       if (dashboardEl) dashboardEl.classList.add("is-ready");
     }
@@ -5536,6 +6389,8 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       setTimeout(ensureAcademyCourseCta, 900);
       initDashboardCatalogSummaryObserver();
       scheduleDashboardCatalogSummary();
+      wireBadgeRequirementsModal();
+      scheduleBadgeProgressRefresh();
 
       var isEditor = inSquarespaceEditor();
       var banner = document.getElementById("ar-academy-editor-banner");

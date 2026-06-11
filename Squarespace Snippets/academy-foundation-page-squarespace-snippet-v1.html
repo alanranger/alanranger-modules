@@ -1054,6 +1054,19 @@ How a failed RPS panel became a pass: a case study in  Building a Successful RPS
 
   // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)
 
+var FOUNDATION_EXAMS_TOTAL = 15;
+
+var BADGE_SECTION_TOTALS = {
+  cameraModules: 15,
+  compositionGuides: 10,
+  foundationModules: 60,
+  pdfAssignments: 15,
+  foundationExams: FOUNDATION_EXAMS_TOTAL,
+  compositionExams: FOUNDATION_EXAMS_TOTAL,
+  appliedLearning: 40,
+  practicePacks: 30,
+};
+
 var FOUNDATION_GATE = {
   minModules: 3,
   minActiveDays: 3,
@@ -1340,48 +1353,46 @@ function componentRatio(current, target) {
   return Math.min(100, (val / target) * 100);
 }
 
-function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+function computeBadgeProgressForKey(badgeKey, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
   var safe = normaliseStats(stats);
-  var next = getNextUnearnedBadge(badges);
   var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
 
-  if (!next) {
-    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null, breakdown: null };
+  if (badgeKey === "enrolled") {
+    return { pct: 100, label: "100%", degraded: false, breakdown: null };
   }
 
-  if ((next.key === "graduate" || next.key === "master") && isLongevityDegraded(stats)) {
+  if ((badgeKey === "graduate" || badgeKey === "master") && isLongevityDegraded(stats)) {
     var pct = Math.round((safeNum(openedCount, 0) / modTotal) * 100);
-    return { pct, label: `${pct}% of the foundations course`, degraded: true, nextKey: next.key, breakdown: null };
+    return { pct, label: `${pct}%`, degraded: true, breakdown: null };
   }
 
   var ratios = [];
-  var breakdown = null;
-  if (next.key === "foundation") {
+  if (badgeKey === "foundation") {
     var moduleRatio = componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules);
     if (!engagementDegraded) {
       var daysRatio = componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
       var pct = Math.round(moduleRatio * 0.8 + daysRatio * 0.2);
       var mod = Math.min(safeNum(safe.foundationModulesOpened, 0), FOUNDATION_GATE.minModules);
       var days = Math.min(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
-      breakdown = `Foundation: ${mod}/${FOUNDATION_GATE.minModules} modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
-      return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown };
+      var breakdown = `Foundation: ${mod}/${FOUNDATION_GATE.minModules} modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
+      return { pct, label: `${pct}%`, degraded: false, breakdown };
     }
-    var pct = Math.round(moduleRatio);
-    return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown: null };
-  } else if (next.key === "practitioner") {
+    return { pct: Math.round(moduleRatio), label: `${Math.round(moduleRatio)}%`, degraded: false, breakdown: null };
+  }
+  if (badgeKey === "practitioner") {
     ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
     ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
     ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
     ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minExamsPassed));
-  } else if (next.key === "certified") {
-    ratios.push(componentRatio(safe.examsPassed, 15));
+  } else if (badgeKey === "certified") {
+    ratios.push(componentRatio(safe.examsPassed, FOUNDATION_EXAMS_TOTAL));
     ratios.push(componentRatio(safe.totalModulesOpened, CERTIFIED_GATE.minModulesOpened));
-  } else if (next.key === "graduate") {
+  } else if (badgeKey === "graduate") {
     ratios.push(componentRatio(safe.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning));
     ratios.push(componentRatio(safe.practicePacksOpened, GRADUATE_TARGETS.practicePacks));
     ratios.push(componentRatio(safe.pdfAssignmentsOpened, GRADUATE_TARGETS.pdfAssignments));
     ratios.push(componentRatio(safe.distinctActiveMonthsAllTime, GRADUATE_TARGETS.activeMonths));
-  } else if (next.key === "master") {
+  } else if (badgeKey === "master") {
     ratios.push(componentRatio(safe.appliedLearningOpened, MASTER_TARGETS.appliedLearning));
     ratios.push(componentRatio(safe.practicePacksOpened, MASTER_TARGETS.practicePacks));
     ratios.push(componentRatio(safe.pdfAssignmentsOpened, MASTER_TARGETS.pdfAssignments));
@@ -1391,7 +1402,39 @@ function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded,
   var pct = ratios.length
     ? Math.round(ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length)
     : Math.round((safeNum(openedCount, 0) / modTotal) * 100);
-  return { pct, label: `${pct}% to ${next.label}`, degraded: false, nextKey: next.key, breakdown: null };
+  return { pct, label: `${pct}%`, degraded: false, breakdown: null };
+}
+
+function computeNextBadgeProgress(badges, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
+  var next = getNextUnearnedBadge(badges);
+  if (!next) {
+    return { pct: 100, label: "100% - all badges earned", degraded: false, nextKey: null, breakdown: null };
+  }
+
+  var result = computeBadgeProgressForKey(
+    next.key,
+    stats,
+    activeDays,
+    engagementDegraded,
+    openedCount,
+    modulesTotal
+  );
+  if ((next.key === "graduate" || next.key === "master") && result.degraded) {
+    return {
+      pct: result.pct,
+      label: `${result.pct}% of the foundations course`,
+      degraded: true,
+      nextKey: next.key,
+      breakdown: null,
+    };
+  }
+  return {
+    pct: result.pct,
+    label: `${result.pct}% to ${next.label}`,
+    degraded: result.degraded,
+    nextKey: next.key,
+    breakdown: result.breakdown || null,
+  };
 }
 
 function computeTrackFillPct(badges, progressPct) {
