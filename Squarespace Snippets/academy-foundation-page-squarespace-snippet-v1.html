@@ -1373,6 +1373,22 @@ var COMPOSITION_EXAM_MODULE_IDS = ["c2-01-composition-rules","c2-02-framing","c2
 
 
 
+function findFirstUnpassedExam(statusMap) {
+  for (var i = 0; i < EXAM_MODULE_IDS.length; i += 1) {
+    var id = EXAM_MODULE_IDS[i];
+    if (statusMap[id] !== "passed") {
+      return { idx: i, id, track: "foundation" };
+    }
+  }
+  for (var i = 0; i < COMPOSITION_EXAM_MODULE_IDS.length; i += 1) {
+    var id = COMPOSITION_EXAM_MODULE_IDS[i];
+    if (statusMap[id] !== "passed") {
+      return { idx: i, id, track: "composition_creative" };
+    }
+  }
+  return null;
+}
+
 function parseExamProgress(progressData) {
   var statusMap = {};
   var source = "none";
@@ -1419,12 +1435,8 @@ function parseExamProgress(progressData) {
   }
 
   if (source === "modules-count" || source === "tracks-modules") {
-    for (var i = 0; i < EXAM_MODULE_IDS.length; i += 1) {
-      if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
-        nextExamModuleId = EXAM_MODULE_IDS[i];
-        break;
-      }
-    }
+    var nextExam = findFirstUnpassedExam(statusMap);
+    nextExamModuleId = nextExam ? nextExam.id : null;
   }
 
   return {

@@ -394,6 +394,60 @@ test("buildAcademyBadgeView matches strip stats pipeline", () => {
   assert.ok(view.progress.pct > 0);
 });
 
+function makeTracksExamData(foundationStatuses, compositionStatuses) {
+  const foundationModules = gateView.EXAM_MODULE_IDS.map((moduleId, i) => ({
+    moduleId,
+    status: foundationStatuses[i] || "not_taken",
+  }));
+  const compositionModules = gateView.COMPOSITION_EXAM_MODULE_IDS.map((moduleId, i) => ({
+    moduleId,
+    status: compositionStatuses[i] || "not_taken",
+  }));
+  return {
+    tracks: {
+      foundation: { modules: foundationModules },
+      composition_creative: { modules: compositionModules },
+    },
+  };
+}
+
+test("parseExamProgress routes next exam Foundation-first then Composition", () => {
+  const incomplete = makeTracksExamData(
+    ["passed", "passed", "not_taken"],
+    ["not_taken", "not_taken"]
+  );
+  const incompleteInfo = gateView.parseExamProgress(incomplete);
+  assert.equal(incompleteInfo.nextExamModuleId, "module-03-shutter");
+
+  const foundationComplete = makeTracksExamData(
+    gateView.EXAM_MODULE_IDS.map(() => "passed"),
+    ["passed", "not_taken", "not_taken"]
+  );
+  const compositionNext = gateView.parseExamProgress(foundationComplete);
+  assert.equal(compositionNext.nextExamModuleId, "c2-02-framing");
+
+  const allPassed = makeTracksExamData(
+    gateView.EXAM_MODULE_IDS.map(() => "passed"),
+    gateView.COMPOSITION_EXAM_MODULE_IDS.map(() => "passed")
+  );
+  const completeInfo = gateView.parseExamProgress(allPassed);
+  assert.equal(completeInfo.nextExamModuleId, null);
+});
+
+test("findFirstUnpassedExam returns track for Composition routing", () => {
+  const statusMap = {};
+  gateView.EXAM_MODULE_IDS.forEach((id) => {
+    statusMap[id] = "passed";
+  });
+  gateView.COMPOSITION_EXAM_MODULE_IDS.forEach((id, i) => {
+    statusMap[id] = i === 2 ? "not_taken" : "passed";
+  });
+  const next = gateView.findFirstUnpassedExam(statusMap);
+  assert.equal(next.id, "c2-03-leading-lines");
+  assert.equal(next.track, "composition_creative");
+  assert.equal(next.idx, 2);
+});
+
 test("resolveGateActiveDays prefers engagement distinctActiveDaysFirst14d", () => {
   assert.equal(gateView.resolveGateActiveDays({ distinctActiveDaysFirst14d: 5 }, 1), 5);
   assert.equal(gateView.resolveGateActiveDays({ distinctActiveDaysFirst14d: "5" }, 1), 5);

@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.71 — Cert 2 Stage 5: do-next next-exam routing — Foundation first, then Composition (tracks payload).
 v1.3.70 — Phase 3: cap appliedLearningOpened JSON fallback at 40 (matches longevity-stats lib).
 v1.3.69 — FIX: Tile 4 + proximity/breakdown read canonical engagement distinctActiveDaysFirst14d (display cap at target when met).
 v1.3.68 — Certified requires paid conversion (synced gate logic; Practitioner last trial badge).
@@ -2658,6 +2659,42 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
+  var COMPOSITION_EXAM_NAMES = {
+
+    "c2-01-composition-rules": "Composition Rules",
+
+    "c2-02-framing": "Framing",
+
+    "c2-03-leading-lines": "Leading Lines",
+
+    "c2-04-negative-space": "Negative Space",
+
+    "c2-05-contrast": "Contrast",
+
+    "c2-06-balance": "Balance",
+
+    "c2-07-macro": "Macro",
+
+    "c2-08-landscape": "Landscape",
+
+    "c2-09-product": "Product",
+
+    "c2-10-minimalist": "Minimalist",
+
+    "c2-11-still-life": "Still Life",
+
+    "c2-12-long-exposure": "Long Exposure",
+
+    "c2-13-architecture": "Architecture",
+
+    "c2-14-portrait": "Portrait",
+
+    "c2-15-black-white": "Black & White"
+
+  };
+
+
+
   var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
 
 
@@ -3399,6 +3436,22 @@ function computeTrackFillPct(badges, progressPct) {
 
   // SYNC: lib/academy-client-gate-view.js (run scripts/sync-client-gate-view-to-snippets.mjs)
 
+function findFirstUnpassedExam(statusMap) {
+  for (var i = 0; i < EXAM_MODULE_IDS.length; i += 1) {
+    var id = EXAM_MODULE_IDS[i];
+    if (statusMap[id] !== "passed") {
+      return { idx: i, id, track: "foundation" };
+    }
+  }
+  for (var i = 0; i < COMPOSITION_EXAM_MODULE_IDS.length; i += 1) {
+    var id = COMPOSITION_EXAM_MODULE_IDS[i];
+    if (statusMap[id] !== "passed") {
+      return { idx: i, id, track: "composition_creative" };
+    }
+  }
+  return null;
+}
+
 function parseExamProgress(progressData) {
   var statusMap = {};
   var source = "none";
@@ -3445,12 +3498,8 @@ function parseExamProgress(progressData) {
   }
 
   if (source === "modules-count" || source === "tracks-modules") {
-    for (var i = 0; i < EXAM_MODULE_IDS.length; i += 1) {
-      if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
-        nextExamModuleId = EXAM_MODULE_IDS[i];
-        break;
-      }
-    }
+    var nextExam = findFirstUnpassedExam(statusMap);
+    nextExamModuleId = nextExam ? nextExam.id : null;
   }
 
   return {
@@ -4599,15 +4648,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
   function firstUnpassedExam(statusMap){
 
-    for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
-
-      var id = EXAM_MODULE_IDS[i];
-
-      if (statusMap[id] !== "passed") return { idx: i, id: id };
-
-    }
-
-    return null;
+    return findFirstUnpassedExam(statusMap);
 
   }
 
@@ -4622,6 +4663,32 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
   function examNum(idx){ return String(idx + 1).padStart(2, "0"); }
+
+
+
+  function compositionExamNum(idx){ return "C" + String(idx + 1).padStart(2, "0"); }
+
+
+
+  function nextExamLabel(nextExam){
+
+    if (!nextExam) return "";
+
+    var num = nextExam.track === "composition_creative"
+
+      ? compositionExamNum(nextExam.idx)
+
+      : examNum(nextExam.idx);
+
+    var name = nextExam.track === "composition_creative"
+
+      ? (COMPOSITION_EXAM_NAMES[nextExam.id] || "Exam")
+
+      : (EXAM_NAMES[nextExam.id] || "Exam");
+
+    return num + " " + name;
+
+  }
 
 
 
@@ -4996,13 +5063,13 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     }
 
-    if (examInfo.hasModuleStatus && examInfo.examsPassed < 15) {
+    if (examInfo.hasModuleStatus) {
 
       var nextExam = firstUnpassedExam(examInfo.statusMap);
 
       if (nextExam) {
 
-        tile.action = "Take your next exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+        tile.action = "Take your next exam: " + nextExamLabel(nextExam) + " \u2192";
 
         tile.href = EXAM_BASE + "?module=" + nextExam.id;
 
@@ -5026,13 +5093,17 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     var tile = { n: 2, label: "2 - Test yourself", variant: "ghost-green", why: "Earns a certificate" };
 
-    if (examInfo.examsPassed >= 15) {
+    var foundationComplete = examInfo.examsPassed >= EXAM_MODULE_IDS.length;
+
+    var allExamsComplete = foundationComplete && examInfo.compositionExamsPassed >= COMPOSITION_EXAM_MODULE_IDS.length;
+
+    if (allExamsComplete) {
 
       tile.action = "Review your certificates \u2192";
 
       tile.href = EXAM_BASE;
 
-      tile.why = "All 15 exams passed";
+      tile.why = "All 30 exams passed";
 
       return tile;
 
@@ -5044,7 +5115,7 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
       if (nextExam) {
 
-        tile.action = "Take exam: " + examNum(nextExam.idx) + " " + (EXAM_NAMES[nextExam.id] || "Exam") + " \u2192";
+        tile.action = "Take exam: " + nextExamLabel(nextExam) + " \u2192";
 
         tile.href = EXAM_BASE + "?module=" + nextExam.id;
 
