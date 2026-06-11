@@ -17,6 +17,7 @@ const BEGIN = "  // BEGIN CLIENT-GATE-VIEW-SYNC";
 const END = "  // END CLIENT-GATE-VIEW-SYNC";
 
 const fnNames = [
+  "findFirstUnpassedExam",
   "parseExamProgress",
   "getFoundationOpenedSet",
   "getAllModulesOpenedCount",
