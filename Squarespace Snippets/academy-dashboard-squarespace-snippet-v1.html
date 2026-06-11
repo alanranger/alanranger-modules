@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.40) — Squarespace Snippet
+Academy Dashboard UI (v1.3.41) — Squarespace Snippet
+v1.3.41: HOTFIX — re-sync BADGE-GATES-SYNC (paths.every parse error in script block 3).
 v1.3.40: Badge requirements modal — Phase 2 gates (composition exams feed badges, combined pool, 190/270 points) + Summary column.
 v1.3.39: Badge requirements modal — add Foundation column (3 modules, 3 active days from FOUNDATION_GATE).
 v1.3.38: Tiles-help CSS grid (lead | badge bars | gauge); badge tracks forced full row width; align start (fixes crushed/overlap layout).
@@ -4450,7 +4451,9 @@ function hasRequiredModulePaths(stats, requiredPaths) {
   }
   var opened = stats.openedFoundationPaths;
   if (opened instanceof Set) {
-    return paths.every(function(p) opened.has(p));
+    return paths.every(function (p) {
+      return opened.has(p);
+    });
   }
   return false;
 }

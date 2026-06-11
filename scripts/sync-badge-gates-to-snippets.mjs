@@ -73,6 +73,7 @@ function toStripFn(fnBody) {
     .replace(/\.forEach\(\(row\) => \{/g, ".forEach(function(row){")
     .replace(/\.filter\(\(b\) => b\.earned\)/g, ".filter(function(b){ return b.earned; })")
     .replace(/\.findIndex\(\(s\) => s\.key === current\.key\)/g, ".findIndex(function(s){ return s.key === current.key; })")
+    .replace(/\.every\(\((\w+)\) => ([^)]+)\)/g, ".every(function($1){ return $2; })")
     .replace(/\) => \{/g, "function(){")
     .replace(/\((\w+)\) =>/g, "function($1)")
     .replace(/typeof console !== "undefined" && console\.warn/g, "console.warn");

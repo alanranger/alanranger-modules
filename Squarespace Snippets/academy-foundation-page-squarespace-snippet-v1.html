@@ -1159,7 +1159,9 @@ function hasRequiredModulePaths(stats, requiredPaths) {
   }
   var opened = stats.openedFoundationPaths;
   if (opened instanceof Set) {
-    return paths.every(function(p) opened.has(p));
+    return paths.every(function (p) {
+      return opened.has(p);
+    });
   }
   return false;
 }

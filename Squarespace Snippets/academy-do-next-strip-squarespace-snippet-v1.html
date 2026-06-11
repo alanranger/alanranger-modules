@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.65 — HOTFIX: sync transform broke paths.every (parse error killed strip); verified node --check.
 v1.3.64 — Phase 2 badge gate display: new journey sublabels, Tile 4 criteria, proximity copy, composition exam stats wiring.
 v1.3.63 — Tile 4 inset flexes for up to 4 criteria rows (no clip); trial line white on orange.
 v1.3.62 — Tile 4: restore outer eyebrow “4 · Goal: next badge”; badge + % header moves inside black inset.
@@ -3149,7 +3150,9 @@ function hasRequiredModulePaths(stats, requiredPaths) {
   }
   var opened = stats.openedFoundationPaths;
   if (opened instanceof Set) {
-    return paths.every(function(p) opened.has(p));
+    return paths.every(function (p) {
+      return opened.has(p);
+    });
   }
   return false;
 }
