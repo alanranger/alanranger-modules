@@ -17,6 +17,9 @@ const END = "  // END BADGE-GATES-SYNC";
 const fnNames = [
   "safeNum",
   "normaliseStats",
+  "hasRequiredModulePaths",
+  "assignmentsAndPacksPoolCount",
+  "allExamsPassed",
   "isFoundationGateEarned",
   "isPractitionerGateEarned",
   "isCertifiedGateEarned",
@@ -36,6 +39,7 @@ const fnNames = [
   "graduateRequirementsMet",
   "masterRequirementsMet",
   "componentRatio",
+  "computeFoundationProgressPct",
   "computeBadgeProgressForKey",
   "computeNextBadgeProgress",
   "computeTrackFillPct",
@@ -96,6 +100,9 @@ function extractConstBlock(source, name) {
 
 const gateConsts = [
   "FOUNDATION_EXAMS_TOTAL",
+  "COMPOSITION_EXAMS_TOTAL",
+  "ALL_EXAMS_TOTAL",
+  "FOUNDATION_REQUIRED_MODULE_PATH",
   "BADGE_SECTION_TOTALS",
   "FOUNDATION_GATE",
   "PRACTITIONER_GATE",

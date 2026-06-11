@@ -3048,34 +3048,45 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 var FOUNDATION_EXAMS_TOTAL = 15;
 
+var COMPOSITION_EXAMS_TOTAL = 15;
+
+var ALL_EXAMS_TOTAL = FOUNDATION_EXAMS_TOTAL + COMPOSITION_EXAMS_TOTAL;
+
+var FOUNDATION_REQUIRED_MODULE_PATH = "/blog-on-photography/what-is-exposure-in-photography";
+
 var BADGE_SECTION_TOTALS = {
   cameraModules: 15,
   compositionGuides: 10,
   foundationModules: 60,
   pdfAssignments: 15,
   foundationExams: FOUNDATION_EXAMS_TOTAL,
-  compositionExams: FOUNDATION_EXAMS_TOTAL,
+  compositionExams: COMPOSITION_EXAMS_TOTAL,
   appliedLearning: 40,
   practicePacks: 30,
 };
 
 var FOUNDATION_GATE = {
+  requiredModulePaths: [FOUNDATION_REQUIRED_MODULE_PATH],
   minModules: 3,
   minActiveDays: 3,
+  module01ProgressWeight: 0.6,
   bonusModules: 6,
   bonusActiveDays: 5,
 };
 
 var PRACTITIONER_GATE = {
-  requireAllCamera: true,
-  requireAllComposition: true,
+  minCameraModules: 10,
+  minCompositionModules: 5,
   minPdfAssignments: 3,
-  minExamsPassed: 8,
+  minFoundationExamsPassed: 6,
+  minCompositionExamsPassed: 4,
 };
 
 var CERTIFIED_GATE = {
-  requireAllExamsPassed: true,
-  minModulesOpened: 30,
+  minFoundationExamsPassed: 15,
+  minCompositionExamsPassed: 7,
+  minAssignmentsAndPacksPool: 5,
+  minAppliedLearning: 3,
 };
 
 var POINTS_WEIGHTS = {
@@ -3085,22 +3096,22 @@ var POINTS_WEIGHTS = {
   activeMonth: 7,
 };
 
-var GRADUATE_GATE = { minPoints: 98 };
+var GRADUATE_GATE = { minPoints: 190 };
 
-var MASTER_GATE = { minPoints: 163 };
+var MASTER_GATE = { minPoints: 270 };
 
 var GRADUATE_TARGETS = {
-  appliedLearning: 15,
-  practicePacks: 10,
-  pdfAssignments: 5,
-  activeMonths: 4,
+  appliedLearning: 25,
+  practicePacks: 18,
+  pdfAssignments: 9,
+  activeMonths: 6,
 };
 
 var MASTER_TARGETS = {
-  appliedLearning: 22,
-  practicePacks: 17,
-  pdfAssignments: 9,
-  activeMonths: 7,
+  appliedLearning: 32,
+  practicePacks: 24,
+  pdfAssignments: 12,
+  activeMonths: 12,
 };
 
 var KEEPALIVE_DECAY_DAYS = 60;
@@ -3118,6 +3129,8 @@ function normaliseStats(raw) {
     pdfAssignmentsOpened: safeNum(stats.pdfAssignmentsOpened, 0),
     totalModulesOpened: safeNum(stats.totalModulesOpened, 0),
     examsPassed: safeNum(stats.examsPassed, 0),
+    compositionExamsPassed: safeNum(stats.compositionExamsPassed, 0),
+    module01Opened: stats.module01Opened === true,
     appliedLearningOpened: stats.appliedLearningOpened == null ? null : safeNum(stats.appliedLearningOpened, 0),
     practicePacksOpened: stats.practicePacksOpened == null ? null : safeNum(stats.practicePacksOpened, 0),
     distinctActiveMonthsAllTime:
@@ -3125,30 +3138,55 @@ function normaliseStats(raw) {
   };
 }
 
-function isFoundationGateEarned(modulesOpened, activeDays, engagementDegraded) {
-  if (modulesOpened < FOUNDATION_GATE.minModules) return false;
+function hasRequiredModulePaths(stats, requiredPaths) {
+  var paths = requiredPaths || [];
+  if (!paths.length) return true;
+  if (paths.length === 1 && paths[0] === FOUNDATION_REQUIRED_MODULE_PATH) {
+    return normaliseStats(stats).module01Opened;
+  }
+  var opened = stats.openedFoundationPaths;
+  if (opened instanceof Set) {
+    return paths.every(function(p) opened.has(p));
+  }
+  return false;
+}
+
+function assignmentsAndPacksPoolCount(stats) {
+  var safe = normaliseStats(stats);
+  return safe.pdfAssignmentsOpened + safeNum(safe.practicePacksOpened, 0);
+}
+
+function allExamsPassed(stats) {
+  var safe = normaliseStats(stats);
+  return safe.examsPassed >= FOUNDATION_EXAMS_TOTAL && safe.compositionExamsPassed >= COMPOSITION_EXAMS_TOTAL;
+}
+
+function isFoundationGateEarned(stats, activeDays, engagementDegraded) {
+  var safe = normaliseStats(stats);
+  if (!hasRequiredModulePaths(safe, FOUNDATION_GATE.requiredModulePaths)) return false;
+  if (safe.foundationModulesOpened < FOUNDATION_GATE.minModules) return false;
   if (engagementDegraded) return true;
   return safeNum(activeDays, 0) >= FOUNDATION_GATE.minActiveDays;
 }
 
 function isPractitionerGateEarned(stats) {
-  if (PRACTITIONER_GATE.requireAllCamera && stats.cameraOpened < CAMERA_MODULE_PATHS.length) {
-    return false;
-  }
-  if (
-    PRACTITIONER_GATE.requireAllComposition &&
-    stats.compositionOpened < COMPOSITION_MODULE_PATHS.length
-  ) {
-    return false;
-  }
-  if (stats.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
-  if (stats.examsPassed < PRACTITIONER_GATE.minExamsPassed) return false;
+  var safe = normaliseStats(stats);
+  if (safe.cameraOpened < PRACTITIONER_GATE.minCameraModules) return false;
+  if (safe.compositionOpened < PRACTITIONER_GATE.minCompositionModules) return false;
+  if (safe.pdfAssignmentsOpened < PRACTITIONER_GATE.minPdfAssignments) return false;
+  if (safe.examsPassed < PRACTITIONER_GATE.minFoundationExamsPassed) return false;
+  if (safe.compositionExamsPassed < PRACTITIONER_GATE.minCompositionExamsPassed) return false;
   return true;
 }
 
 function isCertifiedGateEarned(stats) {
-  if (CERTIFIED_GATE.requireAllExamsPassed && stats.examsPassed < 15) return false;
-  if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) return false;
+  var safe = normaliseStats(stats);
+  if (safe.examsPassed < CERTIFIED_GATE.minFoundationExamsPassed) return false;
+  if (safe.compositionExamsPassed < CERTIFIED_GATE.minCompositionExamsPassed) return false;
+  if (safe.cameraOpened < CAMERA_MODULE_PATHS.length) return false;
+  if (safe.compositionOpened < COMPOSITION_MODULE_PATHS.length) return false;
+  if (assignmentsAndPacksPoolCount(safe) < CERTIFIED_GATE.minAssignmentsAndPacksPool) return false;
+  if (safeNum(safe.appliedLearningOpened, 0) < CERTIFIED_GATE.minAppliedLearning) return false;
   return true;
 }
 
@@ -3179,6 +3217,7 @@ function warnLongevityDegraded() {
 
 function isGraduateGateEarned(stats, hasConverted, engagementDegraded) {
   if (!hasConverted) return false;
+  if (!allExamsPassed(stats)) return false;
   if (engagementDegraded || isLongevityDegraded(stats)) {
     warnLongevityDegraded();
     return false;
@@ -3188,6 +3227,7 @@ function isGraduateGateEarned(stats, hasConverted, engagementDegraded) {
 
 function isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded) {
   if (!graduateEarned || !hasConverted) return false;
+  if (!allExamsPassed(stats)) return false;
   if (engagementDegraded || isLongevityDegraded(stats)) {
     warnLongevityDegraded();
     return false;
@@ -3212,16 +3252,17 @@ function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gate
   var ctx = gateContext || {};
   var hasConverted = ctx.hasConverted === true;
   var graduateEarned = ctx.graduateEarned === true;
+  var safeStats = normaliseStats(stats);
 
   if (stage.alwaysEarned) return true;
   if (stage.foundationGate) {
-    return isFoundationGateEarned(stats.foundationModulesOpened, activeDays, engagementDegraded);
+    return isFoundationGateEarned(safeStats, activeDays, engagementDegraded);
   }
-  if (stage.practitionerGate) return isPractitionerGateEarned(stats);
-  if (stage.certifiedGate) return isCertifiedGateEarned(stats);
-  if (stage.graduateGate) return isGraduateGateEarned(stats, hasConverted, engagementDegraded);
-  if (stage.masterGate) return isMasterGateEarned(stats, hasConverted, graduateEarned, engagementDegraded);
-  if (stage.minExams) return stats.examsPassed >= stage.minExams;
+  if (stage.practitionerGate) return isPractitionerGateEarned(safeStats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(safeStats);
+  if (stage.graduateGate) return isGraduateGateEarned(safeStats, hasConverted, engagementDegraded);
+  if (stage.masterGate) return isMasterGateEarned(safeStats, hasConverted, graduateEarned, engagementDegraded);
+  if (stage.minExams) return safeStats.examsPassed >= stage.minExams;
   return false;
 }
 
@@ -3288,20 +3329,14 @@ function getNextUnearnedBadge(badges) {
 }
 
 function practitionerRequirementsMet(stats) {
-  var safeStats = normaliseStats(stats);
-  var total = 4;
+  var safe = normaliseStats(stats);
+  var total = 5;
   var met = 0;
-  if (!PRACTITIONER_GATE.requireAllCamera || safeStats.cameraOpened >= CAMERA_MODULE_PATHS.length) {
-    met += 1;
-  }
-  if (
-    !PRACTITIONER_GATE.requireAllComposition ||
-    safeStats.compositionOpened >= COMPOSITION_MODULE_PATHS.length
-  ) {
-    met += 1;
-  }
-  if (safeStats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met += 1;
-  if (safeStats.examsPassed >= PRACTITIONER_GATE.minExamsPassed) met += 1;
+  if (safe.cameraOpened >= PRACTITIONER_GATE.minCameraModules) met += 1;
+  if (safe.compositionOpened >= PRACTITIONER_GATE.minCompositionModules) met += 1;
+  if (safe.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments) met += 1;
+  if (safe.examsPassed >= PRACTITIONER_GATE.minFoundationExamsPassed) met += 1;
+  if (safe.compositionExamsPassed >= PRACTITIONER_GATE.minCompositionExamsPassed) met += 1;
   return { met, total };
 }
 
@@ -3343,6 +3378,21 @@ function componentRatio(current, target) {
   return Math.min(100, (val / target) * 100);
 }
 
+function computeFoundationProgressPct(safe, activeDays, engagementDegraded) {
+  var module01Pct = safe.module01Opened ? FOUNDATION_GATE.module01ProgressWeight * 100 : 0;
+  var otherOpens = Math.max(0, safe.foundationModulesOpened - (safe.module01Opened ? 1 : 0));
+  var otherRatio = componentRatio(otherOpens, FOUNDATION_GATE.minModules - 1);
+  var remainder = (1 - FOUNDATION_GATE.module01ProgressWeight) * 100;
+  if (engagementDegraded) {
+    return Math.round(module01Pct + (otherRatio / 100) * remainder);
+  }
+  var daysRatio = componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
+  var halfRemainder = remainder / 2;
+  return Math.round(
+    module01Pct + (otherRatio / 100) * halfRemainder + (daysRatio / 100) * halfRemainder
+  );
+}
+
 function computeBadgeProgressForKey(badgeKey, stats, activeDays, engagementDegraded, openedCount, modulesTotal) {
   var safe = normaliseStats(stats);
   var modTotal = typeof modulesTotal === "number" && modulesTotal > 0 ? modulesTotal : 60;
@@ -3358,25 +3408,32 @@ function computeBadgeProgressForKey(badgeKey, stats, activeDays, engagementDegra
 
   var ratios = [];
   if (badgeKey === "foundation") {
-    var moduleRatio = componentRatio(safe.foundationModulesOpened, FOUNDATION_GATE.minModules);
+    var pct = computeFoundationProgressPct(safe, activeDays, engagementDegraded);
     if (!engagementDegraded) {
-      var daysRatio = componentRatio(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
-      var pct = Math.round(moduleRatio * 0.8 + daysRatio * 0.2);
-      var mod = Math.min(safeNum(safe.foundationModulesOpened, 0), FOUNDATION_GATE.minModules);
+      var otherOpens = Math.min(
+        Math.max(0, safe.foundationModulesOpened - (safe.module01Opened ? 1 : 0)),
+        FOUNDATION_GATE.minModules - 1
+      );
       var days = Math.min(safeNum(activeDays, 0), FOUNDATION_GATE.minActiveDays);
-      var breakdown = `Foundation: ${mod}/${FOUNDATION_GATE.minModules} modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
+      var modPart = safe.module01Opened ? "01 Exposure ✓" : "01 Exposure ✗";
+      var breakdown = `Foundation: ${modPart} · +${otherOpens}/2 modules · ${days}/${FOUNDATION_GATE.minActiveDays} active days`;
       return { pct, label: `${pct}%`, degraded: false, breakdown };
     }
-    return { pct: Math.round(moduleRatio), label: `${Math.round(moduleRatio)}%`, degraded: false, breakdown: null };
+    return { pct, label: `${pct}%`, degraded: false, breakdown: null };
   }
   if (badgeKey === "practitioner") {
+    ratios.push(componentRatio(safe.cameraOpened, PRACTITIONER_GATE.minCameraModules));
+    ratios.push(componentRatio(safe.compositionOpened, PRACTITIONER_GATE.minCompositionModules));
+    ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
+    ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minFoundationExamsPassed));
+    ratios.push(componentRatio(safe.compositionExamsPassed, PRACTITIONER_GATE.minCompositionExamsPassed));
+  } else if (badgeKey === "certified") {
+    ratios.push(componentRatio(safe.examsPassed, CERTIFIED_GATE.minFoundationExamsPassed));
+    ratios.push(componentRatio(safe.compositionExamsPassed, CERTIFIED_GATE.minCompositionExamsPassed));
     ratios.push(componentRatio(safe.cameraOpened, CAMERA_MODULE_PATHS.length));
     ratios.push(componentRatio(safe.compositionOpened, COMPOSITION_MODULE_PATHS.length));
-    ratios.push(componentRatio(safe.pdfAssignmentsOpened, PRACTITIONER_GATE.minPdfAssignments));
-    ratios.push(componentRatio(safe.examsPassed, PRACTITIONER_GATE.minExamsPassed));
-  } else if (badgeKey === "certified") {
-    ratios.push(componentRatio(safe.examsPassed, FOUNDATION_EXAMS_TOTAL));
-    ratios.push(componentRatio(safe.totalModulesOpened, CERTIFIED_GATE.minModulesOpened));
+    ratios.push(componentRatio(assignmentsAndPacksPoolCount(safe), CERTIFIED_GATE.minAssignmentsAndPacksPool));
+    ratios.push(componentRatio(safe.appliedLearningOpened, CERTIFIED_GATE.minAppliedLearning));
   } else if (badgeKey === "graduate") {
     ratios.push(componentRatio(safe.appliedLearningOpened, GRADUATE_TARGETS.appliedLearning));
     ratios.push(componentRatio(safe.practicePacksOpened, GRADUATE_TARGETS.practicePacks));

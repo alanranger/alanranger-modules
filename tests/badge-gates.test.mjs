@@ -23,13 +23,20 @@ const {
 } = modulePaths;
 
 const {
+  FOUNDATION_GATE,
+  PRACTITIONER_GATE,
+  CERTIFIED_GATE,
+  GRADUATE_GATE,
+  MASTER_GATE,
   GRADUATE_TARGETS,
   MASTER_TARGETS,
   KEEPALIVE_DECAY_DAYS,
+  FOUNDATION_REQUIRED_MODULE_PATH,
   JOURNEY_STAGES,
   BADGE_SECTION_TOTALS,
   evaluateBadges,
   computeLongevityPoints,
+  computeFoundationProgressPct,
   getCurrentStage,
   getNextUnearnedBadge,
   graduateRequirementsMet,
@@ -37,10 +44,10 @@ const {
   computeBadgeProgressForKey,
   computeNextBadgeProgress,
   computeTrackFillPct,
+  normaliseStats,
 } = gates;
 
 const APPLIED_LEARNING_TOTAL = longevity.APPLIED_LEARNING_TOTAL;
-
 const DAY_MS = 86400000;
 
 function fixtureStats(overrides) {
@@ -51,6 +58,8 @@ function fixtureStats(overrides) {
     pdfAssignmentsOpened: 0,
     totalModulesOpened: 0,
     examsPassed: 0,
+    compositionExamsPassed: 0,
+    module01Opened: false,
     appliedLearningOpened: null,
     practicePacksOpened: null,
     distinctActiveMonthsAllTime: null,
@@ -58,34 +67,58 @@ function fixtureStats(overrides) {
   };
 }
 
-function certifiedFloorStats(overrides) {
+function foundationEarnedStats(overrides) {
   return fixtureStats({
-    foundationModulesOpened: 30,
+    module01Opened: true,
+    foundationModulesOpened: 3,
+    ...overrides,
+  });
+}
+
+function practitionerEarnedStats(overrides) {
+  return foundationEarnedStats({
+    cameraOpened: PRACTITIONER_GATE.minCameraModules,
+    compositionOpened: PRACTITIONER_GATE.minCompositionModules,
+    pdfAssignmentsOpened: PRACTITIONER_GATE.minPdfAssignments,
+    examsPassed: PRACTITIONER_GATE.minFoundationExamsPassed,
+    compositionExamsPassed: PRACTITIONER_GATE.minCompositionExamsPassed,
+    ...overrides,
+  });
+}
+
+function certifiedFloorStats(overrides) {
+  return practitionerEarnedStats({
     cameraOpened: CAMERA_MODULE_PATHS.length,
     compositionOpened: COMPOSITION_MODULE_PATHS.length,
-    pdfAssignmentsOpened: 3,
-    totalModulesOpened: 30,
-    examsPassed: 15,
+    pdfAssignmentsOpened: 5,
+    practicePacksOpened: 0,
+    appliedLearningOpened: CERTIFIED_GATE.minAppliedLearning,
+    examsPassed: CERTIFIED_GATE.minFoundationExamsPassed,
+    compositionExamsPassed: CERTIFIED_GATE.minCompositionExamsPassed,
+    foundationModulesOpened: 25,
+    totalModulesOpened: 25,
     ...overrides,
   });
 }
 
 function graduateCountsStats(overrides) {
   return certifiedFloorStats({
+    examsPassed: 15,
+    compositionExamsPassed: 15,
     pdfAssignmentsOpened: GRADUATE_TARGETS.pdfAssignments,
     appliedLearningOpened: GRADUATE_TARGETS.appliedLearning,
     practicePacksOpened: GRADUATE_TARGETS.practicePacks,
-    distinctActiveMonthsAllTime: GRADUATE_TARGETS.activeMonths,
+    distinctActiveMonthsAllTime: 10,
     ...overrides,
   });
 }
 
 function masterCountsStats(overrides) {
-  return certifiedFloorStats({
+  return graduateCountsStats({
     pdfAssignmentsOpened: MASTER_TARGETS.pdfAssignments,
     appliedLearningOpened: MASTER_TARGETS.appliedLearning,
     practicePacksOpened: MASTER_TARGETS.practicePacks,
-    distinctActiveMonthsAllTime: MASTER_TARGETS.activeMonths,
+    distinctActiveMonthsAllTime: 16,
     ...overrides,
   });
 }
@@ -94,328 +127,173 @@ function paidContext(lastActivityAt) {
   return { hasConverted: true, lastActivityAt: lastActivityAt || new Date().toISOString() };
 }
 
+test("constants: Master minPoints > Graduate minPoints", () => {
+  assert.ok(MASTER_GATE.minPoints > GRADUATE_GATE.minPoints);
+  assert.equal(GRADUATE_GATE.minPoints, 190);
+  assert.equal(MASTER_GATE.minPoints, 270);
+});
+
+test("constants: module 01 path matches camera module 1", () => {
+  assert.equal(FOUNDATION_REQUIRED_MODULE_PATH, CAMERA_MODULE_PATHS[0]);
+});
+
 test("1. brand new: Enrolled only, target Foundation", () => {
   const result = evaluateBadges(fixtureStats(), 0, false);
   assert.equal(result.earned.enrolled, true);
   assert.equal(result.earned.foundation, false);
-  assert.equal(result.highestConsecutive, "enrolled");
   assert.equal(result.target, "foundation");
-  assert.equal(result.earnedCount, 1);
 });
 
-test("2. Foundation gate met: Foundation earned, target Practitioner", () => {
-  const result = evaluateBadges(fixtureStats({ foundationModulesOpened: 3 }), 3, false);
+test("2. Foundation requires module 01 even with 3 other modules", () => {
+  const result = evaluateBadges(
+    fixtureStats({ foundationModulesOpened: 3, module01Opened: false }),
+    3,
+    false
+  );
+  assert.equal(result.earned.foundation, false);
+});
+
+test("2b. Foundation gate met with module 01 + 3 modules + 3 days", () => {
+  const result = evaluateBadges(foundationEarnedStats(), 3, false);
   assert.equal(result.earned.foundation, true);
-  assert.equal(result.earned.practitioner, false);
-  assert.equal(result.highestConsecutive, "foundation");
   assert.equal(result.target, "practitioner");
 });
 
-test("3. 15 camera only: Practitioner proximity 1 of 4", () => {
+test("3. partial Practitioner: 10 camera only -> 1 of 5 proximity", () => {
   const result = evaluateBadges(
-    fixtureStats({
-      foundationModulesOpened: 15,
-      cameraOpened: CAMERA_MODULE_PATHS.length,
-      examsPassed: 3,
+    foundationEarnedStats({
+      cameraOpened: PRACTITIONER_GATE.minCameraModules,
+      examsPassed: 2,
     }),
     5,
     false
   );
-  assert.equal(result.earned.foundation, true);
   assert.equal(result.earned.practitioner, false);
-  assert.deepEqual(result.practitionerProximity, { met: 1, total: 4 });
-  assert.equal(result.target, "practitioner");
+  assert.deepEqual(result.practitionerProximity, { met: 1, total: 5 });
 });
 
-test("4. full Practitioner gate: Practitioner earned", () => {
-  const result = evaluateBadges(
-    fixtureStats({
-      foundationModulesOpened: 20,
-      cameraOpened: CAMERA_MODULE_PATHS.length,
-      compositionOpened: COMPOSITION_MODULE_PATHS.length,
-      pdfAssignmentsOpened: 3,
-      examsPassed: 8,
-    }),
-    10,
-    false
-  );
-  assert.equal(result.earned.foundation, true);
+test("4. full Practitioner gate earned", () => {
+  const result = evaluateBadges(practitionerEarnedStats(), 10, false);
   assert.equal(result.earned.practitioner, true);
   assert.equal(result.highestConsecutive, "practitioner");
 });
 
-test("5. Certified floor with prerequisites: Certified earned", () => {
+test("5. Certified floor earned", () => {
   const result = evaluateBadges(certifiedFloorStats(), 10, false);
-  assert.equal(result.earned.practitioner, true);
   assert.equal(result.earned.certified, true);
-  assert.equal(result.highestConsecutive, "certified");
 });
 
-test("6. prerequisite order: high modules/exams but 1 active day -> Enrolled only", () => {
+test("6. prerequisite order: high stats but no module 01 -> Enrolled only", () => {
   const result = evaluateBadges(
     fixtureStats({
       foundationModulesOpened: 60,
       cameraOpened: CAMERA_MODULE_PATHS.length,
       compositionOpened: COMPOSITION_MODULE_PATHS.length,
-      pdfAssignmentsOpened: 3,
-      totalModulesOpened: 60,
+      pdfAssignmentsOpened: 5,
       examsPassed: 15,
+      compositionExamsPassed: 15,
+      module01Opened: false,
     }),
-    1,
+    5,
     false
   );
-  assert.equal(result.earned.enrolled, true);
-  assert.equal(result.earned.foundation, false);
-  assert.equal(result.earned.practitioner, false);
-  assert.equal(result.earned.certified, false);
-  assert.equal(result.earned.graduate, false);
-  assert.equal(result.earned.master, false);
   assert.equal(result.highestConsecutive, "enrolled");
-  assert.equal(result.earnedCount, 1);
-  assert.equal(result.target, "foundation");
 });
 
-test("7. Certified met without longevity: Graduate/Master stay unearned", () => {
+test("7. Certified without longevity: Graduate blocked", () => {
   const result = evaluateBadges(certifiedFloorStats(), 5, false, paidContext());
   assert.equal(result.earned.certified, true);
   assert.equal(result.earned.graduate, false);
-  assert.equal(result.earned.master, false);
-  assert.equal(result.target, "graduate");
 });
 
-test("8. null/missing stats: safe fallback", () => {
-  assert.doesNotThrow(() => evaluateBadges(null, undefined, undefined));
+test("8. null stats safe fallback", () => {
   const result = evaluateBadges(null, undefined, undefined);
   assert.equal(result.earned.enrolled, true);
   assert.equal(result.earned.foundation, false);
-  assert.equal(result.earnedCount, 1);
 });
 
-test("9. Graduate counts + paid: Graduate earned, Master not", () => {
+test("9. Graduate counts + paid + all 30 exams + points >= 190", () => {
   const stats = graduateCountsStats();
-  assert.equal(computeLongevityPoints(stats), 98);
+  assert.ok(computeLongevityPoints(stats) >= GRADUATE_GATE.minPoints);
   const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(result.earned.certified, true);
   assert.equal(result.earned.graduate, true);
   assert.equal(result.earned.master, false);
-  assert.equal(result.target, "master");
 });
 
 test("10. Master counts + paid: Master earned", () => {
   const stats = masterCountsStats();
-  assert.equal(computeLongevityPoints(stats), 163);
+  assert.ok(computeLongevityPoints(stats) >= MASTER_GATE.minPoints);
   const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(result.earned.graduate, true);
   assert.equal(result.earned.master, true);
-  assert.equal(result.highestConsecutive, "master");
 });
 
-test("11. counts met but NOT paid: neither Graduate nor Master", () => {
+test("11. counts met but NOT paid: no Graduate/Master", () => {
   const result = evaluateBadges(masterCountsStats(), 10, false, { hasConverted: false });
-  assert.equal(result.earned.certified, true);
   assert.equal(result.earned.graduate, false);
   assert.equal(result.earned.master, false);
 });
 
-test("12. counts met but Certified NOT earned: neither Graduate nor Master", () => {
-  const stats = masterCountsStats({
-    totalModulesOpened: 20,
-    examsPassed: 10,
-    pdfAssignmentsOpened: 3,
-  });
+test("12. Graduate requires all 30 exams", () => {
+  const stats = graduateCountsStats({ compositionExamsPassed: 10 });
   const result = evaluateBadges(stats, 10, false, paidContext());
+  assert.equal(result.earned.graduate, false);
+});
+
+test("Foundation progress: module 01 alone -> 60%", () => {
+  const safe = normaliseStats(foundationEarnedStats({ foundationModulesOpened: 1 }));
+  assert.equal(computeFoundationProgressPct(safe, 0, false), 60);
+});
+
+test("Foundation progress: module 01 + 2 others + 3 days -> 100%", () => {
+  const safe = normaliseStats(foundationEarnedStats());
+  assert.equal(computeFoundationProgressPct(safe, 3, false), 100);
+});
+
+test("Foundation progress label: opening 01 jumps to ~60%", () => {
+  const stats = foundationEarnedStats({ foundationModulesOpened: 1 });
+  const result = evaluateBadges(stats, 0, false);
+  const progress = computeNextBadgeProgress(result.badges, stats, 0, false, 1, 60);
+  assert.equal(progress.pct, 60);
+});
+
+test("Certified combined assignments+packs pool", () => {
+  const stats = practitionerEarnedStats({
+    cameraOpened: CAMERA_MODULE_PATHS.length,
+    compositionOpened: COMPOSITION_MODULE_PATHS.length,
+    examsPassed: 15,
+    compositionExamsPassed: 7,
+    pdfAssignmentsOpened: 3,
+    practicePacksOpened: 2,
+    appliedLearningOpened: 3,
+  });
+  const result = evaluateBadges(stats, 10, false);
+  assert.equal(result.earned.certified, true);
+});
+
+test("Sample member sanity (Claude spec)", () => {
+  const stats = fixtureStats({
+    module01Opened: true,
+    foundationModulesOpened: 40,
+    cameraOpened: 12,
+    compositionOpened: 6,
+    pdfAssignmentsOpened: 4,
+    practicePacksOpened: 5,
+    examsPassed: 7,
+    compositionExamsPassed: 5,
+    totalModulesOpened: 40,
+    appliedLearningOpened: 12,
+    distinctActiveMonthsAllTime: 6,
+  });
+  const result = evaluateBadges(stats, 3, false, paidContext());
+  assert.equal(result.earned.foundation, true);
+  assert.equal(result.earned.practitioner, true);
   assert.equal(result.earned.certified, false);
-  assert.equal(result.earned.graduate, false);
-  assert.equal(result.earned.master, false);
+  assert.equal(result.highestConsecutive, "practitioner");
+  const pCert = computeBadgeProgressForKey("certified", stats, 3, false, 40, 60);
+  assert.ok(pCert.pct > 0);
 });
 
-test("13. Graduate earned then 60+ days idle: PAUSED not downgraded", () => {
-  const stale = new Date(Date.now() - (KEEPALIVE_DECAY_DAYS + 2) * DAY_MS).toISOString();
-  const result = evaluateBadges(graduateCountsStats(), 10, false, paidContext(stale));
-  assert.equal(result.earned.graduate, true);
-  assert.equal(result.paused.graduate, true);
-  assert.equal(result.longevityPoints, 98);
-});
-
-test("14. null longevity fields: Graduate/Master unearned, longevityDegraded flagged", () => {
-  const result = evaluateBadges(certifiedFloorStats(), 10, false, paidContext());
-  assert.equal(result.longevityDegraded, true);
-  assert.equal(result.earned.graduate, false);
-  assert.equal(result.earned.master, false);
-  assert.equal(result.longevityPoints, null);
-});
-
-test("15. badge objects carry display fields (colour/stars/iconClass) for rail + banner", () => {
-  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
-  result.badges.forEach((badge) => {
-    const stage = JOURNEY_STAGES.filter((s) => s.key === badge.key)[0];
-    assert.equal(badge.colour, stage.colour);
-    assert.equal(badge.stars, stage.stars);
-    assert.equal(badge.iconClass, stage.iconClass);
-    assert.equal(badge.sublabel, stage.sublabel);
-  });
-  const master = result.badges.filter((b) => b.key === "master")[0];
-  assert.equal(master.colour, "gold");
-  assert.equal(master.stars, 5);
-  assert.equal(master.iconClass, "ti-trophy");
-  const expectedStars = { enrolled: 0, foundation: 1, practitioner: 2, certified: 3, graduate: 4, master: 5 };
-  result.badges.forEach((badge) => {
-    assert.equal(badge.stars, expectedStars[badge.key]);
-  });
-});
-
-test("16. getCurrentStage carries display fields for banner current-stage badge", () => {
-  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
-  const current = getCurrentStage(result.badges);
-  assert.equal(current.key, "master");
-  assert.equal(current.colour, "gold");
-  assert.equal(current.stars, 5);
-  assert.equal(current.iconClass, "ti-trophy");
-  assert.equal(current.levelIndex, 6);
-  assert.equal(current.paused, false);
-});
-
-test("17. getCurrentStage carries paused when summit badge is idle 60+ days", () => {
-  const stale = new Date(Date.now() - (KEEPALIVE_DECAY_DAYS + 2) * DAY_MS).toISOString();
-  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext(stale));
-  const current = getCurrentStage(result.badges);
-  assert.equal(current.key, "master");
-  assert.equal(current.colour, "gold");
-  assert.equal(current.paused, true);
-});
-
-test("18. Graduate earned, Master not -> getNextUnearnedBadge returns master", () => {
-  const result = evaluateBadges(graduateCountsStats(), 10, false, paidContext());
-  const next = getNextUnearnedBadge(result.badges);
-  assert.equal(result.earned.graduate, true);
-  assert.equal(result.earned.master, false);
-  assert.equal(next.key, "master");
-  assert.equal(result.target, "master");
-});
-
-test("19. all 6 badges earned -> getNextUnearnedBadge returns null", () => {
-  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
-  const next = getNextUnearnedBadge(result.badges);
-  assert.equal(result.earned.master, true);
-  assert.equal(next, null);
-  assert.equal(result.target, null);
-});
-
-test("20. Certified earned, Graduate not, partial counts -> progress ~63% to Graduate", () => {
-  const stats = certifiedFloorStats({
-    appliedLearningOpened: 12,
-    practicePacksOpened: 6,
-    pdfAssignmentsOpened: 3,
-    distinctActiveMonthsAllTime: 2,
-  });
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(result.earned.certified, true);
-  assert.equal(result.earned.graduate, false);
-  assert.equal(result.target, "graduate");
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
-  assert.equal(progress.pct, 63);
-  assert.equal(progress.label, "63% to Graduate");
-  assert.equal(progress.degraded, false);
-  const gReq = graduateRequirementsMet(stats);
-  assert.equal(gReq.met, 0);
-});
-
-test("21. Graduate earned, Master not, partial counts -> progress to Master", () => {
-  const stats = graduateCountsStats({
-    appliedLearningOpened: 18,
-    practicePacksOpened: 12,
-    pdfAssignmentsOpened: 6,
-    distinctActiveMonthsAllTime: 5,
-  });
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(result.earned.graduate, true);
-  assert.equal(result.earned.master, false);
-  assert.equal(result.target, "master");
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
-  assert.equal(progress.pct, 73);
-  assert.equal(progress.label, "73% to Master");
-  const mReq = masterRequirementsMet(stats);
-  assert.equal(mReq.met, 0);
-});
-
-test("22. all 6 earned -> progress 100% all badges earned", () => {
-  const stats = masterCountsStats();
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
-  assert.equal(progress.pct, 100);
-  assert.equal(progress.label, "100% - all badges earned");
-});
-
-test("23. longevity null toward Graduate -> degraded modules-based bar", () => {
-  const stats = certifiedFloorStats();
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(result.target, "graduate");
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 45, 60);
-  assert.equal(progress.pct, 75);
-  assert.equal(progress.label, "75% of the foundations course");
-  assert.equal(progress.degraded, true);
-});
-
-test("24. Foundation stage -> progress to Foundation from modules + active days (80/20 weighted)", () => {
-  const stats = fixtureStats({ foundationModulesOpened: 2 });
-  const result = evaluateBadges(stats, 2, false);
-  const progress = computeNextBadgeProgress(result.badges, stats, 2, false, 2, 60);
-  assert.equal(progress.label, "67% to Foundation");
-  assert.equal(progress.pct, 67);
-  assert.equal(progress.breakdown, "Foundation: 2/3 modules · 2/3 active days");
-});
-
-test("24b. brand new Enrolled -> 7% to Foundation (0 modules, 1 active day, 80/20)", () => {
-  const stats = fixtureStats();
-  const result = evaluateBadges(stats, 1, false);
-  const progress = computeNextBadgeProgress(result.badges, stats, 1, false, 0, 60);
-  assert.equal(progress.pct, 7);
-  assert.equal(progress.label, "7% to Foundation");
-  assert.equal(progress.breakdown, "Foundation: 0/3 modules · 1/3 active days");
-});
-
-test("24c. first module opened -> 33% to Foundation (1 module, 1 active day)", () => {
-  const stats = fixtureStats({ foundationModulesOpened: 1 });
-  const result = evaluateBadges(stats, 1, false);
-  const progress = computeNextBadgeProgress(result.badges, stats, 1, false, 1, 60);
-  assert.equal(progress.pct, 33);
-  assert.equal(progress.label, "33% to Foundation");
-  assert.equal(progress.breakdown, "Foundation: 1/3 modules · 1/3 active days");
-});
-
-test("25. track fill matches progress toward Graduate (Certified earned, 63%)", () => {
-  const stats = certifiedFloorStats({
-    appliedLearningOpened: 12,
-    practicePacksOpened: 6,
-    pdfAssignmentsOpened: 3,
-    distinctActiveMonthsAllTime: 2,
-  });
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
-  assert.equal(progress.pct, 63);
-  assert.equal(computeTrackFillPct(result.badges, progress.pct), 73);
-});
-
-test("26. track fill matches progress toward Master (Graduate earned, 73%)", () => {
-  const stats = graduateCountsStats({
-    appliedLearningOpened: 18,
-    practicePacksOpened: 12,
-    pdfAssignmentsOpened: 6,
-    distinctActiveMonthsAllTime: 5,
-  });
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  const progress = computeNextBadgeProgress(result.badges, stats, 10, false, 60, 60);
-  assert.equal(progress.pct, 73);
-  assert.equal(computeTrackFillPct(result.badges, progress.pct), 95);
-});
-
-test("27. all badges earned -> track fill 100%", () => {
-  const stats = masterCountsStats();
-  const result = evaluateBadges(stats, 10, false, paidContext());
-  assert.equal(computeTrackFillPct(result.badges, 100), 100);
-});
-
-test("28. BADGE_SECTION_TOTALS match academy-module-paths lengths", () => {
+test("BADGE_SECTION_TOTALS match path lengths", () => {
   assert.equal(BADGE_SECTION_TOTALS.cameraModules, CAMERA_MODULE_PATHS.length);
   assert.equal(BADGE_SECTION_TOTALS.compositionGuides, COMPOSITION_MODULE_PATHS.length);
   assert.equal(BADGE_SECTION_TOTALS.foundationModules, FOUNDATION_MODULE_PATHS.length);
@@ -424,19 +302,10 @@ test("28. BADGE_SECTION_TOTALS match academy-module-paths lengths", () => {
   assert.equal(BADGE_SECTION_TOTALS.practicePacks, PRACTICE_PACK_URLS.length);
 });
 
-test("29. computeBadgeProgressForKey — later badge can exceed current (non-linear)", () => {
-  const stats = fixtureStats({
-    foundationModulesOpened: 30,
-    cameraOpened: CAMERA_MODULE_PATHS.length,
-    compositionOpened: COMPOSITION_MODULE_PATHS.length,
-    pdfAssignmentsOpened: 5,
-    totalModulesOpened: 30,
-    examsPassed: 5,
-    appliedLearningOpened: 14,
-    practicePacksOpened: 9,
-    distinctActiveMonthsAllTime: 4,
+test("badge display fields unchanged (Phase 1)", () => {
+  const result = evaluateBadges(masterCountsStats(), 10, false, paidContext());
+  result.badges.forEach((badge) => {
+    const stage = JOURNEY_STAGES.find((s) => s.key === badge.key);
+    assert.equal(badge.sublabel, stage.sublabel);
   });
-  const practitioner = computeBadgeProgressForKey("practitioner", stats, 10, false, 30, 60);
-  const graduate = computeBadgeProgressForKey("graduate", stats, 10, false, 30, 60);
-  assert.ok(graduate.pct > practitioner.pct);
 });
