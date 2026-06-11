@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.29) — Squarespace Snippet
+Academy Dashboard UI (v1.3.30) — Squarespace Snippet
+v1.3.30: Cert 2 Stage 3 fix — exams mini-grid uses exam status pills only (passed/failed/not_taken + attempts/score tooltips); not module open-tracker cubes.
 v1.3.29: Cert 2 Stage 3 — exams tile split rows (Foundation + Composition & Creative from progress API tracks); dual-track mini-grid; no 16–35 placeholder.
 v1.3.28: Fix C — after assignment PDF open, clear engagement cache + refresh do-next strip (Practitioner count updates without reload).
 v1.3.27: Stack stats + footnote under progress gauge (single right column).
@@ -1489,9 +1490,16 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     font-weight: 600;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     border: 1px solid transparent;
-    pointer-events: auto !important; /* Enable for hover tooltips */
-    user-select: none; /* Prevent text selection */
-    cursor: pointer; /* Show pointer cursor for clickable pills */
+    pointer-events: auto !important;
+    user-select: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--ar-border);
   }
   /* Allow hover effects for tooltips */
   html.ar-academy #ar-exams-mini-grid .ar-exam-module-pill:hover {
@@ -2130,7 +2138,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
           </div>
           <div class="ar-tile__desc">60 step-by-step modules</div>
           <!-- Module grid will be rendered here -->
-          <div id="ar-modules-mini-grid" style="margin-top:12px; display:none;"></div>
+          <div id="ar-modules-mini-grid" data-ar-grid="modules" style="margin-top:12px; display:none;"></div>
           <div class="ar-tile__tip">Continue your lessons and tick off each module.</div>
         </div>
   
@@ -2146,9 +2154,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             <div class="ar-tile__desc">Take exams, save progress, download results PDFs and certificates.</div>
             <div id="ar-exams-progress" class="ar-tile__tip">Resume an exam or download your latest results.</div>
             <div id="ar-exams-details" class="ar-tile__details"></div>
-            <!-- Mini grid for 15 modules -->
-            <div id="ar-exams-mini-grid" style="margin-top:12px; display:none;"></div>
           </a>
+          <!-- Exam status mini-grid (outside tile link — exam pills, not module open-tracker) -->
+          <div id="ar-exams-mini-grid" data-ar-grid="exams" data-ar-rendered-by="" style="margin-top:12px; display:none;"></div>
           <!-- Details button to open drawer (outside <a> tag to prevent navigation) -->
           <button id="ar-exams-details-btn" onclick="event.preventDefault(); event.stopPropagation(); if(window.openExamDrawer) { window.openExamDrawer(); }" style="display:none; margin-top:12px; margin-left:0; margin-right:0; padding:8px 16px; font-size:13px; background:var(--ar-orange); border:1px solid var(--ar-orange); border-radius:6px; color:#fff; cursor:pointer; font-weight:600; transition:all 0.15s ease; width:calc(100% - 28px); position:relative; z-index:20;">View Details</button>
           <button id="ar-exams-refresh" onclick="if(window.refreshExamProgress) { event.stopPropagation(); window.refreshExamProgress(); }" style="position:absolute; bottom:12px; right:14px; z-index:10; padding:6px 10px; font-size:11px; background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.3); border-radius:6px; color:var(--ar-text); cursor:pointer; font-weight:600; transition:all 0.15s ease;">&#x1F504; Refresh</button>
@@ -4310,22 +4318,35 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       }
     });
 
+    function buildExamPillTooltip(module) {
+      var tooltipText = module.name || ("Module " + module.label);
+      var attempts = Number.parseInt(module.attempts || 0, 10) || 0;
+      if (module.status === "passed") {
+        tooltipText += " — Passed";
+        if (module.bestScore != null && module.bestScore !== "") tooltipText += " (" + module.bestScore + "%)";
+        if (attempts > 0) tooltipText += " · " + attempts + " attempt" + (attempts !== 1 ? "s" : "");
+      } else if (module.status === "failed") {
+        tooltipText += " — Failed";
+        if (module.bestScore != null && module.bestScore !== "") tooltipText += " (best " + module.bestScore + "%)";
+        if (attempts > 0) tooltipText += " · " + attempts + " attempt" + (attempts !== 1 ? "s" : "");
+      } else {
+        tooltipText += " — Not started";
+      }
+      return tooltipText;
+    }
+
+    function getExamTrackOrderFromData(data) {
+      if (data && Array.isArray(data.trackOrder) && data.trackOrder.length) return data.trackOrder;
+      return EXAM_TRACK_ORDER;
+    }
+
     function buildExamPillHtml(module, goldTheme) {
       var statusClass = "status-" + module.status;
       var themeClass = goldTheme ? " ar-exam-module-pill--gold" : "";
-      var tooltipText = module.name || ("Module " + module.label);
-      if (module.status === "passed" && module.bestScore) {
-        tooltipText += " - Passed (" + module.bestScore + "%)";
-      } else if (module.status === "failed" && module.bestScore) {
-        tooltipText += " - Failed (Best: " + module.bestScore + "%)";
-        if (module.attempts > 0) {
-          tooltipText += " - " + module.attempts + " attempt" + (module.attempts !== 1 ? "s" : "");
-        }
-      } else if (module.status === "not_taken") {
-        tooltipText += " - Not started";
-      }
+      var tooltipText = buildExamPillTooltip(module);
       var safeTooltip = (typeof escapeHtml === "function") ? escapeHtml(tooltipText) : tooltipText.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-      return '<div class="ar-exam-module-pill ' + statusClass + themeClass + '" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore || "") + '" data-module-attempts="' + (module.attempts || 0) + '" title="' + safeTooltip + '">' + module.label + "</div>";
+      var safeAria = safeTooltip;
+      return '<button type="button" class="ar-exam-module-pill ' + statusClass + themeClass + '" data-exam-pill="1" data-module-id="' + escapeHtml(module.moduleId) + '" data-module-name="' + escapeHtml(module.name) + '" data-module-status="' + escapeHtml(module.status) + '" data-module-score="' + (module.bestScore != null ? module.bestScore : "") + '" data-module-attempts="' + (module.attempts || 0) + '" title="' + safeTooltip + '" aria-label="' + safeAria + '">' + module.label + "</button>";
     }
 
     function renderExamTrackRows(tracks, trackRowsEl, progressTitleEl) {
@@ -4365,11 +4386,16 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       trackRowsEl.setAttribute("data-exams-total", String(totalSlots || DASHBOARD_CATALOG_SLOTS.exams));
     }
 
-    function renderExamMiniGridFromTracks(tracks, miniGridEl) {
+    function renderExamMiniGridFromTracks(tracks, miniGridEl, trackOrder) {
       if (!miniGridEl || !tracks) return;
+      if (miniGridEl.id !== "ar-exams-mini-grid") {
+        console.warn("[Dashboard] renderExamMiniGridFromTracks: wrong target element", miniGridEl.id);
+        return;
+      }
+      var order = trackOrder || EXAM_TRACK_ORDER;
       var gridHtml = "";
-      for (var i = 0; i < EXAM_TRACK_ORDER.length; i++) {
-        var key = EXAM_TRACK_ORDER[i];
+      for (var i = 0; i < order.length; i++) {
+        var key = order[i];
         var track = tracks[key];
         if (!track || !Array.isArray(track.modules)) continue;
         var sectionClass = key === "foundation" ? "ar-exam-track-section--foundation" : "ar-exam-track-section--gold";
@@ -4383,11 +4409,13 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       }
       miniGridEl.innerHTML = gridHtml;
       miniGridEl.style.display = gridHtml ? "block" : "none";
+      miniGridEl.setAttribute("data-ar-rendered-by", "exam-progress-api");
+      miniGridEl.setAttribute("data-ar-grid", "exams");
     }
 
     function wireExamMiniGridClicks(miniGridEl) {
       if (!miniGridEl) return;
-      var examPills = miniGridEl.querySelectorAll(".ar-exam-module-pill:not(.status-coming-soon)");
+      var examPills = miniGridEl.querySelectorAll(".ar-exam-module-pill[data-exam-pill]");
       examPills.forEach(function(pill) {
         pill.addEventListener("click", function(e) {
           e.preventDefault();
@@ -4397,6 +4425,18 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         });
       });
     }
+
+    function refreshExamMiniGridFromCache() {
+      var data = window.examProgressData;
+      var miniGridEl = document.getElementById("ar-exams-mini-grid");
+      if (!data || !miniGridEl || !data.tracks) return;
+      if (miniGridEl.querySelector(".ar-module-cube[data-module-url]")) {
+        console.warn("[Dashboard] Exams mini-grid had module open-tracker cubes — restoring exam status grid");
+      }
+      renderExamMiniGridFromTracks(data.tracks, miniGridEl, getExamTrackOrderFromData(data));
+      wireExamMiniGridClicks(miniGridEl);
+    }
+    window.refreshExamMiniGridFromCache = refreshExamMiniGridFromCache;
 
     function loadExamProgress(member) {
       var progressEl = document.getElementById("ar-exams-progress");
@@ -4503,7 +4543,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
         if (miniGridEl) {
           if (tracks) {
-            renderExamMiniGridFromTracks(tracks, miniGridEl);
+            renderExamMiniGridFromTracks(tracks, miniGridEl, getExamTrackOrderFromData(data));
           } else {
             var gridHtml = "";
             modules.forEach(function(module) {
@@ -4511,6 +4551,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             });
             miniGridEl.innerHTML = gridHtml;
             miniGridEl.style.display = gridHtml ? "block" : "none";
+            miniGridEl.setAttribute("data-ar-rendered-by", "exam-progress-api-legacy");
           }
           wireExamMiniGridClicks(miniGridEl);
           var detailsBtn = document.getElementById("ar-exams-details-btn");
@@ -7170,9 +7211,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         totalEl.textContent = totalOpened;
       }
 
-      // Render module grid with category rows
+      // Render module grid with category rows (modules tile only — never exams tile)
       const miniGridEl = document.getElementById('ar-modules-mini-grid');
-      if (miniGridEl) {
+      if (miniGridEl && miniGridEl.id === 'ar-modules-mini-grid' && miniGridEl.getAttribute('data-ar-grid') !== 'exams') {
         var gridHtml = '';
         
         // Define module groups with their ranges and full labels
@@ -7777,6 +7818,10 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         console.error('[Checklists] Error rendering checklists grid:', err);
         console.error('[Checklists] Error details:', err.message, err.stack);
         // Don't break dashboard if checklists fail
+      }
+
+      if (typeof window.refreshExamMiniGridFromCache === 'function') {
+        window.refreshExamMiniGridFromCache();
       }
     }
     

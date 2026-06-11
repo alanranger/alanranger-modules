@@ -35,9 +35,9 @@ Handoff `RESPONSE-*.md` files live in Google Drive (`Cursor Outputs for Claude/`
 | `lib/academy-dashboard-catalog.js` | Server-side only (audit script) — **no SQ paste** |
 | `scripts/audit-dashboard-links.mjs` | Server-side only |
 
-**Stamp:** **D 1.3.29** (header comment in snippet)
+**Stamp:** **D 1.3.30** (header comment in snippet)
 
-**Commits:** `28e7269` (Stage 3 body), version stamp in follow-up commit
+**Commits:** `28e7269` (Stage 3 body), `26f0425`/`669630a` (docs), **v1.3.30** exam-status grid fix
 
 ---
 

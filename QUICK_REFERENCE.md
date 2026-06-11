@@ -58,7 +58,7 @@ This guide provides quick reference for AI agents and developers working on the 
 | `academy-foundation-page-squarespace-snippet-v1.html` | **FP 1.0.43** | Modules Map page — build from `scripts/build-foundation-page-snippet.mjs` |
 | `academy-header-elements-squarespace-snippet-v1.html` | **H 1.4.33** | Code Injection → Header |
 | `academy-do-next-strip-squarespace-snippet-v1.html` | **S 1.3.56** | Dashboard code block 1 |
-| `academy-dashboard-squarespace-snippet-v1.html` | **D 1.3.29** | Dashboard code block 2 |
+| `academy-dashboard-squarespace-snippet-v1.html` | **D 1.3.30** | Dashboard code block 2 |
 | `academy-bookmark-buttons-squarespace-snippet-v1.html` | **B 1.3.16** | Blog/article template |
 | `academy-login-squarespace-snippet-v1.html` | — | Login page |
 
