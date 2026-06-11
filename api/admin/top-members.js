@@ -2,7 +2,7 @@
 // Returns most active members
 
 const { createClient } = require("@supabase/supabase-js");
-const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+const { attachTableBadgeFields, tallyExamPassCountsFromRows } = require("../../lib/admin-gate-stats");
 
 module.exports = async (req, res) => {
   try {
@@ -162,17 +162,15 @@ module.exports = async (req, res) => {
     }
 
     // Exam passes per member (for badge level column)
-    const passedByMember = {};
+    const passCountsByMember = {};
     if (memberIds.length > 0) {
       const { data: examRows, error: examErr } = await supabase
         .from('module_results_ms')
-        .select('memberstack_id, passed')
+        .select('memberstack_id, module_id, passed')
         .in('memberstack_id', memberIds);
       if (!examErr && examRows) {
-        examRows.forEach((row) => {
-          if (row.passed && row.memberstack_id) {
-            passedByMember[row.memberstack_id] = (passedByMember[row.memberstack_id] || 0) + 1;
-          }
+        tallyExamPassCountsFromRows(examRows.filter((row) => row.passed)).forEach((counts, memberId) => {
+          passCountsByMember[memberId] = counts;
         });
       }
     }
@@ -182,12 +180,17 @@ module.exports = async (req, res) => {
       const profile = profileMap[row.member_id];
       if (profile) {
         const plan = profile.plan_summary || {};
+        const examCounts = passCountsByMember[row.member_id] || {
+          foundationExamsPassed: 0,
+          compositionExamsPassed: 0,
+        };
         attachTableBadgeFields(
           row,
           profile.raw,
-          passedByMember[row.member_id] || 0,
+          examCounts.foundationExamsPassed,
           !!plan.is_paid,
-          row.last_login
+          row.last_login,
+          examCounts.compositionExamsPassed
         );
       }
       return row;

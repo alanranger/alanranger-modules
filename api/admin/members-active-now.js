@@ -4,7 +4,7 @@
 // A member is "logged in" if their most recent login is after their most recent logout (or they have no logout)
 
 const { createClient } = require("@supabase/supabase-js");
-const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+const { attachTableBadgeFields, tallyExamPassCountsFromRows } = require("../../lib/admin-gate-stats");
 
 module.exports = async (req, res) => {
   // Log incoming request for debugging
@@ -115,15 +115,13 @@ module.exports = async (req, res) => {
         .in('member_id', ids);
       if (profileError) throw profileError;
 
-      const passedByMember = {};
+      const passCountsByMember = {};
       const { data: examRows } = await supabase
         .from('module_results_ms')
-        .select('memberstack_id, passed')
+        .select('memberstack_id, module_id, passed')
         .in('memberstack_id', ids);
-      (examRows || []).forEach((row) => {
-        if (row.passed && row.memberstack_id) {
-          passedByMember[row.memberstack_id] = (passedByMember[row.memberstack_id] || 0) + 1;
-        }
+      tallyExamPassCountsFromRows((examRows || []).filter((row) => row.passed)).forEach((counts, memberId) => {
+        passCountsByMember[memberId] = counts;
       });
 
       const byId = new Map((profiles || []).map((r) => [r.member_id, r]));
@@ -138,12 +136,17 @@ module.exports = async (req, res) => {
             last_activity_at: latestActivityByMember.get(id) || null,
           };
           if (profile) {
+            const examCounts = passCountsByMember[id] || {
+              foundationExamsPassed: 0,
+              compositionExamsPassed: 0,
+            };
             attachTableBadgeFields(
               row,
               profile.raw,
-              passedByMember[id] || 0,
+              examCounts.foundationExamsPassed,
               !!plan.is_paid,
-              row.last_activity_at
+              row.last_activity_at,
+              examCounts.compositionExamsPassed
             );
           }
           return row;

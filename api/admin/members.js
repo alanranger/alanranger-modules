@@ -1275,23 +1275,8 @@ const GHOST_LOGIN_TYPES = new Set(["login", "member_login"]);
 const GHOST_ID_CHUNK = 200;
 
 async function fetchExamsPassedMap(supabase, memberIds) {
-  const map = new Map();
-  if (!memberIds.length) return map;
-  const chunkSize = 300;
-  for (let i = 0; i < memberIds.length; i += chunkSize) {
-    const chunk = memberIds.slice(i, i + chunkSize);
-    const { data, error } = await supabase
-      .from("module_results_ms")
-      .select("memberstack_id, passed")
-      .in("memberstack_id", chunk)
-      .eq("passed", true);
-    if (error) throw error;
-    (data || []).forEach((row) => {
-      if (!row.memberstack_id) return;
-      map.set(row.memberstack_id, (map.get(row.memberstack_id) || 0) + 1);
-    });
-  }
-  return map;
+  const { fetchExamPassCountsMap } = require("../../lib/admin-gate-stats");
+  return fetchExamPassCountsMap(supabase, memberIds);
 }
 
 async function fetchGhostActivityMaps(supabase, memberIds) {
@@ -1346,7 +1331,10 @@ async function buildGhostMembersList(supabase, req) {
     const plan = member.plan_summary || {};
     const raw = member.raw || {};
     const memberId = member.member_id;
-    const examsPassed = examsPassedMap.get(memberId) || 0;
+    const examCounts = examsPassedMap.get(memberId) || {
+      foundationExamsPassed: 0,
+      compositionExamsPassed: 0,
+    };
     const lastSeen = lastSeenMap[memberId] || member.updated_at || null;
     const item = {
       member_id: memberId,
@@ -1362,7 +1350,14 @@ async function buildGhostMembersList(supabase, req) {
       last_login: lastLoginMap[memberId] || null,
       updated_at: member.updated_at,
     };
-    attachTableBadgeFields(item, raw, examsPassed, item.is_paid, lastSeen);
+    attachTableBadgeFields(
+      item,
+      raw,
+      examCounts.foundationExamsPassed,
+      item.is_paid,
+      lastSeen,
+      examCounts.compositionExamsPassed
+    );
     return item;
   });
 
@@ -1600,18 +1595,28 @@ async function handleMembers(req, res) {
     // First try by memberstack_id, then also check by email for legacy data
     const { data: examStatsById } = await supabase
       .from('module_results_ms')
-      .select('memberstack_id, email, passed')
+      .select('memberstack_id, email, module_id, passed')
       .in('memberstack_id', memberIds);
     
     // Also get exams by email for legacy data (members who haven't migrated yet)
     const memberEmails = members?.map(m => m.email).filter(Boolean) || [];
     const { data: examStatsByEmail } = memberEmails.length > 0 ? await supabase
       .from('module_results_ms')
-      .select('memberstack_id, email, passed')
+      .select('memberstack_id, email, module_id, passed')
       .in('email', memberEmails) : { data: [] };
     
     // Combine both results
     const examStats = [...(examStatsById || []), ...(examStatsByEmail || [])];
+    const { tallyExamPassCountsFromRows, countsFromPassedRows } = require("../../lib/admin-gate-stats");
+    const examPassCountsMap = tallyExamPassCountsFromRows(
+      (examStats || []).filter((row) => row.passed && row.memberstack_id && row.module_id)
+    );
+    const examPassCountsByEmail = {};
+    (examStats || []).forEach((exam) => {
+      if (!exam.passed || !exam.email || exam.memberstack_id || !exam.module_id) return;
+      if (!examPassCountsByEmail[exam.email]) examPassCountsByEmail[exam.email] = [];
+      examPassCountsByEmail[exam.email].push({ module_id: exam.module_id, passed: true });
+    });
 
     // Get bookmark count per member
     const { data: bookmarks } = await supabase
@@ -1812,12 +1817,16 @@ async function handleMembers(req, res) {
       };
 
       const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+      const passCounts =
+        examPassCountsMap.get(memberId) ||
+        countsFromPassedRows(examPassCountsByEmail[member.email] || []);
       attachTableBadgeFields(
         enriched,
         raw,
-        enriched.exams_passed,
+        passCounts.foundationExamsPassed,
         enriched.is_paid,
-        enriched.last_seen
+        enriched.last_seen,
+        passCounts.compositionExamsPassed
       );
 
       return enriched;

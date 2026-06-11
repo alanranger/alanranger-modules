@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.70 — Phase 3: cap appliedLearningOpened JSON fallback at 40 (matches longevity-stats lib).
 v1.3.69 — FIX: Tile 4 + proximity/breakdown read canonical engagement distinctActiveDaysFirst14d (display cap at target when met).
 v1.3.68 — Certified requires paid conversion (synced gate logic; Practitioner last trial badge).
 v1.3.67 — Shared buildAcademyBadgeView with foundation module map (lib/academy-client-gate-view.js); stats cannot drift.
@@ -3479,7 +3480,7 @@ function getAllModulesOpenedCount(normalized) {
 
 function countAppliedLearningOpenedFromJson(normalized) {
   var opened = (normalized && normalized.arAcademy && normalized.arAcademy.appliedLearning && normalized.arAcademy.appliedLearning.opened) || {};
-  return Object.keys(opened).filter(Boolean).length;
+  return Math.min(Object.keys(opened).filter(Boolean).length, APPLIED_LEARNING_TOTAL);
 }
 
 function mergeLongevityIntoStats(stats, normalized, foundationOpenedSet, engagement) {

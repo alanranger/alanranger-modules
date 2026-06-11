@@ -3,7 +3,7 @@
 // Aggregates module_results_ms into member-level progress with module breakdown
 
 const { createClient } = require("@supabase/supabase-js");
-const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
+const { attachTableBadgeFields, countsFromPassedRows } = require("../../lib/admin-gate-stats");
 
 // All 15 modules in order
 const ALL_MODULES = [
@@ -258,12 +258,18 @@ module.exports = async (req, res) => {
         lastModulePassed: member.lastModulePassed,
         modules: modulesArray
       };
+      const passCounts = countsFromPassedRows(
+        Object.entries(member.modules)
+          .filter(([, mod]) => mod.status === "passed")
+          .map(([moduleId]) => ({ module_id: moduleId, passed: true }))
+      );
       attachTableBadgeFields(
         row,
         memberRawMap[member.member_id],
-        member.passedCount,
+        passCounts.foundationExamsPassed,
         memberPaidMap[member.member_id],
-        member.lastExamAt
+        member.lastExamAt,
+        passCounts.compositionExamsPassed
       );
       return row;
     });

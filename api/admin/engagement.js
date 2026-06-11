@@ -146,12 +146,16 @@ function computeMemberDistribution(perMember) {
   };
 }
 
-function buildTopMembers(perMember, memberMeta, passedByMember) {
+function buildTopMembers(perMember, memberMeta, passCountsByMember) {
   const { attachTableBadgeFields } = require("../../lib/admin-gate-stats");
   const arr = [];
   perMember.forEach((m, id) => {
     const meta = memberMeta.get(id) || {};
     const lastSeen = m.last_seen_ts ? new Date(m.last_seen_ts).toISOString() : null;
+    const examCounts = passCountsByMember.get(id) || {
+      foundationExamsPassed: 0,
+      compositionExamsPassed: 0,
+    };
     const row = {
       member_id: id,
       email: meta.email || null,
@@ -167,9 +171,10 @@ function buildTopMembers(perMember, memberMeta, passedByMember) {
     attachTableBadgeFields(
       row,
       meta.raw,
-      passedByMember.get(id) || 0,
+      examCounts.foundationExamsPassed,
       meta.is_paid,
-      lastSeen
+      lastSeen,
+      examCounts.compositionExamsPassed
     );
     arr.push(row);
   });
@@ -213,6 +218,7 @@ async function fetchMemberMeta(supabase) {
 }
 
 async function fetchExamStats(supabase) {
+  const { tallyExamPassCountsFromRows } = require("../../lib/admin-gate-stats");
   const { data, error } = await supabase
     .from('module_results_ms')
     .select('module_id, memberstack_id, passed, score_percent');
@@ -238,6 +244,7 @@ async function fetchExamStats(supabase) {
       passedByMember.set(row.memberstack_id, (passedByMember.get(row.memberstack_id) || 0) + 1);
     }
   });
+  const passCountsByMember = tallyExamPassCountsFromRows((data || []).filter((row) => row.passed));
   const topModules = Array.from(byModule.values())
     .map(m => ({
       module_id: m.module_id,
@@ -253,6 +260,7 @@ async function fetchExamStats(supabase) {
     totalPassed,
     uniqueMembers: byMember.size,
     passedByMember,
+    passCountsByMember,
     avgScore: totalAttempts ? Math.round((totalScore / totalAttempts) * 10) / 10 : null,
     topModules,
   };
@@ -418,7 +426,7 @@ async function handleEngagement(req, res) {
 
     const agg = aggregateEvents(rows);
     const memberStats = computeMemberDistribution(agg.perMember);
-    const topMembers = buildTopMembers(agg.perMember, memberMeta, examStats.passedByMember);
+    const topMembers = buildTopMembers(agg.perMember, memberMeta, examStats.passCountsByMember);
 
     const categories = Array.from(agg.categories.entries())
       .map(([category, opens]) => ({ category, opens }))
