@@ -1,5 +1,6 @@
 <!--
 Academy Dashboard UI (v1.3.42) — Squarespace Snippet
+v1.3.44: 4b modal — cumulative carry-forward display (camera/composition 15/10 at Grad+Master; Assignments + pool show → pts).
 v1.3.43: Certified requires paid conversion — 4b modal Paid conversion row ✓ under Certified; gate logic synced from lib.
 v1.3.42: 4b modal — ensureBadgeRequirementsModal injects modal if HTML block missing; delegated click on badge progress mount.
 v1.3.41: HOTFIX — re-sync BADGE-GATES-SYNC (paths.every parse error in script block 3).
@@ -2099,6 +2100,12 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     line-height: 1.5;
     color: var(--ar-text-muted);
   }
+  #ar-badge-requirements-modal .ar-badge-req__key {
+    margin: 12px 0 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ar-text-muted);
+  }
 
   #ar-upgrade-modal {
     display: none;
@@ -2964,7 +2971,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     <div class="ar-badge-req__card">
       <button type="button" class="ar-badge-req__close" id="ar-badge-requirements-close" aria-label="Close">&times;</button>
       <h2 id="ar-badge-requirements-title">Badge requirements</h2>
-      <p class="ar-badge-req__sub">Requirements for each badge stage. Cells show the target for that stage — not your personal progress.</p>
+      <p class="ar-badge-req__sub">Requirements for each badge stage. Cells show the cumulative target at that stage — not your personal progress.</p>
       <div id="ar-badge-requirements-body"></div>
       <p class="ar-badge-req__footnote">Graduate and Master are points-gated (190 / 270) via weighted longevity — applied&times;2, packs&times;2, assignments&times;4, months&times;7. Cells show targets, not your personal progress.</p>
     </div>
@@ -4904,6 +4911,7 @@ function computeTrackFillPct(badges, progressPct) {
       if (!body) return;
 
       var dash = "—";
+      var ptsFed = "→ pts";
       var rows = [
         {
           feature: "Module 01 Exposure",
@@ -4937,36 +4945,36 @@ function computeTrackFillPct(badges, progressPct) {
           foundation: dash,
           practitioner: String(PRACTITIONER_GATE.minCameraModules),
           certified: String(BADGE_SECTION_TOTALS.cameraModules),
-          graduate: dash,
-          master: dash,
-          summary: "Practitioner needs 10 camera modules; Certified needs all 15."
+          graduate: String(BADGE_SECTION_TOTALS.cameraModules),
+          master: String(BADGE_SECTION_TOTALS.cameraModules),
+          summary: "Practitioner needs 10 camera modules; Certified and above need all 15."
         },
         {
           feature: "Composition guides (of " + BADGE_SECTION_TOTALS.compositionGuides + ")",
           foundation: dash,
           practitioner: String(PRACTITIONER_GATE.minCompositionModules),
           certified: String(BADGE_SECTION_TOTALS.compositionGuides),
-          graduate: dash,
-          master: dash,
-          summary: "Practitioner needs 5 composition guides; Certified needs all 10."
+          graduate: String(BADGE_SECTION_TOTALS.compositionGuides),
+          master: String(BADGE_SECTION_TOTALS.compositionGuides),
+          summary: "Practitioner needs 5 composition guides; Certified and above need all 10."
         },
         {
           feature: "Assignments (of " + BADGE_SECTION_TOTALS.pdfAssignments + ")",
           foundation: dash,
           practitioner: String(PRACTITIONER_GATE.minPdfAssignments),
           certified: dash,
-          graduate: String(GRADUATE_TARGETS.pdfAssignments),
-          master: String(MASTER_TARGETS.pdfAssignments),
-          summary: "Practitioner needs three PDF assignments; Graduate and Master have higher assignment targets."
+          graduate: ptsFed,
+          master: ptsFed,
+          summary: "Practitioner needs three PDF assignments; at Graduate and Master, assignments feed longevity points (not a fixed sub-target)."
         },
         {
           feature: "Assignments + practice packs (combined pool)",
           foundation: dash,
           practitioner: dash,
           certified: String(CERTIFIED_GATE.minAssignmentsAndPacksPool),
-          graduate: dash,
-          master: dash,
-          summary: "Certified counts assignments and practice packs together — any five from the combined pool."
+          graduate: ptsFed,
+          master: ptsFed,
+          summary: "Certified counts assignments and practice packs together — any five from the combined pool; above Certified they feed longevity points."
         },
         {
           feature: "Foundation exams (of " + BADGE_SECTION_TOTALS.foundationExams + ")",
@@ -5045,7 +5053,8 @@ function computeTrackFillPct(badges, progressPct) {
       body.innerHTML =
         '<table class="ar-badge-req__table" role="table">' +
         "<thead><tr><th scope=\"col\">Requirement</th><th scope=\"col\">Foundation</th><th scope=\"col\">Practitioner</th><th scope=\"col\">Certified</th><th scope=\"col\">Graduate</th><th scope=\"col\">Master</th><th scope=\"col\">Summary</th></tr></thead>" +
-        "<tbody>" + tbody + "</tbody></table>";
+        "<tbody>" + tbody + "</tbody></table>" +
+        '<p class="ar-badge-req__key">→ pts = contributes to the Graduate/Master longevity points (190 / 270).</p>';
     }
 
     function openBadgeRequirementsModal() {
@@ -5075,7 +5084,7 @@ function computeTrackFillPct(badges, progressPct) {
         '<div class="ar-badge-req__card">' +
         '<button type="button" class="ar-badge-req__close" id="ar-badge-requirements-close" aria-label="Close">&times;</button>' +
         '<h2 id="ar-badge-requirements-title">Badge requirements</h2>' +
-        '<p class="ar-badge-req__sub">Requirements for each badge stage. Cells show the target for that stage — not your personal progress.</p>' +
+        '<p class="ar-badge-req__sub">Requirements for each badge stage. Cells show the cumulative target at that stage — not your personal progress.</p>' +
         '<div id="ar-badge-requirements-body"></div>' +
         '<p class="ar-badge-req__footnote">Graduate and Master are points-gated (190 / 270) via weighted longevity — applied&times;2, packs&times;2, assignments&times;4, months&times;7. Cells show targets, not your personal progress.</p>' +
         "</div>";
