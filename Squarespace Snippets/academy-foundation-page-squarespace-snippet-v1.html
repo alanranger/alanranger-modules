@@ -1,7 +1,7 @@
-<!-- FP 1.0.46 — Foundation course map (/academy/online-photography-course) -->
+<!-- FP 1.0.47 — Foundation course map (/academy/online-photography-course) -->
 <script>(function(){try{var p=(location.pathname||"").replace(/\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>
 <template id="ar-fp-header-fallback-template"><div id="ar-academy-header-container"><div id="ar-academy-header-welcome"><div id="ar-academy-header-welcome-copy"><div id="ar-academy-header-welcome-text">Welcome back, <span id="ar-academy-header-welcome-name">...</span></div><div id="ar-academy-header-last-login"></div></div><div id="ar-fp-header-reviews-badge" class="ar-fp-header-reviews-badge" aria-label="Google rating"><div class="elfsight-app-f80cced4-3461-4683-bf2b-461a77b60d68"></div></div></div><div id="ar-academy-header-center"><div id="ar-academy-header-center-copy"><h1 id="ar-academy-header-title">Photography Course Modules Map</h1><p id="ar-academy-header-subtitle">Your photography Academy</p></div></div><div id="ar-academy-header-right"><div id="ar-academy-header-brand"><a id="ar-academy-header-brand-link" href="https://www.alanranger.com/" aria-label="Back to AlanRanger.com homepage"><img id="ar-academy-header-brand-logo" src="https://images.squarespace-cdn.com/content/v1/5013f4b2c4aaa4752ac69b17/b859ad2b-1442-4595-b9a4-410c32299bf8/ALAN+RANGER+photography+LOGO+BLACK.+switched+small.png?format=1500w" alt="Alan Ranger Photography" loading="eager" /></a></div><button id="ar-academy-header-logout-btn" type="button" data-ms-action="logout">Log out</button></div></div></template>
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.46" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.47" hidden aria-hidden="true">
 <style>
 html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 html.ar-fp-live-shell,html.ar-fp-live-shell body,html.ar-fp-live-shell #siteWrapper,html.ar-fp-live-shell .Site,html.ar-fp-live-shell .Site-inner,html.ar-fp-live-shell .Content-outer,html.ar-fp-live-shell #content,html.ar-fp-live-shell main.Main,html.ar-fp-live-shell .Main--page,html.ar-fp-live-shell .Main-content,html.ar-fp-live-shell #page,html.ar-fp-live-shell #sections,html.ar-fp-live-shell #canvas,html.ar-fp-live-shell .page-section,html.ar-fp-live-shell .section-background,html.ar-fp-live-shell .content-wrapper,html.ar-fp-live-shell .sqs-layout{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
@@ -604,6 +604,7 @@ How a failed RPS panel became a pass: a case study in  Building a Successful RPS
       }
     }
     if (!modules.length) {
+      if (grid.querySelector(".ar-fp-mod-btn[data-module-id]")) return;
       grid.innerHTML = "";
       return;
     }
@@ -1828,7 +1829,17 @@ function computeTrackFillPct(badges, progressPct) {
   }
   var fpState = { wired: false, busy: false, revalidating: false };
 
+  function mergeExamDataForPaint(incoming){
+    var prev = fpRuntime.examData;
+    if (!incoming) return prev || null;
+    if (!prev || !prev.tracks || !prev.tracks.composition_creative) return incoming;
+    var incC2 = incoming.tracks && incoming.tracks.composition_creative;
+    if (incC2 && incC2.modules && incC2.modules.length) return incoming;
+    return Object.assign({}, incoming, { tracks: Object.assign({}, incoming.tracks, prev.tracks) });
+  }
+
   function paintFoundationState(member, normalized, engagement, examData){
+    examData = mergeExamDataForPaint(examData);
     fpRuntime.member = member;
     fpRuntime.normalized = normalized || {};
     fpRuntime.engagement = engagement;
@@ -1887,7 +1898,10 @@ function computeTrackFillPct(badges, progressPct) {
       fetchExamProgress(memberId, true)
     ]).then(function(results){
       resolveMemberBundle().then(function(bundle){
-        paintFoundationState(bundle.member, bundle.normalized || {}, results[0], results[1]);
+        var examData = results[1];
+        if (!examData && fpRuntime.examData) examData = fpRuntime.examData;
+        else examData = mergeExamDataForPaint(examData);
+        paintFoundationState(bundle.member, bundle.normalized || {}, results[0], examData);
       });
     }).catch(function(err){
       console.warn("[foundation-hub] revalidate failed", err);

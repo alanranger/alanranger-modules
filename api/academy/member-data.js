@@ -6,6 +6,21 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function pickLatestLoginPerDay(timestamps, limit = 5) {
+  const bestByDay = new Map();
+  for (const ts of timestamps || []) {
+    if (!ts) continue;
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = d.toISOString().slice(0, 10);
+    const prev = bestByDay.get(key);
+    if (!prev || d.getTime() > new Date(prev).getTime()) bestByDay.set(key, ts);
+  }
+  return [...bestByDay.values()]
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+    .slice(0, limit);
+}
+
 module.exports = async function handler(req, res) {
   // CORS headers for Squarespace
   res.setHeader('Access-Control-Allow-Origin', 'https://www.alanranger.com');
@@ -47,15 +62,14 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ error: "Member not found" });
     }
 
-    // Fetch recent login events from academy_events.
-    // Pull 6 so we can safely drop a "current login" event and still return 5 items.
+    // Fetch recent login events — pull enough rows to find 5 distinct calendar days.
     const { data: loginEvents, error: loginError } = await supabase
       .from("academy_events")
       .select("created_at")
       .eq("member_id", memberId)
       .eq("event_type", "login")
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(60);
 
     // Add login metadata to response
     // Priority for last_login:
@@ -88,7 +102,7 @@ module.exports = async function handler(req, res) {
         response.last_login = cleanedLogins[0];
       }
 
-      response.last_logins = cleanedLogins.slice(0, 5);
+      response.last_logins = pickLatestLoginPerDay(cleanedLogins, 5);
     } else if (data.updated_at) {
       // Fallback to updated_at as proxy for last login (gets updated on member sync/login)
       response.last_login = data.updated_at;

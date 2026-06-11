@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.32) — Squarespace Snippet
+Academy Dashboard UI (v1.3.33) — Squarespace Snippet
+v1.3.33: Membership Status — exam stats out of 30 (both tracks), summed attempts; last 5 logins one per day (latest time that day).
 v1.3.32: Composition exam pills use same green/red/grey status colours as Foundation (removed ar-exam-module-pill--gold overrides).
 v1.3.31: Cert 2 Stage 3 — exams tile summary chips sum foundation + composition_creative tracks (combined passed/failed/not started).
 v1.3.30: Cert 2 Stage 3 fix — exams mini-grid uses exam status pills only (passed/failed/not_taken + attempts/score tooltips); not module open-tracker cubes.
@@ -3793,17 +3794,23 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       }
     }
 
-    function dedupeLoginDates(values) {
-      var seen = {};
-      var out = [];
+    function pickLatestLoginPerDay(values, limit) {
+      limit = typeof limit === "number" ? limit : 5;
+      var bestByDay = {};
       (values || []).forEach(function(item) {
         if (!item) return;
-        var key = String(item);
-        if (seen[key]) return;
-        seen[key] = true;
-        out.push(key);
+        var d = parseDate(item);
+        if (!d) return;
+        var key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        if (!bestByDay[key] || d.getTime() > bestByDay[key].time) {
+          bestByDay[key] = { raw: item, time: d.getTime() };
+        }
       });
-      return out;
+      return Object.keys(bestByDay)
+        .map(function(k) { return bestByDay[k]; })
+        .sort(function(a, b) { return b.time - a.time; })
+        .slice(0, limit)
+        .map(function(entry) { return entry.raw; });
     }
 
     function extractFallbackLoginsFromMemberData(memberData) {
@@ -3825,7 +3832,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         }
       }
 
-      return dedupeLoginDates(list).slice(0, 5);
+      return pickLatestLoginPerDay(list, 5);
     }
 
     function parseProgressPair(text) {
@@ -3851,18 +3858,21 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       var passed = 0;
       var failed = 0;
       var remaining = 0;
+      var totalAttempts = 0;
       for (var i = 0; i < EXAM_TRACK_ORDER.length; i++) {
         var track = tracks[EXAM_TRACK_ORDER[i]];
         if (!track || !track.summary) continue;
         passed += track.summary.passedCount || 0;
         failed += track.summary.failedCount || 0;
         remaining += track.summary.remainingCount || 0;
+        totalAttempts += track.summary.totalAttempts || 0;
       }
       return {
         passedCount: passed,
         failedCount: failed,
         remainingCount: remaining,
-        total: passed + failed + remaining
+        total: passed + failed + remaining,
+        totalAttempts: totalAttempts
       };
     }
 
@@ -4048,13 +4058,15 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       if (!summary) return null;
       var passed = Number.parseInt(summary.passedCount || 0, 10) || 0;
       var failed = Number.parseInt(summary.failedCount || 0, 10) || 0;
+      var total = Number.parseInt(summary.total || 0, 10) || (data.tracks ? 30 : 15);
       var taken = passed + failed;
       var attempts = Number.parseInt(summary.totalAttempts || 0, 10) || 0;
       return {
         passed: passed,
         failed: failed,
         taken: taken,
-        attempts: attempts
+        attempts: attempts,
+        total: total
       };
     }
 
@@ -4079,7 +4091,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
       var examSummary = getExamSummaryForMembershipStats();
       if (examSummary) {
-        chips.push('<span class="ms-chip">Exams taken ' + examSummary.taken + '/15</span>');
+        chips.push('<span class="ms-chip">Exams taken ' + examSummary.taken + '/' + examSummary.total + '</span>');
         chips.push('<span class="ms-chip">Passed ' + examSummary.passed + '</span>');
         chips.push('<span class="ms-chip">Failed ' + examSummary.failed + '</span>');
         chips.push('<span class="ms-chip">Attempts ' + examSummary.attempts + '</span>');

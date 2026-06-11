@@ -540,10 +540,10 @@ const FP_SQSP_WRAPPER_SELECTORS = [
 
 const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
 
-const snippet = `<!-- FP 1.0.46 — Foundation course map (/academy/online-photography-course) -->
+const snippet = `<!-- FP 1.0.47 — Foundation course map (/academy/online-photography-course) -->
 ${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.46" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.47" hidden aria-hidden="true">
 <style>
 html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
@@ -953,6 +953,7 @@ ${rpsZoneHtml}
       }
     }
     if (!modules.length) {
+      if (grid.querySelector(".ar-fp-mod-btn[data-module-id]")) return;
       grid.innerHTML = "";
       return;
     }
@@ -1716,8 +1717,23 @@ ${rpsZoneHtml}
     globalThis.__arFoundationPage = payload;
   }
   var fpState = { wired: false, busy: false, revalidating: false };
+  var fpRuntime = { member: null, normalized: {}, engagement: null, examData: null };
+
+  function mergeExamDataForPaint(incoming){
+    var prev = fpRuntime.examData;
+    if (!incoming) return prev || null;
+    if (!prev || !prev.tracks || !prev.tracks.composition_creative) return incoming;
+    var incC2 = incoming.tracks && incoming.tracks.composition_creative;
+    if (incC2 && incC2.modules && incC2.modules.length) return incoming;
+    return Object.assign({}, incoming, { tracks: Object.assign({}, incoming.tracks, prev.tracks) });
+  }
 
   function paintFoundationState(member, normalized, engagement, examData){
+    examData = mergeExamDataForPaint(examData);
+    fpRuntime.member = member;
+    fpRuntime.normalized = normalized || {};
+    fpRuntime.engagement = engagement;
+    fpRuntime.examData = examData;
     var openedSet = buildOpenedSet(normalized);
     var openedCount = countFoundationOpens(openedSet);
     var engagementDegraded = !engagement;
@@ -1772,7 +1788,10 @@ ${rpsZoneHtml}
       fetchExamProgress(memberId, true)
     ]).then(function(results){
       resolveMemberBundle().then(function(bundle){
-        paintFoundationState(bundle.member, bundle.normalized || {}, results[0], results[1]);
+        var examData = results[1];
+        if (!examData && fpRuntime.examData) examData = fpRuntime.examData;
+        else examData = mergeExamDataForPaint(examData);
+        paintFoundationState(bundle.member, bundle.normalized || {}, results[0], examData);
       });
     }).catch(function(err){
       console.warn("[foundation-hub] revalidate failed", err);
