@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.30) — Squarespace Snippet
+Academy Dashboard UI (v1.3.31) — Squarespace Snippet
+v1.3.31: Cert 2 Stage 3 — exams tile summary chips sum foundation + composition_creative tracks (combined passed/failed/not started).
 v1.3.30: Cert 2 Stage 3 fix — exams mini-grid uses exam status pills only (passed/failed/not_taken + attempts/score tooltips); not module open-tracker cubes.
 v1.3.29: Cert 2 Stage 3 — exams tile split rows (Foundation + Composition & Creative from progress API tracks); dual-track mini-grid; no 16–35 placeholder.
 v1.3.28: Fix C — after assignment PDF open, clear engagement cache + refresh do-next strip (Practitioner count updates without reload).
@@ -3858,6 +3859,26 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
     var dashboardCatalogTimers = [];
     var dashboardCatalogObserverReady = false;
 
+    function aggregateExamTracksSummary(tracks) {
+      if (!tracks || typeof tracks !== "object") return null;
+      var passed = 0;
+      var failed = 0;
+      var remaining = 0;
+      for (var i = 0; i < EXAM_TRACK_ORDER.length; i++) {
+        var track = tracks[EXAM_TRACK_ORDER[i]];
+        if (!track || !track.summary) continue;
+        passed += track.summary.passedCount || 0;
+        failed += track.summary.failedCount || 0;
+        remaining += track.summary.remainingCount || 0;
+      }
+      return {
+        passedCount: passed,
+        failedCount: failed,
+        remainingCount: remaining,
+        total: passed + failed + remaining
+      };
+    }
+
     function appliedLearningCatalogTotal() {
       var progressEl = document.getElementById("ar-applied-learning-progress-title");
       var totalSlots = progressEl ? Number.parseInt(progressEl.getAttribute("data-total") || "40", 10) : 40;
@@ -4035,8 +4056,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
 
     function getExamSummaryForMembershipStats() {
       var data = globalThis.examProgressData;
-      if (!data || typeof data !== "object" || !data.summary) return null;
-      var summary = data.summary;
+      if (!data || typeof data !== "object") return null;
+      var summary = data.tracks ? aggregateExamTracksSummary(data.tracks) : data.summary;
+      if (!summary) return null;
       var passed = Number.parseInt(summary.passedCount || 0, 10) || 0;
       var failed = Number.parseInt(summary.failedCount || 0, 10) || 0;
       var taken = passed + failed;
@@ -4510,21 +4532,21 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         // Store globally for drawer
         window.examProgressData = data;
         
-        var summary = data.summary;
-        var modules = data.modules;
         var tracks = data.tracks;
+        var combinedSummary = tracks ? aggregateExamTracksSummary(tracks) : null;
+        var summary = combinedSummary || data.summary;
+        var modules = data.modules;
         var passed = summary.passedCount;
         var failed = summary.failedCount;
-        var total = summary.passedCount + summary.failedCount + summary.remainingCount;
+        var total = summary.total || (summary.passedCount + summary.failedCount + summary.remainingCount);
         if (!total) total = modules ? modules.length : 15;
 
         renderExamTrackRows(tracks, trackRowsEl, progressTitleEl);
 
-        // Foundation tip + details unchanged (backward compatibility)
         if (passed > 0 || failed > 0) {
-          var tipText = passed + "/" + (modules ? modules.length : 15) + " modules passed";
+          var tipText = passed + " passed";
           if (failed > 0) tipText += " • " + failed + " failed";
-          var remaining = (modules ? modules.length : 15) - passed - failed;
+          var remaining = summary.remainingCount != null ? summary.remainingCount : (total - passed - failed);
           if (remaining > 0) tipText += " • " + remaining + " not started";
           progressEl.textContent = tipText;
         } else {
@@ -4536,7 +4558,7 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
           var detailsHtml = "";
           if (passed > 0) detailsHtml += '<div class="ar-tile__details-item passed">✓ ' + passed + " passed</div>";
           if (failed > 0) detailsHtml += '<div class="ar-tile__details-item failed">✕ ' + failed + " failed</div>";
-          var detailsRemaining = (modules ? modules.length : 15) - passed - failed;
+          var detailsRemaining = summary.remainingCount != null ? summary.remainingCount : (total - passed - failed);
           if (detailsRemaining > 0) detailsHtml += '<div class="ar-tile__details-item not-attempted">○ ' + detailsRemaining + " not started</div>";
           detailsEl.innerHTML = detailsHtml;
         }

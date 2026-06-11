@@ -1,4 +1,4 @@
-<!-- EXPORT squarespace-exams-cert2-LATEST.html v1.0.0 — paste BELOW Foundation block on /academy/photography-exams-certification -->
+<!-- EXPORT squarespace-exams-cert2-LATEST.html v1.0.1 — paste BELOW Foundation block on /academy/photography-exams-certification -->
 <!-- Certificate 2: Composition & Creative — isolated from Foundation (ar-modgrid-c2 / c2- prefix / IIFE) -->
 <div id="ar-modgrid-c2">
   <div id="c2-grid-container" style="display:block;max-width:1200px;margin:0 auto;padding:20px;">
@@ -40,7 +40,6 @@
         opacity:1!important;cursor:not-allowed!important;
       }
       #ar-modgrid-c2 #c2-btnMasterCertificate[disabled]::after{content:" 🔒";font-size:12px}
-      #ar-modgrid-c2 #c2-btnMasterTranscript{background:transparent!important;color:var(--c2-gold)!important;border:1.5px solid var(--c2-gold)!important}
       #ar-modgrid-c2 .hint{margin-top:6px;color:var(--c2-dim);font-size:12px}
       #ar-modgrid-c2 .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
       @media(max-width:1200px){#ar-modgrid-c2 .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -97,6 +96,30 @@
       #ar-modgrid-c2 .c2-modal input[type="text"]{
         background:#0d1117!important;border:1px solid #2a3140!important;color:#fff!important;border-radius:6px!important;
       }
+      /* Modals append to body — unscoped so tokens apply outside #ar-modgrid-c2 */
+      .c2-modal{background:rgba(6,8,12,.72)!important}
+      .c2-modal .c2-modal-card{
+        background:#151a23!important;border:1.5px solid #d4a64a!important;border-radius:12px!important;
+        box-shadow:0 24px 60px rgba(0,0,0,.45)!important;color:#e8ebf0!important;
+      }
+      .c2-modal h2,.c2-modal h3{color:#e8d9b8!important;margin:0}
+      .c2-modal strong{color:#e8ebf0!important}
+      .c2-modal .c2-modal-btn-primary{
+        display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:8px;
+        border:1.5px solid #d4a64a!important;background:#d4a64a!important;color:#0d1117!important;
+        font-weight:700;cursor:pointer;font-size:13px;
+      }
+      .c2-modal .c2-modal-btn-primary:hover{background:#e8d9b8!important;border-color:#e8d9b8!important}
+      .c2-modal .c2-modal-btn-secondary{
+        display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:8px;
+        border:1.5px solid #d4a64a!important;background:transparent!important;color:#d4a64a!important;
+        font-weight:700;cursor:pointer;font-size:13px;
+      }
+      .c2-modal .c2-modal-btn-secondary:hover{background:rgba(212,166,74,.12)!important;color:#e8d9b8!important;border-color:#e8d9b8!important}
+      #ar-modgrid-c2 #c2-btnMasterTranscript{
+        background:#d4a64a!important;color:#0d1117!important;border:1.5px solid #d4a64a!important;font-weight:700!important;
+      }
+      #ar-modgrid-c2 #c2-btnMasterTranscript:hover{background:#e8d9b8!important;border-color:#e8d9b8!important}
     </style>
 
     <div class="top">
@@ -352,8 +375,53 @@
     return headers;
   }
 
+  async function identityFromMsReader(){
+    try{
+      if(!globalThis.__arMsReader) return null;
+      var ms = globalThis.$memberstackDom || null;
+      var bundle = await globalThis.__arMsReader.fetchBundle(ms);
+      if(!bundle || !bundle.member) return null;
+      var member = bundle.member;
+      var data = member.data || member;
+      var id = data.id || member.id;
+      var email = (data.auth && data.auth.email) ? data.auth.email : (data.email || null);
+      if(!id) return null;
+      return { memberstack_id: String(id), email: email };
+    }catch(e){
+      return null;
+    }
+  }
+
+  function applyAuthBadgeState(identity){
+    var authBadge = $('c2-authBadge');
+    var authMsg = $('c2-memberstackAuthMessage');
+    if(identity){
+      if(authBadge){
+        authBadge.textContent = 'Signed in as ' + (identity.email || 'member');
+        authBadge.style.background = '#3f6b46';
+        authBadge.style.color = '#fff';
+      }
+      if(authMsg) authMsg.style.display = 'none';
+      var emailField = $('c2-email');
+      if(emailField && identity.email) emailField.value = identity.email;
+    } else {
+      if(authBadge){
+        authBadge.textContent = 'Not signed in';
+        authBadge.style.background = '#6b3a3f';
+        authBadge.style.color = '#fff';
+      }
+      if(authMsg) authMsg.style.display = 'block';
+    }
+  }
+
   async function getExamIdentity(){
     try{
+      var fromReader = await identityFromMsReader();
+      if(fromReader){
+        memberstackIdentity = fromReader;
+        applyAuthBadgeState(fromReader);
+        return memberstackIdentity;
+      }
       if(window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function'){
         var member = await window.$memberstackDom.getCurrentMember();
         if(member && member.data){
@@ -361,8 +429,7 @@
             memberstack_id: member.data.id,
             email: member.data.auth && member.data.auth.email ? member.data.auth.email : null
           };
-          var emailField = $('c2-email');
-          if(emailField && memberstackIdentity.email) emailField.value = memberstackIdentity.email;
+          applyAuthBadgeState(memberstackIdentity);
           return memberstackIdentity;
         }
       }
@@ -370,11 +437,21 @@
       var r = await fetch(EXAMS_API_BASE + '/api/exams/whoami', {headers:headers,credentials:'include'});
       if(!r.ok) return null;
       memberstackIdentity = await r.json();
-      var em = $('c2-email');
-      if(em && memberstackIdentity && memberstackIdentity.email) em.value = memberstackIdentity.email;
+      applyAuthBadgeState(memberstackIdentity);
       return memberstackIdentity;
     }catch(e){
       return null;
+    }
+  }
+
+  async function loadAuthenticatedProgress(){
+    showSpinner('Loading your exam progress...');
+    try{
+      var status = await fetchAllStatuses();
+      renderSummary(status);
+      renderGrid(status);
+    }finally{
+      hideSpinner();
     }
   }
 
@@ -1100,6 +1177,11 @@
     showToast('Transcript downloaded.','success');
   }
 
+  function appendC2Modal(modal){
+    var host = document.getElementById('ar-modgrid-c2') || document.body;
+    host.appendChild(modal);
+  }
+
   function showResultsModal(moduleId){
     getLatestStatus(moduleId).then(function(status){
       if(!status){ showToast('No results found','error'); return; }
@@ -1107,14 +1189,14 @@
       if(!mod) return;
       var modal = document.createElement('div');
       modal.className = 'c2-modal';
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
       modal.innerHTML =
-        '<div style="max-width:600px;width:100%;padding:30px;border-radius:12px;max-height:80vh;overflow-y:auto;">' +
+        '<div class="c2-modal-card" style="max-width:600px;width:100%;padding:30px;max-height:80vh;overflow-y:auto;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-            '<h2 style="margin:0;">' + escapeHtml(mod.title) + ' — Results</h2>' +
-            '<button type="button" class="c2-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;">&times;</button>' +
+            '<h2 style="color:#e8d9b8;">' + escapeHtml(mod.title) + ' — Results</h2>' +
+            '<button type="button" class="c2-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;" aria-label="Close">&times;</button>' +
           '</div>' +
-          '<div style="background:#1a2030;padding:20px;border-radius:8px;margin-bottom:20px;border:1px solid #2a3140;">' +
+          '<div style="background:#1a2030;padding:20px;border-radius:8px;margin-bottom:20px;border:1px solid #2a3140;color:#e2e8f0;">' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">' +
               '<div><strong>Score:</strong> ' + status.score_percent + '%</div>' +
               '<div><strong>Status:</strong> <span style="color:' + (status.passed ? '#4caf50' : '#e5484d') + '">' + (status.passed ? 'Passed' : 'Failed') + '</span></div>' +
@@ -1128,12 +1210,12 @@
               '</div>' : '') +
           '</div>' +
           '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
-            '<button type="button" class="btn c2-modal-results">Download Results PDF</button>' +
-            (status.passed ? '<button type="button" class="btn c2-modal-cert">Download Certificate</button>' : '') +
-            '<button type="button" class="btn secondary c2-modal-retake">Retake Exam</button>' +
+            '<button type="button" class="c2-modal-btn-primary c2-modal-results">Download Results PDF</button>' +
+            (status.passed ? '<button type="button" class="c2-modal-btn-primary c2-modal-cert">Download Certificate</button>' : '') +
+            '<button type="button" class="c2-modal-btn-secondary c2-modal-retake">Retake Exam</button>' +
           '</div>' +
         '</div>';
-      document.body.appendChild(modal);
+      appendC2Modal(modal);
       modal.querySelector('.c2-modal-close').addEventListener('click', function(){ modal.remove(); });
       modal.addEventListener('click', function(e){ if(e.target === modal) modal.remove(); });
       modal.querySelector('.c2-modal-results').addEventListener('click', function(){
@@ -1156,26 +1238,26 @@
   function showMasteryModal(){
     var modal = document.createElement('div');
     modal.className = 'c2-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
     modal.innerHTML =
-      '<div style="max-width:680px;width:100%;overflow:hidden;">' +
+      '<div class="c2-modal-card" style="max-width:680px;width:100%;overflow:hidden;">' +
         '<div style="padding:22px 24px;border-bottom:1px solid #2a3140;display:flex;align-items:center;gap:12px;">' +
           '<div style="width:40px;height:40px;border-radius:999px;background:rgba(212,166,74,.2);color:#d4a64a;display:flex;align-items:center;justify-content:center;font-size:22px;">✓</div>' +
-          '<h3 style="margin:0;font-size:20px;">' + escapeHtml(MASTERY_TITLE) + '</h3>' +
-          '<button type="button" class="c2-modal-close" style="margin-left:auto;background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;">&times;</button>' +
+          '<h3 style="color:#e8d9b8;">' + escapeHtml(MASTERY_TITLE) + '</h3>' +
+          '<button type="button" class="c2-modal-close" style="margin-left:auto;background:none;border:none;font-size:24px;cursor:pointer;color:#aab3c0;" aria-label="Close">&times;</button>' +
         '</div>' +
-        '<div style="padding:20px 24px;line-height:1.5;">' +
+        '<div style="padding:20px 24px;line-height:1.5;color:#e2e8f0;">' +
           '<p>You\'ve successfully completed and passed all 15 Composition & Creative modules.</p>' +
           '<p>Your <strong>Master Certificate</strong> recognises you as a <em>' + escapeHtml(MASTERY_DESIGNATION) + '</em>.</p>' +
           '<label style="display:block;font-weight:600;margin:16px 0 8px;color:#e8d9b8;">Name for Master Certificate:</label>' +
           '<input type="text" id="c2-masterCertificateName" placeholder="Enter your full name" style="width:100%;padding:8px 12px;">' +
           '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">' +
-            '<button type="button" class="btn" id="c2-btn-modal-master-cert">Download Master Certificate</button>' +
-            '<button type="button" class="btn secondary" id="c2-btn-modal-transcript">Download Module Results</button>' +
+            '<button type="button" class="c2-modal-btn-primary" id="c2-btn-modal-master-cert">Download Master Certificate</button>' +
+            '<button type="button" class="c2-modal-btn-secondary" id="c2-btn-modal-transcript">Download Module Results</button>' +
           '</div>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(modal);
+    appendC2Modal(modal);
     modal.querySelector('.c2-modal-close').addEventListener('click', function(){ modal.remove(); });
     modal.addEventListener('click', function(e){ if(e.target === modal) modal.remove(); });
     var nameInput = $('c2-masterCertificateName');
@@ -1251,35 +1333,21 @@
     renderSummary({});
     renderGrid({});
 
-    var authBadge = $('c2-authBadge');
-    var authMsg = $('c2-memberstackAuthMessage');
-
     try{
       memberstackIdentity = await getExamIdentity();
       if(memberstackIdentity){
-        if(authBadge){
-          authBadge.textContent = 'Signed in as ' + memberstackIdentity.email;
-          authBadge.style.background = '#3f6b46';
-          authBadge.style.color = '#fff';
-        }
-        if(authMsg) authMsg.style.display = 'none';
-        showSpinner('Loading your exam progress...');
-        var status = await fetchAllStatuses();
-        renderSummary(status);
-        renderGrid(status);
+        await loadAuthenticatedProgress();
       } else {
-        if(authBadge){
-          authBadge.textContent = 'Not signed in';
-          authBadge.style.background = '#6b3a3f';
-          authBadge.style.color = '#fff';
-        }
-        if(authMsg) authMsg.style.display = 'block';
+        applyAuthBadgeState(null);
+        setTimeout(async function(){
+          memberstackIdentity = await getExamIdentity();
+          if(memberstackIdentity){
+            await loadAuthenticatedProgress();
+          }
+        }, 3000);
       }
     }catch(e){
-      if(authBadge) authBadge.textContent = 'Not signed in';
-      if(authMsg) authMsg.style.display = 'block';
-    } finally {
-      hideSpinner();
+      applyAuthBadgeState(null);
     }
   }
 
