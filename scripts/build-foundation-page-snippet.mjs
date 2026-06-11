@@ -433,7 +433,10 @@ const examsSectionBody =
   `<p class="ar-fp-zone-sub">Take exams, save progress, download results PDFs and certificates.</p>` +
   `<div class="ar-fp-sec"><div class="ar-fp-sec-head"><span>🎓</span> 15 topic exams</div>` +
   `<p class="ar-fp-sec-intro" id="ar-fp-exams-tip">Resume an exam or download your latest results.</p>` +
-  `<div id="ar-fp-exams-grid" class="ar-fp-mod-grid" aria-label="Exam progress grid"></div></div>`;
+  `<div id="ar-fp-exams-grid" class="ar-fp-mod-grid" aria-label="Exam progress grid"></div></div>` +
+  `<div class="ar-fp-sec"><div class="ar-fp-sec-head"><span>🎓</span> Composition &amp; Creative</div>` +
+  `<p class="ar-fp-sec-intro" id="ar-fp-exams-c2-tip">Resume an exam or download your latest results.</p>` +
+  `<div id="ar-fp-exams-c2-grid" class="ar-fp-mod-grid" aria-label="Composition and Creative exam progress grid"></div></div>`;
 
 const practicePacksSectionBody =
   `<div class="ar-fp-resource-row"><a class="ar-fp-resource-link" data-fp-paid="1" href="${SITE}/practice-pack-library">Go to practice pack page</a></div>` +
@@ -537,10 +540,10 @@ const FP_SQSP_WRAPPER_SELECTORS = [
 
 const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
 
-const snippet = `<!-- FP 1.0.43 — Foundation course map (/academy/online-photography-course) -->
+const snippet = `<!-- FP 1.0.46 — Foundation course map (/academy/online-photography-course) -->
 ${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.43" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.46" hidden aria-hidden="true">
 <style>
 html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
@@ -916,6 +919,53 @@ ${rpsZoneHtml}
       else if (status === "failed" && mod.bestScore) tooltip += " — Failed (Best: " + mod.bestScore + "%)";
       else if (status === "not_taken") tooltip += " — Not started";
       var tileTag = "E" + String(idx + 1).padStart(2, "0");
+      html += '<button type="button" class="ar-fp-mod-btn' + statusClass + '" data-module-id="' + fpEscHtml(mod.moduleId) + '" title="' + fpEscHtml(tooltip) + '">';
+      html += '<span class="ar-fp-mod-btn__cnt">' + fpEscHtml(String(idx + 1)) + '</span>';
+      html += '<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">' + fpEscHtml(displayTitle(title)) + '</span></span>';
+      html += '<span class="ar-fp-mod-btn__tile">' + tileTag + '</span></button>';
+    });
+    grid.innerHTML = html;
+    grid.querySelectorAll(".ar-fp-mod-btn[data-module-id]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var moduleId = btn.getAttribute("data-module-id");
+        if (moduleId) location.href = buildExamPageUrl(moduleId);
+      });
+    });
+  }
+  function renderCompositionExamsSection(examData){
+    var tip = document.getElementById("ar-fp-exams-c2-tip");
+    var grid = document.getElementById("ar-fp-exams-c2-grid");
+    if (!grid) return;
+    var track = examData && examData.tracks ? examData.tracks.composition_creative : null;
+    var modules = track && track.modules ? track.modules : [];
+    var passed = track && track.summary ? safeNum(track.summary.passedCount, 0) : 0;
+    var failed = track && track.summary ? safeNum(track.summary.failedCount, 0) : 0;
+    var total = track && track.total ? track.total : 15;
+    if (tip) {
+      if (passed > 0 || failed > 0) {
+        var tipText = passed + "/" + total + " modules passed";
+        if (failed > 0) tipText += " • " + failed + " failed";
+        var remaining = total - passed - failed;
+        if (remaining > 0) tipText += " • " + remaining + " not started";
+        tip.textContent = tipText;
+      } else {
+        tip.textContent = "Resume an exam or download your latest results.";
+      }
+    }
+    if (!modules.length) {
+      grid.innerHTML = "";
+      return;
+    }
+    var html = "";
+    modules.forEach(function(mod, idx){
+      var status = mod.status || "not_taken";
+      var statusClass = status === "passed" ? " is-exam-passed" : (status === "failed" ? " is-exam-failed" : "");
+      var title = mod.name || ("Exam " + mod.label);
+      var tooltip = title;
+      if (status === "passed" && mod.bestScore) tooltip += " — Passed (" + mod.bestScore + "%)";
+      else if (status === "failed" && mod.bestScore) tooltip += " — Failed (Best: " + mod.bestScore + "%)";
+      else if (status === "not_taken") tooltip += " — Not started";
+      var tileTag = "C" + String(idx + 1).padStart(2, "0");
       html += '<button type="button" class="ar-fp-mod-btn' + statusClass + '" data-module-id="' + fpEscHtml(mod.moduleId) + '" title="' + fpEscHtml(tooltip) + '">';
       html += '<span class="ar-fp-mod-btn__cnt">' + fpEscHtml(String(idx + 1)) + '</span>';
       html += '<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">' + fpEscHtml(displayTitle(title)) + '</span></span>';
@@ -1677,6 +1727,7 @@ ${rpsZoneHtml}
     applyOpenedPills(openedSet);
     updateMapSectionProgress(openedSet, engagement, normalized, lockPaid);
     renderExamsSection(examData);
+    renderCompositionExamsSection(examData);
     lockPaidResourceTiles(lockPaid);
     applyFaqTrialCopy(trial);
     var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;

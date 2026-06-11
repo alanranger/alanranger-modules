@@ -41,13 +41,16 @@ Handoff `RESPONSE-*.md` files live in Google Drive (`Cursor Outputs for Claude/`
 
 ---
 
-## Stage 4 — modules map exams section ❌ not started
+## Stage 4 — modules map exams section ✅ (re-paste required)
 
 | File | Squarespace paste |
 |------|-------------------|
 | `Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html` | **`/academy/online-photography-course/` → Foundation page block** |
+| `scripts/build-foundation-page-snippet.mjs` | Generator only — **no SQ paste** |
 
-Waiting: Alan live-verifies Stage 3 dashboard, then Claude releases Stage 4.
+**Stamp:** **FP 1.0.46** (header comment in snippet)
+
+Second **Composition & Creative** grid (15 tiles, C01–C15) below Foundation block; data from `tracks.composition_creative` on `/api/exams/progress`. Foundation grid unchanged (legacy `modules`/`summary` path).
 
 ---
 
