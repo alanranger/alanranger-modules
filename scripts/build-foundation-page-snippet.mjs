@@ -2,6 +2,7 @@
  * Generates Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html
  * Run: node scripts/build-foundation-page-snippet.mjs
  * Then: node scripts/sync-badge-gates-to-snippets.mjs
+ *       node scripts/sync-client-gate-view-to-snippets.mjs
  */
 import fs from "fs";
 import path from "path";
@@ -540,10 +541,10 @@ const FP_SQSP_WRAPPER_SELECTORS = [
 
 const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
 
-const snippet = `<!-- FP 1.0.47 — Foundation course map (/academy/online-photography-course) -->
+const snippet = `<!-- FP 1.0.50 — Foundation course map (/academy/online-photography-course) -->
 ${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.47" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.50" hidden aria-hidden="true">
 <style>
 html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
@@ -794,6 +795,7 @@ ${rpsZoneHtml}
   var MODULES_TOTAL = 60;
   var ARTICLE_MODULES = ${articleModulesJson};
   var FOUNDATION_PATHS = ${foundationPathsJson};
+  var FOUNDATION_MODULE_PATHS = FOUNDATION_PATHS;
   var PRACTICE_PACK_URLS = ${practicePackUrlsJson};
   var CHECKLIST_URLS = ${checklistUrlsJson};
   var FP_MAP_SECTION_SPECS = ${fpMapSectionsJson};
@@ -1200,39 +1202,6 @@ ${rpsZoneHtml}
     for (var i = 0; i < list.length; i++) { if (openedSet.has(list[i])) n += 1; }
     return n;
   }
-  function countCompositionExamsPassed(examData){
-    if (!examData || !examData.tracks || !examData.tracks.composition_creative) return 0;
-    var modules = examData.tracks.composition_creative.modules;
-    if (!modules || !modules.length) return 0;
-    var n = 0;
-    for (var i = 0; i < modules.length; i++) {
-      if (modules[i] && modules[i].status === "passed") n += 1;
-    }
-    return n;
-  }
-  function buildGateStats(openedSet, examsPassed, engagement, normalized, examData){
-    var exposurePath = CAMERA_MODULE_PATHS[0] ? normalizePath(CAMERA_MODULE_PATHS[0]) : "";
-    var stats = {
-      foundationModulesOpened: countFoundationOpens(openedSet),
-      cameraOpened: countOpenedInList(openedSet, CAMERA_MODULE_PATHS),
-      compositionOpened: countOpenedInList(openedSet, COMPOSITION_MODULE_PATHS),
-      pdfAssignmentsOpened: countOpenedInList(openedSet, PDF_ASSIGNMENT_PATHS),
-      totalModulesOpened: countFoundationOpens(openedSet),
-      examsPassed: examsPassed,
-      compositionExamsPassed: countCompositionExamsPassed(examData),
-      module01Opened: exposurePath ? openedSet.has(exposurePath) : false,
-      appliedLearningOpened: null,
-      practicePacksOpened: null,
-      distinctActiveMonthsAllTime: null
-    };
-    if (engagement && typeof engagement.appliedLearningOpened === "number") {
-      stats.appliedLearningOpened = engagement.appliedLearningOpened;
-      stats.practicePacksOpened = engagement.practicePacksOpened;
-      stats.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
-      if (typeof engagement.pdfAssignmentsOpened === "number") stats.pdfAssignmentsOpened = engagement.pdfAssignmentsOpened;
-    }
-    return stats;
-  }
   function applyOpenedPills(openedSet){
     document.querySelectorAll("#ar-foundation-hub [data-fp-tracked='1'],#ar-foundation-hub [data-fp-resource='1']").forEach(function(el){
       var p = el.getAttribute("data-fp-path");
@@ -1307,6 +1276,50 @@ ${rpsZoneHtml}
 
   // BEGIN BADGE-GATES-SYNC
   // END BADGE-GATES-SYNC
+
+  // BEGIN CLIENT-GATE-VIEW-SYNC
+  // END CLIENT-GATE-VIEW-SYNC
+
+  function applyFoundationBadgeHeadline(badgeView, trial){
+    var badges = badgeView.badges;
+    var progress = badgeView.progress;
+    renderHeadline(badges, progress, badgeView.openedCount, badgeView.examInfo.examsPassed);
+    publishFoundationHook({
+      ready: true,
+      progressPct: progress.pct,
+      progressBreakdown: progress.breakdown,
+      progressLabel: progress.label,
+      openedCount: badgeView.openedCount,
+      examsPassed: badgeView.examInfo.examsPassed,
+      isTrial: trial
+    });
+  }
+  function applyStripBadgeViewIfPresent(trial){
+    var v = globalThis.__arDoNextStripBadgeView;
+    if (!v || !v.badges || !v.stats) return false;
+    try {
+      var progress = computeNextBadgeProgress(v.badges, v.stats, v.activeDays, v.engagementDegraded, v.openedCount, v.modulesTotal);
+      renderHeadline(v.badges, progress, v.openedCount, v.stats.examsPassed);
+      publishFoundationHook({
+        ready: true,
+        progressPct: progress.pct,
+        progressBreakdown: progress.breakdown,
+        progressLabel: progress.label,
+        openedCount: v.openedCount,
+        examsPassed: v.stats.examsPassed,
+        isTrial: trial
+      });
+      return true;
+    } catch(e){ return false; }
+  }
+  function wireStripBadgeViewSync(){
+    if (fpState.stripBadgeWired) return;
+    document.addEventListener("ar-do-next-badge-view-ready", function(){
+      if (!fpRuntime.member) return;
+      applyStripBadgeViewIfPresent(isTrialMember(fpRuntime.member, fpRuntime.engagement));
+    });
+    fpState.stripBadgeWired = true;
+  }
 
   function defaultFoundationCollapseState(){
     var state = { headline: true, hiw: true };
@@ -1729,7 +1742,7 @@ ${rpsZoneHtml}
   function publishFoundationHook(payload){
     globalThis.__arFoundationPage = payload;
   }
-  var fpState = { wired: false, busy: false, revalidating: false };
+  var fpState = { wired: false, busy: false, revalidating: false, stripBadgeWired: false };
   var fpRuntime = { member: null, normalized: {}, engagement: null, examData: null };
 
   function mergeExamDataForPaint(incoming){
@@ -1749,37 +1762,28 @@ ${rpsZoneHtml}
     fpRuntime.examData = examData;
     var openedSet = buildOpenedSet(normalized);
     var openedCount = countFoundationOpens(openedSet);
-    var engagementDegraded = !engagement;
     var lockPaid = shouldLockPaidResources(member, engagement);
     var trial = isTrialMember(member, engagement);
-    var examsPassed = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
     applyOpenedPills(openedSet);
     updateMapSectionProgress(openedSet, engagement, normalized, lockPaid);
     renderExamsSection(examData);
     renderCompositionExamsSection(examData);
     lockPaidResourceTiles(lockPaid);
     applyFaqTrialCopy(trial);
-    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number" ? engagement.distinctActiveDaysFirst14d : 0;
     renderMembershipBadge(member, engagement);
     syncHeaderWelcome(member);
-    var gateStats = buildGateStats(openedSet, examsPassed, engagement, normalized, examData);
     try {
-      var badges = computeJourneyBadges(gateStats, activeDays, engagementDegraded, { hasConverted: !!(engagement && engagement.hasConverted), lastActivityAt: engagement ? engagement.lastActivityAt : null, nowMs: Date.now() });
-      var progress = computeNextBadgeProgress(badges, gateStats, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
-      renderHeadline(badges, progress, openedCount, examsPassed);
+      if (!applyStripBadgeViewIfPresent(trial)) {
+        var badgeView = buildAcademyBadgeView(normalized, engagement, examData, { modulesTotal: MODULES_TOTAL });
+        globalThis.__arFoundationBadgeView = badgeView;
+        applyFoundationBadgeHeadline(badgeView, trial);
+      }
       renderCta(openedSet);
-      publishFoundationHook({
-        ready: true,
-        progressPct: progress.pct,
-        progressBreakdown: progress.breakdown,
-        progressLabel: progress.label,
-        openedCount: openedCount,
-        examsPassed: examsPassed,
-        isTrial: trial
-      });
     } catch(err) {
       console.warn("[foundation-hub] badge progress failed", err);
-      renderHeadline([], { pct: 0, label: "0%", breakdown: "", nextKey: "foundation" }, openedCount, examsPassed);
+      var fallbackExams = examData && examData.summary ? safeNum(examData.summary.passedCount, 0) : 0;
+      var fallbackBadges = [{ key: "enrolled", label: "Enrolled", earned: true, iconClass: "ti-school", colour: "green" }];
+      renderHeadline(fallbackBadges, { pct: 0, label: "—", breakdown: "", nextKey: "foundation" }, openedCount, fallbackExams);
       renderCta(openedSet);
       publishFoundationHook({
         ready: true,
@@ -1787,7 +1791,7 @@ ${rpsZoneHtml}
         progressBreakdown: "",
         progressLabel: "0%",
         openedCount: openedCount,
-        examsPassed: examsPassed,
+        examsPassed: fallbackExams,
         isTrial: trial
       });
     }
@@ -1859,6 +1863,7 @@ ${rpsZoneHtml}
     if (!fpState.wired) {
       wirePaidLockClicks();
       wireFoundationCollapsibles();
+      wireStripBadgeViewSync();
       document.addEventListener("ar-academy-member-ready", function(){ renderFoundationState({ skipLoading: true }); });
       fpState.wired = true;
     }
@@ -1874,3 +1879,4 @@ ${rpsZoneHtml}
 fs.writeFileSync(OUT, snippet, "utf8");
 console.log("OK: wrote", OUT);
 execSync("node scripts/sync-badge-gates-to-snippets.mjs", { cwd: root, stdio: "inherit" });
+execSync("node scripts/sync-client-gate-view-to-snippets.mjs", { cwd: root, stdio: "inherit" });

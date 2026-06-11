@@ -160,5 +160,5 @@ function syncFile(filePath, label, includePathStubs) {
 }
 
 syncFile(STRIP_SNIPPET, "strip", false);
-syncFile(FOUNDATION_SNIPPET, "foundation page", true);
+syncFile(FOUNDATION_SNIPPET, "foundation page", false);
 syncFile(DASHBOARD_SNIPPET, "dashboard", true);

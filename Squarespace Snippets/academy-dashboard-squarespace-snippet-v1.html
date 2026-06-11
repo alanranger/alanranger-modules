@@ -1,5 +1,6 @@
 <!--
 Academy Dashboard UI (v1.3.42) — Squarespace Snippet
+v1.3.43: Certified requires paid conversion — 4b modal Paid conversion row ✓ under Certified; gate logic synced from lib.
 v1.3.42: 4b modal — ensureBadgeRequirementsModal injects modal if HTML block missing; delegated click on badge progress mount.
 v1.3.41: HOTFIX — re-sync BADGE-GATES-SYNC (paths.every parse error in script block 3).
 v1.3.40: Badge requirements modal — Phase 2 gates (composition exams feed badges, combined pool, 190/270 points) + Summary column.
@@ -4487,7 +4488,8 @@ function isPractitionerGateEarned(stats) {
   return true;
 }
 
-function isCertifiedGateEarned(stats) {
+function isCertifiedGateEarned(stats, hasConverted) {
+  if (hasConverted !== true) return false;
   var safe = normaliseStats(stats);
   if (safe.examsPassed < CERTIFIED_GATE.minFoundationExamsPassed) return false;
   if (safe.compositionExamsPassed < CERTIFIED_GATE.minCompositionExamsPassed) return false;
@@ -4567,7 +4569,7 @@ function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gate
     return isFoundationGateEarned(safeStats, activeDays, engagementDegraded);
   }
   if (stage.practitionerGate) return isPractitionerGateEarned(safeStats);
-  if (stage.certifiedGate) return isCertifiedGateEarned(safeStats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(safeStats, hasConverted);
   if (stage.graduateGate) return isGraduateGateEarned(safeStats, hasConverted, engagementDegraded);
   if (stage.masterGate) return isMasterGateEarned(safeStats, hasConverted, graduateEarned, engagementDegraded);
   if (stage.minExams) return safeStats.examsPassed >= stage.minExams;
@@ -5024,10 +5026,10 @@ function computeTrackFillPct(badges, progressPct) {
           feature: "Paid conversion",
           foundation: dash,
           practitioner: dash,
-          certified: dash,
+          certified: "✓",
           graduate: "✓",
           master: "✓",
-          summary: "Graduate and Master require a paid (converted) membership."
+          summary: "Certified, Graduate and Master require a paid (converted) membership."
         }
       ];
 

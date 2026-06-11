@@ -2,6 +2,8 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.68 — Certified requires paid conversion (synced gate logic; Practitioner last trial badge).
+v1.3.67 — Shared buildAcademyBadgeView with foundation module map (lib/academy-client-gate-view.js); stats cannot drift.
 v1.3.66 — FIX: mergeLongevityIntoStats now preserves module01Opened + compositionExamsPassed (Foundation was stuck at Enrolled).
 v1.3.65 — HOTFIX: sync transform broke paths.every (parse error killed strip); verified node --check.
 v1.3.64 — Phase 2 badge gate display: new journey sublabels, Tile 4 criteria, proximity copy, composition exam stats wiring.
@@ -2930,127 +2932,6 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
-  function getAllModulesOpenedCount(normalized){
-
-    return getOpenedSet(normalized).size;
-
-  }
-
-
-
-  function countAppliedLearningOpened(normalized){
-
-    var opened = (normalized && normalized.arAcademy && normalized.arAcademy.appliedLearning && normalized.arAcademy.appliedLearning.opened) || {};
-
-    return Object.keys(opened).filter(Boolean).length;
-
-  }
-
-
-
-  function mergeLongevityIntoStats(stats, normalized, foundationOpenedSet, engagement){
-
-    var merged = {
-
-      foundationModulesOpened: stats.foundationModulesOpened,
-
-      cameraOpened: stats.cameraOpened,
-
-      compositionOpened: stats.compositionOpened,
-
-      pdfAssignmentsOpened: stats.pdfAssignmentsOpened,
-
-      totalModulesOpened: stats.totalModulesOpened,
-
-      examsPassed: stats.examsPassed,
-
-      compositionExamsPassed: stats.compositionExamsPassed || 0,
-
-      module01Opened: stats.module01Opened === true,
-
-      appliedLearningOpened: null,
-
-      practicePacksOpened: null,
-
-      distinctActiveMonthsAllTime: null
-
-    };
-
-    if (engagement && typeof engagement.appliedLearningOpened === "number") {
-
-      merged.appliedLearningOpened = engagement.appliedLearningOpened;
-
-      merged.practicePacksOpened = engagement.practicePacksOpened;
-
-      merged.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
-
-      if (typeof engagement.pdfAssignmentsOpened === "number") {
-        merged.pdfAssignmentsOpened = Math.max(
-          stats.pdfAssignmentsOpened,
-          engagement.pdfAssignmentsOpened
-        );
-      }
-
-    } else {
-
-      merged.appliedLearningOpened = countAppliedLearningOpened(normalized);
-
-      merged.practicePacksOpened = countOpenedInList(foundationOpenedSet, PRACTICE_PACK_URLS);
-
-    }
-
-    return merged;
-
-  }
-
-
-
-  function buildGateContext(engagement){
-
-    return {
-
-      hasConverted: !!(engagement && engagement.hasConverted === true),
-
-      lastActivityAt: engagement ? engagement.lastActivityAt : null,
-
-      nowMs: Date.now()
-
-    };
-
-  }
-
-
-
-  function computeGateStats(normalized, foundationOpenedSet, examInfo, preview){
-
-    var exposurePath = ARTICLE_MODULES[0] ? normalizePath(ARTICLE_MODULES[0].p) : "";
-
-    var stats = {
-
-      foundationModulesOpened: foundationOpenedSet.size,
-
-      cameraOpened: countOpenedInList(foundationOpenedSet, CAMERA_MODULE_PATHS),
-
-      compositionOpened: countOpenedInList(foundationOpenedSet, COMPOSITION_MODULE_PATHS),
-
-      pdfAssignmentsOpened: countOpenedInList(foundationOpenedSet, PDF_ASSIGNMENT_PATHS),
-
-      totalModulesOpened: preview ? preview.modulesOpened : getAllModulesOpenedCount(normalized),
-
-      examsPassed: examInfo.examsPassed || 0,
-
-      compositionExamsPassed: examInfo.compositionExamsPassed || 0,
-
-      module01Opened: exposurePath ? foundationOpenedSet.has(exposurePath) : false
-
-    };
-
-    return stats;
-
-  }
-
-
-
   // BEGIN BADGE-GATES-SYNC
 
   // SYNC: lib/academy-badge-gates.js (run scripts/sync-badge-gates-to-snippets.mjs)
@@ -3190,7 +3071,8 @@ function isPractitionerGateEarned(stats) {
   return true;
 }
 
-function isCertifiedGateEarned(stats) {
+function isCertifiedGateEarned(stats, hasConverted) {
+  if (hasConverted !== true) return false;
   var safe = normaliseStats(stats);
   if (safe.examsPassed < CERTIFIED_GATE.minFoundationExamsPassed) return false;
   if (safe.compositionExamsPassed < CERTIFIED_GATE.minCompositionExamsPassed) return false;
@@ -3270,7 +3152,7 @@ function isStageConditionsMet(stage, stats, activeDays, engagementDegraded, gate
     return isFoundationGateEarned(safeStats, activeDays, engagementDegraded);
   }
   if (stage.practitionerGate) return isPractitionerGateEarned(safeStats);
-  if (stage.certifiedGate) return isCertifiedGateEarned(safeStats);
+  if (stage.certifiedGate) return isCertifiedGateEarned(safeStats, hasConverted);
   if (stage.graduateGate) return isGraduateGateEarned(safeStats, hasConverted, engagementDegraded);
   if (stage.masterGate) return isMasterGateEarned(safeStats, hasConverted, graduateEarned, engagementDegraded);
   if (stage.minExams) return safeStats.examsPassed >= stage.minExams;
@@ -3510,6 +3392,182 @@ function computeTrackFillPct(badges, progressPct) {
 }
 
   // END BADGE-GATES-SYNC
+
+  // BEGIN CLIENT-GATE-VIEW-SYNC
+
+  // SYNC: lib/academy-client-gate-view.js (run scripts/sync-client-gate-view-to-snippets.mjs)
+
+function parseExamProgress(progressData) {
+  var statusMap = {};
+  var source = "none";
+  var examsPassed = 0;
+  var compositionExamsPassed = 0;
+  var nextExamModuleId = null;
+  var hasData = false;
+
+  EXAM_MODULE_IDS.forEach((id) => {
+    statusMap[id] = "not_taken";
+  });
+  COMPOSITION_EXAM_MODULE_IDS.forEach((id) => {
+    statusMap[id] = "not_taken";
+  });
+
+  function applyTrackModules(modules, allowedIds) {
+    if (!modules || !modules.length) return;
+    modules.forEach((m) => {
+      if (!m || !m.moduleId) return;
+      if (allowedIds.indexOf(m.moduleId) === -1) return;
+      statusMap[m.moduleId] = m.status || "not_taken";
+    });
+  }
+
+  if (progressData && progressData.tracks) {
+    hasData = true;
+    var fTrack = progressData.tracks.foundation;
+    var cTrack = progressData.tracks.composition_creative;
+    if (fTrack && fTrack.modules) applyTrackModules(fTrack.modules, EXAM_MODULE_IDS);
+    if (cTrack && cTrack.modules) applyTrackModules(cTrack.modules, COMPOSITION_EXAM_MODULE_IDS);
+    examsPassed = EXAM_MODULE_IDS.filter((id) => statusMap[id] === "passed").length;
+    compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter((id) => statusMap[id] === "passed").length;
+    source = "tracks-modules";
+  } else if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+    hasData = true;
+    applyTrackModules(progressData.modules, EXAM_MODULE_IDS.concat(COMPOSITION_EXAM_MODULE_IDS));
+    examsPassed = EXAM_MODULE_IDS.filter((id) => statusMap[id] === "passed").length;
+    compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter((id) => statusMap[id] === "passed").length;
+    source = "modules-count";
+  } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
+    hasData = true;
+    examsPassed = Math.min(EXAM_MODULE_IDS.length, Math.max(0, progressData.summary.passedCount));
+    source = "summary.passedCount";
+  }
+
+  if (source === "modules-count" || source === "tracks-modules") {
+    for (var i = 0; i < EXAM_MODULE_IDS.length; i += 1) {
+      if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
+        nextExamModuleId = EXAM_MODULE_IDS[i];
+        break;
+      }
+    }
+  }
+
+  return {
+    statusMap,
+    examsPassed,
+    compositionExamsPassed,
+    nextExamModuleId,
+    source,
+    hasData,
+    hasModuleStatus: source === "modules-count" || source === "tracks-modules",
+  };
+}
+
+function getFoundationOpenedSet(normalized) {
+  var opened = (normalized && normalized.arAcademy && normalized.arAcademy.modules && normalized.arAcademy.modules.opened) || {};
+  var set = new Set();
+  Object.keys(opened).forEach((key) => {
+    var p = normalizePath(key);
+    if (FOUNDATION_MODULE_PATHS.indexOf(p) !== -1) set.add(p);
+  });
+  return set;
+}
+
+function getAllModulesOpenedCount(normalized) {
+  return getFoundationOpenedSet(normalized).size;
+}
+
+function countAppliedLearningOpenedFromJson(normalized) {
+  var opened = (normalized && normalized.arAcademy && normalized.arAcademy.appliedLearning && normalized.arAcademy.appliedLearning.opened) || {};
+  return Object.keys(opened).filter(Boolean).length;
+}
+
+function mergeLongevityIntoStats(stats, normalized, foundationOpenedSet, engagement) {
+  var merged = {
+    foundationModulesOpened: stats.foundationModulesOpened,
+    cameraOpened: stats.cameraOpened,
+    compositionOpened: stats.compositionOpened,
+    pdfAssignmentsOpened: stats.pdfAssignmentsOpened,
+    totalModulesOpened: stats.totalModulesOpened,
+    examsPassed: stats.examsPassed,
+    compositionExamsPassed: stats.compositionExamsPassed || 0,
+    module01Opened: stats.module01Opened === true,
+    appliedLearningOpened: null,
+    practicePacksOpened: null,
+    distinctActiveMonthsAllTime: null,
+  };
+
+  if (engagement && typeof engagement.appliedLearningOpened === "number") {
+    merged.appliedLearningOpened = engagement.appliedLearningOpened;
+    merged.practicePacksOpened = engagement.practicePacksOpened;
+    merged.distinctActiveMonthsAllTime = engagement.distinctActiveMonthsAllTime;
+    if (typeof engagement.pdfAssignmentsOpened === "number") {
+      merged.pdfAssignmentsOpened = Math.max(stats.pdfAssignmentsOpened, engagement.pdfAssignmentsOpened);
+    }
+  } else {
+    merged.appliedLearningOpened = countAppliedLearningOpenedFromJson(normalized);
+    merged.practicePacksOpened = countOpenedInList(foundationOpenedSet, PRACTICE_PACK_URLS);
+  }
+
+  return merged;
+}
+
+function buildGateContext(engagement) {
+  return {
+    hasConverted: !!(engagement && engagement.hasConverted === true),
+    lastActivityAt: engagement ? engagement.lastActivityAt : null,
+    nowMs: Date.now(),
+  };
+}
+
+function computeGateStats(normalized, foundationOpenedSet, examInfo, preview) {
+  var exposurePath = normalizePath(FOUNDATION_REQUIRED_MODULE_PATH);
+  return {
+    foundationModulesOpened: foundationOpenedSet.size,
+    cameraOpened: countOpenedInList(foundationOpenedSet, CAMERA_MODULE_PATHS),
+    compositionOpened: countOpenedInList(foundationOpenedSet, COMPOSITION_MODULE_PATHS),
+    pdfAssignmentsOpened: countOpenedInList(foundationOpenedSet, PDF_ASSIGNMENT_PATHS),
+    totalModulesOpened: preview ? preview.modulesOpened : getAllModulesOpenedCount(normalized),
+    examsPassed: examInfo.examsPassed || 0,
+    compositionExamsPassed: examInfo.compositionExamsPassed || 0,
+    module01Opened: exposurePath ? foundationOpenedSet.has(exposurePath) : false,
+  };
+}
+
+function buildAcademyBadgeView(normalized, engagement, examProgressData, options) {
+  var opts = options || {};
+  if (typeof computeJourneyBadges !== "function" || typeof computeNextBadgeProgress !== "function") {
+    throw new Error("buildAcademyBadgeView requires badge gate fns");
+  }
+  var foundationOpenedSet = opts.foundationOpenedSet || getFoundationOpenedSet(normalized);
+  var examInfo = opts.examInfo || parseExamProgress(examProgressData);
+  var gateStats = computeGateStats(normalized, foundationOpenedSet, examInfo, opts.preview || null);
+  var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
+    ? engagement.distinctActiveDaysFirst14d
+    : 0;
+  var engagementDegraded = !engagement;
+  var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, foundationOpenedSet, engagement);
+  var gateContext = buildGateContext(engagement);
+  var badges = computeJourneyBadges(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+  var modulesTotal = opts.modulesTotal != null ? opts.modulesTotal : 60;
+  var openedCount = gateStats.totalModulesOpened;
+  var progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, modulesTotal);
+  return {
+    badges: badges,
+    stats: gateStatsWithLongevity,
+    gateStats: gateStats,
+    examInfo: examInfo,
+    foundationOpenedSet: foundationOpenedSet,
+    activeDays: activeDays,
+    engagementDegraded: engagementDegraded,
+    openedCount: openedCount,
+    modulesTotal: modulesTotal,
+    progress: progress,
+    gateContext: gateContext,
+    hasConverted: !!(gateContext && gateContext.hasConverted)
+  };
+}
+
+  // END CLIENT-GATE-VIEW-SYNC
 
 
 
@@ -4511,128 +4569,6 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-  function parseExamProgress(progressData){
-
-    var statusMap = {};
-
-    var source = "none";
-
-    var examsPassed = 0;
-
-    var compositionExamsPassed = 0;
-
-    var nextExamModuleId = null;
-
-    var hasData = false;
-
-
-
-    EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
-
-    COMPOSITION_EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
-
-
-
-    function applyTrackModules(modules, allowedIds){
-
-      if (!modules || !modules.length) return;
-
-      modules.forEach(function(m){
-
-        if (!m || !m.moduleId) return;
-
-        if (allowedIds.indexOf(m.moduleId) === -1) return;
-
-        statusMap[m.moduleId] = m.status || "not_taken";
-
-      });
-
-    }
-
-
-
-    if (progressData && progressData.tracks) {
-
-      hasData = true;
-
-      var fTrack = progressData.tracks.foundation;
-
-      var cTrack = progressData.tracks.composition_creative;
-
-      if (fTrack && fTrack.modules) applyTrackModules(fTrack.modules, EXAM_MODULE_IDS);
-
-      if (cTrack && cTrack.modules) applyTrackModules(cTrack.modules, COMPOSITION_EXAM_MODULE_IDS);
-
-      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
-
-      compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
-
-      source = "tracks-modules";
-
-    } else if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
-
-      hasData = true;
-
-      applyTrackModules(progressData.modules, EXAM_MODULE_IDS.concat(COMPOSITION_EXAM_MODULE_IDS));
-
-      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
-
-      compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
-
-      source = "modules-count";
-
-    } else if (progressData && progressData.summary && typeof progressData.summary.passedCount === "number") {
-
-      hasData = true;
-
-      examsPassed = Math.min(15, Math.max(0, progressData.summary.passedCount));
-
-      source = "summary.passedCount";
-
-    }
-
-
-
-    if (source === "modules-count" || source === "tracks-modules") {
-
-      for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
-
-        if (statusMap[EXAM_MODULE_IDS[i]] !== "passed") {
-
-          nextExamModuleId = EXAM_MODULE_IDS[i];
-
-          break;
-
-        }
-
-      }
-
-    }
-
-
-
-    return {
-
-      statusMap: statusMap,
-
-      examsPassed: examsPassed,
-
-      compositionExamsPassed: compositionExamsPassed,
-
-      nextExamModuleId: nextExamModuleId,
-
-      source: source,
-
-      hasData: hasData,
-
-      hasModuleStatus: source === "modules-count" || source === "tracks-modules"
-
-    };
-
-  }
-
-
-
   function firstUnpassedExam(statusMap){
 
     for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
@@ -5377,7 +5313,7 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-  function renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats){
+  function renderStrip(normalized, openedSet, examInfo, coachDebug, engagement){
 
     var strip = document.getElementById("ar-do-next-strip");
 
@@ -5397,21 +5333,20 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-    var openedCount = gateStats.totalModulesOpened;
-
-    var examsPassed = examInfo.examsPassed;
-
-    var activeDays = engagement && typeof engagement.distinctActiveDaysFirst14d === "number"
-
-      ? engagement.distinctActiveDaysFirst14d : 0;
-
-    var engagementDegraded = !engagement;
-
-    var gateStatsWithLongevity = mergeLongevityIntoStats(gateStats, normalized, openedSet, engagement);
-
-    var gateContext = buildGateContext(engagement);
-
-    var badges = computeJourneyBadges(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext);
+    var badgeView = buildAcademyBadgeView(normalized, engagement, null, {
+      examInfo: examInfo,
+      preview: coachDebug && coachDebug.previewMode ? coachDebug.previewMode : null,
+      modulesTotal: MODULES_TOTAL,
+      foundationOpenedSet: openedSet
+    });
+    var gateStatsWithLongevity = badgeView.stats;
+    var gateStats = badgeView.gateStats;
+    var badges = badgeView.badges;
+    var activeDays = badgeView.activeDays;
+    var engagementDegraded = badgeView.engagementDegraded;
+    var openedCount = badgeView.openedCount;
+    var examsPassed = badgeView.examInfo.examsPassed;
+    var gateContext = badgeView.gateContext;
 
     window.__arDoNextStripBadgeView = {
       badges: badges,
@@ -5420,13 +5355,13 @@ function computeTrackFillPct(badges, progressPct) {
       engagementDegraded: engagementDegraded,
       openedCount: openedCount,
       modulesTotal: MODULES_TOTAL,
-      hasConverted: !!(gateContext && gateContext.hasConverted)
+      hasConverted: badgeView.hasConverted
     };
     try {
       document.dispatchEvent(new CustomEvent("ar-do-next-badge-view-ready"));
     } catch (e) { /* ignore */ }
 
-    var progress = computeNextBadgeProgress(badges, gateStatsWithLongevity, activeDays, engagementDegraded, openedCount, MODULES_TOTAL);
+    var progress = badgeView.progress;
 
     var badgeRail = buildBadgeRail(gateStatsWithLongevity, activeDays, engagementDegraded, gateContext, badges);
 
@@ -6614,9 +6549,7 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-    var gateStats = computeGateStats(normalized, openedSet, examInfo, preview);
-
-    renderStrip(normalized, openedSet, examInfo, coachDebug, engagement, gateStats);
+    renderStrip(normalized, openedSet, examInfo, coachDebug, engagement);
 
     if (!preview && !ghostMode) trackPageView(memberId, memberEmail);
 

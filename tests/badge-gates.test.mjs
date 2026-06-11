@@ -13,6 +13,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gates = require(path.join(root, "lib/academy-badge-gates.js"));
 const modulePaths = require(path.join(root, "lib/academy-module-paths.js"));
 const longevity = require(path.join(root, "lib/academy-longevity-stats.js"));
+const gateView = require(path.join(root, "lib/academy-client-gate-view.js"));
 
 const {
   CAMERA_MODULE_PATHS,
@@ -180,8 +181,21 @@ test("4. full Practitioner gate earned", () => {
 });
 
 test("5. Certified floor earned", () => {
-  const result = evaluateBadges(certifiedFloorStats(), 10, false);
+  const result = evaluateBadges(certifiedFloorStats(), 10, false, paidContext());
   assert.equal(result.earned.certified, true);
+});
+
+test("5b. Certified content without paid conversion stays Practitioner", () => {
+  const result = evaluateBadges(certifiedFloorStats(), 10, false, { hasConverted: false });
+  assert.equal(result.earned.practitioner, true);
+  assert.equal(result.earned.certified, false);
+  assert.equal(result.highestConsecutive, "practitioner");
+});
+
+test("5c. Certified content with paid conversion earns Certified", () => {
+  const result = evaluateBadges(certifiedFloorStats(), 10, false, paidContext());
+  assert.equal(result.earned.certified, true);
+  assert.equal(result.highestConsecutive, "certified");
 });
 
 test("6. prerequisite order: high stats but no module 01 -> Enrolled only", () => {
@@ -267,7 +281,7 @@ test("Certified combined assignments+packs pool", () => {
     practicePacksOpened: 2,
     appliedLearningOpened: 3,
   });
-  const result = evaluateBadges(stats, 10, false);
+  const result = evaluateBadges(stats, 10, false, paidContext());
   assert.equal(result.earned.certified, true);
 });
 
@@ -336,4 +350,46 @@ test("client longevity merge preserves module01Opened and compositionExamsPassed
   assert.equal(safe.module01Opened, true);
   assert.equal(safe.compositionExamsPassed, 4);
   assert.equal(isFoundationGateEarned(safe, 3, false), true);
+});
+
+test("buildAcademyBadgeView matches strip stats pipeline", () => {
+  const normalized = {
+    arAcademy: {
+      modules: {
+        opened: {
+          "/blog-on-photography/what-is-exposure-in-photography": {},
+          "/blog-on-photography/what-is-aperture-in-photography": {},
+          "/blog-on-photography/what-is-shutter-speed": {},
+        },
+      },
+    },
+  };
+  const engagement = {
+    distinctActiveDaysFirst14d: 3,
+    hasConverted: false,
+    appliedLearningOpened: 2,
+    practicePacksOpened: 1,
+    distinctActiveMonthsAllTime: 1,
+    pdfAssignmentsOpened: 1,
+  };
+  const examData = {
+    tracks: {
+      foundation: {
+        modules: [
+          { moduleId: "module-01-exposure", status: "passed" },
+          { moduleId: "module-02-aperture", status: "passed" },
+          { moduleId: "module-03-shutter", status: "passed" },
+        ],
+      },
+      composition_creative: {
+        modules: [{ moduleId: "c2-01-composition-rules", status: "passed" }],
+      },
+    },
+  };
+  const view = gateView.buildAcademyBadgeView(normalized, engagement, examData, { modulesTotal: 60 });
+  assert.equal(view.stats.module01Opened, true);
+  assert.equal(view.stats.compositionExamsPassed, 1);
+  assert.equal(view.examInfo.examsPassed, 3);
+  assert.equal(view.progress.nextKey, "practitioner");
+  assert.ok(view.progress.pct > 0);
 });
