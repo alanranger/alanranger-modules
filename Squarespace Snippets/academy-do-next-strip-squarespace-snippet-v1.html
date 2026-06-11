@@ -2,6 +2,7 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.64 — Phase 2 badge gate display: new journey sublabels, Tile 4 criteria, proximity copy, composition exam stats wiring.
 v1.3.63 — Tile 4 inset flexes for up to 4 criteria rows (no clip); trial line white on orange.
 v1.3.62 — Tile 4: restore outer eyebrow “4 · Goal: next badge”; badge + % header moves inside black inset.
 v1.3.61 — Tile 4 mockup layout: badge name + % header, gold inset panel, bars contained (no overrun).
@@ -807,6 +808,18 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-5{
+
+    min-height:228px;
+
+  }
+
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-6{
+
+    min-height:252px;
+
+  }
+
   #ar-do-next-strip .ar-do-next-tile--goal-checklist .ar-do-next-goal-inset{
 
     flex:0 0 auto;
@@ -887,13 +900,21 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
-  #ar-do-next-strip .ar-do-next-tile--goal-rows-4 .ar-do-next-goal-inset .ar-do-next-criteria-list{
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-4 .ar-do-next-goal-inset .ar-do-next-criteria-list,
+
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-5 .ar-do-next-goal-inset .ar-do-next-criteria-list,
+
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-6 .ar-do-next-goal-inset .ar-do-next-criteria-list{
 
     gap:6px;
 
   }
 
-  #ar-do-next-strip .ar-do-next-tile--goal-rows-4 .ar-do-next-criteria-row{
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-4 .ar-do-next-criteria-row,
+
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-5 .ar-do-next-criteria-row,
+
+  #ar-do-next-strip .ar-do-next-tile--goal-rows-6 .ar-do-next-criteria-row{
 
     gap:3px;
 
@@ -2617,45 +2638,21 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
 
 
+  var COMPOSITION_EXAM_MODULE_IDS = [
+
+    "c2-01-composition-rules", "c2-02-framing", "c2-03-leading-lines", "c2-04-negative-space",
+
+    "c2-05-contrast", "c2-06-balance", "c2-07-macro", "c2-08-landscape",
+
+    "c2-09-product", "c2-10-minimalist", "c2-11-still-life", "c2-12-long-exposure",
+
+    "c2-13-architecture", "c2-14-portrait", "c2-15-black-white"
+
+  ];
+
+
+
   var RAG_COLORS = { red: "#dc2626", amber: "#d97706", green: "#16a34a" };
-
-
-
-  var FOUNDATION_GATE = {
-
-    minModules: 3,
-
-    minActiveDays: 3,
-
-    bonusModules: 6,
-
-    bonusActiveDays: 5
-
-  };
-
-
-
-  var PRACTITIONER_GATE = {
-
-    requireAllCamera: true,
-
-    requireAllComposition: true,
-
-    minPdfAssignments: 3,
-
-    minExamsPassed: 8
-
-  };
-
-
-
-  var CERTIFIED_GATE = {
-
-    requireAllExamsPassed: true,
-
-    minModulesOpened: 30
-
-  };
 
 
 
@@ -2663,15 +2660,15 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
     { key: "enrolled", label: "Enrolled", sublabel: "Joined", iconClass: "ti-school", colour: "green", stars: 0, alwaysEarned: true },
 
-    { key: "foundation", label: "Foundation", sublabel: "3 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
+    { key: "foundation", label: "Foundation", sublabel: "Open Exposure + 2 modules, 3 active days", iconClass: "ti-camera", colour: "green", stars: 1, foundationGate: true },
 
-    { key: "practitioner", label: "Practitioner", sublabel: "Camera + composition, 3 assignments, 8 exams", iconClass: "ti-aperture", colour: "green", stars: 2, practitionerGate: true },
+    { key: "practitioner", label: "Practitioner", sublabel: "10 camera + 5 composition modules, 3 assignments, 6+4 exams", iconClass: "ti-aperture", colour: "green", stars: 2, practitionerGate: true },
 
-    { key: "certified", label: "Certified", sublabel: "All 15 exams, 30 modules", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
+    { key: "certified", label: "Certified", sublabel: "All exams + modules, practice & applied work", iconClass: "ti-certificate", colour: "green", stars: 3, certifiedGate: true },
 
-    { key: "graduate", label: "Graduate", sublabel: "Applied breadth + 4 active months", iconClass: "ti-award", colour: "green", stars: 4, graduateGate: true },
+    { key: "graduate", label: "Graduate", sublabel: "Sustained breadth + 6 active months", iconClass: "ti-award", colour: "green", stars: 4, graduateGate: true },
 
-    { key: "master", label: "Master", sublabel: "Deeper breadth + 7 active months", iconClass: "ti-trophy", colour: "gold", stars: 5, masterGate: true }
+    { key: "master", label: "Master", sublabel: "Deep breadth + 12 active months", iconClass: "ti-trophy", colour: "gold", stars: 5, masterGate: true }
 
   ];
 
@@ -3020,6 +3017,8 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   function computeGateStats(normalized, foundationOpenedSet, examInfo, preview){
 
+    var exposurePath = ARTICLE_MODULES[0] ? normalizePath(ARTICLE_MODULES[0].p) : "";
+
     var stats = {
 
       foundationModulesOpened: foundationOpenedSet.size,
@@ -3032,7 +3031,11 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       totalModulesOpened: preview ? preview.modulesOpened : getAllModulesOpenedCount(normalized),
 
-      examsPassed: examInfo.examsPassed || 0
+      examsPassed: examInfo.examsPassed || 0,
+
+      compositionExamsPassed: examInfo.compositionExamsPassed || 0,
+
+      module01Opened: exposurePath ? foundationOpenedSet.has(exposurePath) : false
 
     };
 
@@ -3612,9 +3615,11 @@ function computeTrackFillPct(badges, progressPct) {
 
         rows: [
 
+          { label: "Module 01 Exposure", current: stats.module01Opened ? 1 : 0, target: 1, met: stats.module01Opened === true },
+
           { label: "Modules opened", current: stats.foundationModulesOpened, target: FOUNDATION_GATE.minModules, met: stats.foundationModulesOpened >= FOUNDATION_GATE.minModules },
 
-          { label: "Active days", current: engagementDegraded ? 0 : activeDays, target: FOUNDATION_GATE.minActiveDays, met: engagementDegraded || activeDays >= FOUNDATION_GATE.minActiveDays }
+          { label: "Active days", current: engagementDegraded ? 0 : activeDays, target: FOUNDATION_GATE.minActiveDays, met: !engagementDegraded && activeDays >= FOUNDATION_GATE.minActiveDays }
 
         ]
 
@@ -3630,13 +3635,15 @@ function computeTrackFillPct(badges, progressPct) {
 
         rows: [
 
-          { label: "Camera modules", current: stats.cameraOpened, target: CAMERA_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllCamera || stats.cameraOpened >= CAMERA_MODULE_PATHS.length },
+          { label: "Camera modules", current: stats.cameraOpened, target: PRACTITIONER_GATE.minCameraModules, met: stats.cameraOpened >= PRACTITIONER_GATE.minCameraModules },
 
-          { label: "Composition modules", current: stats.compositionOpened, target: COMPOSITION_MODULE_PATHS.length, met: !PRACTITIONER_GATE.requireAllComposition || stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length },
+          { label: "Composition modules", current: stats.compositionOpened, target: PRACTITIONER_GATE.minCompositionModules, met: stats.compositionOpened >= PRACTITIONER_GATE.minCompositionModules },
 
           { label: "Assignments", current: stats.pdfAssignmentsOpened, target: PRACTITIONER_GATE.minPdfAssignments, met: stats.pdfAssignmentsOpened >= PRACTITIONER_GATE.minPdfAssignments },
 
-          { label: "Exams passed", current: stats.examsPassed, target: PRACTITIONER_GATE.minExamsPassed, met: stats.examsPassed >= PRACTITIONER_GATE.minExamsPassed }
+          { label: "Foundation exams", current: stats.examsPassed, target: PRACTITIONER_GATE.minFoundationExamsPassed, met: stats.examsPassed >= PRACTITIONER_GATE.minFoundationExamsPassed },
+
+          { label: "Composition exams", current: stats.compositionExamsPassed, target: PRACTITIONER_GATE.minCompositionExamsPassed, met: stats.compositionExamsPassed >= PRACTITIONER_GATE.minCompositionExamsPassed }
 
         ]
 
@@ -3646,15 +3653,25 @@ function computeTrackFillPct(badges, progressPct) {
 
     if (stageKey === "certified") {
 
+      var poolCount = assignmentsAndPacksPoolCount(stats);
+
       return {
 
         type: "rows",
 
         rows: [
 
-          { label: "Foundation exams passed", current: stats.examsPassed, target: 15, met: !CERTIFIED_GATE.requireAllExamsPassed || stats.examsPassed >= 15 },
+          { label: "Foundation exams", current: stats.examsPassed, target: CERTIFIED_GATE.minFoundationExamsPassed, met: stats.examsPassed >= CERTIFIED_GATE.minFoundationExamsPassed },
 
-          { label: "Modules opened", current: stats.totalModulesOpened, target: CERTIFIED_GATE.minModulesOpened, met: stats.totalModulesOpened >= CERTIFIED_GATE.minModulesOpened }
+          { label: "Composition exams", current: stats.compositionExamsPassed, target: CERTIFIED_GATE.minCompositionExamsPassed, met: stats.compositionExamsPassed >= CERTIFIED_GATE.minCompositionExamsPassed },
+
+          { label: "Camera modules", current: stats.cameraOpened, target: CAMERA_MODULE_PATHS.length, met: stats.cameraOpened >= CAMERA_MODULE_PATHS.length },
+
+          { label: "Composition modules", current: stats.compositionOpened, target: COMPOSITION_MODULE_PATHS.length, met: stats.compositionOpened >= COMPOSITION_MODULE_PATHS.length },
+
+          { label: "Assignments + packs", current: poolCount, target: CERTIFIED_GATE.minAssignmentsAndPacksPool, met: poolCount >= CERTIFIED_GATE.minAssignmentsAndPacksPool },
+
+          { label: "Applied learning", current: stats.appliedLearningOpened == null ? 0 : stats.appliedLearningOpened, target: CERTIFIED_GATE.minAppliedLearning, met: stats.appliedLearningOpened != null && stats.appliedLearningOpened >= CERTIFIED_GATE.minAppliedLearning }
 
         ]
 
@@ -4494,6 +4511,8 @@ function computeTrackFillPct(badges, progressPct) {
 
     var examsPassed = 0;
 
+    var compositionExamsPassed = 0;
+
     var nextExamModuleId = null;
 
     var hasData = false;
@@ -4502,23 +4521,55 @@ function computeTrackFillPct(badges, progressPct) {
 
     EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
 
+    COMPOSITION_EXAM_MODULE_IDS.forEach(function(id){ statusMap[id] = "not_taken"; });
 
 
-    if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
 
-      hasData = true;
+    function applyTrackModules(modules, allowedIds){
 
-      progressData.modules.forEach(function(m){
+      if (!modules || !modules.length) return;
+
+      modules.forEach(function(m){
 
         if (!m || !m.moduleId) return;
 
-        if (EXAM_MODULE_IDS.indexOf(m.moduleId) === -1) return;
+        if (allowedIds.indexOf(m.moduleId) === -1) return;
 
         statusMap[m.moduleId] = m.status || "not_taken";
 
       });
 
+    }
+
+
+
+    if (progressData && progressData.tracks) {
+
+      hasData = true;
+
+      var fTrack = progressData.tracks.foundation;
+
+      var cTrack = progressData.tracks.composition_creative;
+
+      if (fTrack && fTrack.modules) applyTrackModules(fTrack.modules, EXAM_MODULE_IDS);
+
+      if (cTrack && cTrack.modules) applyTrackModules(cTrack.modules, COMPOSITION_EXAM_MODULE_IDS);
+
       examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      source = "tracks-modules";
+
+    } else if (progressData && Array.isArray(progressData.modules) && progressData.modules.length) {
+
+      hasData = true;
+
+      applyTrackModules(progressData.modules, EXAM_MODULE_IDS.concat(COMPOSITION_EXAM_MODULE_IDS));
+
+      examsPassed = EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
+
+      compositionExamsPassed = COMPOSITION_EXAM_MODULE_IDS.filter(function(id){ return statusMap[id] === "passed"; }).length;
 
       source = "modules-count";
 
@@ -4534,7 +4585,7 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-    if (source === "modules-count") {
+    if (source === "modules-count" || source === "tracks-modules") {
 
       for (var i = 0; i < EXAM_MODULE_IDS.length; i++) {
 
@@ -4558,13 +4609,15 @@ function computeTrackFillPct(badges, progressPct) {
 
       examsPassed: examsPassed,
 
+      compositionExamsPassed: compositionExamsPassed,
+
       nextExamModuleId: nextExamModuleId,
 
       source: source,
 
       hasData: hasData,
 
-      hasModuleStatus: source === "modules-count"
+      hasModuleStatus: source === "modules-count" || source === "tracks-modules"
 
     };
 
@@ -4608,9 +4661,17 @@ function computeTrackFillPct(badges, progressPct) {
 
 
 
-  function formatFoundationProximity(modulesOpened, activeDays, engagementDegraded){
+  function formatFoundationProximity(stats, activeDays, engagementDegraded){
 
-    var modShort = Math.max(0, FOUNDATION_GATE.minModules - modulesOpened);
+    var safe = normaliseStats(stats);
+
+    if (!safe.module01Opened) {
+
+      return "Open module 01 Exposure to start your Foundation badge";
+
+    }
+
+    var modShort = Math.max(0, FOUNDATION_GATE.minModules - safe.foundationModulesOpened);
 
     if (engagementDegraded) {
 
@@ -4641,6 +4702,32 @@ function computeTrackFillPct(badges, progressPct) {
     }
 
     return dayShort === 1 ? "1 more active day to earn Foundation" : dayShort + " more active days to earn Foundation";
+
+  }
+
+
+
+  function certifiedRequirementsMet(stats){
+
+    var safe = normaliseStats(stats);
+
+    var total = 6;
+
+    var met = 0;
+
+    if (safe.examsPassed >= CERTIFIED_GATE.minFoundationExamsPassed) met += 1;
+
+    if (safe.compositionExamsPassed >= CERTIFIED_GATE.minCompositionExamsPassed) met += 1;
+
+    if (safe.cameraOpened >= CAMERA_MODULE_PATHS.length) met += 1;
+
+    if (safe.compositionOpened >= COMPOSITION_MODULE_PATHS.length) met += 1;
+
+    if (assignmentsAndPacksPoolCount(safe) >= CERTIFIED_GATE.minAssignmentsAndPacksPool) met += 1;
+
+    if (safeNum(safe.appliedLearningOpened, 0) >= CERTIFIED_GATE.minAppliedLearning) met += 1;
+
+    return { met: met, total: total };
 
   }
 
@@ -4690,29 +4777,13 @@ function computeTrackFillPct(badges, progressPct) {
 
   function formatCertifiedProximity(stats){
 
-    var parts = [];
+    var r = certifiedRequirementsMet(stats);
 
-    if (stats.examsPassed < 15) {
+    if (r.met >= r.total) return "";
 
-      var examLeft = 15 - stats.examsPassed;
+    if (r.met === 1) return "1 of " + r.total + " requirements complete for Certified";
 
-      parts.push(examLeft + " " + pluralWord(examLeft, "exam", "exams"));
-
-    }
-
-    if (stats.totalModulesOpened < CERTIFIED_GATE.minModulesOpened) {
-
-      var modLeft = CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened;
-
-      parts.push(modLeft + " " + pluralWord(modLeft, "module", "modules"));
-
-    }
-
-    if (!parts.length) return "";
-
-    if (parts.length === 1) return parts[0] + " from Certified";
-
-    return parts.join(" and ") + " from Certified";
+    return r.met + " of " + r.total + " requirements complete for Certified";
 
   }
 
@@ -4746,7 +4817,11 @@ function computeTrackFillPct(badges, progressPct) {
 
     if (next.key === "master") return formatLongevityCountsDetail(stats, MASTER_TARGETS);
 
-    return " - " + openedCount + "/60 modules - " + examsPassed + "/15 exams";
+    var safe = normaliseStats(stats);
+
+    return " - " + openedCount + "/60 modules - " + examsPassed + "/" + FOUNDATION_EXAMS_TOTAL + " foundation exams - " +
+
+      safe.compositionExamsPassed + "/" + COMPOSITION_EXAMS_TOTAL + " composition exams";
 
   }
 
@@ -4834,11 +4909,11 @@ function computeTrackFillPct(badges, progressPct) {
 
       var dayShort = engagementDegraded ? 0 : Math.max(0, FOUNDATION_GATE.minActiveDays - activeDays);
 
-      var proximity = formatFoundationProximity(stats.foundationModulesOpened, activeDays, engagementDegraded);
+      var proximity = formatFoundationProximity(stats, activeDays, engagementDegraded);
 
-      if (!stats.foundationModulesOpened && (!activeDays || engagementDegraded)) {
+      if (!stats.module01Opened && (!activeDays || engagementDegraded)) {
 
-        return { state: "red", label: proximity || "Just getting started", color: RAG_COLORS.red };
+        return { state: "red", label: proximity || "Open module 01 Exposure to get started", color: RAG_COLORS.red };
 
       }
 
@@ -4872,11 +4947,9 @@ function computeTrackFillPct(badges, progressPct) {
 
       var cLabel = formatCertifiedProximity(stats);
 
-      var examLeft = Math.max(0, 15 - stats.examsPassed);
+      var cReq = certifiedRequirementsMet(stats);
 
-      var modLeft = Math.max(0, CERTIFIED_GATE.minModulesOpened - stats.totalModulesOpened);
-
-      if (examLeft <= 1 && modLeft <= 1 && (examLeft > 0 || modLeft > 0)) {
+      if (cReq.met >= cReq.total - 1 && cReq.met < cReq.total) {
 
         return { state: "green", label: cLabel || "Almost there for Certified", color: RAG_COLORS.green };
 
@@ -5198,9 +5271,15 @@ function computeTrackFillPct(badges, progressPct) {
 
       appendGoalCriteriaContent(inset, tile.criteria);
 
-      if (tile.criteria && tile.criteria.rows && tile.criteria.rows.length >= 4) {
+      if (tile.criteria && tile.criteria.rows) {
 
-        box.classList.add("ar-do-next-tile--goal-rows-4");
+        var rowCount = tile.criteria.rows.length;
+
+        if (rowCount >= 6) box.classList.add("ar-do-next-tile--goal-rows-6");
+
+        else if (rowCount >= 5) box.classList.add("ar-do-next-tile--goal-rows-5");
+
+        else if (rowCount >= 4) box.classList.add("ar-do-next-tile--goal-rows-4");
 
       }
 
@@ -6066,6 +6145,8 @@ function computeTrackFillPct(badges, progressPct) {
     return {
 
       examsPassed: n,
+
+      compositionExamsPassed: 0,
 
       hasModuleStatus: false,
 
