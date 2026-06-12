@@ -318,6 +318,88 @@ function DeltaInline({ delta, isPctPoints }) {
   );
 }
 
+const EMAIL_SUMMARY_COLUMNS = [
+  { key: 'today', label: 'Today' },
+  { key: 'last_7d', label: '7d' },
+  { key: 'last_30d', label: '30d' },
+  { key: 'last_60d', label: '60d' },
+  { key: 'last_90d', label: '90d' },
+  { key: 'total', label: 'Total' },
+];
+
+const EMAIL_SUMMARY_ROWS = [
+  { key: 'trials_scheduled', label: 'Trials · scheduled', hint: 'Nudges + Day -7 / -1 / +7' },
+  { key: 'rewind_ladder', label: 'Trials · REWIND ladder', hint: 'Day +20 / +30 / +60 / +90' },
+  { key: 'paid_lifecycle', label: 'Paid lifecycle', hint: 'Quiet ladder, badge, renewal' },
+  { key: 'manual_batch', label: 'Manual / batch', hint: 'How sent — overlaps REWIND', accent: true },
+  { key: 'lifecycle_total', label: 'Lifecycle total', hint: 'Scheduled + REWIND + Paid (excl. manual)', bold: true },
+];
+
+const STAGE_CATEGORY_ORDER = [
+  { key: 'trials_scheduled', label: 'Trials · scheduled (cron)' },
+  { key: 'rewind_ladder', label: 'Trials · REWIND ladder' },
+  { key: 'paid_lifecycle', label: 'Paid lifecycle' },
+];
+
+function EmailSendsCategorySummary({ summaryByCategory }) {
+  if (!summaryByCategory) return null;
+  const cellStyle = { padding: '8px 10px', textAlign: 'right', fontSize: 14, fontVariantNumeric: 'tabular-nums' };
+  const headStyle = { ...cellStyle, fontSize: 11, color: 'var(--ar-text-muted)', fontWeight: 600 };
+
+  return (
+    <>
+      <h2 style={{ marginTop: '8px' }}>Email sends by category</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 10 }}>
+        Same buckets as the Emails tab — from <code>academy_email_events</code> (cron/webhooks + manual batch tags).
+      </p>
+      <div className="ar-admin-card" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+          <thead>
+            <tr>
+              <th style={{ ...headStyle, textAlign: 'left', paddingLeft: 0 }}>Category</th>
+              {EMAIL_SUMMARY_COLUMNS.map((col) => (
+                <th key={col.key} style={headStyle}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {EMAIL_SUMMARY_ROWS.map((row) => {
+              const windows = summaryByCategory[row.key];
+              return (
+                <tr key={row.key} style={{ borderTop: '1px solid var(--ar-border)' }}>
+                  <td style={{ padding: '10px 10px 10px 0', verticalAlign: 'top' }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: row.bold ? 700 : 600,
+                      color: row.accent ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+                    }}
+                    >
+                      {row.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 2 }}>{row.hint}</div>
+                  </td>
+                  {EMAIL_SUMMARY_COLUMNS.map((col) => (
+                    <td
+                      key={col.key}
+                      style={{
+                        ...cellStyle,
+                        fontWeight: row.bold ? 700 : 600,
+                        color: row.accent ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+                      }}
+                    >
+                      {formatNumber(windows?.[col.key] ?? 0)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 function EmailOutcomesTable({ emailOutcomes }) {
   if (!emailOutcomes?.stages?.length) return null;
   const curLabel = emailOutcomes.month_labels?.current_label || 'Current month';
@@ -348,6 +430,7 @@ function EmailOutcomesTable({ emailOutcomes }) {
           <thead>
             <tr>
               <th>Stage</th>
+              <th>Sent 7d</th>
               <th>Emailed</th>
               <th>Raw sends</th>
               <th>Logged in after</th>
@@ -356,18 +439,45 @@ function EmailOutcomesTable({ emailOutcomes }) {
             </tr>
           </thead>
           <tbody>
-            {emailOutcomes.stages.map((s) => {
-              const p = s.periods?.rolling_90d || {};
-              return (
-                <tr key={s.key}>
-                  <td><strong>{s.label}</strong></td>
-                  <td>{formatNumber(p.emailed)}</td>
-                  <td>{formatNumber(s.raw_sends_90d ?? 0)}</td>
-                  <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
-                  <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
-                  <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
-                </tr>
-              );
+            {STAGE_CATEGORY_ORDER.map((cat) => {
+              const catStages = emailOutcomes.stages.filter((s) => s.category === cat.key);
+              if (!catStages.length) return null;
+              return [
+                <tr key={`${cat.key}-header`}>
+                  <td colSpan={7} style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 0.3,
+                    color: 'var(--ar-text-muted)',
+                    paddingTop: 14,
+                    background: 'rgba(255,255,255,0.02)',
+                  }}
+                  >
+                    {cat.label}
+                  </td>
+                </tr>,
+                ...catStages.map((s) => {
+                  const p = s.periods?.rolling_90d || {};
+                  return (
+                    <tr key={s.key}>
+                      <td>
+                        <strong>{s.label}</strong>
+                        {s.displayName && s.displayName !== s.label ? (
+                          <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 2 }}>
+                            {s.displayName}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>{formatNumber(s.sent_last_7d ?? 0)}</td>
+                      <td>{formatNumber(p.emailed)}</td>
+                      <td>{formatNumber(s.raw_sends_90d ?? 0)}</td>
+                      <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
+                      <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
+                      <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
+                    </tr>
+                  );
+                }),
+              ];
             })}
           </tbody>
         </table>
@@ -453,18 +563,17 @@ function EmailOutcomesTable({ emailOutcomes }) {
 function EmailSendTrends({ trends }) {
   if (!trends?.weeks?.length) return null;
   const colors = {
-    'day-minus-7': '#60a5fa',
-    'day-minus-1': '#22d3ee',
-    'day-plus-7': '#f5a623',
-    'day-plus-20': '#c084fc',
+    trials_scheduled: '#60a5fa',
+    rewind_ladder: '#c084fc',
+    paid_lifecycle: '#f5a623',
   };
-  const tiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+  const tiles = Object.entries(trends.by_category || {}).map(([key, s]) => ({
     key,
     label: `${s.label} — sends / week`,
     values: s.sends,
     color: colors[key] || '#94a3b8',
   }));
-  const loginTiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+  const loginTiles = Object.entries(trends.by_category || {}).map(([key, s]) => ({
     key: `${key}-login`,
     label: `${s.label} — logins after send / week`,
     values: s.login_after,
@@ -472,10 +581,10 @@ function EmailSendTrends({ trends }) {
   }));
   return (
     <>
-      <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends</h2>
+      <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends (by category)</h2>
       <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0 }}>
         Weekly buckets (UTC). Since {trends.since?.slice(0, 10) || '—'}.
-        Sparkline headline is <strong>average sends per week</strong>, not the 90-day total (see table above for totals).
+        Grouped by the same categories as the Emails tab. Sparkline headline is <strong>average sends per week</strong>.
       </p>
       <div className="ar-admin-kpi-grid">
         {tiles.map((t) => <SparkTile key={t.key} label={t.label} values={t.values} color={t.color} fractionDigits={0} />)}
@@ -570,6 +679,7 @@ export default function EngagementPage() {
 
           <ActivationTargetsPanel data={data.activation_targets} period={period} />
 
+          <EmailSendsCategorySummary summaryByCategory={data.email_outcomes?.summary_by_category} />
           <EmailOutcomesTable emailOutcomes={data.email_outcomes} />
           <EmailSendTrends trends={data.email_outcomes?.trends_90d} />
 
