@@ -223,6 +223,17 @@ body {
   background-color: rgba(229, 114, 0, 0.1);
 }
 
+.ar-sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.ar-sortable-th:hover {
+  color: var(--ar-orange);
+  background-color: rgba(229, 114, 0, 0.1);
+}
+
 .ar-admin-table td {
   padding: 12px 16px;
   border-top: 1px solid var(--ar-border);

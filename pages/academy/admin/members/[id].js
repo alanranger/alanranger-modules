@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import BadgeLevelCell from '../../../../components/admin/BadgeLevelCell';
+import SortableTable from '../../../../components/admin/SortableTable';
 
 export default function MemberDetail() {
   const router = useRouter();
@@ -334,30 +335,35 @@ export default function MemberDetail() {
       {member.engagement?.most_opened_modules && member.engagement.most_opened_modules.length > 0 && (
         <div className="ar-admin-card" style={{ marginBottom: '24px' }}>
           <h2 className="ar-admin-card-title">Most Opened Modules</h2>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Module</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Category</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Opens</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Last Opened</th>
-                </tr>
-              </thead>
-              <tbody>
-                {member.engagement.most_opened_modules.map((module, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--ar-border)' }}>
-                    <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{module.title || module.path}</td>
-                    <td style={{ padding: '12px', color: 'var(--ar-text-muted)' }}>{module.category || '—'}</td>
-                    <td style={{ padding: '12px', color: 'var(--ar-orange)', fontWeight: 600 }}>{module.count}</td>
-                    <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
-                      {formatDate(module.last_opened)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              {
+                key: 'module',
+                label: 'Module',
+                sortValue: (m) => m.title || m.path || '',
+                render: (m) => m.title || m.path,
+              },
+              { key: 'category', label: 'Category', sortValue: (m) => m.category || '' },
+              {
+                key: 'count',
+                label: 'Opens',
+                sortValue: (m) => m.count ?? 0,
+                render: (m) => <span style={{ color: 'var(--ar-orange)', fontWeight: 600 }}>{m.count}</span>,
+              },
+              {
+                key: 'last_opened',
+                label: 'Last Opened',
+                sortValue: (m) => m.last_opened || '',
+                render: (m) => formatDate(m.last_opened),
+              },
+            ]}
+            rows={member.engagement.most_opened_modules}
+            rowKey={(m, i) => m.path || m.title || i}
+            defaultSort="count"
+            defaultDir="desc"
+            className="ar-admin-table"
+            wrapperStyle={{ overflowX: 'auto' }}
+          />
         </div>
       )}
 
@@ -366,32 +372,32 @@ export default function MemberDetail() {
         <h2 className="ar-admin-card-title">Recent Activity</h2>
         {member.recent_activity && member.recent_activity.length > 0 ? (
           <>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--ar-border)' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Time</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Event</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Path</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'var(--ar-text-muted)', fontWeight: 600 }}>Title</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {member.recent_activity.map((activity, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--ar-border)' }}>
-                      <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px' }}>
-                        {formatDate(activity.created_at)}
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{activity.event_type}</td>
-                      <td style={{ padding: '12px', color: 'var(--ar-text-muted)', fontSize: '13px', fontFamily: 'monospace' }}>
-                        {activity.path || '—'}
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--ar-text)' }}>{activity.title || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <SortableTable
+              columns={[
+                {
+                  key: 'created_at',
+                  label: 'Time',
+                  sortValue: (a) => a.created_at || '',
+                  render: (a) => formatDate(a.created_at),
+                },
+                { key: 'event_type', label: 'Event', sortValue: (a) => a.event_type || '' },
+                {
+                  key: 'path',
+                  label: 'Path',
+                  sortValue: (a) => a.path || '',
+                  render: (a) => (
+                    <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>{a.path || '—'}</span>
+                  ),
+                },
+                { key: 'title', label: 'Title', sortValue: (a) => a.title || '' },
+              ]}
+              rows={member.recent_activity}
+              rowKey={(a, i) => `${a.created_at}-${i}`}
+              defaultSort="created_at"
+              defaultDir="desc"
+              className="ar-admin-table"
+              wrapperStyle={{ overflowX: 'auto' }}
+            />
             {member.activity_pagination && member.activity_pagination.totalPages > 1 && (
               <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
                 <button

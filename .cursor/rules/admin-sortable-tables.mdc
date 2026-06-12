@@ -1,0 +1,17 @@
+---
+description: Academy admin dashboards — all data tables must be sortable by default
+globs:
+  - pages/academy/admin/**/*.js
+  - components/admin/**/*.js
+---
+
+# Admin tables — sortable by default
+
+Every admin data table MUST use `components/admin/SortableTable.js` (or `SortableTh` + `useTableSort` for bespoke layouts).
+
+- All column headers clickable; toggle asc/desc on repeat click
+- Default sort: sensible primary metric descending (opens, sessions, date, etc.)
+- Provide `sortValue` for rendered/formatted cells (dates, badges, percentages)
+- Do not ship plain `<table>` with static `<th>` for row data in admin pages
+
+Reference: `pages/academy/admin/emails.js` (members table), `pages/academy/admin/engagement.js` (Top Engaged Members).
