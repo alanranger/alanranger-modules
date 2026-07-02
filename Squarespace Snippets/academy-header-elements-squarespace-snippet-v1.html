@@ -1,11 +1,11 @@
 <!--
-Academy Header Elements — Squarespace Code Block v1.4.33 (snippet version stamp under brand logo)
+Academy Header Elements — Squarespace Code Block v1.4.34 (snippet version stamp under brand logo)
 For injection into Squarespace Header (Code Injection → Header)
 Displays: Welcome message, Academy Dashboard title (centered), Logo & Logout (right)
 
 Snippet versions shown live (update all four when re-pasting blocks):
-  Header H = 1.4.33 | Strip S = 1.3.56 | Dashboard D = 1.3.27 | Bookmark B = 1.3.16 | Footer F = 1.3.3
-v1.4.33: Stamp sync — Dashboard D 1.3.27 (catalog gauge column layout).
+  Header H = 1.4.34 | Strip S = 1.3.73 | Dashboard D = 1.3.45 | Bookmark B = 1.3.16 | Footer F = 1.3.3
+v1.4.34: Dashboard pin-stack — black header banner only stays fixed; Your Journey strip scrolls in page flow (no strip spacer jump).
 v1.4.32: Dashboard layout sync — align fixed journey strip column to .ar-academy-dashboard__inner (runtime measure).
 v1.4.26: Stamp updated for Bookmark B 1.3.10 (shared next-unopened) + Footer F 1.3.1. No functional header change.
 v1.4.25: Stamp updated for Footer F 1.2.0 (champagne member panel + live stats). No functional header change.
@@ -161,7 +161,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
     margin: 0;
   }
 
-  /* Dashboard: fixed pin-stack below Sqsp nav (header injection + page blocks stay separate) */
+  /* Dashboard: fixed header only (journey strip scrolls in normal document flow) */
   html.ar-dashboard-pin-stack #ar-academy-header-container {
     position: fixed !important;
     top: var(--ar-sqsp-nav-offset, 0px) !important;
@@ -1166,7 +1166,7 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
         var stripH = measureStripHeight(strip);
         root.style.setProperty('--ar-academy-header-height', headerH + 'px');
         root.style.setProperty('--ar-do-next-strip-height', stripH + 'px');
-        root.style.setProperty('--ar-academy-sticky-stack-height', (sqspTop + headerH + stripH) + 'px');
+        root.style.setProperty('--ar-academy-sticky-stack-height', (sqspTop + headerH) + 'px');
         root.classList.remove('ar-dashboard-in-flow');
         root.classList.add('ar-dashboard-pin-stack');
         header.style.setProperty('position', 'fixed', 'important');
@@ -1177,21 +1177,9 @@ v1.4.4: Shared __arMsReader — one deduped getCurrentMember+getMemberJSON bundl
         header.style.setProperty('max-width', '100%', 'important');
         header.style.setProperty('margin-top', '0', 'important');
         header.style.setProperty('z-index', '998', 'important');
-        if (strip && strip.classList.contains('is-ready')) {
-          strip.style.setProperty('position', 'fixed', 'important');
-          strip.style.setProperty('top', (sqspTop + headerH) + 'px', 'important');
-          strip.style.setProperty('left', '0', 'important');
-          strip.style.setProperty('right', '0', 'important');
-          strip.style.setProperty('width', '100%', 'important');
-          strip.style.setProperty('max-width', '100%', 'important');
-          strip.style.setProperty('margin-left', '0', 'important');
-          strip.style.setProperty('margin-right', '0', 'important');
-          strip.style.setProperty('z-index', '997', 'important');
-        } else {
-          clearFixedLayout(strip);
-        }
+        clearFixedLayout(strip);
         ensureSpacer('ar-academy-header-spacer', header, 0);
-        if (strip) ensureSpacer('ar-do-next-strip-spacer', strip, stripH);
+        ensureSpacer('ar-do-next-strip-spacer', strip, 0);
         alignStripInnerToDashboard();
       } finally {
         state.busy = false;
