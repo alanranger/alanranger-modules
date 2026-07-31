@@ -842,7 +842,11 @@ export default function EngagementPage() {
             wrapperClassName="ar-admin-card"
           />
 
-          <h2 style={{ marginTop: '24px' }}>Top Engaged Members</h2>
+          <h2 style={{ marginTop: '24px' }}>Engaged Members</h2>
+          <p style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '-8px', marginBottom: '12px' }}>
+            Everyone with a login or module open in the selected period. Default sort is most modules opened;
+            sort by Last Seen to match recent Activity Stream activity (login + module_open only — not page_view).
+          </p>
           <SortableTable
             columns={[
               { key: 'name', label: 'Name', sortValue: (m) => m.name || '' },

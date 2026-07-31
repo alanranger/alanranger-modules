@@ -178,8 +178,11 @@ function buildTopMembers(perMember, memberMeta, passCountsByMember) {
     );
     arr.push(row);
   });
+  // Default order: engagement depth. Do NOT slice here — Last Seen / other
+  // column sorts in the UI must be able to surface recently active members
+  // who are not in the lifetime "top 25 modules" set (Activity Stream mismatch).
   arr.sort((a, b) => b.modules_opened - a.modules_opened || b.sessions - a.sessions);
-  return arr.slice(0, 25);
+  return arr;
 }
 
 async function fetchMemberMeta(supabase) {
