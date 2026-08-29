@@ -7,6 +7,7 @@
 //   stageKey   — single stage (required unless stage=all)
 //   stage=all  — evaluate all sentBy=triggered-email-webhook stages (cronEnabled gates live send)
 //   sendEmail  — false for dry-run preview JSON
+//   forceSend  — with ?secret=, bypass London 09:00 gate for a manual live send
 //   testEmail  — single-member preview/send (bypasses London gate + cronEnabled)
 //   memberEmail — real-member dry-run; never sends to member; delivers preview to LIFECYCLE_BCC
 //   secret     — ORPHANED_WEBHOOK_SECRET for manual calls
@@ -37,7 +38,7 @@ const {
 } = require("../../lib/reengage-link");
 const { markWinbackExhausted } = require("../../lib/winback-exhaustion");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
-const { detectTriggerSource, logCronRun } = require("../../lib/emailCronHeartbeat");
+const { detectTriggerSource, logCronRun, shouldSendTriggeredEmail } = require("../../lib/emailCronHeartbeat");
 const {
   buildPaidBadgeMergeVars,
   buildPaidRenewalMergeVars,
@@ -57,7 +58,7 @@ const {
 const WINBACK_TRIGGER_STAGES = new Set([STAGE_KEYS.DAY_PLUS_90]);
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -112,12 +113,14 @@ async function heartbeatStages(req, keys, extra) {
   }
 }
 
-function shouldSendNow(req, testEmail) {
-  if (testEmail) return true;
-  if (!parseBool(req.query.sendEmail, true)) return false;
-  const isCron = req.headers["x-vercel-cron"] === "1";
-  if (!isCron && !parseBool(req.query.sendEmail, false)) return false;
-  return londonHour(Date.now()) === 9;
+function shouldSendNow(req, testEmail, authOk) {
+  return shouldSendTriggeredEmail({
+    testEmail,
+    sendEmail: parseBool(req.query.sendEmail, false),
+    forceSend: parseBool(req.query.forceSend, false),
+    authOk,
+    londonHour: londonHour(Date.now()),
+  });
 }
 
 function snapshotToVars(snapshot) {
@@ -553,7 +556,7 @@ module.exports = async function handler(req, res) {
       return res.status(payload.success ? 200 : 400).json(payload);
     }
 
-    if (!shouldSendNow(req, testEmail) && sendEmail) {
+    if (sendEmail && !shouldSendNow(req, testEmail, authResult === "ok")) {
       await heartbeatStages(req, keys, {
         auth_ok: true,
         error: "gate:outside London 09:00",

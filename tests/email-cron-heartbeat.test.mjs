@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { firingStateForStage } = require("../lib/emailCronHeartbeat.js");
+const { firingStateForStage, shouldSendTriggeredEmail } = require("../lib/emailCronHeartbeat.js");
+const { LOGIN_EVENT_TYPES } = require("../lib/member-email-snapshot.js");
 
 const now = Date.parse("2026-08-29T12:00:00Z");
 
@@ -48,5 +49,58 @@ test("verified sending when heartbeat ok and real sends", () => {
       nowMs: now,
     }),
     "verified_sending"
+  );
+});
+
+test("login snapshot treats member_login as a login", () => {
+  assert.deepEqual(LOGIN_EVENT_TYPES, ["login", "member_login"]);
+});
+
+test("forceSend with secret auth bypasses the London hour gate", () => {
+  assert.equal(
+    shouldSendTriggeredEmail({
+      testEmail: null,
+      sendEmail: true,
+      forceSend: true,
+      authOk: true,
+      londonHour: 13,
+    }),
+    true
+  );
+});
+
+test("forceSend without secret auth does not bypass the gate", () => {
+  assert.equal(
+    shouldSendTriggeredEmail({
+      testEmail: null,
+      sendEmail: true,
+      forceSend: true,
+      authOk: false,
+      londonHour: 13,
+    }),
+    false
+  );
+});
+
+test("bulk sendEmail stays gated to London 09:00", () => {
+  assert.equal(
+    shouldSendTriggeredEmail({
+      testEmail: null,
+      sendEmail: true,
+      forceSend: false,
+      authOk: true,
+      londonHour: 13,
+    }),
+    false
+  );
+  assert.equal(
+    shouldSendTriggeredEmail({
+      testEmail: null,
+      sendEmail: true,
+      forceSend: false,
+      authOk: true,
+      londonHour: 9,
+    }),
+    true
   );
 });
