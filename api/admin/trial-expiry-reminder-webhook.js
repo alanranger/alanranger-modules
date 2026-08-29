@@ -44,6 +44,7 @@ const nodemailer = require("nodemailer");
 const stripe = require("stripe");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEvents");
+const { logCronRun, detectTriggerSource } = require("../../lib/emailCronHeartbeat");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
@@ -1337,6 +1338,19 @@ module.exports = async (req, res) => {
       }
     } else {
       console.log(`[trial-expiry-reminder] No members with trials expiring in ${daysAhead} days`);
+    }
+
+    const trialStageKey = stageKeyForTrialReminder(daysAhead);
+    if (trialStageKey) {
+      await logCronRun(supabase, {
+        stage_key: trialStageKey,
+        webhook: "trial-expiry-reminder-webhook",
+        trigger_source: detectTriggerSource(req),
+        auth_ok: true,
+        members_evaluated: expiringMembers.length,
+        sent: emailsSent,
+        failed: emailsFailed,
+      });
     }
 
     // Always return success (even if no members found or emails failed)

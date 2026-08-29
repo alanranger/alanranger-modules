@@ -28,6 +28,7 @@ const { createClient } = require("@supabase/supabase-js");
 const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
 const nodemailer = require("nodemailer");
 const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
+const { logCronRun, detectTriggerSource } = require("../../lib/emailCronHeartbeat");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildWinbackMergeVars, REWIND_CAMPAIGN } = require("../../lib/winback-email-vars");
@@ -917,6 +918,21 @@ module.exports = async (req, res) => {
     }
     const runOpts = { correctedResend: backlog.correctedResend, backlogRun: backlog.backlogRun };
     const runOutcome = await runCampaignBatch(eligible, windowBounds, sendEmail, backlog.batchSize, runOpts);
+    for (const attempt of [1, 2, 3]) {
+      const stageKey = stageKeyForRewind(attempt);
+      const evaluated = eligible.filter((r) => (r.reengagement_send_count || 0) + 1 === attempt).length;
+      const sentN = runOutcome.results.filter((o) => o.sent && o.attempt === attempt).length;
+      const failedN = runOutcome.results.filter((o) => !o.skipped && !o.sent && o.attempt === attempt).length;
+      await logCronRun(supabase, {
+        stage_key: stageKey,
+        webhook: "lapsed-trial-reengagement-webhook",
+        trigger_source: detectTriggerSource(req),
+        auth_ok: true,
+        members_evaluated: evaluated,
+        sent: sentN,
+        failed: failedN,
+      });
+    }
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),

@@ -9,7 +9,8 @@
     "api/admin/triggered-email-webhook.js": { "maxDuration": 300 },
     "api/admin/orphaned-members-webhook.js": { "maxDuration": 60 },
     "api/admin/emails-stats.js": { "maxDuration": 60 },
-    "api/admin/emails-members.js": { "maxDuration": 60 }
+    "api/admin/emails-members.js": { "maxDuration": 60 },
+    "api/admin/email-health-watchdog.js": { "maxDuration": 120 }
   },
   "crons": [
     {
@@ -55,6 +56,14 @@
     {
       "path": "/api/admin/triggered-email-webhook?stage=all&sendEmail=true",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/email-health-watchdog",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/admin/email-health-watchdog",
+      "schedule": "30 9 * * *"
     }
   ]
 }
