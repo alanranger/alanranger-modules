@@ -11,7 +11,7 @@ test("not_firing when no heartbeat", () => {
   assert.equal(firingStateForStage({ sentLast7d: 0, lastRun: null, nowMs: now }), "not_firing");
 });
 
-test("not_firing when auth failed", () => {
+test("not_firing when auth failed even if old sends exist", () => {
   assert.equal(
     firingStateForStage({
       sentLast7d: 5,
@@ -19,6 +19,13 @@ test("not_firing when auth failed", () => {
       nowMs: now,
     }),
     "not_firing"
+  );
+});
+
+test("verified sending from real events even before first heartbeat", () => {
+  assert.equal(
+    firingStateForStage({ sentLast7d: 3, lastRun: null, nowMs: now }),
+    "verified_sending"
   );
 });
 
