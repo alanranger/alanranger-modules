@@ -6,6 +6,11 @@ const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 const { ACADEMY_ANNUAL_PRICE_IDS } = require('../../lib/academyStripeConfig');
 const { getTrialConfig, trialLengthForStart, addDays: addDaysHelper } = require('../../lib/academyTrialConfig');
+const {
+  extractSignupSourceFromStripeObject,
+  lookupPendingSignupSource,
+  normalizeSignupSource,
+} = require('../../lib/signupSource');
 
 // Academy app ID for filtering
 const ACADEMY_APP_ID = 'app_cmjlwl7re00440stg3ri2dud8';
@@ -56,7 +61,7 @@ function isAnnualPriceId(priceId) {
   return String(priceId).toLowerCase().includes('annual');
 }
 
-async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt }) {
+async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt, signupSource, eventObject }) {
   if (!msMemberId || !createdAt) return;
   const createdDate = new Date(createdAt);
   if (isNaN(createdDate.getTime())) return;
@@ -65,15 +70,27 @@ async function upsertTrialHistory({ eventType, msMemberId, msPriceId, createdAt 
     const trialConfig = await getTrialConfig();
     const trialLengthDays = trialLengthForStart(createdDate, trialConfig);
     const trialEndAt = addDaysHelper(createdDate, trialLengthDays).toISOString();
+    let src =
+      normalizeSignupSource(signupSource) ||
+      extractSignupSourceFromStripeObject(eventObject) ||
+      (await lookupPendingSignupSource(supabaseAdmin, msMemberId));
+    const row = {
+      member_id: msMemberId,
+      trial_start_at: createdAt,
+      trial_end_at: trialEndAt,
+      trial_length_days: trialLengthDays,
+      source: 'stripe_webhook',
+    };
+    if (src) row.signup_source = src;
     await supabaseAdmin
       .from('academy_trial_history')
-      .upsert({
-        member_id: msMemberId,
-        trial_start_at: createdAt,
-        trial_end_at: trialEndAt,
-        trial_length_days: trialLengthDays,
-        source: 'stripe_webhook'
-      }, { onConflict: 'member_id,trial_start_at' });
+      .upsert(row, { onConflict: 'member_id,trial_start_at' });
+    if (src) {
+      await supabaseAdmin
+        .from('academy_signup_attribution')
+        .update({ applied_at: new Date().toISOString() })
+        .eq('member_id', msMemberId);
+    }
   }
 
   if (eventType === 'invoice.paid' && isAnnualPriceId(msPriceId)) {
@@ -493,7 +510,8 @@ module.exports = async (req, res) => {
         eventType: event.type,
         msMemberId,
         msPriceId,
-        createdAt: new Date(event.created * 1000).toISOString()
+        createdAt: new Date(event.created * 1000).toISOString(),
+        eventObject: event.data?.object || null,
       });
       await upsertAnnualHistory({
         eventType: event.type,

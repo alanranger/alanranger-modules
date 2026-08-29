@@ -189,6 +189,50 @@ function ActivationTargetTile({ label, metric, targetPct, trendValues, noisy, st
   );
 }
 
+function SignupSourcesPanel({ data }) {
+  if (!data) return null;
+  const rows = data.rows || [];
+  return (
+    <>
+      <h2 style={{ marginTop: '24px' }}>Trial signups by source</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 8 }}>
+        {data.label || 'Source tracking forward-only'}
+        {typeof data.tagged_trials === 'number' ? (
+          <> · <strong>{data.tagged_trials}</strong> tagged · <strong>{data.uncaptured_trials || 0}</strong> uncaptured in window</>
+        ) : null}
+      </p>
+      {!rows.length ? (
+        <div className="ar-admin-card" style={{ padding: 16, fontSize: 13, color: 'var(--ar-text-muted)' }}>
+          No trials with signup_source yet in this period (tracking from {data.tracking_from}).
+        </div>
+      ) : (
+        <div className="ar-admin-card" style={{ padding: 0, overflowX: 'auto' }}>
+          <table className="ar-admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '10px 12px' }}>Source</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Trials</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Converted</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Conv %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.signup_source}>
+                  <td style={{ padding: '8px 12px' }}>{r.signup_source}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.trials}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.converted}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.conversion_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ActivationTargetsPanel({ data, period }) {
   if (!data?.cohort) return null;
   const periodLabel = PERIOD_LABELS[period] || String(period);
@@ -744,6 +788,8 @@ export default function EngagementPage() {
           <WeeklyTrends series={data.weekly_series} period={period} />
 
           <ActivationTargetsPanel data={data.activation_targets} period={period} />
+
+          <SignupSourcesPanel data={data.signup_sources} />
 
           <EmailSendsCategorySummary summaryByCategory={data.email_outcomes?.summary_by_category} />
           <EmailOutcomesTable emailOutcomes={data.email_outcomes} />
