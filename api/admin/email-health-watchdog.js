@@ -68,7 +68,7 @@ async function loadEventsLast24h(sinceIso) {
 async function loadCronRuns() {
   const { data, error } = await supabase
     .from("academy_email_cron_runs")
-    .select("stage_key, run_at, auth_ok, sent, error, members_evaluated")
+    .select("stage_key, run_at, auth_ok, sent, error, members_evaluated, trigger_source, webhook")
     .order("run_at", { ascending: false })
     .limit(400);
   if (error) throw new Error(`academy_email_cron_runs: ${error.message}`);

@@ -77,6 +77,24 @@ test("unverified when Gmail lookup fails — never all-clear", () => {
   assert.match(row.detail, /Gmail Sent/);
 });
 
+test("rewind candidate pool on a batch dry-run is idle, not a missed send", () => {
+  const row = classifyWatchdogRow({
+    eligible: 42,
+    loggedSent: 0,
+    gmailFound: 0,
+    gmailOk: true,
+    lastRun: {
+      run_at: "2026-08-29T12:40:00Z",
+      auth_ok: true,
+      members_evaluated: 42,
+      trigger_source: "batch",
+      webhook: "lapsed-trial-reengagement-webhook",
+    },
+    nowMs: now,
+  });
+  assert.equal(row.state, "healthy_idle");
+});
+
 test("banner lists stages that need attention", () => {
   const banner = bannerForRows([
     { key: "paid-quiet", state: "verified" },
