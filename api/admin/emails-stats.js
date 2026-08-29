@@ -7,6 +7,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const { EMAIL_STAGES } = require("../../lib/emailStages");
 const { MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
+const { firingStateForStage } = require("../../lib/emailCronHeartbeat");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -174,6 +175,39 @@ async function fetchSentMetrics(nowMs) {
   return { stageMaps, categories, lifecycle_total };
 }
 
+async function fetchLatestCronRuns() {
+  const latest = {};
+  if (!supabase) return latest;
+  const { data, error } = await supabase
+    .from("academy_email_cron_runs")
+    .select("stage_key, run_at, auth_ok, sent, error, members_evaluated")
+    .order("run_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    console.warn("[emails-stats] cron runs failed:", error.message);
+    return latest;
+  }
+  for (const row of data || []) {
+    if (!latest[row.stage_key]) latest[row.stage_key] = row;
+  }
+  return latest;
+}
+
+function attachFiringState(stat, lastRun, nowMs) {
+  const firing_state = firingStateForStage({
+    sentLast7d: stat.sent_last_7d,
+    lastRun,
+    nowMs,
+  });
+  return {
+    ...stat,
+    firing_state,
+    last_cron_at: lastRun?.run_at || null,
+    last_cron_auth_ok: lastRun ? lastRun.auth_ok : null,
+    last_cron_error: lastRun?.error || null,
+  };
+}
+
 async function fetchContactableMemberIds() {
   if (!supabase) return new Set();
   const ids = new Set();
@@ -298,16 +332,17 @@ module.exports = async function handler(req, res) {
     const nowMs = Date.now();
     const { stageMaps, categories, lifecycle_total } = await fetchSentMetrics(nowMs);
     const contactable = await fetchContactableMemberIds();
+    const cronRuns = await fetchLatestCronRuns();
 
     const results = await Promise.all(
       EMAIL_STAGES.map(async (stageDef) => {
+        let stat = null;
         if (stageDef.legacyStats) {
-          return statsForLegacyStage(stageDef, nowMs, contactable, stageMaps);
+          stat = await statsForLegacyStage(stageDef, nowMs, contactable, stageMaps);
+        } else if (stageDef.trigger) {
+          stat = statsForTriggerStage(stageDef, nowMs, stageMaps);
         }
-        if (stageDef.trigger) {
-          return statsForTriggerStage(stageDef, nowMs, stageMaps);
-        }
-        return null;
+        return stat ? attachFiringState(stat, cronRuns[stageDef.key], nowMs) : null;
       })
     );
 

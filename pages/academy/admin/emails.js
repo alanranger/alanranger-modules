@@ -348,6 +348,20 @@ function NavTabs({ active }) {
   );
 }
 
+function firingStateBadge(stats) {
+  const state = stats?.firing_state;
+  if (state === 'verified_sending') {
+    return { label: 'Verified sending', color: 'var(--ar-success, #0a0)' };
+  }
+  if (state === 'healthy_idle') {
+    return { label: 'Healthy idle (0 eligible)', color: 'var(--ar-text-muted)' };
+  }
+  if (state === 'not_firing') {
+    return { label: 'NOT FIRING', color: '#c0392b' };
+  }
+  return null;
+}
+
 function stageStatusBadge(stage) {
   if (stage.deprecated) {
     return { label: 'DEPRECATED', color: 'var(--ar-text-muted)' };
@@ -377,6 +391,7 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
     : (stage.sentBy === 'lapsed-trial-reengagement-webhook' ? 'Zapier (weekly)' : 'Daily trigger check');
   const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
   const { label: statusLabel, color: statusColor } = stageStatusBadge(stage);
+  const firing = firingStateBadge(stats);
   return (
     <button
       type="button"
@@ -405,6 +420,11 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
       <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>
         {sent7d}
       </div>
+      {firing && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: firing.color, marginTop: 6 }}>
+          {firing.label}
+        </div>
+      )}
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
         sent 7d · {sent24} sent 24h
       </div>
