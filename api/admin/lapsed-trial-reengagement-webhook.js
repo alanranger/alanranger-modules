@@ -26,13 +26,13 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
-const nodemailer = require("nodemailer");
 const { logEmailEvent, stageKeyForRewind } = require("../../lib/emailEvents");
 const { logCronRun, detectTriggerSource } = require("../../lib/emailCronHeartbeat");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildWinbackMergeVars, REWIND_CAMPAIGN } = require("../../lib/winback-email-vars");
-const { htmlFromMarkdown, plainTextFromMarkdown } = require("../../lib/emailHtml");
+const { htmlFromMarkdown } = require("../../lib/emailHtml");
+const { sendLifecycleMail, smtpConfig } = require("../../lib/sendLifecycleMail");
 const { memberAlreadySent } = require("../../lib/emailStageTriggers");
 const {
   generateUnsubToken,
@@ -49,27 +49,6 @@ const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
-
-const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
-const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
-const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587", 10);
-
-let emailTransporter = null;
-if (EMAIL_FROM && EMAIL_PASSWORD) {
-  // Pooled SMTP connection: reuse a single TLS session across all sends in
-  // one invocation. Without this Gmail spends ~1.2s on TLS handshake per
-  // email; with pooling the second send onwards is ~200ms. 20x speedup.
-  emailTransporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465,
-    auth: { user: EMAIL_FROM, pass: EMAIL_PASSWORD },
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 100,
-  });
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Campaign configuration
@@ -531,22 +510,33 @@ async function rollbackSendSlot(memberId, prevCount) {
 }
 
 async function deliverEmail({ member, content }) {
-  if (!emailTransporter) {
+  const cfg = smtpConfig();
+  if (!cfg.user || !cfg.pass) {
     return { sent: false, error: "Email not configured" };
   }
   try {
-    const info = await emailTransporter.sendMail({
-      from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+    // Same path as trial-expiry / triggered: SMTP accept + Message-ID in Gmail Sent.
+    const info = await sendLifecycleMail({
       to: member.email,
-      bcc: LIFECYCLE_BCC,
       subject: content.subject,
-      text: plainTextFromMarkdown(content.body),
-      html: content.html,
+      bodyMd: content.body,
+      bcc: LIFECYCLE_BCC,
     });
-    return { sent: true, messageId: info.messageId };
+    return {
+      sent: true,
+      messageId: info.messageId,
+      accepted: info.accepted,
+      response: info.response,
+      gmailVerified: true,
+    };
   } catch (err) {
     console.error(`[lapsed-trial-reengagement] send failed for ${member.email}:`, err.message);
-    return { sent: false, error: err.message };
+    return {
+      sent: false,
+      error: err.message,
+      messageId: err?.smtp?.messageId || null,
+      deliveryStatus: err?.deliveryStatus || "smtp_fail",
+    };
   }
 }
 
@@ -671,7 +661,10 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
         messageId: result.messageId,
         subject: correctedResend ? `[CORRECTED] ${content.subject}` : content.subject,
         dryRun: false,
-        eventDetail: correctedResend ? CORRECTED_RESEND_TAG : null,
+        deliveryStatus: "gmail_verified",
+        eventDetail: correctedResend
+          ? CORRECTED_RESEND_TAG
+          : `gmail_verified accepted=${(result.accepted || []).join(",")} response=${result.response || ""}`,
         sendSource,
       });
     }
@@ -683,9 +676,11 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
         email: contact.email,
         stage_key: stageKey,
         status: "failed",
+        messageId: result.messageId || null,
         error: result.error,
         subject: content.subject,
         dryRun: false,
+        deliveryStatus: result.deliveryStatus || "smtp_fail",
       });
     }
   }
