@@ -79,7 +79,9 @@ function eventsForStage(events, key) {
   return events.filter((e) => e.stage_key === key);
 }
 
-async function sendWatchdogMail(subject, text) {
+// Sent multipart: HTML table for reading, plain text as the fallback for
+// clients that block HTML.
+async function sendWatchdogMail(subject, text, html) {
   if (!EMAIL_FROM || !EMAIL_PASSWORD) throw new Error("Email SMTP not configured");
   const transporter = nodemailer.createTransport({
     host: EMAIL_SMTP_HOST,
@@ -92,6 +94,7 @@ async function sendWatchdogMail(subject, text) {
     to: WATCHDOG_TO,
     subject,
     text,
+    html,
   });
 }
 
@@ -178,7 +181,7 @@ module.exports = async function handler(req, res) {
   });
 
   try {
-    const info = await sendWatchdogMail(formatted.subject, formatted.text);
+    const info = await sendWatchdogMail(formatted.subject, formatted.text, formatted.html);
     return res.status(200).json({
       success: true,
       trigger_source: detectTriggerSource(req),
@@ -186,6 +189,7 @@ module.exports = async function handler(req, res) {
       subject: formatted.subject,
       messageId: info.messageId,
       body: formatted.text,
+      html: formatted.html,
       rows,
     });
   } catch (err) {
@@ -194,6 +198,7 @@ module.exports = async function handler(req, res) {
       error: err.message,
       subject: formatted.subject,
       body: formatted.text,
+      html: formatted.html,
       rows,
     });
   }
