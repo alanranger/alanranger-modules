@@ -45,6 +45,7 @@ const stripe = require("stripe");
 const crypto = require("crypto");
 const { logEmailEvent, stageKeyForTrialReminder } = require("../../lib/emailEvents");
 const { logCronRun, detectTriggerSource } = require("../../lib/emailCronHeartbeat");
+const { sendLifecycleMail, smtpConfig } = require("../../lib/sendLifecycleMail");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
 const { renderStageEmail } = require("../../lib/emailTemplateRenderer");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
@@ -171,17 +172,18 @@ if (STRIPE_SECRET_KEY) {
   console.warn(`[trial-expiry-reminder] STRIPE_SECRET_KEY not found, Stripe client not initialized`);
 }
 
-// Create email transporter
+// Create email transporter (kept for email_configured probes in the JSON
+// response). Actual sends go through sendLifecycleMail so we only log "sent"
+// when SMTP accepts the primary recipient — nodemailer's messageId alone is
+// generated locally and proved to be a liar for day-minus-1 phantoms.
 let emailTransporter = null;
-if (EMAIL_FROM && EMAIL_PASSWORD) {
+const _smtp = smtpConfig();
+if (_smtp.user && _smtp.pass) {
   emailTransporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465, // true for 465, false for other ports
-    auth: {
-      user: EMAIL_FROM,
-      pass: EMAIL_PASSWORD
-    }
+    host: _smtp.host,
+    port: _smtp.port,
+    secure: _smtp.secure,
+    auth: { user: _smtp.user, pass: _smtp.pass },
   });
 }
 
@@ -831,16 +833,20 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
   const emailBody = content.body;
 
   try {
-    const info = await emailTransporter.sendMail({
-      from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+    // Must see the primary recipient in SMTP accepted[] — messageId alone is
+    // generated locally and does not prove Gmail took the message (phantom
+    // day-minus-1 rows had Message-IDs that never appeared in Sent/All Mail).
+    const info = await sendLifecycleMail({
       to: member.email,
-      bcc: LIFECYCLE_BCC,
       subject: emailSubject,
-      text: plainTextFromMarkdown(emailBody),
-      html: htmlFromMarkdown(emailBody),
+      bodyMd: emailBody,
+      bcc: LIFECYCLE_BCC,
     });
 
-    console.log(`[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`);
+    console.log(
+      `[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`
+      + ` accepted=${JSON.stringify(info.accepted)} response=${info.response}`
+    );
     if (stageKey && member.member_id) {
       await logEmailEvent(supabase, {
         member_id: member.member_id,
@@ -850,6 +856,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
         messageId: info.messageId,
         subject: emailSubject,
         dryRun: false,
+        eventDetail: `smtp_ok accepted=${info.accepted.join(",")} response=${info.response}`,
       });
     }
     return { sent: true, messageId: info.messageId, stage_key: stageKey };
@@ -861,9 +868,13 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
         email: member.email,
         stage_key: stageKey,
         status: "failed",
+        messageId: error?.smtp?.messageId || null,
         error: error.message,
         subject: emailSubject,
         dryRun: false,
+        eventDetail: error?.smtp
+          ? `smtp_fail accepted=${JSON.stringify(error.smtp.accepted)} rejected=${JSON.stringify(error.smtp.rejected)}`
+          : null,
       });
     }
     return { sent: false, error: error.message, stage_key: stageKey };

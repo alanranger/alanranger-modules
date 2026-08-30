@@ -192,23 +192,8 @@ async function afterWinbackTriggerSend(stageKey, memberId, unsubToken, sendAtMs)
 }
 
 async function sendMail(to, subject, body) {
-  if (!EMAIL_FROM || !EMAIL_PASSWORD) {
-    throw new Error("Email SMTP not configured");
-  }
-  const transporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465,
-    auth: { user: EMAIL_FROM, pass: EMAIL_PASSWORD },
-  });
-  return transporter.sendMail({
-    from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
-    to,
-    bcc: LIFECYCLE_BCC,
-    subject,
-    text: plainTextFromMarkdown(body),
-    html: htmlFromMarkdown(body),
-  });
+  const { sendLifecycleMail } = require("../../lib/sendLifecycleMail");
+  return sendLifecycleMail({ to, subject, bodyMd: body, bcc: LIFECYCLE_BCC });
 }
 
 async function buildPaidStageExtra(stageKey, memberId, snapshot) {
