@@ -110,9 +110,12 @@ function sumCategoryWindows(categories, keys) {
 }
 
 function isManualSend(row) {
+  const detail = String(row.event_detail || "");
   return (
     MANUAL_SEND_SOURCES.includes(row.send_source) ||
-    row.event_detail === "corrected_resend_2026-06-09"
+    row.stage_key === "cta-fix" ||
+    row.event_detail === "corrected_resend_2026-06-09" ||
+    detail.startsWith("catchup_2026-08-30_cta_fix")
   );
 }
 

@@ -139,7 +139,12 @@ async function fetchMemberContacts(memberIds) {
 }
 
 function isManualSource(source, eventDetail) {
-  return MANUAL_SEND_SOURCES.includes(source) || eventDetail === "corrected_resend_2026-06-09";
+  const detail = String(eventDetail || "");
+  return (
+    MANUAL_SEND_SOURCES.includes(source) ||
+    eventDetail === "corrected_resend_2026-06-09" ||
+    detail.startsWith("catchup_2026-08-30_cta_fix")
+  );
 }
 
 async function fetchSendEvents(memberIds) {
