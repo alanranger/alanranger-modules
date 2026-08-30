@@ -137,6 +137,7 @@ async function fetchSentMetrics(nowMs) {
       .from("academy_email_events")
       .select("stage_key, sent_at, send_source, event_detail")
       .eq("status", "sent")
+      .eq("delivery_status", "gmail_verified")
       .eq("dry_run", false)
       .order("sent_at", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);

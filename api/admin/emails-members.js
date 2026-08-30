@@ -54,6 +54,7 @@ async function fetchRecentSendMemberIds(sinceIso) {
       .select("member_id")
       .eq("dry_run", false)
       .eq("status", "sent")
+      .eq("delivery_status", "gmail_verified")
       .order("sent_at", { ascending: true })
       .range(from, to);
     if (sinceIso) q = q.gte("sent_at", sinceIso);
@@ -151,7 +152,7 @@ async function fetchSendEvents(memberIds) {
     const data = await fetchPagedRows((from, to) =>
       supabase
         .from("academy_email_events")
-        .select("member_id, stage_key, sent_at, status, message_id, send_source, event_detail")
+        .select("member_id, stage_key, sent_at, status, message_id, send_source, event_detail, delivery_status")
         .in("member_id", chunk)
         .eq("dry_run", false)
         .order("sent_at", { ascending: true })
@@ -161,15 +162,18 @@ async function fetchSendEvents(memberIds) {
       if (!STAGE_KEYS.includes(ev.stage_key)) return;
       if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
       const perStage = byMember.get(ev.member_id);
-      perStage[ev.stage_key] = {
-        sent_at: ev.sent_at,
-        status: ev.status,
-        message_id: ev.message_id,
-        send_source: ev.send_source || "automated",
-        event_detail: ev.event_detail || null,
-        inferred: false,
-      };
-      if (isManualSource(ev.send_source, ev.event_detail) && ev.status === "sent") {
+      const isVerifiedSent = ev.status === "sent" && ev.delivery_status === "gmail_verified";
+      if (isVerifiedSent) {
+        perStage[ev.stage_key] = {
+          sent_at: ev.sent_at,
+          status: ev.status,
+          message_id: ev.message_id,
+          send_source: ev.send_source || "automated",
+          event_detail: ev.event_detail || null,
+          inferred: false,
+        };
+      }
+      if (isManualSource(ev.send_source, ev.event_detail) && isVerifiedSent) {
         const ms = new Date(ev.sent_at).getTime();
         const prev = manualLastByMember.get(ev.member_id);
         if (!prev || ms > prev.ms) {

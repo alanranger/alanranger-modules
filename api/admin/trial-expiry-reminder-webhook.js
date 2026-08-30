@@ -856,10 +856,11 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
         messageId: info.messageId,
         subject: emailSubject,
         dryRun: false,
-        eventDetail: `smtp_ok accepted=${info.accepted.join(",")} response=${info.response}`,
+        deliveryStatus: "gmail_verified",
+        eventDetail: `gmail_verified accepted=${info.accepted.join(",")} response=${info.response}`,
       });
     }
-    return { sent: true, messageId: info.messageId, stage_key: stageKey };
+    return { sent: true, messageId: info.messageId, stage_key: stageKey, gmailVerified: true };
   } catch (error) {
     console.error(`[trial-expiry-reminder] Error sending email to ${member.email}:`, error.message);
     if (stageKey && member.member_id) {
@@ -872,6 +873,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
         error: error.message,
         subject: emailSubject,
         dryRun: false,
+        deliveryStatus: error?.deliveryStatus || "smtp_fail",
         eventDetail: error?.smtp
           ? `smtp_fail accepted=${JSON.stringify(error.smtp.accepted)} rejected=${JSON.stringify(error.smtp.rejected)}`
           : null,

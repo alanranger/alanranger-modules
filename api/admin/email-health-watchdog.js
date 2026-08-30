@@ -57,9 +57,10 @@ function shouldRunNow(req, authOk) {
 async function loadEventsLast24h(sinceIso) {
   const { data, error } = await supabase
     .from("academy_email_events")
-    .select("stage_key, email, created_at")
+    .select("stage_key, email, created_at, delivery_status, message_id")
     .eq("dry_run", false)
     .eq("status", "sent")
+    .eq("delivery_status", "gmail_verified")
     .gte("created_at", sinceIso);
   if (error) throw new Error(`academy_email_events: ${error.message}`);
   return data || [];
