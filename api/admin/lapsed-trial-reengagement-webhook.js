@@ -515,7 +515,7 @@ async function deliverEmail({ member, content }) {
     return { sent: false, error: "Email not configured" };
   }
   try {
-    // Same path as trial-expiry / triggered: SMTP accept + Message-ID in Gmail Sent.
+    // Same path as trial-expiry / triggered: SMTP accept is delivery truth.
     const info = await sendLifecycleMail({
       to: member.email,
       subject: content.subject,
@@ -527,7 +527,8 @@ async function deliverEmail({ member, content }) {
       messageId: info.messageId,
       accepted: info.accepted,
       response: info.response,
-      gmailVerified: true,
+      deliveryStatus: info.deliveryStatus,
+      gmailVerified: !!info.gmailVerified,
     };
   } catch (err) {
     console.error(`[lapsed-trial-reengagement] send failed for ${member.email}:`, err.message);
@@ -661,10 +662,10 @@ async function processCandidate(row, windowBounds, sendEmail, opts = {}) {
         messageId: result.messageId,
         subject: correctedResend ? `[CORRECTED] ${content.subject}` : content.subject,
         dryRun: false,
-        deliveryStatus: "gmail_verified",
+        deliveryStatus: result.deliveryStatus || "smtp_accepted",
         eventDetail: correctedResend
           ? CORRECTED_RESEND_TAG
-          : `gmail_verified accepted=${(result.accepted || []).join(",")} response=${result.response || ""}`,
+          : `${result.deliveryStatus || "smtp_accepted"} accepted=${(result.accepted || []).join(",")} response=${result.response || ""}`,
         sendSource,
       });
     }

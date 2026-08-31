@@ -834,8 +834,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
 
   try {
     // Must see the primary recipient in SMTP accepted[] — messageId alone is
-    // generated locally and does not prove Gmail took the message (phantom
-    // day-minus-1 rows had Message-IDs that never appeared in Sent/All Mail).
+    // generated locally and does not prove Gmail took the message.
     const info = await sendLifecycleMail({
       to: member.email,
       subject: emailSubject,
@@ -846,6 +845,7 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
     console.log(
       `[trial-expiry-reminder] Email sent to ${member.email}: ${info.messageId}`
       + ` accepted=${JSON.stringify(info.accepted)} response=${info.response}`
+      + ` delivery=${info.deliveryStatus}`
     );
     if (stageKey && member.member_id) {
       await logEmailEvent(supabase, {
@@ -856,11 +856,17 @@ async function sendTrialExpiryReminder(member, daysUntilExpiry, options) {
         messageId: info.messageId,
         subject: emailSubject,
         dryRun: false,
-        deliveryStatus: "gmail_verified",
-        eventDetail: `gmail_verified accepted=${info.accepted.join(",")} response=${info.response}`,
+        deliveryStatus: info.deliveryStatus,
+        eventDetail: `${info.deliveryStatus} accepted=${info.accepted.join(",")} response=${info.response}`,
       });
     }
-    return { sent: true, messageId: info.messageId, stage_key: stageKey, gmailVerified: true };
+    return {
+      sent: true,
+      messageId: info.messageId,
+      stage_key: stageKey,
+      deliveryStatus: info.deliveryStatus,
+      gmailVerified: !!info.gmailVerified,
+    };
   } catch (error) {
     console.error(`[trial-expiry-reminder] Error sending email to ${member.email}:`, error.message);
     if (stageKey && member.member_id) {

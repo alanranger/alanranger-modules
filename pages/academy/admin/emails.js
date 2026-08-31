@@ -1578,8 +1578,8 @@ export default function EmailsAdmin() {
         <strong> LIVE · cron on</strong> = automatic daily send is active.
         <strong> CRON OFF · batch OK</strong> = same REWIND email, but only manual/backlog scripts until you turn cron on (counts still show batch sends).
         <strong> Manual / batch</strong> = how it was sent, not a different email ladder.
-        Large number = <strong>Gmail-verified</strong> sends (7d) only — Message-ID must exist in Gmail Sent
-        (<code>status=sent</code> + <code>delivery_status=gmail_verified</code>). DB alone is not enough.
+        Large number = <strong>delivered</strong> sends (7d) — SMTP accepted
+        (<code>status=sent</code> + <code>delivery_status</code> <code>smtp_accepted</code> or <code>gmail_verified</code>).
         Smaller line = who matches the trigger today (not the same as sent).
         Italic dates with * are inferred from <code>academy_trial_history</code> when no event row exists (REWIND attempt history).
         Manual column = last batch/corrected send per member.

@@ -253,7 +253,7 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
       messageId: info.messageId,
       subject: rendered.subject,
       dryRun,
-      deliveryStatus: "gmail_verified",
+      deliveryStatus: info.deliveryStatus || "smtp_accepted",
       eventDetail: extra.renewal ? extra.renewal.periodEndIso : null,
     });
   }
@@ -262,7 +262,13 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
     const unsubToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : generateUnsubToken();
     await afterWinbackTriggerSend(stageKey, memberId, unsubToken, Date.now());
   }
-  return { memberId, status: "sent", messageId: info.messageId, gmailVerified: true };
+  return {
+    memberId,
+    status: "sent",
+    messageId: info.messageId,
+    deliveryStatus: info.deliveryStatus,
+    gmailVerified: !!info.gmailVerified,
+  };
 }
 
 async function handleDummyTest(stageKey, testEmail, sendEmail, profileKey) {

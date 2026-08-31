@@ -6,7 +6,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const { EMAIL_STAGES } = require("../../lib/emailStages");
-const { MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
+const { MANUAL_SEND_SOURCES, DELIVERED_STATUSES } = require("../../lib/emailEvents");
 const { firingStateForStage } = require("../../lib/emailCronHeartbeat");
 
 const SUPABASE_URL =
@@ -140,7 +140,7 @@ async function fetchSentMetrics(nowMs) {
       .from("academy_email_events")
       .select("stage_key, sent_at, send_source, event_detail")
       .eq("status", "sent")
-      .eq("delivery_status", "gmail_verified")
+      .in("delivery_status", [...DELIVERED_STATUSES])
       .eq("dry_run", false)
       .order("sent_at", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);

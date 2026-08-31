@@ -1,7 +1,7 @@
 // api/admin/emails-members.js — rewritten member row builder for send-truth dashboard.
 
 const { createClient } = require("@supabase/supabase-js");
-const { STAGE_KEYS, MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
+const { STAGE_KEYS, MANUAL_SEND_SOURCES, DELIVERED_STATUSES, isDeliveredStatus } = require("../../lib/emailEvents");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -54,7 +54,7 @@ async function fetchRecentSendMemberIds(sinceIso) {
       .select("member_id")
       .eq("dry_run", false)
       .eq("status", "sent")
-      .eq("delivery_status", "gmail_verified")
+      .in("delivery_status", [...DELIVERED_STATUSES])
       .order("sent_at", { ascending: true })
       .range(from, to);
     if (sinceIso) q = q.gte("sent_at", sinceIso);
@@ -167,7 +167,7 @@ async function fetchSendEvents(memberIds) {
       if (!STAGE_KEYS.includes(ev.stage_key)) return;
       if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
       const perStage = byMember.get(ev.member_id);
-      const isVerifiedSent = ev.status === "sent" && ev.delivery_status === "gmail_verified";
+      const isVerifiedSent = ev.status === "sent" && isDeliveredStatus(ev.delivery_status);
       if (isVerifiedSent) {
         perStage[ev.stage_key] = {
           sent_at: ev.sent_at,
