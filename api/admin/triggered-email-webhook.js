@@ -79,7 +79,7 @@ function parseBool(v, defaultVal) {
 }
 
 // Same dual-auth as trial-expiry-reminder-webhook / lapsed-trial-reengagement-webhook.
-// Vercel Cron injects Authorization: Bearer ${CRON_SECRET}; manual/Zapier use
+// Vercel Cron injects Authorization: Bearer ${CRON_SECRET}; manual calls use
 // ?secret= or x-webhook-secret = ORPHANED_WEBHOOK_SECRET.
 function isRequestAuthorized(req) {
   const cronSecret = process.env.CRON_SECRET;
@@ -96,7 +96,12 @@ function isRequestAuthorized(req) {
 
 function triggerStageKeys(stageKey) {
   if (stageKey === "all") {
-    return EMAIL_STAGES.filter((s) => s.sentBy === "triggered-email-webhook").map((s) => s.key);
+    const keys = EMAIL_STAGES.filter((s) => s.sentBy === "triggered-email-webhook").map((s) => s.key);
+    const priority = ["paid-badge-earned", "paid-renewal-soon"];
+    return [
+      ...priority.filter((k) => keys.includes(k)),
+      ...keys.filter((k) => !priority.includes(k)),
+    ];
   }
   return stageKey ? [stageKey] : [];
 }
@@ -559,14 +564,26 @@ module.exports = async function handler(req, res) {
     }
 
     const results = [];
+    const triggerSource = detectTriggerSource(req);
     for (const key of keys) {
       if (!key || !getStageByKey(key)) continue;
+      await logCronRun(supabase, {
+        stage_key: key,
+        webhook: "triggered-email-webhook",
+        trigger_source: triggerSource,
+        auth_ok: true,
+        members_evaluated: 0,
+        sent: 0,
+        skipped_not_eligible: 0,
+        failed: 0,
+        error: "gate:stage_started",
+      });
       const result = await runStageBulk(key, sendEmail);
       results.push(result);
       await logCronRun(supabase, {
         stage_key: key,
         webhook: "triggered-email-webhook",
-        trigger_source: detectTriggerSource(req),
+        trigger_source: triggerSource,
         auth_ok: true,
         members_evaluated: result.members_evaluated,
         sent: result.sent,

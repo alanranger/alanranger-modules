@@ -58,6 +58,14 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/admin/lapsed-trial-reengagement-webhook?sendEmail=true",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/admin/lapsed-trial-reengagement-webhook?sendEmail=true",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/admin/email-health-watchdog",
       "schedule": "30 8 * * *"
     },

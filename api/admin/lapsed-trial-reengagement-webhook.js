@@ -10,8 +10,8 @@
 //   Attempt 3:  30 days after attempt 2     — day 60 in the natural flow
 //   Max 3 attempts ever; an unsubscribe click opts the member out forever.
 //
-// The SAVE20 grace-period coupon covers days 0–7 post-expiry via a separate
-// Zap; REWIND20 only kicks in once SAVE20 is well in the rear-view mirror.
+// The SAVE20 grace-period coupon covers days 0–7 post-expiry via trial-expiry-reminder-webhook;
+// REWIND20 only kicks in once SAVE20 is well in the rear-view mirror.
 //
 // Query parameters:
 //   secret       — matches ORPHANED_WEBHOOK_SECRET (same as trial-expiry-reminder)
