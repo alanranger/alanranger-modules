@@ -94,14 +94,19 @@ function isRequestAuthorized(req) {
   return provided === webhookSecret ? "ok" : "unauthorized";
 }
 
+// paid-badge-earned scans every paid member (expensive). Keep it on its own
+// cron path — putting it in stage=all starves trial/quiet stages when it times out.
+const STAGE_ALL_EXCLUDE = new Set(["paid-badge-earned"]);
+
 function triggerStageKeys(stageKey) {
   if (stageKey === "all") {
-    const keys = EMAIL_STAGES.filter((s) => s.sentBy === "triggered-email-webhook").map((s) => s.key);
-    const priority = ["paid-badge-earned", "paid-renewal-soon"];
-    return [
-      ...priority.filter((k) => keys.includes(k)),
-      ...keys.filter((k) => !priority.includes(k)),
-    ];
+    return EMAIL_STAGES.filter(
+      (s) =>
+        s.sentBy === "triggered-email-webhook" &&
+        s.cronEnabled &&
+        !s.deprecated &&
+        !STAGE_ALL_EXCLUDE.has(s.key)
+    ).map((s) => s.key);
   }
   return stageKey ? [stageKey] : [];
 }
