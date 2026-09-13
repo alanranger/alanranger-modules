@@ -9,6 +9,7 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Memberstack-Id',
     Vary: 'Origin',
+    'X-AR-Whoami-Guard': 'edge',
   };
 }
 
