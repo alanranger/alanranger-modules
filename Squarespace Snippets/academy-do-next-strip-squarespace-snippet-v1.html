@@ -2,6 +2,10 @@
 
 AR | DASHBOARD "DO THESE NEXT" STRIP (SNIPPET-LOADER SAFE)
 
+v1.3.75 — COST FIX: never blind-call /api/exams/whoami without auth evidence (stops cross-origin 401 storm)
+v1.3.74 — Fix phantom 71px top gap on dashboard (SQSP nav offset 0 when Academy chrome hidden; no scroll-through above sticky header).
+v1.3.73 — Header-only sticky: journey strip scrolls in page flow (no fixed strip / spacer jump); removed scroll auto-collapse.
+v1.3.72 — Auto-collapse Your Journey coach panel on scroll down; reveal on scroll up or near page top.
 v1.3.71 — Cert 2 Stage 5: do-next next-exam routing — Foundation first, then Composition (tracks payload).
 v1.3.70 — Phase 3: cap appliedLearningOpened JSON fallback at 40 (matches longevity-stats lib).
 v1.3.69 — FIX: Tile 4 + proximity/breakdown read canonical engagement distinctActiveDaysFirst14d (display cap at target when met).
@@ -82,28 +86,8 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   }
 
-  html.ar-dashboard-pin-stack #ar-do-next-strip.is-ready{
-
-    position:fixed !important;
-
-    top:calc(var(--ar-sqsp-nav-offset, 0px) + var(--ar-academy-header-height, 88px)) !important;
-
-    left:0;
-
-    right:0;
-
-    width:100%;
-
-    margin-left:0;
-
-    margin-right:0;
-
-    z-index:997;
-
-    height:auto;
-
-    max-height:none;
-
+  html.ar-dashboard-pin-stack #ar-do-next-strip.is-ready {
+    margin-top: var(--ar-academy-header-height, 88px);
   }
 
   #ar-do-next-strip.is-ready{ display:block; }
@@ -2081,7 +2065,9 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
   function getSqspNavOffset(){
 
-    var selectors = ["#header", "header.header", ".header-nav-wrapper", ".sqs-site-header"];
+    if (document.documentElement.classList.contains("ar-academy")) return 0;
+
+    var selectors = ["#header", "header.header", "header.Header", ".header-nav-wrapper", ".sqs-site-header"];
 
     for (var i = 0; i < selectors.length; i++) {
 
@@ -2089,13 +2075,17 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       if (!el || el.contains(document.getElementById("ar-academy-header-container"))) continue;
 
+      var style = window.getComputedStyle(el);
+
+      if (style.display === "none" || style.visibility === "hidden") continue;
+
       var h = Math.ceil(el.getBoundingClientRect().height) || Math.ceil(el.offsetHeight) || 0;
 
       if (h >= 40 && h <= 240) return h;
 
     }
 
-    return 71;
+    return 0;
 
   }
 
@@ -2259,7 +2249,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
       var strip = document.getElementById("ar-do-next-strip");
 
-      var sqspTop = getSqspNavOffset();
+      var sqspTop = document.documentElement.classList.contains("ar-academy") ? 0 : getSqspNavOffset();
 
       state.busy = true;
 
@@ -2277,7 +2267,7 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         root.style.setProperty("--ar-do-next-strip-height", stripH + "px");
 
-        root.style.setProperty("--ar-academy-sticky-stack-height", (sqspTop + headerH + stripH) + "px");
+        root.style.setProperty("--ar-academy-sticky-stack-height", (sqspTop + headerH) + "px");
 
         root.classList.add("ar-dashboard-pin-stack");
 
@@ -2297,31 +2287,19 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
 
         header.style.setProperty("z-index", "998", "important");
 
-        if (strip && strip.classList.contains("is-ready")) {
+        if (strip && strip.style) {
 
-          strip.style.setProperty("position", "fixed", "important");
+          ["position", "top", "left", "right", "width", "margin-left", "margin-right", "z-index"].forEach(function(prop) {
 
-          strip.style.setProperty("top", (sqspTop + headerH) + "px", "important");
+            strip.style.removeProperty(prop);
 
-          strip.style.setProperty("left", "0", "important");
-
-          strip.style.setProperty("right", "0", "important");
-
-          strip.style.setProperty("width", "100%", "important");
-
-          strip.style.setProperty("max-width", "100%", "important");
-
-          strip.style.setProperty("margin-left", "0", "important");
-
-          strip.style.setProperty("margin-right", "0", "important");
-
-          strip.style.setProperty("z-index", "997", "important");
+          });
 
         }
 
         ensureSpacer("ar-academy-header-spacer", header, 0);
 
-        if (strip) ensureSpacer("ar-do-next-strip-spacer", strip, stripH);
+        ensureSpacer("ar-do-next-strip-spacer", strip, 0);
 
         alignStripInnerToDashboard();
 
@@ -2390,6 +2368,10 @@ v1.3.33 — badge prerequisite-order gating + shared gate test harness
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
 
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+
+  var whoamiInFlight = null;
+
+  var whoamiNegCached = false;
 
   var TRIAL_STATUS_URL = API_BASE + "/api/academy/trial-status";
 
@@ -4170,21 +4152,31 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  function wireJourneyToggle(){
+  function setJourneyExpanded(expanded, opts){
+
+    opts = opts || {};
+
+    var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
 
     var toggle = document.getElementById("ar-do-next-journey-toggle");
 
     var hint = document.getElementById("ar-do-next-journey-toggle-hint");
 
-    var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
+    if (!card) return;
 
-    if (!toggle || !card || toggle.getAttribute("data-wired")) return;
+    if (expanded) card.classList.add("is-journey-expanded");
 
-    toggle.setAttribute("data-wired", "true");
+    else card.classList.remove("is-journey-expanded");
 
-    function syncJourneyToggleUi(expanded){
+    if (opts.manual) {
 
-      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      card.setAttribute("data-journey-manual", expanded ? "expanded" : "collapsed");
+
+    }
+
+    if (toggle) toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+    if (toggle) {
 
       toggle.setAttribute(
 
@@ -4194,19 +4186,41 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
       );
 
-      if (hint) hint.textContent = expanded ? "hide me" : "show me";
-
     }
+
+    if (hint) hint.textContent = expanded ? "hide me" : "show me";
+
+    scheduleLayout();
+
+  }
+
+
+
+  function wireJourneyToggle(){
+
+    var toggle = document.getElementById("ar-do-next-journey-toggle");
+
+    var card = document.querySelector("#ar-do-next-strip .ar-do-next-strip__card");
+
+    if (!toggle || !card || toggle.getAttribute("data-wired")) return;
+
+    toggle.setAttribute("data-wired", "true");
 
     toggle.addEventListener("click", function(){
 
-      var expanded = card.classList.toggle("is-journey-expanded");
+      var expanded = !card.classList.contains("is-journey-expanded");
 
-      syncJourneyToggleUi(expanded);
-
-      scheduleLayout();
+      setJourneyExpanded(expanded, { manual: true });
 
     });
+
+  }
+
+
+
+  function wireScrollJourneyReveal(){
+
+    /* v1.3.73: manual journey toggle only — no scroll-driven collapse (avoids layout jump with in-flow strip). */
 
   }
 
@@ -5742,17 +5756,43 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
 
 
-  async function fetchWhoami(){
+  async function fetchWhoami(auth){
 
-    try {
+    auth = auth || {};
 
-      var res = await fetch(WHOAMI_URL, { credentials: "include" });
+    var memberId = auth.memberId ? String(auth.memberId).trim() : "";
 
-      if (!res.ok) return null;
+    var token = auth.bearerToken ? String(auth.bearerToken).trim() : "";
 
-      return await res.json();
+    if (!memberId && !token) return null;
 
-    } catch (e) { return null; }
+    if (whoamiNegCached) return null;
+
+    if (whoamiInFlight) return whoamiInFlight;
+
+    whoamiInFlight = (async function(){
+
+      try {
+
+        var headers = {};
+
+        if (token) headers["Authorization"] = "Bearer " + token;
+
+        if (memberId) headers["X-Memberstack-Id"] = memberId;
+
+        var res = await fetch(WHOAMI_URL, { credentials: "omit", headers: headers });
+
+        if (!res.ok) { whoamiNegCached = true; return null; }
+
+        return await res.json();
+
+      } catch (e) { whoamiNegCached = true; return null; }
+
+      finally { whoamiInFlight = null; }
+
+    })();
+
+    return whoamiInFlight;
 
   }
 
@@ -5934,15 +5974,19 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
     var idSource = memberId ? "getCurrentMember" : "none";
 
+    // Blind whoami cannot authenticate cross-origin from Squarespace — skip unless we already have an id.
+
     if (!memberId) {
 
-      var identity = await fetchWhoami();
+      whoamiNegCached = true;
+
+    } else {
+
+      var identity = await fetchWhoami({ memberId: memberId });
 
       if (identity && identity.memberstack_id) {
 
-        memberId = String(identity.memberstack_id);
-
-        idSource = "whoami";
+        idSource = idSource || "whoami";
 
       }
 
@@ -6690,6 +6734,8 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
 
   wireJourneyToggle();
 
+  wireScrollJourneyReveal();
+
   watchDoNextStripMetrics();
 
 
@@ -6719,8 +6765,6 @@ function buildAcademyBadgeView(normalized, engagement, examProgressData, options
   window.__arDoNextStripRefresh = function() {
     setTimeout(init, 300);
   };
-
-  window.addEventListener("scroll", function(){ scheduleLayout(); }, { passive: true });
 
   if (document.readyState === "loading") {
 

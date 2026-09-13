@@ -1,5 +1,6 @@
 <!-- ===========================
 AR | BOOKMARK + BACK TO MODULES + BACK TO DASHBOARD + NEXT MODULE + EXAM (SNIPPET-LOADER SAFE)
+v1.3.18 COST FIX: never call /api/exams/whoami without auth evidence; logged-out is terminal (stops MutationObserver retry storm)
 v1.3.17 Lesson bg reverted #f1efe9 -> #ffffff (seam/patchiness fix on light images).
 v1.3.16 Foundation link label → "Browse the Modules" (matches dashboard CTA).
 v1.3.15 Guest signup CTA deep gold #b8860b + white text 700
@@ -292,6 +293,20 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   var TRACK_TILE_OPEN_URL = API_BASE + "/api/academy/track-tile-open";
   var PROGRESS_URL = API_BASE + "/api/exams/progress";
   var WHOAMI_URL = API_BASE + "/api/exams/whoami";
+  var WHOAMI_NEG_KEY = "ar-whoami-neg-v1";
+  var whoamiInFlight = null;
+  var whoamiNegCached = false;
+  var identityGateResolved = false;
+  var memberStripInFlight = null;
+
+  function readWhoamiNeg(){
+    try { return sessionStorage.getItem(WHOAMI_NEG_KEY) === "1"; } catch (e) { return false; }
+  }
+  function markWhoamiNegative(){
+    whoamiNegCached = true;
+    identityGateResolved = true;
+    try { sessionStorage.setItem(WHOAMI_NEG_KEY, "1"); } catch (e) { /* ignore */ }
+  }
   var MODULES_TOTAL = 60;
   var LS_SEEN_MEMBER = "arpAcademySeenMember";
   var SIGNUP_URL = SITE + "/free-online-photography-course";
@@ -543,14 +558,35 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
     return window.$memberstackDom;
   }
 
-  async function fetchWhoami(){
-    try {
-      var res = await fetch(WHOAMI_URL, { credentials: "include" });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) {
-      return null;
-    }
+  async function fetchWhoami(auth){
+    // Cross-origin to alanranger-modules.vercel.app: cookies from alanranger.com are NOT sent.
+    // Only call when we already have a member id or bearer token to prove identity.
+    auth = auth || {};
+    var memberId = auth.memberId ? String(auth.memberId).trim() : "";
+    var token = auth.bearerToken ? String(auth.bearerToken).trim() : "";
+    if (!memberId && !token) return null;
+    if (whoamiNegCached || readWhoamiNeg()) return null;
+    if (whoamiInFlight) return whoamiInFlight;
+
+    whoamiInFlight = (async function(){
+      try {
+        var headers = {};
+        if (token) headers["Authorization"] = "Bearer " + token;
+        if (memberId) headers["X-Memberstack-Id"] = memberId;
+        var res = await fetch(WHOAMI_URL, { credentials: "omit", headers: headers });
+        if (!res.ok) {
+          markWhoamiNegative();
+          return null;
+        }
+        return await res.json();
+      } catch (e) {
+        markWhoamiNegative();
+        return null;
+      } finally {
+        whoamiInFlight = null;
+      }
+    })();
+    return whoamiInFlight;
   }
 
   function memberFromWhoami(identity){
@@ -574,6 +610,9 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   }
 
   async function resolveMemberIdentity(ms){
+    if (identityGateResolved && whoamiNegCached) {
+      return { member: null, memberId: "", idSource: "cached_logged_out", normalized: {} };
+    }
     var out = { member: null, memberId: "", idSource: "none", normalized: {} };
     if (ms && globalThis.__arMsReader) {
       try {
@@ -603,14 +642,18 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
         }
       } catch (e) { /* ignore */ }
     }
-    if (!out.memberId) {
-      var identity = await fetchWhoami();
+    // Only hit whoami when we already have a member id (enrichment) — never as a blind logged-out probe.
+    if (out.memberId) {
+      var identity = await fetchWhoami({ memberId: out.memberId });
       var wm = memberFromWhoami(identity);
       if (wm) {
-        out.memberId = wm.id;
-        out.idSource = "whoami";
+        out.idSource = out.idSource || "whoami";
+        mergeMissingFields(wm.data, out.member && out.member.data ? out.member.data : {});
         out.member = wm;
       }
+    } else {
+      markWhoamiNegative();
+      identityGateResolved = true;
     }
     if (!out.memberId && seenMemberFlag() && hasAcademyJsonData(out.normalized)) {
       out.idSource = "localStorage:arpAcademySeenMember";
@@ -920,56 +963,81 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
   async function wireMemberStrip(){
     var strip = document.getElementById("ar-lesson-member-strip");
     if (!strip) return;
-    if (strip.dataset.wired === "1" && strip.dataset.wiredFinal === "1") return;
-
-    var ms = await waitForMemberstack();
-    var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
-    if (ms) {
-      try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
-    }
-
-    var access = evaluateAccess(ctx.member, ctx);
-    access.idSource = ctx.idSource;
-    access.modulesTotal = MODULES_TOTAL;
-    window.__arLessonAccess = access;
-
-    if (!access.loggedIn || !access.hasAccess) {
+    if (identityGateResolved && whoamiNegCached) {
       renderSignupStrip(strip);
-      if (access.reason !== "missing_member_id") {
-        strip.dataset.wired = "1";
-        strip.dataset.wiredFinal = "1";
-      }
+      strip.dataset.wired = "1";
+      strip.dataset.wiredFinal = "1";
       return;
     }
+    if (strip.dataset.wired === "1" && strip.dataset.wiredFinal === "1") return;
+    if (memberStripInFlight) return memberStripInFlight;
 
-    var memberId = ctx.memberId || getMemberId(ctx.member);
-    var openedCount = countOpenedModules(ctx.normalized);
-    var progressData = await fetchExamProgress(memberId);
-    var examsPassed = passedExamCount(progressData);
-    renderProgressStrip(strip, openedCount, examsPassed);
-    applyMemberNextButton(ctx.normalized);
-    access.modulesOpened = openedCount;
-    window.__arLessonAccess = access;
+    memberStripInFlight = (async function(){
+      try {
+        var ms = await waitForMemberstack();
+        var ctx = { member: null, memberId: "", idSource: "none", normalized: {} };
+        if (ms) {
+          try { ctx = await resolveMemberIdentity(ms); } catch (e) { /* ignore */ }
+        } else {
+          markWhoamiNegative();
+        }
 
-    var member = ctx.member || {};
-    var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
-    var lessonPath = normalizePath(window.location.pathname);
-    trackLessonPageView(memberId, email);
-    if (lessonPath.indexOf("/blog-on-photography/") === 0) {
-      trackLessonModuleOpen(memberId, lessonPath);
-    }
-    strip.dataset.wired = "1";
-    strip.dataset.wiredFinal = "1";
+        var access = evaluateAccess(ctx.member, ctx);
+        access.idSource = ctx.idSource;
+        access.modulesTotal = MODULES_TOTAL;
+        window.__arLessonAccess = access;
+
+        if (!access.loggedIn || !access.hasAccess) {
+          renderSignupStrip(strip);
+          // Terminal for guests / missing id — do NOT leave wiredFinal unset (retry storm).
+          strip.dataset.wired = "1";
+          strip.dataset.wiredFinal = "1";
+          identityGateResolved = true;
+          if (!access.loggedIn || access.reason === "missing_member_id" || access.reason === "not_logged_in") {
+            markWhoamiNegative();
+          }
+          return;
+        }
+
+        var memberId = ctx.memberId || getMemberId(ctx.member);
+        var openedCount = countOpenedModules(ctx.normalized);
+        var progressData = await fetchExamProgress(memberId);
+        var examsPassed = passedExamCount(progressData);
+        renderProgressStrip(strip, openedCount, examsPassed);
+        applyMemberNextButton(ctx.normalized);
+        access.modulesOpened = openedCount;
+        window.__arLessonAccess = access;
+
+        var member = ctx.member || {};
+        var email = (member.data && (member.data.email || member.data.emailAddress)) || member.email || "";
+        var lessonPath = normalizePath(window.location.pathname);
+        trackLessonPageView(memberId, email);
+        if (lessonPath.indexOf("/blog-on-photography/") === 0) {
+          trackLessonModuleOpen(memberId, lessonPath);
+        }
+        strip.dataset.wired = "1";
+        strip.dataset.wiredFinal = "1";
+        identityGateResolved = true;
+      } finally {
+        memberStripInFlight = null;
+      }
+    })();
+    return memberStripInFlight;
   }
 
   function kickMemberStrip(){
+    if (identityGateResolved) {
+      var existing = document.getElementById("ar-lesson-member-strip");
+      if (existing && whoamiNegCached) {
+        renderSignupStrip(existing);
+        existing.dataset.wired = "1";
+        existing.dataset.wiredFinal = "1";
+      }
+      return;
+    }
     var strip = document.getElementById("ar-lesson-member-strip");
     if (strip && strip.dataset.wiredFinal === "1") return;
     wireMemberStrip();
-    setTimeout(function() {
-      var s = document.getElementById("ar-lesson-member-strip");
-      if (s && s.dataset.wiredFinal !== "1") wireMemberStrip();
-    }, 1500);
   }
 
   async function wireBookmark(){
@@ -1028,6 +1096,7 @@ v1.3.3 Blog-page member id via whoami cookie + idSource debug + modules X/60
       moveWidgetOnce();
       wireBookmark();
       wireNextModuleButtons();
+      if (identityGateResolved) return;
       var strip = document.getElementById("ar-lesson-member-strip");
       if (!strip || strip.dataset.wiredFinal !== "1") kickMemberStrip();
     });
