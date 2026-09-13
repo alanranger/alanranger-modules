@@ -91,6 +91,11 @@
    */
   async function getExamIdentity() {
     try {
+      // Same-origin only: require Memberstack cookie evidence before calling whoami (COST FIX).
+      const hasCookie =
+        typeof document !== "undefined" &&
+        /(?:^|;\s*)_ms-mid=/.test(String(document.cookie || ""));
+      if (!hasCookie) return null;
       const r = await fetch("/api/exams/whoami", { credentials: "include" });
       if (!r.ok) return null;
       return await r.json();

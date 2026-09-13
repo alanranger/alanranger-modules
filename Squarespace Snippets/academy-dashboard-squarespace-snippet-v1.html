@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.45) — Squarespace Snippet
+Academy Dashboard UI (v1.3.46) — Squarespace Snippet
+v1.3.46 COST FIX: never blind-call /api/exams/whoami without member id or bearer (stops cross-origin 401 storm on /academy/dashboard).
 v1.3.45: Reference & Live Feedback tile — eBook (trial-locked) + 30-min image feedback + 1-hr Zoom support links (always clickable).
 v1.3.44: 4b modal — cumulative carry-forward display (camera/composition 15/10 at Grad+Master; Assignments + pool show → pts).
 v1.3.43: Certified requires paid conversion — 4b modal Paid conversion row ✓ under Certified; gate logic synced from lib.
@@ -3434,8 +3435,17 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       }, 2500);
     }
 
-    function fetchWhoamiIdentity() {
-      return fetch(WHOAMI_URL, { credentials: "include" })
+    function fetchWhoamiIdentity(auth) {
+      // Cross-origin to alanranger-modules.vercel.app: alanranger.com cookies are NOT sent.
+      // Only call when we already have a member id or bearer token (COST FIX / stops 401 storm).
+      auth = auth || {};
+      var memberId = auth.memberId ? String(auth.memberId).trim() : "";
+      var token = auth.bearerToken ? String(auth.bearerToken).trim() : "";
+      if (!memberId && !token) return Promise.resolve(null);
+      var headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+      if (memberId) headers["X-Memberstack-Id"] = memberId;
+      return fetch(WHOAMI_URL, { credentials: "omit", headers: headers })
         .then(function(res) { return res.ok ? res.json() : null; })
         .catch(function() { return null; });
     }
@@ -3503,7 +3513,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
         });
       }
       return poll(attempts).then(function(m) {
-        return fetchWhoamiIdentity().then(function(identity) {
+        var mid = (m && (m.id || (m.data && m.data.id))) || null;
+        if (!mid) return m;
+        return fetchWhoamiIdentity({ memberId: mid }).then(function(identity) {
           return mergeWhoamiIntoMember(m, memberFromWhoami(identity));
         });
       });
@@ -3515,7 +3527,9 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
       if (!hasRecentDashboardSession()) {
         return getMemberExtendedWithRetry(ms, 12);
       }
-      return fetchWhoamiIdentity().then(function(identity) {
+      var sess = readDashboardSession();
+      var sessId = sess && sess.id ? String(sess.id) : "";
+      return fetchWhoamiIdentity({ memberId: sessId }).then(function(identity) {
         var whoamiMember = memberFromWhoami(identity);
         if (whoamiMember && memberCanAccessDashboard(whoamiMember)) {
           return whoamiMember;

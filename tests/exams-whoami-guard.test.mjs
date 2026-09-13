@@ -130,3 +130,42 @@ test('do-next strip no longer blind-calls whoami', () => {
   assert.doesNotMatch(html, /fetch\(WHOAMI_URL, \{ credentials: "include" \}\)/);
   assert.match(html, /if \(!memberId && !token\) return null/);
 });
+
+test('dashboard snippet no longer blind-calls whoami', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync(
+    new URL('../Squarespace Snippets/academy-dashboard-squarespace-snippet-v1.html', import.meta.url),
+    'utf8'
+  );
+  assert.match(html, /v1\.3\.46 COST FIX/);
+  assert.doesNotMatch(html, /fetch\(WHOAMI_URL, \{ credentials: "include" \}\)/);
+  assert.match(html, /if \(!memberId && !token\) return Promise\.resolve\(null\)/);
+});
+
+test('exams pages skip whoami without auth evidence', () => {
+  const fs = require('fs');
+  const latest = fs.readFileSync(
+    new URL('../squarespace-exams-page-LATEST.html', import.meta.url),
+    'utf8'
+  );
+  const live = fs.readFileSync(
+    new URL('../squarespace-exams-page-LIVE.html', import.meta.url),
+    'utf8'
+  );
+  const cert2 = fs.readFileSync(
+    new URL('../squarespace-exams-cert2-LATEST.html', import.meta.url),
+    'utf8'
+  );
+  for (const html of [latest, live, cert2]) {
+    assert.match(html, /hasAuth/);
+    assert.match(html, /credentials:\s*["']omit["']/);
+  }
+});
+
+test('edge middleware file rejects unauth whoami matcher', () => {
+  const fs = require('fs');
+  const mw = fs.readFileSync(new URL('../middleware.js', import.meta.url), 'utf8');
+  assert.match(mw, /matcher:\s*['"]\/api\/exams\/whoami['"]/);
+  assert.match(mw, /hasAuthEvidence/);
+  assert.match(mw, /status:\s*401/);
+});
