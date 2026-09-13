@@ -1,7 +1,7 @@
 // api/admin/emails-members.js — rewritten member row builder for send-truth dashboard.
 
 const { createClient } = require("@supabase/supabase-js");
-const { STAGE_KEYS, MANUAL_SEND_SOURCES } = require("../../lib/emailEvents");
+const { STAGE_KEYS, MANUAL_SEND_SOURCES, DELIVERED_STATUSES, isDeliveredStatus } = require("../../lib/emailEvents");
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -54,6 +54,7 @@ async function fetchRecentSendMemberIds(sinceIso) {
       .select("member_id")
       .eq("dry_run", false)
       .eq("status", "sent")
+      .in("delivery_status", [...DELIVERED_STATUSES])
       .order("sent_at", { ascending: true })
       .range(from, to);
     if (sinceIso) q = q.gte("sent_at", sinceIso);
@@ -138,7 +139,12 @@ async function fetchMemberContacts(memberIds) {
 }
 
 function isManualSource(source, eventDetail) {
-  return MANUAL_SEND_SOURCES.includes(source) || eventDetail === "corrected_resend_2026-06-09";
+  const detail = String(eventDetail || "");
+  return (
+    MANUAL_SEND_SOURCES.includes(source) ||
+    eventDetail === "corrected_resend_2026-06-09" ||
+    detail.startsWith("catchup_2026-08-30_cta_fix")
+  );
 }
 
 async function fetchSendEvents(memberIds) {
@@ -151,7 +157,7 @@ async function fetchSendEvents(memberIds) {
     const data = await fetchPagedRows((from, to) =>
       supabase
         .from("academy_email_events")
-        .select("member_id, stage_key, sent_at, status, message_id, send_source, event_detail")
+        .select("member_id, stage_key, sent_at, status, message_id, send_source, event_detail, delivery_status")
         .in("member_id", chunk)
         .eq("dry_run", false)
         .order("sent_at", { ascending: true })
@@ -161,15 +167,18 @@ async function fetchSendEvents(memberIds) {
       if (!STAGE_KEYS.includes(ev.stage_key)) return;
       if (!byMember.has(ev.member_id)) byMember.set(ev.member_id, {});
       const perStage = byMember.get(ev.member_id);
-      perStage[ev.stage_key] = {
-        sent_at: ev.sent_at,
-        status: ev.status,
-        message_id: ev.message_id,
-        send_source: ev.send_source || "automated",
-        event_detail: ev.event_detail || null,
-        inferred: false,
-      };
-      if (isManualSource(ev.send_source, ev.event_detail) && ev.status === "sent") {
+      const isVerifiedSent = ev.status === "sent" && isDeliveredStatus(ev.delivery_status);
+      if (isVerifiedSent) {
+        perStage[ev.stage_key] = {
+          sent_at: ev.sent_at,
+          status: ev.status,
+          message_id: ev.message_id,
+          send_source: ev.send_source || "automated",
+          event_detail: ev.event_detail || null,
+          inferred: false,
+        };
+      }
+      if (isManualSource(ev.send_source, ev.event_detail) && isVerifiedSent) {
         const ms = new Date(ev.sent_at).getTime();
         const prev = manualLastByMember.get(ev.member_id);
         if (!prev || ms > prev.ms) {

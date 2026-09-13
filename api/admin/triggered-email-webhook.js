@@ -5,8 +5,9 @@
 //
 // Query params:
 //   stageKey   — single stage (required unless stage=all)
-//   stage=all  — evaluate all cronEnabled trigger stages (none live yet)
+//   stage=all  — evaluate all sentBy=triggered-email-webhook stages (cronEnabled gates live send)
 //   sendEmail  — false for dry-run preview JSON
+//   forceSend  — with ?secret=, bypass London 09:00 gate for a manual live send
 //   testEmail  — single-member preview/send (bypasses London gate + cronEnabled)
 //   memberEmail — real-member dry-run; never sends to member; delivers preview to LIFECYCLE_BCC
 //   secret     — ORPHANED_WEBHOOK_SECRET for manual calls
@@ -37,6 +38,7 @@ const {
 } = require("../../lib/reengage-link");
 const { markWinbackExhausted } = require("../../lib/winback-exhaustion");
 const { STAGE_KEYS } = require("../../lib/emailTemplateDefaults");
+const { detectTriggerSource, logCronRun, shouldSendTriggeredEmail } = require("../../lib/emailCronHeartbeat");
 const {
   buildPaidBadgeMergeVars,
   buildPaidRenewalMergeVars,
@@ -56,7 +58,7 @@ const {
 const WINBACK_TRIGGER_STAGES = new Set([STAGE_KEYS.DAY_PLUS_90]);
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -76,21 +78,59 @@ function parseBool(v, defaultVal) {
   return defaultVal;
 }
 
-function isAuthorized(req) {
-  const secret = process.env.ORPHANED_WEBHOOK_SECRET || process.env.CRON_SECRET || "";
-  if (!secret) return true;
-  const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  if (bearer && bearer === secret) return true;
-  if (req.query.secret === secret) return true;
-  return false;
+// Same dual-auth as trial-expiry-reminder-webhook / lapsed-trial-reengagement-webhook.
+// Vercel Cron injects Authorization: Bearer ${CRON_SECRET}; manual calls use
+// ?secret= or x-webhook-secret = ORPHANED_WEBHOOK_SECRET.
+function isRequestAuthorized(req) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers.authorization || "";
+    if (authHeader === `Bearer ${cronSecret}`) return "ok";
+  }
+  const webhookSecret = process.env.ORPHANED_WEBHOOK_SECRET;
+  if (!webhookSecret) return "ok";
+  const provided = req.query.secret || req.headers["x-webhook-secret"];
+  if (!provided) return "open";
+  return provided === webhookSecret ? "ok" : "unauthorized";
 }
 
-function shouldSendNow(req, testEmail) {
-  if (testEmail) return true;
-  if (!parseBool(req.query.sendEmail, true)) return false;
-  const isCron = req.headers["x-vercel-cron"] === "1";
-  if (!isCron && !parseBool(req.query.sendEmail, false)) return false;
-  return londonHour(Date.now()) === 9;
+// paid-badge-earned scans every paid member (expensive). Keep it on its own
+// cron path — putting it in stage=all starves trial/quiet stages when it times out.
+const STAGE_ALL_EXCLUDE = new Set(["paid-badge-earned"]);
+
+function triggerStageKeys(stageKey) {
+  if (stageKey === "all") {
+    return EMAIL_STAGES.filter(
+      (s) =>
+        s.sentBy === "triggered-email-webhook" &&
+        s.cronEnabled &&
+        !s.deprecated &&
+        !STAGE_ALL_EXCLUDE.has(s.key)
+    ).map((s) => s.key);
+  }
+  return stageKey ? [stageKey] : [];
+}
+
+async function heartbeatStages(req, keys, extra) {
+  const source = detectTriggerSource(req);
+  for (const key of keys) {
+    await logCronRun(supabase, {
+      stage_key: key,
+      webhook: "triggered-email-webhook",
+      trigger_source: source,
+      ...extra,
+    });
+  }
+}
+
+function shouldSendNow(req, testEmail, authOk) {
+  return shouldSendTriggeredEmail({
+    testEmail,
+    sendEmail: parseBool(req.query.sendEmail, false),
+    forceSend: parseBool(req.query.forceSend, false),
+    authOk,
+    londonHour: londonHour(Date.now()),
+  });
 }
 
 function snapshotToVars(snapshot) {
@@ -162,23 +202,8 @@ async function afterWinbackTriggerSend(stageKey, memberId, unsubToken, sendAtMs)
 }
 
 async function sendMail(to, subject, body) {
-  if (!EMAIL_FROM || !EMAIL_PASSWORD) {
-    throw new Error("Email SMTP not configured");
-  }
-  const transporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465,
-    auth: { user: EMAIL_FROM, pass: EMAIL_PASSWORD },
-  });
-  return transporter.sendMail({
-    from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
-    to,
-    bcc: LIFECYCLE_BCC,
-    subject,
-    text: plainTextFromMarkdown(body),
-    html: htmlFromMarkdown(body),
-  });
+  const { sendLifecycleMail } = require("../../lib/sendLifecycleMail");
+  return sendLifecycleMail({ to, subject, bodyMd: body, bcc: LIFECYCLE_BCC });
 }
 
 async function buildPaidStageExtra(stageKey, memberId, snapshot) {
@@ -238,6 +263,7 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
       messageId: info.messageId,
       subject: rendered.subject,
       dryRun,
+      deliveryStatus: info.deliveryStatus || "smtp_accepted",
       eventDetail: extra.renewal ? extra.renewal.periodEndIso : null,
     });
   }
@@ -246,7 +272,13 @@ async function processMemberStage(stageKey, memberId, snapshot, sendEmail, dryRu
     const unsubToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : generateUnsubToken();
     await afterWinbackTriggerSend(stageKey, memberId, unsubToken, Date.now());
   }
-  return { memberId, status: "sent", messageId: info.messageId };
+  return {
+    memberId,
+    status: "sent",
+    messageId: info.messageId,
+    deliveryStatus: info.deliveryStatus,
+    gmailVerified: !!info.gmailVerified,
+  };
 }
 
 async function handleDummyTest(stageKey, testEmail, sendEmail, profileKey) {
@@ -468,12 +500,25 @@ async function runStageBulk(stageKey, sendEmail) {
         email: row.snapshot.email,
         stage_key: stageKey,
         status: "failed",
+        messageId: err?.smtp?.messageId || null,
         error: err.message,
         dryRun: !sendEmail,
+        deliveryStatus: err?.deliveryStatus || "smtp_fail",
       });
     }
   }
-  return { stageKey, eligible: eligible.length, outcomes };
+  const sent = outcomes.filter((o) => o.status === "sent").length;
+  const failed = outcomes.filter((o) => o.status === "failed").length;
+  const skipped = outcomes.filter((o) => o.status === "skipped" || o.status === "preview").length;
+  return {
+    stageKey,
+    eligible: eligible.length,
+    outcomes,
+    members_evaluated: eligible.length,
+    sent,
+    failed,
+    skipped_not_eligible: Math.max(0, eligible.length - sent - failed - skipped) + skipped,
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -483,11 +528,17 @@ module.exports = async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ error: "Supabase not configured" });
   }
-  if (!isAuthorized(req)) {
+  const stageKey = req.query.stageKey || req.query.stage;
+  const keys = triggerStageKeys(stageKey);
+  const authResult = isRequestAuthorized(req);
+  if (authResult === "unauthorized") {
+    await heartbeatStages(req, keys.length ? keys : ["unknown"], {
+      auth_ok: false,
+      error: "unauthorized",
+    });
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const stageKey = req.query.stageKey || req.query.stage;
   const testEmail = req.query.testEmail || null;
   const memberEmail = req.query.memberEmail || null;
   const dummyTest = req.query.dummyTest || null;
@@ -509,23 +560,50 @@ module.exports = async function handler(req, res) {
       return res.status(payload.success ? 200 : 400).json(payload);
     }
 
-    if (!shouldSendNow(req, testEmail) && sendEmail) {
+    if (sendEmail && !shouldSendNow(req, testEmail, authResult === "ok")) {
+      await heartbeatStages(req, keys, {
+        auth_ok: true,
+        error: "gate:outside London 09:00",
+      });
       return res.status(200).json({ success: true, skipped: true, reason: "outside London 09:00 gate" });
     }
 
-    const keys =
-      stageKey === "all"
-        ? EMAIL_STAGES.filter((s) => s.sentBy === "triggered-email-webhook").map((s) => s.key)
-        : [stageKey];
-
     const results = [];
+    const triggerSource = detectTriggerSource(req);
     for (const key of keys) {
       if (!key || !getStageByKey(key)) continue;
-      results.push(await runStageBulk(key, sendEmail));
+      await logCronRun(supabase, {
+        stage_key: key,
+        webhook: "triggered-email-webhook",
+        trigger_source: triggerSource,
+        auth_ok: true,
+        members_evaluated: 0,
+        sent: 0,
+        skipped_not_eligible: 0,
+        failed: 0,
+        error: "gate:stage_started",
+      });
+      const result = await runStageBulk(key, sendEmail);
+      results.push(result);
+      await logCronRun(supabase, {
+        stage_key: key,
+        webhook: "triggered-email-webhook",
+        trigger_source: triggerSource,
+        auth_ok: true,
+        members_evaluated: result.members_evaluated,
+        sent: result.sent,
+        skipped_not_eligible: result.skipped_not_eligible,
+        failed: result.failed,
+        error: result.error || null,
+      });
     }
     return res.status(200).json({ success: true, sendEmail, results });
   } catch (err) {
     console.error("[triggered-email-webhook]", err);
+    await heartbeatStages(req, keys.length ? keys : ["unknown"], {
+      auth_ok: true,
+      error: err.message || String(err),
+    });
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SortableTable from '../../../components/admin/SortableTable';
 
 export default function ModulesPage() {
   const router = useRouter();
@@ -96,43 +97,32 @@ export default function ModulesPage() {
         <div className="ar-admin-empty">No modules found</div>
       ) : (
         <>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr>
-                  <th>Path</th>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th>Opens</th>
-                  <th>Unique Openers</th>
-                  <th>Last Opened</th>
-                </tr>
-              </thead>
-              <tbody>
-                {modules.map((module) => (
-                  <tr 
-                    key={module.path}
-                    onClick={() => handleRowClick(module.path)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                      {module.path}
-                    </td>
-                    <td>{module.title || '-'}</td>
-                    <td>{module.category || '-'}</td>
-                    <td>{module.opens}</td>
-                    <td>{module.unique_openers}</td>
-                    <td>
-                      {module.last_opened_at 
-                        ? new Date(module.last_opened_at).toLocaleString()
-                        : '-'
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              {
+                key: 'path',
+                label: 'Path',
+                sortValue: (m) => m.path,
+                render: (m) => <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{m.path}</span>,
+              },
+              { key: 'title', label: 'Title', sortValue: (m) => m.title || '' },
+              { key: 'category', label: 'Category', sortValue: (m) => m.category || '' },
+              { key: 'opens', label: 'Opens', sortValue: (m) => m.opens ?? 0 },
+              { key: 'unique_openers', label: 'Unique Openers', sortValue: (m) => m.unique_openers ?? 0 },
+              {
+                key: 'last_opened_at',
+                label: 'Last Opened',
+                sortValue: (m) => m.last_opened_at || '',
+                render: (m) => (m.last_opened_at ? new Date(m.last_opened_at).toLocaleString() : '-'),
+              },
+            ]}
+            rows={modules}
+            rowKey={(m) => m.path}
+            defaultSort="opens"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+            onRowClick={(m) => handleRowClick(m.path)}
+          />
 
           {selectedModule && moduleDetails && (
             <div className="ar-admin-card" style={{ marginTop: '24px' }}>
@@ -144,28 +134,32 @@ export default function ModulesPage() {
                 <h3 style={{ fontSize: '16px', marginBottom: '12px', color: 'var(--ar-orange)' }}>
                   Users who opened this module
                 </h3>
-                <table className="ar-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Member ID</th>
-                      <th>Email</th>
-                      <th>Opens</th>
-                      <th>Last Opened</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {moduleDetails.users?.map((user, idx) => (
-                      <tr key={idx}>
-                        <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                          {user.member_id?.substring(0, 12)}...
-                        </td>
-                        <td>{user.email || '-'}</td>
-                        <td>{user.opens}</td>
-                        <td>{new Date(user.last_at).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SortableTable
+                  columns={[
+                    {
+                      key: 'member_id',
+                      label: 'Member ID',
+                      sortValue: (u) => u.member_id || '',
+                      render: (u) => (
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                          {u.member_id?.substring(0, 12)}...
+                        </span>
+                      ),
+                    },
+                    { key: 'email', label: 'Email', sortValue: (u) => u.email || '' },
+                    { key: 'opens', label: 'Opens', sortValue: (u) => u.opens ?? 0 },
+                    {
+                      key: 'last_at',
+                      label: 'Last Opened',
+                      sortValue: (u) => u.last_at || '',
+                      render: (u) => new Date(u.last_at).toLocaleString(),
+                    },
+                  ]}
+                  rows={moduleDetails.users || []}
+                  rowKey={(u, i) => u.member_id || i}
+                  defaultSort="opens"
+                  defaultDir="desc"
+                />
               </div>
             </div>
           )}

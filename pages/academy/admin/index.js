@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
+import SortableTable from '../../../components/admin/SortableTable';
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState(null);
@@ -1156,24 +1157,22 @@ function TopModulesList({ refreshTrigger }) {
   if (modules.length === 0) return <div className="ar-admin-empty">No data available</div>;
 
   return (
-    <table className="ar-admin-table">
-      <thead>
-        <tr>
-          <th>Module</th>
-          <th>Opens</th>
-          <th>Unique</th>
-        </tr>
-      </thead>
-      <tbody>
-        {modules.map((module, idx) => (
-          <tr key={idx}>
-            <td>{module.title || module.path}</td>
-            <td>{module.opens}</td>
-            <td>{module.unique_openers}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <SortableTable
+      columns={[
+        {
+          key: 'module',
+          label: 'Module',
+          sortValue: (m) => m.title || m.path || '',
+          render: (m) => m.title || m.path,
+        },
+        { key: 'opens', label: 'Opens', sortValue: (m) => m.opens ?? 0 },
+        { key: 'unique_openers', label: 'Unique', sortValue: (m) => m.unique_openers ?? 0 },
+      ]}
+      rows={modules}
+      rowKey={(m, i) => m.path || i}
+      defaultSort="opens"
+      defaultDir="desc"
+    />
   );
 }
 

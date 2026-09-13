@@ -1,5 +1,6 @@
 <!--
-Academy Dashboard UI (v1.3.42) — Squarespace Snippet
+Academy Dashboard UI (v1.3.45) — Squarespace Snippet
+v1.3.45: Reference & Live Feedback tile — eBook (trial-locked) + 30-min image feedback + 1-hr Zoom support links (always clickable).
 v1.3.44: 4b modal — cumulative carry-forward display (camera/composition 15/10 at Grad+Master; Assignments + pool show → pts).
 v1.3.43: Certified requires paid conversion — 4b modal Paid conversion row ✓ under Certified; gate logic synced from lib.
 v1.3.42: 4b modal — ensureBadgeRequirementsModal injects modal if HTML block missing; delegated click on badge progress mount.
@@ -1207,6 +1208,62 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
   }
   html.ar-academy .ar-resource-tile--compact {
     min-height: 132px;
+  }
+  html.ar-academy .ar-resource-tile--reference-feedback {
+    display: flex;
+    flex-direction: column;
+    min-height: 132px;
+  }
+  html.ar-academy .ar-ref-live-items {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  html.ar-academy .ar-ref-live-item {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 12px 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  html.ar-academy .ar-ref-live-item:first-child {
+    border-top: none;
+    padding-top: 4px;
+  }
+  html.ar-academy .ar-ref-live-item__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  html.ar-academy .ar-ref-live-item__label {
+    font-size: 14px;
+    font-weight: 850;
+    color: var(--ar-text);
+  }
+  html.ar-academy .ar-ref-live-item__cta {
+    font-size: 11px;
+    font-weight: 800;
+    color: #f59e0b;
+    white-space: nowrap;
+  }
+  html.ar-academy .ar-ref-live-item__desc {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ar-text-muted);
+  }
+  html.ar-academy .ar-ref-live-item:hover .ar-ref-live-item__cta,
+  html.ar-academy .ar-ref-live-item:focus-visible .ar-ref-live-item__cta {
+    color: #ffd08a;
+  }
+  html.ar-academy a.ar-ref-live-item.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.55);
   }
   html.ar-academy .ar-resource-tile--asset-care {
     flex: 1 1 auto;
@@ -2495,11 +2552,41 @@ v1.3.12: Re-ship of the D 1.3.11 open-tracking beacon on the restored D 1.3.10 l
             </div>
   
             <div class="ar-resource-stack">
-              <a id="arp-ebook-tile" class="ar-tile ar-resource-tile--compact" href="/academy/ebook">
-                <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F4D6;</span>eBook</div>
-                <div class="ar-tile__desc">741 page Academy eBook (Modules PDF)</div>
-                <div class="ar-tile__tip">Open the guide and look up any setting fast.</div>
-              </a>
+              <div id="arp-reference-feedback-tile" class="ar-tile ar-resource-tile--reference-feedback">
+                <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F4DA;</span>Reference &amp; Live Feedback</div>
+                <div class="ar-ref-live-items">
+                  <a id="arp-ebook-tile" class="ar-ref-live-item" href="/academy/ebook">
+                    <div class="ar-ref-live-item__head">
+                      <span class="ar-ref-live-item__label">&#x1F4D6; eBook</span>
+                      <span class="ar-ref-live-item__cta">Open eBook &rarr;</span>
+                    </div>
+                    <div class="ar-ref-live-item__desc">741-page Academy eBook (Modules PDF). Look up any setting fast.</div>
+                  </a>
+                  <a
+                    class="ar-ref-live-item ar-ref-live-item--always"
+                    href="https://schedule-me-alan-ranger.as.me/schedule/0f9ece0f/appointment/82621138/calendar/2634630?appointmentTypeIds[]=82621138"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <div class="ar-ref-live-item__head">
+                      <span class="ar-ref-live-item__label">&#x1F5BC; Get Feedback on Your Images</span>
+                      <span class="ar-ref-live-item__cta">Book 30-min &rarr;</span>
+                    </div>
+                    <div class="ar-ref-live-item__desc">30-minute Zoom with Alan — image critique and clear next steps.</div>
+                  </a>
+                  <a
+                    class="ar-ref-live-item ar-ref-live-item--always"
+                    href="https://www.alanranger.com/photography-lessons-online-121"
+                  >
+                    <div class="ar-ref-live-item__head">
+                      <span class="ar-ref-live-item__label">&#x1F3A5; 1-hr Zoom Personal Support &amp; Q&amp;A</span>
+                      <span class="ar-ref-live-item__cta">View options &rarr;</span>
+                    </div>
+                    <div class="ar-ref-live-item__desc">Full hour of 1-to-1 Zoom tuition — Lightroom, settings, portfolio, or anything you need.</div>
+                  </a>
+                </div>
+                <div class="ar-tile__tip">Zoom sessions are paid bookings, separate from your membership.</div>
+              </div>
 
               <div id="arp-asset-care-tile" class="ar-tile ar-resource-tile--asset-care" aria-disabled="false">
                 <div class="ar-tile__title"><span class="ar-tile__icon">&#x1F6E1;&#xFE0F;</span>Your Gear, Files &amp; Rights</div>

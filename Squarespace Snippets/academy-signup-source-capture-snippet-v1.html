@@ -1,0 +1,104 @@
+<!--
+Academy signup source capture — Squarespace Code Injection / Code Block
+Paste on: /free-online-photography-course (and optionally sitewide header/footer on Academy pages)
+
+Captures first-touch ?src= (and optional utm_*) into cookie + localStorage.
+When a Memberstack member is known, flushes to /api/academy/signup-source (fail-safe).
+Does not overwrite an existing first-touch src within the attribution window.
+-->
+<script>
+(function () {
+  var STORAGE_KEY = "arp_signup_source_v1";
+  var COOKIE_DAYS = 30;
+  var API = "https://alanranger-modules.vercel.app/api/academy/signup-source";
+  var SRC_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
+
+  function normalizeSrc(raw) {
+    if (!raw) return null;
+    var s = String(raw).trim().toLowerCase().slice(0, 64);
+    return SRC_RE.test(s) ? s : null;
+  }
+
+  function readStored() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function writeStored(payload) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {}
+    try {
+      var maxAge = COOKIE_DAYS * 24 * 60 * 60;
+      document.cookie =
+        "arp_signup_src=" +
+        encodeURIComponent(payload.src) +
+        "; path=/; max-age=" +
+        maxAge +
+        "; SameSite=Lax";
+    } catch (e2) {}
+  }
+
+  function captureFromUrl() {
+    try {
+      var qp = new URLSearchParams(window.location.search || "");
+      var src = normalizeSrc(qp.get("src"));
+      if (!src) return;
+      var existing = readStored();
+      if (existing && existing.src) return;
+      writeStored({
+        src: src,
+        utm_source: qp.get("utm_source") || null,
+        utm_medium: qp.get("utm_medium") || null,
+        utm_campaign: qp.get("utm_campaign") || null,
+        landing_path: window.location.pathname || null,
+        at: new Date().toISOString(),
+      });
+    } catch (e) {}
+  }
+
+  function waitForMemberstack(maxMs) {
+    return new Promise(function (resolve) {
+      var start = Date.now();
+      (function tick() {
+        if (window.$memberstackDom) return resolve(window.$memberstackDom);
+        if (Date.now() - start > (maxMs || 8000)) return resolve(null);
+        setTimeout(tick, 150);
+      })();
+    });
+  }
+
+  async function flushIfMember() {
+    var stored = readStored();
+    if (!stored || !stored.src) return;
+    var ms = await waitForMemberstack(10000);
+    if (!ms || typeof ms.getCurrentMember !== "function") return;
+    try {
+      var res = await ms.getCurrentMember();
+      var member = res && (res.data || res);
+      var memberId = member && (member.id || member.memberId);
+      if (!memberId) return;
+      await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: memberId,
+          signup_source: stored.src,
+          utm_source: stored.utm_source,
+          utm_medium: stored.utm_medium,
+          utm_campaign: stored.utm_campaign,
+          landing_path: stored.landing_path,
+        }),
+        keepalive: true,
+      });
+    } catch (e) {}
+  }
+
+  captureFromUrl();
+  flushIfMember();
+  setTimeout(flushIfMember, 2500);
+})();
+</script>

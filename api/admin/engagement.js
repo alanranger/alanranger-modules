@@ -5,6 +5,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const { buildEmailEngagementStats } = require("../../lib/emailEngagementStats");
 const { buildActivationTargetsStats } = require("../../lib/activationTargetsStats");
+const { buildSignupSourceStats } = require("../../lib/signupSourceStats");
 
 const SESSION_GAP_SECONDS = 1800; // 30 minutes
 
@@ -178,8 +179,11 @@ function buildTopMembers(perMember, memberMeta, passCountsByMember) {
     );
     arr.push(row);
   });
+  // Default order: engagement depth. Do NOT slice here — Last Seen / other
+  // column sorts in the UI must be able to surface recently active members
+  // who are not in the lifetime "top 25 modules" set (Activity Stream mismatch).
   arr.sort((a, b) => b.modules_opened - a.modules_opened || b.sessions - a.sessions);
-  return arr.slice(0, 25);
+  return arr;
 }
 
 async function fetchMemberMeta(supabase) {
@@ -415,13 +419,14 @@ async function handleEngagement(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const [rows, memberMeta, examStats, weeklySeries, emailOutcomes, activationTargets] = await Promise.all([
+    const [rows, memberMeta, examStats, weeklySeries, emailOutcomes, activationTargets, signupSources] = await Promise.all([
       fetchEvents(supabase, since),
       fetchMemberMeta(supabase),
       fetchExamStats(supabase),
       buildWeeklySeries(supabase, period),
       buildEmailEngagementStats(supabase),
       buildActivationTargetsStats(supabase, period),
+      buildSignupSourceStats(supabase, since ? since.toISOString() : null),
     ]);
 
     const agg = aggregateEvents(rows);
@@ -466,6 +471,7 @@ async function handleEngagement(req, res) {
       tracking: summariseTracking(memberMeta),
       email_outcomes: emailOutcomes,
       activation_targets: activationTargets,
+      signup_sources: signupSources,
     });
   } catch (error) {
     console.error('[engagement] Error:', error);

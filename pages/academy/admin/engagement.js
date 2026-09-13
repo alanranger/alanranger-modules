@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
+import SortableTable from '../../../components/admin/SortableTable';
 
 const TABS = [
   { href: '/academy/admin', label: 'Overview' },
@@ -188,6 +189,50 @@ function ActivationTargetTile({ label, metric, targetPct, trendValues, noisy, st
   );
 }
 
+function SignupSourcesPanel({ data }) {
+  if (!data) return null;
+  const rows = data.rows || [];
+  return (
+    <>
+      <h2 style={{ marginTop: '24px' }}>Trial signups by source</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 8 }}>
+        {data.label || 'Source tracking forward-only'}
+        {typeof data.tagged_trials === 'number' ? (
+          <> · <strong>{data.tagged_trials}</strong> tagged · <strong>{data.uncaptured_trials || 0}</strong> uncaptured in window</>
+        ) : null}
+      </p>
+      {!rows.length ? (
+        <div className="ar-admin-card" style={{ padding: 16, fontSize: 13, color: 'var(--ar-text-muted)' }}>
+          No trials with signup_source yet in this period (tracking from {data.tracking_from}).
+        </div>
+      ) : (
+        <div className="ar-admin-card" style={{ padding: 0, overflowX: 'auto' }}>
+          <table className="ar-admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '10px 12px' }}>Source</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Trials</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Converted</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px' }}>Conv %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.signup_source}>
+                  <td style={{ padding: '8px 12px' }}>{r.signup_source}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.trials}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.converted}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{r.conversion_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ActivationTargetsPanel({ data, period }) {
   if (!data?.cohort) return null;
   const periodLabel = PERIOD_LABELS[period] || String(period);
@@ -318,6 +363,161 @@ function DeltaInline({ delta, isPctPoints }) {
   );
 }
 
+const EMAIL_SUMMARY_COLUMNS = [
+  { key: 'today', label: 'Today' },
+  { key: 'last_7d', label: '7d' },
+  { key: 'last_30d', label: '30d' },
+  { key: 'last_60d', label: '60d' },
+  { key: 'last_90d', label: '90d' },
+  { key: 'total', label: 'Total' },
+];
+
+const EMAIL_SUMMARY_ROWS = [
+  { key: 'trials_scheduled', label: 'Trials · scheduled', hint: 'Nudges + Day -7 / -1 / +7' },
+  { key: 'rewind_ladder', label: 'Trials · REWIND ladder', hint: 'Day +20 / +30 / +60 / +90' },
+  { key: 'paid_lifecycle', label: 'Paid lifecycle', hint: 'Quiet ladder, badge, renewal' },
+  { key: 'manual_batch', label: 'Manual / batch', hint: 'How sent — overlaps REWIND', accent: true },
+  { key: 'lifecycle_total', label: 'Lifecycle total', hint: 'Scheduled + REWIND + Paid (excl. manual)', bold: true },
+];
+
+const STAGE_CATEGORY_ORDER = [
+  { key: 'trials_scheduled', label: 'Trials · scheduled (cron)' },
+  { key: 'rewind_ladder', label: 'Trials · REWIND ladder' },
+  { key: 'paid_lifecycle', label: 'Paid lifecycle' },
+];
+
+function EmailSendsCategorySummary({ summaryByCategory }) {
+  const rows = useMemo(
+    () => (summaryByCategory
+      ? EMAIL_SUMMARY_ROWS.map((row) => ({
+        key: row.key,
+        label: row.label,
+        hint: row.hint,
+        accent: row.accent,
+        bold: row.bold,
+        ...(summaryByCategory[row.key] || {}),
+      }))
+      : []),
+    [summaryByCategory]
+  );
+  if (!summaryByCategory) return null;
+  const columns = [
+    {
+      key: 'label',
+      label: 'Category',
+      render: (row) => (
+        <>
+          <div style={{
+            fontWeight: row.bold ? 700 : 600,
+            color: row.accent ? 'var(--ar-accent, #4a7fff)' : 'inherit',
+          }}
+          >
+            {row.label}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 2 }}>{row.hint}</div>
+        </>
+      ),
+      sortValue: (row) => row.label,
+    },
+    ...EMAIL_SUMMARY_COLUMNS.map((col) => ({
+      key: col.key,
+      label: col.label,
+      render: (row) => formatNumber(row[col.key] ?? 0),
+      sortValue: (row) => row[col.key] ?? 0,
+      style: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
+      thStyle: { textAlign: 'right' },
+    })),
+  ];
+
+  return (
+    <>
+      <h2 style={{ marginTop: '8px' }}>Email sends by category</h2>
+      <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0, marginBottom: 10 }}>
+        Same buckets as the Emails tab — from <code>academy_email_events</code> (cron/webhooks + manual batch tags).
+      </p>
+      <SortableTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.key}
+        defaultSort="last_7d"
+        defaultDir="desc"
+        wrapperClassName="ar-admin-card"
+        wrapperStyle={{ overflowX: 'auto' }}
+        tableStyle={{ minWidth: 520 }}
+      />
+    </>
+  );
+}
+
+const CATEGORY_LABEL_BY_KEY = Object.fromEntries(STAGE_CATEGORY_ORDER.map((c) => [c.key, c.label]));
+
+const EMAIL_OUTCOME_COLUMNS = [
+  {
+    key: 'category',
+    label: 'Category',
+    sortValue: (s) => CATEGORY_LABEL_BY_KEY[s.category] || s.category,
+    render: (s) => CATEGORY_LABEL_BY_KEY[s.category] || s.category,
+  },
+  {
+    key: 'label',
+    label: 'Stage',
+    sortValue: (s) => s.label,
+    render: (s) => (
+      <>
+        <strong>{s.label}</strong>
+        {s.displayName && s.displayName !== s.label ? (
+          <div style={{ fontSize: 11, color: 'var(--ar-text-muted)', marginTop: 2 }}>{s.displayName}</div>
+        ) : null}
+      </>
+    ),
+  },
+  {
+    key: 'sent_last_7d',
+    label: 'Sent 7d',
+    sortValue: (s) => s.sent_last_7d ?? 0,
+    render: (s) => formatNumber(s.sent_last_7d ?? 0),
+  },
+  {
+    key: 'emailed',
+    label: 'Emailed',
+    sortValue: (s) => s.periods?.rolling_90d?.emailed ?? 0,
+    render: (s) => formatNumber(s.periods?.rolling_90d?.emailed),
+  },
+  {
+    key: 'raw_sends_90d',
+    label: 'Raw sends',
+    sortValue: (s) => s.raw_sends_90d ?? 0,
+    render: (s) => formatNumber(s.raw_sends_90d ?? 0),
+  },
+  {
+    key: 'login_after_pct',
+    label: 'Logged in after',
+    sortValue: (s) => s.periods?.rolling_90d?.login_after_pct ?? -1,
+    render: (s) => {
+      const p = s.periods?.rolling_90d || {};
+      return p.emailed ? `${p.login_after_pct}%` : '—';
+    },
+  },
+  {
+    key: 'module_after_pct',
+    label: 'Opened module after',
+    sortValue: (s) => s.periods?.rolling_90d?.module_after_pct ?? -1,
+    render: (s) => {
+      const p = s.periods?.rolling_90d || {};
+      return p.emailed ? `${p.module_after_pct}%` : '—';
+    },
+  },
+  {
+    key: 'converted_after_pct',
+    label: 'Converted after',
+    sortValue: (s) => s.periods?.rolling_90d?.converted_after_pct ?? -1,
+    render: (s) => {
+      const p = s.periods?.rolling_90d || {};
+      return p.emailed ? `${p.converted_after_pct}%` : '—';
+    },
+  },
+];
+
 function EmailOutcomesTable({ emailOutcomes }) {
   if (!emailOutcomes?.stages?.length) return null;
   const curLabel = emailOutcomes.month_labels?.current_label || 'Current month';
@@ -344,33 +544,13 @@ function EmailOutcomesTable({ emailOutcomes }) {
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ar-text-muted)', marginBottom: 8 }}>
           Last 90 days (since {t90.since || '—'}) — primary view
         </div>
-        <table className="ar-admin-table">
-          <thead>
-            <tr>
-              <th>Stage</th>
-              <th>Emailed</th>
-              <th>Raw sends</th>
-              <th>Logged in after</th>
-              <th>Opened module after</th>
-              <th>Converted after</th>
-            </tr>
-          </thead>
-          <tbody>
-            {emailOutcomes.stages.map((s) => {
-              const p = s.periods?.rolling_90d || {};
-              return (
-                <tr key={s.key}>
-                  <td><strong>{s.label}</strong></td>
-                  <td>{formatNumber(p.emailed)}</td>
-                  <td>{formatNumber(s.raw_sends_90d ?? 0)}</td>
-                  <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
-                  <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
-                  <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <SortableTable
+          columns={EMAIL_OUTCOME_COLUMNS}
+          rows={emailOutcomes.stages}
+          rowKey={(s) => s.key}
+          defaultSort="sent_last_7d"
+          defaultDir="desc"
+        />
       </div>
       <details style={{ marginTop: 8, fontSize: 12, color: 'var(--ar-text-muted)' }}>
         <summary style={{ cursor: 'pointer' }}>{curLabel} month-to-date (why totals can look small)</summary>
@@ -379,71 +559,111 @@ function EmailOutcomesTable({ emailOutcomes }) {
             MTD only counts sends in the current calendar month. Cron may have sent hundreds in prior months
             (e.g. REWIND batch in Apr 2026) — those appear in the 90-day table above, not here.
           </p>
-          <table className="ar-admin-table">
-            <thead>
-              <tr>
-                <th>Stage</th>
-                <th>Emailed (MTD)</th>
-                <th>Logged in after</th>
-                <th>Opened module after</th>
-                <th>Converted after</th>
-              </tr>
-            </thead>
-            <tbody>
-              {emailOutcomes.stages.map((s) => {
-                const p = s.periods?.current_month || {};
-                const d = s.deltas_vs_last_month || {};
-                return (
-                  <tr key={s.key}>
-                    <td>{s.label}</td>
-                    <td>
+          <SortableTable
+            columns={[
+              { key: 'label', label: 'Stage', sortValue: (s) => s.label },
+              {
+                key: 'emailed_mtd',
+                label: 'Emailed (MTD)',
+                sortValue: (s) => s.periods?.current_month?.emailed ?? 0,
+                render: (s) => {
+                  const p = s.periods?.current_month || {};
+                  const d = s.deltas_vs_last_month || {};
+                  return (
+                    <>
                       {formatNumber(p.emailed)}
                       {d.emailed !== 0 ? (
                         <div style={{ fontSize: 11, color: 'var(--ar-text-muted)' }}>
                           ({d.emailed > 0 ? '+' : ''}{d.emailed} vs {lastLabel})
                         </div>
                       ) : null}
-                    </td>
-                    <td>{p.emailed ? `${p.login_after_pct}%` : '—'}</td>
-                    <td>{p.emailed ? `${p.module_after_pct}%` : '—'}</td>
-                    <td>{p.emailed ? `${p.converted_after_pct}%` : '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </>
+                  );
+                },
+              },
+              {
+                key: 'login_mtd',
+                label: 'Logged in after',
+                sortValue: (s) => s.periods?.current_month?.login_after_pct ?? -1,
+                render: (s) => {
+                  const p = s.periods?.current_month || {};
+                  return p.emailed ? `${p.login_after_pct}%` : '—';
+                },
+              },
+              {
+                key: 'module_mtd',
+                label: 'Opened module after',
+                sortValue: (s) => s.periods?.current_month?.module_after_pct ?? -1,
+                render: (s) => {
+                  const p = s.periods?.current_month || {};
+                  return p.emailed ? `${p.module_after_pct}%` : '—';
+                },
+              },
+              {
+                key: 'convert_mtd',
+                label: 'Converted after',
+                sortValue: (s) => s.periods?.current_month?.converted_after_pct ?? -1,
+                render: (s) => {
+                  const p = s.periods?.current_month || {};
+                  return p.emailed ? `${p.converted_after_pct}%` : '—';
+                },
+              },
+            ]}
+            rows={emailOutcomes.stages}
+            rowKey={(s) => s.key}
+            defaultSort="emailed_mtd"
+            defaultDir="desc"
+          />
         </div>
       </details>
       <details style={{ marginTop: 8, fontSize: 12, color: 'var(--ar-text-muted)' }}>
         <summary style={{ cursor: 'pointer' }}>Last month vs month before (closed months)</summary>
         <div className="ar-admin-card" style={{ marginTop: 8 }}>
-          <table className="ar-admin-table">
-            <thead>
-              <tr>
-                <th>Stage</th>
-                <th>{emailOutcomes.month_labels?.last_label}</th>
-                <th>{emailOutcomes.month_labels?.prev_label}</th>
-                <th>Δ emailed</th>
-                <th>Δ login % (pp)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {emailOutcomes.stages.map((s) => {
-                const last = s.periods?.last_month || {};
-                const prev = s.periods?.prev_month || {};
-                const d2 = s.deltas_vs_prev_month || {};
-                return (
-                  <tr key={s.key}>
-                    <td>{s.label}</td>
-                    <td>{formatNumber(last.emailed)} · {last.login_after_pct}% login</td>
-                    <td>{formatNumber(prev.emailed)} · {prev.login_after_pct}% login</td>
-                    <td>{d2.emailed >= 0 ? '+' : ''}{d2.emailed}</td>
-                    <td>{d2.login_after_pct >= 0 ? '+' : ''}{d2.login_after_pct} pp</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <SortableTable
+            columns={[
+              { key: 'label', label: 'Stage', sortValue: (s) => s.label },
+              {
+                key: 'last_month',
+                label: emailOutcomes.month_labels?.last_label || 'Last month',
+                sortValue: (s) => s.periods?.last_month?.emailed ?? 0,
+                render: (s) => {
+                  const last = s.periods?.last_month || {};
+                  return `${formatNumber(last.emailed)} · ${last.login_after_pct}% login`;
+                },
+              },
+              {
+                key: 'prev_month',
+                label: emailOutcomes.month_labels?.prev_label || 'Prev month',
+                sortValue: (s) => s.periods?.prev_month?.emailed ?? 0,
+                render: (s) => {
+                  const prev = s.periods?.prev_month || {};
+                  return `${formatNumber(prev.emailed)} · ${prev.login_after_pct}% login`;
+                },
+              },
+              {
+                key: 'delta_emailed',
+                label: 'Δ emailed',
+                sortValue: (s) => s.deltas_vs_prev_month?.emailed ?? 0,
+                render: (s) => {
+                  const d2 = s.deltas_vs_prev_month || {};
+                  return `${d2.emailed >= 0 ? '+' : ''}${d2.emailed}`;
+                },
+              },
+              {
+                key: 'delta_login',
+                label: 'Δ login % (pp)',
+                sortValue: (s) => s.deltas_vs_prev_month?.login_after_pct ?? 0,
+                render: (s) => {
+                  const d2 = s.deltas_vs_prev_month || {};
+                  return `${d2.login_after_pct >= 0 ? '+' : ''}${d2.login_after_pct} pp`;
+                },
+              },
+            ]}
+            rows={emailOutcomes.stages}
+            rowKey={(s) => s.key}
+            defaultSort="last_month"
+            defaultDir="desc"
+          />
         </div>
       </details>
     </>
@@ -453,18 +673,17 @@ function EmailOutcomesTable({ emailOutcomes }) {
 function EmailSendTrends({ trends }) {
   if (!trends?.weeks?.length) return null;
   const colors = {
-    'day-minus-7': '#60a5fa',
-    'day-minus-1': '#22d3ee',
-    'day-plus-7': '#f5a623',
-    'day-plus-20': '#c084fc',
+    trials_scheduled: '#60a5fa',
+    rewind_ladder: '#c084fc',
+    paid_lifecycle: '#f5a623',
   };
-  const tiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+  const tiles = Object.entries(trends.by_category || {}).map(([key, s]) => ({
     key,
     label: `${s.label} — sends / week`,
     values: s.sends,
     color: colors[key] || '#94a3b8',
   }));
-  const loginTiles = Object.entries(trends.by_stage || {}).map(([key, s]) => ({
+  const loginTiles = Object.entries(trends.by_category || {}).map(([key, s]) => ({
     key: `${key}-login`,
     label: `${s.label} — logins after send / week`,
     values: s.login_after,
@@ -472,10 +691,10 @@ function EmailSendTrends({ trends }) {
   }));
   return (
     <>
-      <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends</h2>
+      <h2 style={{ marginTop: '24px' }}>Email sends — 90-day trends (by category)</h2>
       <p style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 0 }}>
         Weekly buckets (UTC). Since {trends.since?.slice(0, 10) || '—'}.
-        Sparkline headline is <strong>average sends per week</strong>, not the 90-day total (see table above for totals).
+        Grouped by the same categories as the Emails tab. Sparkline headline is <strong>average sends per week</strong>.
       </p>
       <div className="ar-admin-kpi-grid">
         {tiles.map((t) => <SparkTile key={t.key} label={t.label} values={t.values} color={t.color} fractionDigits={0} />)}
@@ -570,6 +789,9 @@ export default function EngagementPage() {
 
           <ActivationTargetsPanel data={data.activation_targets} period={period} />
 
+          <SignupSourcesPanel data={data.signup_sources} />
+
+          <EmailSendsCategorySummary summaryByCategory={data.email_outcomes?.summary_by_category} />
           <EmailOutcomesTable emailOutcomes={data.email_outcomes} />
           <EmailSendTrends trends={data.email_outcomes?.trends_90d} />
 
@@ -603,114 +825,144 @@ export default function EngagementPage() {
           </div>
 
           <h2 style={{ marginTop: '24px' }}>Opens by Category</h2>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead><tr><th>Category</th><th>Opens</th></tr></thead>
-              <tbody>
-                {(data.categories || []).map(c => (
-                  <tr key={c.category || 'unknown'}>
-                    <td>{c.category || '-'}</td>
-                    <td>{formatNumber(c.opens)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              { key: 'category', label: 'Category', sortValue: (c) => c.category || '' },
+              { key: 'opens', label: 'Opens', sortValue: (c) => c.opens ?? 0, render: (c) => formatNumber(c.opens) },
+            ]}
+            rows={data.categories || []}
+            rowKey={(c) => c.category || 'unknown'}
+            defaultSort="opens"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+          />
 
           <h2 style={{ marginTop: '24px' }}>Top Modules (by opens)</h2>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr><th>Path</th><th>Title</th><th>Opens</th><th>Unique Members</th></tr>
-              </thead>
-              <tbody>
-                {(data.top_paths || []).map(p => (
-                  <tr key={p.path}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.path}</td>
-                    <td>{p.title || '-'}</td>
-                    <td>{formatNumber(p.opens)}</td>
-                    <td>{formatNumber(p.unique_members)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              {
+                key: 'path',
+                label: 'Path',
+                sortValue: (p) => p.path,
+                render: (p) => <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.path}</span>,
+              },
+              { key: 'title', label: 'Title', sortValue: (p) => p.title || '' },
+              { key: 'opens', label: 'Opens', sortValue: (p) => p.opens ?? 0, render: (p) => formatNumber(p.opens) },
+              {
+                key: 'unique_members',
+                label: 'Unique Members',
+                sortValue: (p) => p.unique_members ?? 0,
+                render: (p) => formatNumber(p.unique_members),
+              },
+            ]}
+            rows={data.top_paths || []}
+            rowKey={(p) => p.path}
+            defaultSort="opens"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+          />
 
           <h2 style={{ marginTop: '24px' }}>Top Exam Modules</h2>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr><th>Module</th><th>Attempts</th><th>Unique Members</th><th>Passed</th><th>Avg Score</th></tr>
-              </thead>
-              <tbody>
-                {(exams.topModules || []).map(m => (
-                  <tr key={m.module_id}>
-                    <td>{m.module_id}</td>
-                    <td>{formatNumber(m.attempts)}</td>
-                    <td>{formatNumber(m.unique_members)}</td>
-                    <td>{formatNumber(m.passed)}</td>
-                    <td>{m.avg_score == null ? '-' : `${m.avg_score}%`}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              { key: 'module_id', label: 'Module', sortValue: (m) => m.module_id },
+              { key: 'attempts', label: 'Attempts', sortValue: (m) => m.attempts ?? 0, render: (m) => formatNumber(m.attempts) },
+              {
+                key: 'unique_members',
+                label: 'Unique Members',
+                sortValue: (m) => m.unique_members ?? 0,
+                render: (m) => formatNumber(m.unique_members),
+              },
+              { key: 'passed', label: 'Passed', sortValue: (m) => m.passed ?? 0, render: (m) => formatNumber(m.passed) },
+              {
+                key: 'avg_score',
+                label: 'Avg Score',
+                sortValue: (m) => m.avg_score ?? -1,
+                render: (m) => (m.avg_score == null ? '-' : `${m.avg_score}%`),
+              },
+            ]}
+            rows={exams.topModules || []}
+            rowKey={(m) => m.module_id}
+            defaultSort="attempts"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+          />
 
-          <h2 style={{ marginTop: '24px' }}>Top Engaged Members</h2>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Badge level</th>
-                  <th>Plan</th>
-                  <th>Sessions</th>
-                  <th>Active Days</th>
-                  <th>Modules Opened</th>
-                  <th>Total Opens</th>
-                  <th>Logins</th>
-                  <th>Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data.top_members || []).map(m => (
-                  <tr key={m.member_id}>
-                    <td>{m.name || '-'}</td>
-                    <td>{m.email || '-'}</td>
-                    <td><BadgeLevelCell member={m} compact /></td>
-                    <td>{m.plan_name || '-'}</td>
-                    <td>{formatNumber(m.sessions)}</td>
-                    <td>{formatNumber(m.active_days)}</td>
-                    <td>{formatNumber(m.modules_opened)}</td>
-                    <td>{formatNumber(m.total_opens)}</td>
-                    <td>{formatNumber(m.logins)}</td>
-                    <td>{formatDate(m.last_seen)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h2 style={{ marginTop: '24px' }}>Engaged Members</h2>
+          <p style={{ color: 'var(--ar-text-muted)', fontSize: '13px', marginTop: '-8px', marginBottom: '12px' }}>
+            Everyone with a login or module open in the selected period. Default sort is most modules opened;
+            sort by Last Seen to match recent Activity Stream activity (login + module_open only — not page_view).
+          </p>
+          <SortableTable
+            columns={[
+              { key: 'name', label: 'Name', sortValue: (m) => m.name || '' },
+              { key: 'email', label: 'Email', sortValue: (m) => m.email || '' },
+              {
+                key: 'badge_level',
+                label: 'Badge level',
+                sortValue: (m) => m.badge_level || m.current_badge || '',
+                render: (m) => <BadgeLevelCell member={m} compact />,
+              },
+              { key: 'plan_name', label: 'Plan', sortValue: (m) => m.plan_name || '' },
+              { key: 'sessions', label: 'Sessions', sortValue: (m) => m.sessions ?? 0, render: (m) => formatNumber(m.sessions) },
+              { key: 'active_days', label: 'Active Days', sortValue: (m) => m.active_days ?? 0, render: (m) => formatNumber(m.active_days) },
+              {
+                key: 'modules_opened',
+                label: 'Modules Opened',
+                sortValue: (m) => m.modules_opened ?? 0,
+                render: (m) => formatNumber(m.modules_opened),
+              },
+              {
+                key: 'total_opens',
+                label: 'Total Opens',
+                sortValue: (m) => m.total_opens ?? 0,
+                render: (m) => formatNumber(m.total_opens),
+              },
+              { key: 'logins', label: 'Logins', sortValue: (m) => m.logins ?? 0, render: (m) => formatNumber(m.logins) },
+              {
+                key: 'last_seen',
+                label: 'Last Seen',
+                sortValue: (m) => m.last_seen || '',
+                render: (m) => formatDate(m.last_seen),
+              },
+            ]}
+            rows={data.top_members || []}
+            rowKey={(m) => m.member_id}
+            defaultSort="modules_opened"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+          />
 
           <h2 style={{ marginTop: '24px' }}>Weekly Trend</h2>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr><th>Week of</th><th>Active Members</th><th>Login Sessions</th><th>Raw Logins</th><th>Module Opens</th></tr>
-              </thead>
-              <tbody>
-                {(data.weekly || []).map(w => (
-                  <tr key={w.week}>
-                    <td>{w.week}</td>
-                    <td>{formatNumber(w.active_members)}</td>
-                    <td>{formatNumber(w.sessions)}</td>
-                    <td>{formatNumber(w.logins)}</td>
-                    <td>{formatNumber(w.module_opens)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              { key: 'week', label: 'Week of', sortValue: (w) => w.week },
+              {
+                key: 'active_members',
+                label: 'Active Members',
+                sortValue: (w) => w.active_members ?? 0,
+                render: (w) => formatNumber(w.active_members),
+              },
+              {
+                key: 'sessions',
+                label: 'Login Sessions',
+                sortValue: (w) => w.sessions ?? 0,
+                render: (w) => formatNumber(w.sessions),
+              },
+              { key: 'logins', label: 'Raw Logins', sortValue: (w) => w.logins ?? 0, render: (w) => formatNumber(w.logins) },
+              {
+                key: 'module_opens',
+                label: 'Module Opens',
+                sortValue: (w) => w.module_opens ?? 0,
+                render: (w) => formatNumber(w.module_opens),
+              },
+            ]}
+            rows={data.weekly || []}
+            rowKey={(w) => w.week}
+            defaultSort="week"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+          />
 
           <h2 style={{ marginTop: '24px' }}>Tile Tracking Diagnostics</h2>
           <div className="ar-admin-card" style={{ padding: '16px' }}>

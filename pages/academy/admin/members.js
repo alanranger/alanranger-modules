@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SortableTable from '../../../../components/admin/SortableTable';
 
 export default function MembersPage() {
   const router = useRouter();
@@ -124,43 +125,40 @@ export default function MembersPage() {
         <div className="ar-admin-empty">No members found</div>
       ) : (
         <>
-          <div className="ar-admin-card">
-            <table className="ar-admin-table">
-              <thead>
-                <tr>
-                  <th>Member ID</th>
-                  <th>Email</th>
-                  <th>Events</th>
-                  <th>Module Opens</th>
-                  <th>Unique Modules</th>
-                  <th>Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => (
-                  <tr 
-                    key={member.member_id}
-                    onClick={() => handleRowClick(member.member_id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                      {member.member_id?.substring(0, 12)}...
-                    </td>
-                    <td>{member.email || '-'}</td>
-                    <td>{member.event_count}</td>
-                    <td>{member.module_opens}</td>
-                    <td>{member.unique_modules_opened}</td>
-                    <td>
-                      {member.last_seen_at 
-                        ? new Date(member.last_seen_at).toLocaleString()
-                        : '-'
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SortableTable
+            columns={[
+              {
+                key: 'member_id',
+                label: 'Member ID',
+                sortValue: (m) => m.member_id || '',
+                render: (m) => (
+                  <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                    {m.member_id?.substring(0, 12)}...
+                  </span>
+                ),
+              },
+              { key: 'email', label: 'Email', sortValue: (m) => m.email || '' },
+              { key: 'event_count', label: 'Events', sortValue: (m) => m.event_count ?? 0 },
+              { key: 'module_opens', label: 'Module Opens', sortValue: (m) => m.module_opens ?? 0 },
+              {
+                key: 'unique_modules_opened',
+                label: 'Unique Modules',
+                sortValue: (m) => m.unique_modules_opened ?? 0,
+              },
+              {
+                key: 'last_seen_at',
+                label: 'Last Seen',
+                sortValue: (m) => m.last_seen_at || '',
+                render: (m) => (m.last_seen_at ? new Date(m.last_seen_at).toLocaleString() : '-'),
+              },
+            ]}
+            rows={members}
+            rowKey={(m) => m.member_id}
+            defaultSort="last_seen_at"
+            defaultDir="desc"
+            wrapperClassName="ar-admin-card"
+            onRowClick={(m) => handleRowClick(m.member_id)}
+          />
 
           {selectedMember && memberDetails && (
             <div className="ar-admin-card" style={{ marginTop: '24px' }}>
@@ -172,80 +170,91 @@ export default function MembersPage() {
                 <h3 style={{ fontSize: '16px', marginBottom: '12px', color: 'var(--ar-orange)' }}>
                   Recent Events
                 </h3>
-                <table className="ar-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Timestamp</th>
-                      <th>Event Type</th>
-                      <th>Title</th>
-                      <th>Path</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {memberDetails.recent_events?.map((event) => (
-                      <tr key={event.id}>
-                        <td>{new Date(event.created_at).toLocaleString()}</td>
-                        <td>{event.event_type}</td>
-                        <td>{event.title || '-'}</td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                          {event.path || '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SortableTable
+                  columns={[
+                    {
+                      key: 'created_at',
+                      label: 'Timestamp',
+                      sortValue: (e) => e.created_at || '',
+                      render: (e) => new Date(e.created_at).toLocaleString(),
+                    },
+                    { key: 'event_type', label: 'Event Type', sortValue: (e) => e.event_type || '' },
+                    { key: 'title', label: 'Title', sortValue: (e) => e.title || '' },
+                    {
+                      key: 'path',
+                      label: 'Path',
+                      sortValue: (e) => e.path || '',
+                      render: (e) => (
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{e.path || '-'}</span>
+                      ),
+                    },
+                  ]}
+                  rows={memberDetails.recent_events || []}
+                  rowKey={(e) => e.id}
+                  defaultSort="created_at"
+                  defaultDir="desc"
+                />
               </div>
 
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', marginBottom: '12px', color: 'var(--ar-orange)' }}>
                   Modules Opened
                 </h3>
-                <table className="ar-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Module</th>
-                      <th>Opens</th>
-                      <th>Last Opened</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {memberDetails.modules_opened?.map((module, idx) => (
-                      <tr key={idx}>
-                        <td>{module.title || module.path}</td>
-                        <td>{module.opens}</td>
-                        <td>{new Date(module.last_at).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SortableTable
+                  columns={[
+                    {
+                      key: 'module',
+                      label: 'Module',
+                      sortValue: (m) => m.title || m.path || '',
+                      render: (m) => m.title || m.path,
+                    },
+                    { key: 'opens', label: 'Opens', sortValue: (m) => m.opens ?? 0 },
+                    {
+                      key: 'last_at',
+                      label: 'Last Opened',
+                      sortValue: (m) => m.last_at || '',
+                      render: (m) => new Date(m.last_at).toLocaleString(),
+                    },
+                  ]}
+                  rows={memberDetails.modules_opened || []}
+                  rowKey={(m, i) => m.path || m.title || i}
+                  defaultSort="opens"
+                  defaultDir="desc"
+                />
               </div>
 
               <div>
                 <h3 style={{ fontSize: '16px', marginBottom: '12px', color: 'var(--ar-orange)' }}>
                   Exam Summary
                 </h3>
-                <table className="ar-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Module ID</th>
-                      <th>Score</th>
-                      <th>Passed</th>
-                      <th>Attempt</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {memberDetails.exams?.map((exam) => (
-                      <tr key={exam.id}>
-                        <td>{exam.module_id}</td>
-                        <td>{exam.score_percent}%</td>
-                        <td>{exam.passed ? '✓' : '✗'}</td>
-                        <td>{exam.attempt}</td>
-                        <td>{new Date(exam.created_at).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SortableTable
+                  columns={[
+                    { key: 'module_id', label: 'Module ID', sortValue: (e) => e.module_id || '' },
+                    {
+                      key: 'score_percent',
+                      label: 'Score',
+                      sortValue: (e) => e.score_percent ?? -1,
+                      render: (e) => `${e.score_percent}%`,
+                    },
+                    {
+                      key: 'passed',
+                      label: 'Passed',
+                      sortValue: (e) => (e.passed ? 1 : 0),
+                      render: (e) => (e.passed ? '✓' : '✗'),
+                    },
+                    { key: 'attempt', label: 'Attempt', sortValue: (e) => e.attempt ?? 0 },
+                    {
+                      key: 'created_at',
+                      label: 'Date',
+                      sortValue: (e) => e.created_at || '',
+                      render: (e) => new Date(e.created_at).toLocaleString(),
+                    },
+                  ]}
+                  rows={memberDetails.exams || []}
+                  rowKey={(e) => e.id}
+                  defaultSort="created_at"
+                  defaultDir="desc"
+                />
               </div>
             </div>
           )}

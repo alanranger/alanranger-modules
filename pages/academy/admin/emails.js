@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { EMAIL_STAGES } from '../../../lib/emailStages';
+import { STAGE_SCHEDULE_AUDIT } from '../../../lib/stageScheduleUi';
 
 function mapStageForUi(stage) {
   const preview = stage.preview || {};
@@ -348,18 +349,36 @@ function NavTabs({ active }) {
   );
 }
 
+function firingStateBadge(stats) {
+  const state = stats?.firing_state;
+  if (state === 'verified_sending') {
+    return { label: 'Verified sending', color: 'var(--ar-success, #0a0)' };
+  }
+  if (state === 'healthy_idle') {
+    return { label: 'Healthy idle (0 eligible)', color: 'var(--ar-text-muted)' };
+  }
+  if (state === 'not_firing') {
+    return { label: 'NOT FIRING', color: '#c0392b' };
+  }
+  return null;
+}
+
 function stageStatusBadge(stage) {
+  const schedule = STAGE_SCHEDULE_AUDIT[stage.key];
   if (stage.deprecated) {
     return { label: 'DEPRECATED', color: 'var(--ar-text-muted)' };
   }
-  if (stage.enabled && stage.cronEnabled) {
+  if (stage.sentBy === 'manual') {
+    return { label: 'MANUAL ONLY', color: 'var(--ar-text-muted)' };
+  }
+  if (stage.enabled && stage.cronEnabled && schedule && !schedule.scheduled) {
+    return { label: 'NOT SCHEDULED', color: '#c0392b' };
+  }
+  if (stage.enabled && stage.cronEnabled && schedule?.scheduled) {
     return { label: 'LIVE · cron on', color: 'var(--ar-success, #0a0)' };
   }
   if (stage.testModeOnly) {
     return { label: 'TEST ONLY', color: 'var(--ar-text-muted)' };
-  }
-  if (REWIND_RUNG_KEYS.has(stage.key)) {
-    return { label: 'CRON OFF · batch OK', color: '#d4a017' };
   }
   if (!stage.enabled) {
     return { label: 'OFF · cron off', color: 'var(--ar-text-muted)' };
@@ -374,9 +393,10 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
   const nextSendAt = stats?.next_send_at;
   const nextLabel = nextSendAt
     ? `${formatDateTimeShort(nextSendAt)} · ${formatRelative(nextSendAt, nowMs)}`
-    : (stage.sentBy === 'lapsed-trial-reengagement-webhook' ? 'Zapier (weekly)' : 'Daily trigger check');
+    : 'Daily 09:00 London (Vercel cron)';
   const borderColor = active ? 'var(--ar-accent, #4a7fff)' : 'var(--ar-border)';
   const { label: statusLabel, color: statusColor } = stageStatusBadge(stage);
+  const firing = firingStateBadge(stats);
   return (
     <button
       type="button"
@@ -405,6 +425,11 @@ function StageTile({ stage, stats, statsLoadFailed, active, onClick, nowMs }) {
       <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>
         {sent7d}
       </div>
+      {firing && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: firing.color, marginTop: 6 }}>
+          {firing.label}
+        </div>
+      )}
       <div style={{ fontSize: 12, color: 'var(--ar-text-muted)', marginTop: 4 }}>
         sent 7d · {sent24} sent 24h
       </div>
@@ -588,7 +613,7 @@ function StageTilesRow({ stats, manualSends, summaryByCategory, statsLoadFailed,
       </TileSection>
       <TileSection
         title="Trials — REWIND ladder (same emails, 4 rungs)"
-        subtitle="1st REWIND = Day +20 · 2nd = +30 · 3rd = +60 · 4th = +90. Different copy and timing per rung; same REWIND20 offer. CRON OFF on +20/+30/+60 until you approve — today’s sends were batch scripts, still logged on these tiles."
+        subtitle="1st REWIND = Day +20 · 2nd = +30 · 3rd = +60 · 4th = +90. Different copy and timing per rung; same REWIND20 offer. +20/+30/+60 fire via lapsed-trial-reengagement-webhook daily cron; +90 via triggered-email-webhook."
       >
         {REWIND_TILE_STAGES.map(renderStageTile)}
       </TileSection>
@@ -1555,10 +1580,11 @@ export default function EmailsAdmin() {
 
       <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--ar-text-muted)' }}>
         Click any tile to filter the members table to that tile&apos;s <strong>7-day send count</strong>.
-        <strong> LIVE · cron on</strong> = automatic daily send is active.
-        <strong> CRON OFF · batch OK</strong> = same REWIND email, but only manual/backlog scripts until you turn cron on (counts still show batch sends).
+        <strong> LIVE · cron on</strong> = stage is cronEnabled and has a matching path in vercel.json.
+        <strong> NOT SCHEDULED</strong> = cronEnabled in code but missing from vercel.json — will not fire until fixed.
         <strong> Manual / batch</strong> = how it was sent, not a different email ladder.
-        Large number = logged sends (7d) from <code>academy_email_events</code>.
+        Large number = <strong>delivered</strong> sends (7d) — SMTP accepted
+        (<code>status=sent</code> + <code>delivery_status</code> <code>smtp_accepted</code> or <code>gmail_verified</code>).
         Smaller line = who matches the trigger today (not the same as sent).
         Italic dates with * are inferred from <code>academy_trial_history</code> when no event row exists (REWIND attempt history).
         Manual column = last batch/corrected send per member.
