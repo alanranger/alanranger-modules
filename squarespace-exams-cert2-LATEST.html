@@ -434,7 +434,9 @@
         }
       }
       var headers = await getApiHeaders();
-      var r = await fetch(EXAMS_API_BASE + '/api/exams/whoami', {headers:headers,credentials:'include'});
+      var hasAuth = !!(headers.Authorization || headers['X-Memberstack-Id'] || headers['x-memberstack-id']);
+      if(!hasAuth) return null;
+      var r = await fetch(EXAMS_API_BASE + '/api/exams/whoami', {headers:headers,credentials:'omit'});
       if(!r.ok) return null;
       memberstackIdentity = await r.json();
       applyAuthBadgeState(memberstackIdentity);

@@ -1747,9 +1747,14 @@ async function getExamIdentity() {
       }
     }
     
-    // Fallback: Use server API with token
+    // Fallback: server whoami only with auth evidence (never blind cross-origin call)
     try {
       const headers = await getApiHeaders();
+      const hasAuth = !!(headers.Authorization || headers['X-Memberstack-Id'] || headers['x-memberstack-id']);
+      if (!hasAuth) {
+        updateDebugPanel();
+        return null;
+      }
       const url = `${EXAMS_API_BASE}/api/exams/whoami`;
       
       // Add timeout to fetch
@@ -1758,7 +1763,7 @@ async function getExamIdentity() {
       
       const r = await fetch(url, {
         headers: headers,
-        credentials: "include",
+        credentials: "omit",
         signal: controller.signal
       });
       
