@@ -1,6 +1,6 @@
 # Quick Reference Guide - Academy Assessment System
 
-**Last Updated:** 2026-06-08
+**Last Updated:** 2026-05-31
 
 This guide provides quick reference for AI agents and developers working on the Academy Assessment System.
 
@@ -51,18 +51,19 @@ This guide provides quick reference for AI agents and developers working on the 
   - `top-members.js` - Most active members (used by sortable table)
 - **Styles**: `styles/admin-globals.css`
 
-### Squarespace Snippets (live baseline 2026-06-08)
+### Squarespace Snippets (live baseline 2026-05-31)
 
 | Snippet | Version | Location |
 |---------|---------|----------|
-| `academy-foundation-page-squarespace-snippet-v1.html` | **FP 1.0.43** | Modules Map page — build from `scripts/build-foundation-page-snippet.mjs` |
-| `academy-header-elements-squarespace-snippet-v1.html` | **H 1.4.33** | Code Injection → Header |
-| `academy-do-next-strip-squarespace-snippet-v1.html` | **S 1.3.56** | Dashboard code block 1 |
-| `academy-dashboard-squarespace-snippet-v1.html` | **D 1.3.30** | Dashboard code block 2 |
+| `academy-foundation-page-squarespace-snippet-v1.html` | **FP 1.0.53** | Modules Map page — build from `scripts/build-foundation-page-snippet.mjs` |
+| `academy-header-elements-squarespace-snippet-v1.html` | **H 1.4.38** | Code Injection → Header |
+| `academy-do-next-strip-squarespace-snippet-v1.html` | **S 1.3.74** | Dashboard code block 1 |
+| `academy-dashboard-squarespace-snippet-v1.html` | **D 1.3.45** | Dashboard code block 2 |
 | `academy-bookmark-buttons-squarespace-snippet-v1.html` | **B 1.3.16** | Blog/article template |
 | `academy-login-squarespace-snippet-v1.html` | — | Login page |
+| Footer router (site-wide) | **F v4.3.3** (live) | Footer injection — v4.3.4 optional; pill hidden via H 1.4.36 |
 
-Handover: `docs/handoff/CURSOR-AGENT-HANDOVER.md`, `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`
+Handover: `docs/handoff/CURSOR-AGENT-HANDOVER.md`, `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`, `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`
 
 ### Database Tables
 - `ms_members_cache` - Member cache from Memberstack
@@ -137,7 +138,13 @@ Required in `.env.local`:
 - **EVENT_TRACKING_INTEGRATION.md** - Event tracking guide
 - **NEXT_STEPS.md** - Future enhancements
 
-## 🚀 Recent Changes (2026-01-22)
+## 🚀 Recent Changes (2026-05-31)
+
+1. **Dashboard layout** — header-only sticky (H 1.4.34, S 1.3.73); no phantom 71px top gap (H 1.4.35, S 1.3.74); ACADEMY pill hidden via header CSS (H 1.4.36; footer still v4.3.3)
+2. **Modules Map layout** — top gap fixed with H 1.4.37–1.4.38 + FP 1.0.53; Alan verified live
+3. **Layout architecture doc** — `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`
+
+## Previous Changes (2026-01-22)
 
 1. **"Logged In Right Now" feature** - Real-time count of active members on Members Directory
    - Shows count of members with activity in last 30 minutes

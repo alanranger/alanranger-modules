@@ -19,11 +19,11 @@ Exam and certification system for the Alan Ranger Photography Academy. Students 
 
 All paste snippets live in **`Squarespace Snippets/`** (repo root).
 
-**Current live versions (2026-06-08):** FP 1.0.43 · H 1.4.33 · S 1.3.56 · D 1.3.27 · B 1.3.16  
-**New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md` and `docs/handoff/NEW-CHAT-START-PROMPT.md` (Google Drive mirror: `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).
+**Current live versions (2026-05-31):** FP 1.0.53 · H 1.4.38 · S 1.3.74 · D 1.3.45 · B 1.3.16 · Footer F v4.3.3  
+**New Cursor agent?** Read `docs/handoff/CURSOR-AGENT-HANDOVER.md`, `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`, and `docs/handoff/NEW-CHAT-START-PROMPT.md` (Google Drive mirror: `Claude shared resources/CURSOR-AGENT-HANDOVER-LATEST.md`).
 
-- **`Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html`** - Modules Map page (`/academy/online-photography-course/`) — **FP 1.0.43** (generate via `scripts/build-foundation-page-snippet.mjs`)
-- **`Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init) — **H 1.4.33**
+- **`Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html`** - Modules Map page (`/academy/online-photography-course/`) — **FP 1.0.53** (generate via `scripts/build-foundation-page-snippet.mjs`; pairs with **H 1.4.38** for layout)
+- **`Squarespace Snippets/academy-header-elements-squarespace-snippet-v1.html`** - Header injection (welcome, logo, logout, MS reader init, layout sync) — **H 1.4.38**
 - **`Squarespace Snippets/academy-do-next-strip-squarespace-snippet-v1.html`** - Dashboard "Do These Next" strip (code block 1)
 - **`Squarespace Snippets/squarespace-v2.2.html`** - Exams & Certification page code block
   - Main exam interface with grid view and quiz functionality

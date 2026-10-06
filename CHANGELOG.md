@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-05-31] - Dashboard + Modules Map layout fixes (live verified)
+
+### Fixed
+
+**Dashboard (`/academy/dashboard`)**
+
+| Version | File | Change |
+|---------|------|--------|
+| **H 1.4.34** | `academy-header-elements-squarespace-snippet-v1.html` | Pin-stack: black header banner only stays fixed; Your Journey strip scrolls in page flow |
+| **H 1.4.35** | header | Phantom 71px SQSP nav gap removed (`getSqspNavOffset()` → 0 on Academy pages) |
+| **H 1.4.36** | header | Hide footer-router `#arp-academy-pill` on dashboard (pill overlapped header after offset fix) |
+| **S 1.3.73** | `academy-do-next-strip-squarespace-snippet-v1.html` | Journey strip no longer fixed; removed strip spacer jump |
+| **S 1.3.74** | strip | Dashboard scroll-through fix — SQSP nav offset 0 when Academy chrome hidden |
+
+**Modules Map (`/academy/online-photography-course`)**
+
+| Version | File | Change |
+|---------|------|--------|
+| **H 1.4.37** | header | Skip global header mount on foundation path (page snippet owns placement) |
+| **H 1.4.38** | header | `applyFoundationHeaderLayout()` — layout sync keeps fixed header on `ar-fp-live-shell`; gap CSS |
+| **FP 1.0.53** | `academy-foundation-page-squarespace-snippet-v1.html` | Fixed header flush top; hide orphan page sections; hub padding via `--ar-fp-header-height`; `bootAppShell()` no longer calls `__arAcademyLayout.schedule()`; header relocated to `#siteWrapper` first child |
+
+### Deployment notes
+
+- **Footer router:** site-wide footer left on **v4.3.3** — dashboard pill hidden via header CSS (H 1.4.36). Optional future swap: `academy-stable-routing-ui-suppression-v4.3.4.html` (surgical replace only).
+- **Alan paste (live):** H 1.4.38 → Header injection; FP 1.0.53 → Modules Map page block. Visually confirmed 2026-05-31.
+
+### Docs
+
+- `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md` (new)
+- Updated `FOUNDATION-PAGE-HANDOVER-LATEST.md`, `CURSOR-AGENT-HANDOVER.md`, `QUICK_REFERENCE.md`, `README.md`
+
+---
+
 ## [2026-06-10] - Cert 2 Stages 1–3 (registry, progress API, dashboard tile)
 
 ### Changed (real repo files — see `Docs/CERT2-STAGED-BUILD-FILES.md`)

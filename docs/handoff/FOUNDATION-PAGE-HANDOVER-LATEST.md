@@ -1,9 +1,11 @@
-# Foundation / Modules Map page — handover (FP 1.0.43)
+# Foundation / Modules Map page — handover (FP 1.0.53)
 
-**Last updated:** 2026-06-08  
+**Last updated:** 2026-05-31  
 **Repo:** `G:/Dropbox/alan ranger photography/Website Code/Academy/alanranger-academy-assesment`  
 **Live URL:** `https://www.alanranger.com/academy/online-photography-course/`  
-**Git:** `a96ace3` on `main` (FP 1.0.42 committed); **FP 1.0.43 divider copy is local-only until commit + paste**
+**Live verified:** Alan confirmed layout correct after **H 1.4.38** + **FP 1.0.53** paste (2026-05-31)
+
+**Layout architecture (gap fixes, two-layer header):** `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`
 
 ---
 
@@ -12,7 +14,7 @@
 | What | Path |
 |------|------|
 | **Build script** | `scripts/build-foundation-page-snippet.mjs` |
-| **Generated paste file** | `Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html` |
+| **Generated paste file** | `alanranger-modules/Squarespace Snippets/academy-foundation-page-squarespace-snippet-v1.html` (also `Squarespace Snippets/` at repo root) |
 | **Module paths** | `lib/academy-module-paths.js` |
 | **Module meta (tooltips)** | `lib/academy-module-meta-descriptions.js` (built via `scripts/build-module-meta-descriptions.mjs`) |
 | **Applied + RPS catalog** | `lib/academy-applied-rps-catalog.js` |
@@ -26,13 +28,15 @@ node scripts/build-foundation-page-snippet.mjs
 
 This also runs badge-gate sync into strip + foundation page. Verify first line comment and `data-ar-fp-version` on `#ar-foundation-hub` match the bumped stamp.
 
-**Squarespace paste:** paste `academy-foundation-page-squarespace-snippet-v1.html` into the **Modules Map page** Code Block (not the dashboard blocks). Hard refresh after paste. Git push alone does **not** go live.
+**Pitfall:** build script may lag live snippet during layout hotfixes — verify the generated file's version stamp matches what you paste. Backport layout changes into `build-foundation-page-snippet.mjs` after manual snippet edits.
+
+**Squarespace paste:** paste `academy-foundation-page-squarespace-snippet-v1.html` into the **Modules Map page** Code Block (not the dashboard blocks). Also paste **H 1.4.38+** in site Header injection — FP alone does not fix the top gap. Hard refresh after paste. Git push alone does **not** go live.
 
 ---
 
-## Current version: FP 1.0.43
+## Current version: FP 1.0.53
 
-Verify on live page: `#ar-foundation-hub` → `data-ar-fp-version="FP 1.0.43"`.
+Verify on live page: `#ar-foundation-hub` → `data-ar-fp-version="FP 1.0.53"`.
 
 ### Version history (this arc)
 
@@ -43,6 +47,8 @@ Verify on live page: `#ar-foundation-hub` → `data-ar-fp-version="FP 1.0.43"`.
 | **1.0.41** | One members divider; Exams + Practice Packs + Checklists converted to collapsible map sections |
 | **1.0.42** | All four members-only sections use identical progress labels: `N/total opened` (trial: `Paid only · 0/N opened`) |
 | **1.0.43** | Divider copy: **Paid Members-only modules & resources** / annual membership subline |
+| **1.0.44–1.0.52** | Layout gap iteration (fixed header, SQSP chrome hide, section suppression, bootAppShell changes) |
+| **1.0.53** | **Live layout fix:** `position:fixed` header flush top; `--ar-fp-header-height`; hide orphan `.page-section`; `bootAppShell()` **without** `__arAcademyLayout.schedule()`; `relocateHeaderAboveHub()` → `#siteWrapper` first child; pairs with **H 1.4.37–1.4.38** |
 
 ---
 
@@ -91,12 +97,19 @@ Logic: `formatMapSectionProgress()` + `updateMapSectionProgress(..., trialLocked
 
 ---
 
-## Header (FP-only scope)
+## Header (two-layer — FP + site-wide H)
 
-- Self-contained sticky header in snippet (`#ar-academy-header-container` via fallback template)
-- Title: **Photography Course Modules Map**
-- Elfsight badge: `#ar-fp-header-reviews-badge` (display + link to Google review URL)
-- **Dashboard header snippet (H) is separate** — do not conflate FP header changes with H block unless explicitly requested
+Foundation uses **both** site-wide header injection and this page block:
+
+| Layer | Role |
+|-------|------|
+| **H 1.4.38** (Header injection) | MS reader, welcome/logout wiring, `__arAcademyLayout`, foundation-aware `applyFoundationHeaderLayout()`, skip auto-mount on this path (H 1.4.37+) |
+| **FP 1.0.53** (page block) | Creates/places `#ar-academy-header-container` — title **Photography Course Modules Map**, back link, Elfsight reviews badge |
+
+- Self-contained fallback template: `#ar-fp-header-fallback-template`
+- Elfsight badge: `#ar-fp-header-reviews-badge`
+- Live shell class: `html.ar-fp-live-shell` (set by early boot script)
+- **Do not** call `__arAcademyLayout.schedule()` from `bootAppShell()` — it invokes dashboard `clearFixedLayout()` and breaks fixed header
 
 ---
 
@@ -112,31 +125,24 @@ Logic: `formatMapSectionProgress()` + `updateMapSectionProgress(..., trialLocked
 
 ## Pitfalls
 
-1. **Do not edit** `academy-foundation-page-squarespace-snippet-v1.html` directly — always rebuild from script
+1. **Do not edit** `academy-foundation-page-squarespace-snippet-v1.html` directly for content changes — rebuild from script (layout hotfixes may need build script backport)
 2. **Two divider labels** were merged in 1.0.41 — do not reintroduce “Paid Members Only — Resources” as a separate panel
 3. **Exams stay above** the members divider (Alan confirmed trial-accessible)
-4. **British English**, hyphens not em dashes in visible copy (subtitle may use em dash where Alan specified verbatim)
+4. **British English**, hyphens not em dashes in visible copy (subtitle may use em dash where Alan quoted verbatim)
 5. **Complexity ≤15** per function (Alan’s rule)
 6. **Commit only when Alan asks** unless processing a Claude BUILD question
-
----
-
-## Claude handoff (recent, all processed)
-
-| Question | Response |
-|----------|----------|
-| foundation-reviews-remove-leave-button-move-badge-to-header | FP 1.0.36–38 |
-| foundation-collapsible-sections | FP 1.0.39 |
-| foundation-collapsible-consistency-and-zone-divider | FP 1.0.40 |
-| foundation-paid-zone-consistency-fix + exams addendum | FP 1.0.41 |
-| (Alan feedback) consistent progress labels | FP 1.0.42 |
-| (Alan feedback) divider copy | FP 1.0.43 |
-
-Inbox status at handover: **0 pending**. Run `check claude` to poll.
+7. **Header paste required** — FP 1.0.53 without H 1.4.38 leaves gap/layout sync bugs
 
 ---
 
 ## Verification checklist (post-paste)
+
+**Layout (2026-05-31 fix):**
+
+- [ ] Black banner flush to top — no large empty gap
+- [ ] `data-ar-fp-version="FP 1.0.53"` on `#ar-foundation-hub`
+- [ ] `html.ar-fp-live-shell` on `<html>`
+- [ ] Header computed style: `position: fixed; top: 0`
 
 **Trial account:**
 

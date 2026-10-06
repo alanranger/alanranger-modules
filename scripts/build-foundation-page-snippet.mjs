@@ -51,6 +51,15 @@ const FOUNDATION_SECTIONS = [
     intro: "Composition rules, framing, leading lines, balance and finding your style.",
     start: 25,
     count: 10,
+    // Non-counted lead-in (left of #26).
+    frameworkLeadIn: {
+      title: "Composition Framework",
+      subtitle:
+        "SEE → FEEL → TECHNIQUE — How Intention, Restraint, Observation & Judgement connect the 10 lessons",
+      tipDesc:
+        "How Intention, Restraint, Observation & Judgement connect the 10 composition lessons.",
+      path: "/blog-on-photography/photography-composition-framework",
+    },
   },
   {
     icon: "◉",
@@ -143,6 +152,36 @@ function tipAttr(titleText, tileTag, modulePath) {
     return ` data-fp-tip-head="${esc(head)}" data-fp-tip-desc="${esc(desc)}" title="${esc(full)}"`;
   }
   return ` data-fp-tip-head="${esc(head)}" title="${esc(head)}"`;
+}
+
+function compositionFrameworkButton(lead) {
+  if (!lead) return "";
+  const title = lead.title || "Composition Framework";
+  const subtitle = lead.subtitle || "";
+  const tipDesc = lead.tipDesc || subtitle;
+  const path = String(lead.path || "").trim();
+  const tileTag = "#00";
+  const tip = tipAttr(title, tileTag, path || null);
+  const tipWithDesc = tip.includes("data-fp-tip-desc")
+    ? tip
+    : ` data-fp-tip-head="${esc(title + " · " + tileTag)}" data-fp-tip-desc="${esc(tipDesc)}" title="${esc(title + " · " + tileTag + "\n" + tipDesc)}"`;
+  // No data-fp-tracked — excluded from section/course open counts (still 10 / 60).
+  if (path) {
+    return (
+      `<a href="${SITE}${path}" class="ar-fp-mod-btn ar-fp-mod-btn--framework" data-fp-exclude-progress="1" data-fp-path="${esc(path)}"${tipWithDesc}>` +
+      `<span class="ar-fp-mod-btn__cnt">0</span>` +
+      `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(title)}</span>` +
+      (subtitle ? `<span class="ar-fp-mod-btn__sub">${esc(subtitle)}</span>` : "") +
+      `</span><span class="ar-fp-mod-btn__tile">${tileTag}</span></a>`
+    );
+  }
+  return (
+    `<span class="ar-fp-mod-btn ar-fp-mod-btn--framework ar-fp-mod-btn--soon" data-fp-exclude-progress="1"${tipWithDesc} role="note">` +
+    `<span class="ar-fp-mod-btn__cnt">0</span>` +
+    `<span class="ar-fp-mod-btn__body"><span class="ar-fp-mod-btn__ttl">${esc(title)}</span>` +
+    (subtitle ? `<span class="ar-fp-mod-btn__sub">${esc(subtitle)}</span>` : "") +
+    `</span><span class="ar-fp-mod-btn__tile">${tileTag}</span></span>`
+  );
 }
 
 function foundationButtons(start, count) {
@@ -354,7 +393,9 @@ function foundationSectionPanel(sec, idx) {
   if (sec.callout) {
     inner += `<div class="ar-fp-callout"><span>⚲</span> <a href="${sec.callout.href}">${esc(sec.callout.text)}</a></div>`;
   }
-  inner += `<div class="ar-fp-mod-grid">${foundationButtons(sec.start, sec.count)}</div>`;
+  const lead = compositionFrameworkButton(sec.frameworkLeadIn);
+  inner += `<div class="ar-fp-mod-grid">${lead}${foundationButtons(sec.start, sec.count)}</div>`;
+  // Section total stays sec.count (10) — framework lead-in is excluded from progress.
   return mapSectionPanelHtml("foundation-" + idx, sec.icon, sec.title, sec.count, inner, idx === 0);
 }
 
@@ -541,21 +582,29 @@ const FP_SQSP_WRAPPER_SELECTORS = [
 
 const FP_EARLY_BOOT = `<script>(function(){try{var p=(location.pathname||"").replace(/\\/+$/, "")||"/";var isFp=p===("/academy/online-photography-course")||p.indexOf("online-photography-course")!==-1;if(!isFp)return;var ed=false;try{if(window.self!==window.top)ed=true;if(!ed&&location.pathname.indexOf("/config/")===0)ed=true;if(!ed&&location.search.indexOf("format=page-content")!==-1)ed=true;if(!ed&&document.body&&document.body.classList.contains("sqs-edit-mode-active"))ed=true;if(!ed&&document.documentElement.classList.contains("sqs-edit-mode-active"))ed=true;}catch(e){}var r=document.documentElement;r.classList.add("ar-academy","ar-fp-app-shell");if(ed){r.classList.add("ar-fp-edit-mode");var h=document.getElementById("ar-foundation-hub");if(h){h.hidden=false;h.removeAttribute("aria-hidden");}}else{r.classList.add("ar-fp-live-shell");}}catch(e){}})();</script>`;
 
-const snippet = `<!-- FP 1.0.50 — Foundation course map (/academy/online-photography-course) -->
+const snippet = `<!-- FP 1.0.56 — Foundation course map (/academy/online-photography-course)
+     FP 1.0.56: Applied Learning +1 — How to Photograph a Solar Eclipse UK under Night/Astro (A20); catalog total 40→41.
+     FP 1.0.55: Composition Framework #00 linked to photography-composition-framework (still excluded from 10/60 progress).
+     FP 1.0.54: Composition Framework tile #00 (gold accent) before #26; excluded from 10/60 progress.
+     FP 1.0.53: Live layout backport — fixed header, --ar-fp-header-height, hide orphan page-sections, bootAppShell without layout.schedule().
+-->
 ${FP_EARLY_BOOT}
 ${FP_HEADER_FALLBACK}
-<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.50" hidden aria-hidden="true">
+<div id="ar-foundation-hub" class="ar-fp-wrap" data-ar-fp-page="1" data-ar-fp-version="FP 1.0.56" hidden aria-hidden="true">
 <style>
-html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px}
+html.ar-fp-live-shell{--ar-bg:#0f1419;--ar-sqsp-nav-offset:0px;--ar-fp-header-height:96px}
 ${FP_SQSP_WRAPPER_SELECTORS}{background:var(--ar-bg)!important;background-color:var(--ar-bg)!important}
 html.ar-fp-live-shell,html.ar-fp-live-shell body{color:#e2e8f0}
+html.ar-fp-live-shell #siteWrapper,html.ar-fp-live-shell #page,html.ar-fp-live-shell #sections,html.ar-fp-live-shell .Main-content,html.ar-fp-live-shell main.Main{padding-top:0!important;margin-top:0!important}
+html.ar-fp-live-shell #header,html.ar-fp-live-shell header.Header,html.ar-fp-live-shell .Mobile,html.ar-fp-live-shell .Mobile-bar,html.ar-fp-live-shell .Mobile-bar--top,html.ar-fp-live-shell .Mobile-bar--bottom,html.ar-fp-live-shell .Mobile-bar-branding,html.ar-fp-live-shell .Header-branding,html.ar-fp-live-shell .Header-nav--primary,html.ar-fp-live-shell .Header-nav--secondary,html.ar-fp-live-shell .Header--bottom,html.ar-fp-live-shell .sqs-mobile-info-bar,html.ar-fp-live-shell .header-announcement-bar-wrapper,html.ar-fp-live-shell .sqs-announcement-bar{display:none!important;height:0!important;min-height:0!important;overflow:hidden!important;visibility:hidden!important;margin:0!important;padding:0!important;pointer-events:none!important}
+html.ar-fp-live-shell #sections>.page-section:not(:has(#ar-foundation-hub)),html.ar-fp-live-shell #page .page-section:not(:has(#ar-foundation-hub)){display:none!important;height:0!important;min-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
 html.ar-fp-live-shell #header,html.ar-fp-live-shell header.Header,html.ar-fp-live-shell .Mobile-bar,html.ar-fp-live-shell .Header-nav--primary,html.ar-fp-live-shell .Header-nav--secondary,html.ar-fp-live-shell .Header--bottom,html.ar-fp-live-shell .sqs-mobile-info-bar{display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;margin:0!important;padding:0!important}
 html.ar-fp-live-shell .sqs-block-content{background:transparent!important}
 html.ar-fp-live-shell .page-section,html.ar-fp-live-shell .sqs-block{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important;min-height:0!important}
 html.ar-fp-live-shell .page-section .section-border,html.ar-fp-live-shell .page-section .section-background-content,html.ar-fp-live-shell .content-wrapper{padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important}
 html.ar-fp-live-shell .page-section:has(#ar-foundation-hub){padding-top:0!important;margin-top:0!important;min-height:0!important;border-top:none!important}
 html.ar-fp-live-shell .page-section:has(#ar-foundation-hub) .section-background{opacity:0!important;height:0!important;min-height:0!important}
-html.ar-fp-live-shell #ar-academy-header-container{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;column-gap:20px;width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;padding:18px 32px;background:#000!important;color:#fff;position:sticky!important;top:0!important;left:0;right:0;z-index:998!important;min-height:96px;box-sizing:border-box;margin-bottom:0!important;border:none!important;box-shadow:0 2px 12px rgba(0,0,0,.45)!important;overflow:visible!important}
+html.ar-fp-live-shell #ar-academy-header-container{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;column-gap:20px;width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;padding:18px 32px;background:#000!important;color:#fff;position:fixed!important;top:0!important;left:0;right:0;z-index:998!important;min-height:96px;box-sizing:border-box;margin-bottom:0!important;border:none!important;box-shadow:0 2px 12px rgba(0,0,0,.45)!important;overflow:visible!important}
 html.ar-fp-live-shell #ar-academy-header-welcome{grid-column:1;grid-row:1;justify-self:start;align-self:center;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px 18px;min-width:0;z-index:2;position:relative;overflow:visible}
 html.ar-fp-live-shell #ar-academy-header-welcome-copy{flex:0 1 auto;min-width:0}
 html.ar-fp-live-shell .ar-fp-header-reviews-badge{flex:0 1 auto;display:flex;align-items:center;min-width:0;max-width:240px;min-height:52px;height:auto;overflow:visible;pointer-events:auto;position:relative;z-index:3}
@@ -574,7 +623,7 @@ html.ar-fp-live-shell #ar-academy-header-brand-logo{width:130px;height:auto;disp
 html.ar-fp-live-shell #ar-academy-header-logout-btn{background:transparent;border:1px solid #fff;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
 html.ar-fp-edit-mode #ar-foundation-hub[hidden]{display:block!important;visibility:visible!important}
 html.ar-fp-edit-mode #ar-foundation-hub{width:auto!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;min-height:0!important}
-#ar-foundation-hub{--ar-bg:#0f1419;--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);max-width:none;margin-top:0!important;padding:12px 12px 48px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:radial-gradient(1200px 600px at 20% 0%,rgba(229,114,0,.10),transparent 60%),radial-gradient(900px 500px at 85% 20%,rgba(245,158,11,.10),transparent 55%),var(--ar-bg);min-height:calc(100vh - var(--ar-sqsp-nav-offset,0px))}
+#ar-foundation-hub{--ar-bg:#0f1419;--ar-fp-orange:#E57200;--ar-fp-green:#166534;--ar-fp-gold:#c79a3b;--ar-fp-gold-l:#e6c067;--ar-fp-black:#0e0e0e;--ar-fp-panel:#161310;--ar-fp-border:#3a3328;--ar-fp-grey:#b8b8b8;--ar-fp-muted:#888;font-family:"proxima-nova","Helvetica Neue",Arial,sans-serif;line-height:1.5;color:#fff;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);max-width:none;margin-top:0!important;padding:calc(var(--ar-fp-header-height,96px) + 12px) 12px 48px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:radial-gradient(1200px 600px at 20% 0%,rgba(229,114,0,.10),transparent 60%),radial-gradient(900px 500px at 85% 20%,rgba(245,158,11,.10),transparent 55%),var(--ar-bg);min-height:calc(100vh - var(--ar-fp-header-height,96px))}
 #ar-foundation-hub>.ar-fp-panel,#ar-foundation-hub>.ar-fp-divider,#ar-foundation-hub>.ar-fp-zone-divider,#ar-foundation-hub>nav{max-width:1100px;width:100%;margin-left:auto;margin-right:auto}
 #ar-foundation-hub[hidden]{display:none!important}
 #ar-foundation-hub *,#ar-foundation-hub *::before,#ar-foundation-hub *::after{box-sizing:border-box}
@@ -641,7 +690,12 @@ html.ar-fp-edit-mode #ar-foundation-hub{width:auto!important;max-width:100%!impo
 .ar-fp-mod-btn__cnt{flex-shrink:0;width:30px;height:30px;border-radius:7px;background:#0e0e0e;border:1px solid var(--ar-fp-orange);color:var(--ar-fp-orange);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .ar-fp-mod-btn__body{flex:1;min-width:0}
 .ar-fp-mod-btn__ttl{color:#e8e8e8;font-size:13px;line-height:1.3}
+.ar-fp-mod-btn__sub{display:block;color:var(--ar-fp-grey);font-size:11px;line-height:1.4;margin-top:3px}
 .ar-fp-mod-btn__tile{flex-shrink:0;color:var(--ar-fp-gold-l);font-size:15px;font-weight:800;background:#1a1610;border:1px solid var(--ar-fp-gold);border-radius:6px;padding:4px 9px;letter-spacing:.03em;line-height:1}
+.ar-fp-mod-btn--framework{grid-column:1/-1;border-color:var(--ar-fp-gold);background:#1a1610;gap:12px}
+.ar-fp-mod-btn--framework:hover{border-color:var(--ar-fp-gold-l)}
+.ar-fp-mod-btn--framework .ar-fp-mod-btn__cnt{border-color:var(--ar-fp-gold);color:var(--ar-fp-gold-l);background:#0e0e0e;min-width:34px;width:auto;padding:0 8px}
+.ar-fp-mod-btn--framework .ar-fp-mod-btn__ttl{color:var(--ar-fp-gold-l);font-weight:700}
 .ar-fp-mod-btn.is-opened{background:#142819;border-color:#2f6b46}
 .ar-fp-mod-btn.is-opened:hover{border-color:#4d9468}
 .ar-fp-mod-btn.is-opened .ar-fp-mod-btn__cnt{background:#1f7a45;border-color:#7fd0a0;color:#fff}
@@ -1444,11 +1498,31 @@ ${rpsZoneHtml}
   function ensureFoundationHeaderSticky(){
     var h = document.getElementById("ar-academy-header-container");
     if (!h) return;
-    h.style.setProperty("position", "sticky", "important");
+    h.style.setProperty("position", "fixed", "important");
     h.style.setProperty("top", "0", "important");
+    h.style.setProperty("left", "0", "important");
+    h.style.setProperty("right", "0", "important");
+    h.style.setProperty("width", "100%", "important");
     h.style.setProperty("z-index", "998", "important");
+    var headerH = Math.ceil(h.offsetHeight) || 96;
+    document.documentElement.style.setProperty("--ar-fp-header-height", headerH + "px");
   }
   function collapseFoundationLayoutGap(){
+    ["#siteWrapper", "#page", "#sections", ".Main-content", "main.Main"].forEach(function(sel){
+      var node = document.querySelector(sel);
+      if (!node) return;
+      node.style.setProperty("padding-top", "0", "important");
+      node.style.setProperty("margin-top", "0", "important");
+    });
+    document.querySelectorAll("#sections > .page-section, #page .page-section").forEach(function(sec){
+      if (sec.querySelector("#ar-foundation-hub")) return;
+      sec.style.setProperty("display", "none", "important");
+      sec.style.setProperty("height", "0", "important");
+      sec.style.setProperty("min-height", "0", "important");
+      sec.style.setProperty("overflow", "hidden", "important");
+      sec.style.setProperty("margin", "0", "important");
+      sec.style.setProperty("padding", "0", "important");
+    });
     var hub = document.getElementById("ar-foundation-hub");
     if (!hub) return;
     var sec = hub.closest(".page-section");
@@ -1457,14 +1531,6 @@ ${rpsZoneHtml}
       sec.style.setProperty("padding-bottom", "0", "important");
       sec.style.setProperty("margin-top", "0", "important");
       sec.style.setProperty("min-height", "0", "important");
-      var sib = sec.previousElementSibling;
-      while (sib) {
-        if (sib.classList && sib.classList.contains("page-section") && !sib.querySelector("#ar-foundation-hub")) {
-          var empty = !sib.querySelector("img,video,iframe,.sqs-block-html,.sqs-block-code,.sqs-block-form,.Header") && (sib.textContent || "").trim().length < 2;
-          if (empty) sib.style.setProperty("display", "none", "important");
-        }
-        sib = sib.previousElementSibling;
-      }
     }
     var block = hub.closest(".sqs-block");
     if (block) {
@@ -1490,7 +1556,6 @@ ${rpsZoneHtml}
       applyFoundationHeaderCopy();
       ensureFoundationHeaderBackLink();
       ensureFoundationHeaderSticky();
-      if (window.__arAcademyLayout && window.__arAcademyLayout.schedule) window.__arAcademyLayout.schedule();
       relocateHeaderAboveHub();
       collapseFoundationLayoutGap();
       applyFoundationHeaderCopy();

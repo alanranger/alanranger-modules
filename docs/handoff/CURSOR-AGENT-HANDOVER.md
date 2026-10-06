@@ -1,13 +1,13 @@
 # Cursor Agent Handover — Academy (Alan Ranger Photography)
 
-**Last updated:** 2026-06-08  
+**Last updated:** 2026-05-31  
 **Repo:** `G:/Dropbox/alan ranger photography/Website Code/Academy/alanranger-academy-assesment`  
 **GitHub remote:** `https://github.com/alanranger/alanranger-modules.git` (branch `main`)  
-**Latest commit:** `a96ace3` — Foundation FP 1.0.42 (members zone + collapsibles + progress labels)  
-**Local uncommitted:** FP 1.0.43 divider copy + handover doc updates — run `git status` first  
+**Live snippets (2026-05-31):** H 1.4.38 · S 1.3.74 · D 1.3.45 · FP 1.0.53 · B 1.3.16 · Footer F v4.3.3  
 
 Read this file **first**. Then read:
 
+- **`docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`** — dashboard + Modules Map layout fixes (**required for layout work**)
 - **`docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`** — Modules Map page (FP) — **required for FP work**
 - **`docs/handoff/NEW-CHAT-START-PROMPT.md`** — copy-paste block for a fresh Cursor chat
 - Google Drive `_CLAUDE-CURSOR-WORKFLOW-2026-06-05.md` if the Claude loop is unclear
@@ -90,19 +90,28 @@ Squarespace-hosted **Academy member dashboard**, **Modules Map (Foundation) page
 **Foundation page:** edit `scripts/build-foundation-page-snippet.mjs` only, then `node scripts/build-foundation-page-snippet.mjs`. See `docs/handoff/FOUNDATION-PAGE-HANDOVER-LATEST.md`.
 
 **Live version stamp** (dashboard): check `#ar-academy-header-snippet-version` under logo — must match pasted H/S/D/B.  
-**Foundation:** check `#ar-foundation-hub` → `data-ar-fp-version` (e.g. `FP 1.0.43`).
+**Foundation:** check `#ar-foundation-hub` → `data-ar-fp-version` (e.g. `FP 1.0.53`).
 
-### Current repo versions (2026-06-08 — verify stamp matches after paste)
+### Current repo versions (2026-05-31 — live verified after paste)
 
 | Block | Version | Notes |
 |-------|---------|-------|
-| Foundation FP | **1.0.43** | Modules Map; collapsibles + one members divider; **1.0.43 may be uncommitted** |
-| Header H | **1.4.33** | Stamp sync with D 1.3.27 layout |
-| Strip S | **1.3.56** | Journey strip column align |
-| Dashboard D | **1.3.27** | Catalog gauge / stats under progress |
+| Foundation FP | **1.0.53** | Modules Map layout gap fix; pairs with H 1.4.38 |
+| Header H | **1.4.38** | Dashboard pin-stack + foundation layout sync + pill hide |
+| Strip S | **1.3.74** | Journey strip in flow; SQSP nav offset 0 |
+| Dashboard D | **1.3.45** | Reference & Live Feedback tile (unchanged for layout arc) |
 | Bookmark B | **1.3.16** | "Browse the Modules" label |
+| Footer F | **v4.3.3** (live) | Pill hidden via H CSS; v4.3.4 extract optional |
 
 *(Header HTML stamp text may lag comment header — always bump **both** when releasing.)*
+
+### Layout fixes (2026-05-31 — live verified)
+
+See **`docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`** for full detail.
+
+- **Dashboard:** no phantom 71px gap; header-only sticky; `#arp-academy-pill` hidden (footer still v4.3.3)
+- **Modules Map:** black banner flush top; `html.ar-fp-live-shell`; FP must not call `__arAcademyLayout.schedule()` from `bootAppShell()`
+- **Paste pair for foundation gap:** H 1.4.38 + FP 1.0.53
 
 ---
 
@@ -156,9 +165,10 @@ sessionStorage['ar-auth-trace']            // persistent redirect diagnosis log
 
 | Task | Status |
 |------|--------|
-| Paste **FP 1.0.43** live | Alan action — confirm `data-ar-fp-version` on live page |
-| Commit FP 1.0.43 + handover docs | Pending unless Alan asks |
-| Visual verify trial vs paid progress labels | Post-paste checklist in `FOUNDATION-PAGE-HANDOVER-LATEST.md` |
+| Paste **FP 1.0.53** + **H 1.4.38** live | **Done** — Alan verified visually 2026-05-31 |
+| Layout architecture doc | `docs/handoff/ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md` |
+| Backport FP 1.0.53 layout into `build-foundation-page-snippet.mjs` | Check if build script still stamps 1.0.50 — backport before next FP content change |
+| Commit layout + handover docs | Pending unless Alan asks |
 
 ### Dashboard (from earlier arc)
 
@@ -259,6 +269,7 @@ alanranger-academy-assesment/
 │   └── academy-applied-rps-catalog.js
 ├── docs/handoff/
 │   ├── CURSOR-AGENT-HANDOVER.md                            # THIS FILE
+│   ├── ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md           # Dashboard + FP layout fixes
 │   ├── FOUNDATION-PAGE-HANDOVER-LATEST.md
 │   └── NEW-CHAT-START-PROMPT.md
 ```
@@ -307,8 +318,9 @@ bdb74f2 Rename Foundation entry CTAs to Browse the Modules; trial-aware FAQ
 ## 13. First actions for a new Cursor agent
 
 1. Read **`docs/handoff/NEW-CHAT-START-PROMPT.md`** (or Alan pastes that block into chat)
-2. Read **`FOUNDATION-PAGE-HANDOVER-LATEST.md`** if touching FP
-3. Run `git status` — confirm FP 1.0.43 commit state
+2. Read **`ACADEMY-LAYOUT-ARCHITECTURE-2026-05-31.md`** if touching dashboard/FP layout
+3. Read **`FOUNDATION-PAGE-HANDOVER-LATEST.md`** if touching FP content
+4. Run `git status` — confirm commit state
 
 When Alan says **"check claude"**:
 
