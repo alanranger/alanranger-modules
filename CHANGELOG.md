@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-10-12] - Hourly refresh: skip unchanged module_open upserts
+
+**Problem:** `/api/admin/refresh` (hourly cron) re-upserted every Memberstack `module_open` for every member (~1,685 Supabase API calls/hour → ~1.4M/month). Admin/member dashboards only need new or newer opens; live clicks already write via `track-tile-open`.
+
+**Fix:** Load existing `academy_events` for the page of members, upsert only when the path is missing or Memberstack `lastAt` is newer. Still upserts `ms_members_cache` every hour. Response adds `events_skipped`.
+
+**Files:** `api/admin/refresh.js`, `lib/refreshModuleOpenDiff.js`, `tests/refresh-module-open-diff.test.js`, mirrored under `alanranger-modules/`.
+
+---
+
 ## [2026-05-31] - Dashboard + Modules Map layout fixes (live verified)
 
 ### Fixed

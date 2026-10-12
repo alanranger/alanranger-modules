@@ -6,6 +6,7 @@ const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
 const { createExampleQuestionsForMember } = require("../academy/qa/create-example-questions");
 const { getTrialConfig, trialLengthForStart } = require("../../lib/academyTrialConfig");
+const { shouldUpsertModuleOpen, moduleOpenKey } = require("../../lib/refreshModuleOpenDiff");
 
 const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
 const PAGE_SIZE = 100;
@@ -157,9 +158,9 @@ function buildPlanSummary(fullMemberData, existingMember, trialConfig) {
   return { planSummary, memberCreatedAt };
 }
 
-async function syncOneMember(ctx, m, existingById) {
+async function syncOneMember(ctx, m, existingById, existingOpensByKey) {
   const memberId = m?.id;
-  if (!memberId) return { membersUpserted: 0, eventsUpserted: 0 };
+  if (!memberId) return { membersUpserted: 0, eventsUpserted: 0, eventsSkipped: 0 };
 
   let memberResponse = null;
   let fullMemberData = null;
@@ -200,6 +201,7 @@ async function syncOneMember(ctx, m, existingById) {
 
   let membersUpserted = 0;
   let eventsUpserted = 0;
+  let eventsSkipped = 0;
 
   if (!upsertMemberErr) {
     membersUpserted = 1;
@@ -216,12 +218,19 @@ async function syncOneMember(ctx, m, existingById) {
   const j = fullMemberData?.json || memberResponse?.json || memberResponse?.data?.json || {};
   const opened = j?.arAcademy?.modules?.opened || null;
   if (!opened || typeof opened !== "object") {
-    return { membersUpserted, eventsUpserted };
+    return { membersUpserted, eventsUpserted, eventsSkipped };
   }
 
   for (const [path, md] of Object.entries(opened)) {
     if (!path || !md) continue;
-    const createdAt = safeIso(md.lastAt) || safeIso(md.at) || new Date().toISOString();
+    const firstAt = safeIso(md.at);
+    const lastAt = safeIso(md.lastAt) || firstAt;
+    const existing = existingOpensByKey?.get(moduleOpenKey(memberId, path)) || null;
+    if (!shouldUpsertModuleOpen(existing, lastAt)) {
+      eventsSkipped += 1;
+      continue;
+    }
+    const createdAt = lastAt || firstAt || new Date().toISOString();
     const { error: upsertEventErr } = await ctx.supabase
       .from("academy_events")
       .upsert(
@@ -234,8 +243,8 @@ async function syncOneMember(ctx, m, existingById) {
           category: md.cat || md.category || null,
           meta: {
             source: "memberstack_sync",
-            first_opened_at: safeIso(md.at) || null,
-            last_opened_at: safeIso(md.lastAt) || safeIso(md.at) || null,
+            first_opened_at: firstAt || null,
+            last_opened_at: lastAt || null,
           },
           created_at: createdAt,
         }],
@@ -244,7 +253,7 @@ async function syncOneMember(ctx, m, existingById) {
     if (!upsertEventErr) eventsUpserted += 1;
   }
 
-  return { membersUpserted, eventsUpserted };
+  return { membersUpserted, eventsUpserted, eventsSkipped };
 }
 
 module.exports = async (req, res) => {
@@ -285,6 +294,7 @@ module.exports = async (req, res) => {
     let membersFetched = 0;
     let membersUpserted = 0;
     let eventsUpserted = 0;
+    let eventsSkipped = 0;
     let after = undefined;
 
     while (true) {
@@ -303,6 +313,7 @@ module.exports = async (req, res) => {
       const ids = members.map((m) => m.id).filter(Boolean);
 
       const existingById = new Map();
+      const existingOpensByKey = new Map();
       if (ids.length) {
         const { data: existingRows } = await supabase
           .from("ms_members_cache")
@@ -311,15 +322,26 @@ module.exports = async (req, res) => {
         for (const row of existingRows || []) {
           existingById.set(row.member_id, row);
         }
+
+        const { data: openRows } = await supabase
+          .from("academy_events")
+          .select("member_id, path, created_at, meta")
+          .eq("event_type", "module_open")
+          .in("member_id", ids);
+        for (const row of openRows || []) {
+          if (!row?.member_id || !row?.path) continue;
+          existingOpensByKey.set(moduleOpenKey(row.member_id, row.path), row);
+        }
       }
 
       const pageResults = await mapPool(members, CONCURRENCY, (m) =>
-        syncOneMember(ctx, m, existingById)
+        syncOneMember(ctx, m, existingById, existingOpensByKey)
       );
       for (const r of pageResults) {
         if (!r) continue;
         membersUpserted += r.membersUpserted || 0;
         eventsUpserted += r.eventsUpserted || 0;
+        eventsSkipped += r.eventsSkipped || 0;
       }
 
       if (members.length < PAGE_SIZE) break;
@@ -332,6 +354,7 @@ module.exports = async (req, res) => {
       members_fetched: membersFetched,
       members_upserted: membersUpserted,
       events_upserted: eventsUpserted,
+      events_skipped: eventsSkipped,
     });
   } catch (err) {
     console.error("[refresh-api-dir] failed:", err?.message || err);
