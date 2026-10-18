@@ -687,8 +687,8 @@ module.exports = async (req, res) => {
     const conversionsCountAllTime = hasTrialHistory
       ? trialHistoryConversionsAllTime.length
       : allConversions.length;
-    const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0 
-      ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 100 * 10) / 10
+    const trialToAnnualConversionRateAllTime = allTrialsEndedCount > 0
+      ? Math.round((conversionsCountAllTime / allTrialsEndedCount) * 10000) / 100
       : null;
 
     // 30d conversion rate: conversions that happened in last 30d / trials that were active during last 30d

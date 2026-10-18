@@ -3,6 +3,15 @@ import Link from 'next/link';
 import BadgeLevelCell from '../../../components/admin/BadgeLevelCell';
 import SortableTable from '../../../components/admin/SortableTable';
 
+/** RAG vs Academy 3% trial→annual target (opportunity tile). Red below target, amber on/near, green clear of 5%. */
+function trialConversionRagColor(ratePct) {
+  if (ratePct == null || Number.isNaN(Number(ratePct))) return null;
+  const n = Number(ratePct);
+  if (n < 3) return '#ef4444';
+  if (n < 5) return '#f59e0b';
+  return '#22c55e';
+}
+
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -714,7 +723,7 @@ export default function AdminDashboard() {
           <Link
             href="/academy/admin/members?filter=trial_conversions_all_time"
             className="ar-admin-kpi-tile"
-            title="All-time trial→annual conversions and rate: (conversions) / (trials ended) × 100. Direct annual (no trial) is excluded."
+            title="All-time trial→annual: count and rate = conversions ÷ trials ended. RAG vs 3% target (same as opportunity tile): red &lt;3%, amber 3–5%, green ≥5%. Direct annual (no trial) excluded."
             style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
@@ -726,8 +735,13 @@ export default function AdminDashboard() {
               {kpis?.bi?.trialToAnnualConversionRateAllTime !== null
                 && kpis?.bi?.trialToAnnualConversionRateAllTime !== undefined
                 ? (
-                  <span style={{ fontSize: '0.55em', fontWeight: 600, marginLeft: '8px', opacity: 0.9 }}>
-                    {kpis.bi.trialToAnnualConversionRateAllTime}%
+                  <span style={{
+                    fontSize: '0.78em',
+                    fontWeight: 700,
+                    marginLeft: '10px',
+                    color: trialConversionRagColor(kpis.bi.trialToAnnualConversionRateAllTime) || undefined,
+                  }}>
+                    {Number(kpis.bi.trialToAnnualConversionRateAllTime).toFixed(2)}%
                   </span>
                 ) : null}
             </div>
