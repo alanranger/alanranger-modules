@@ -714,15 +714,26 @@ export default function AdminDashboard() {
           <Link
             href="/academy/admin/members?filter=trial_conversions_all_time"
             className="ar-admin-kpi-tile"
-            title="Total number of members who started a trial and later converted to annual plan. All-time count."
+            title="All-time trial→annual conversions and rate: (conversions) / (trials ended) × 100. Direct annual (no trial) is excluded."
             style={{ cursor: 'pointer' }}
           >
             <div className="ar-admin-kpi-label">
               Conversions — Trial → Annual
               <span style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.7 }}>ⓘ</span>
             </div>
-            <div className="ar-admin-kpi-value">{kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}</div>
-            <div className="ar-admin-kpi-period">All-time</div>
+            <div className="ar-admin-kpi-value">
+              {kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}
+              {kpis?.bi?.trialToAnnualConversionRateAllTime !== null
+                && kpis?.bi?.trialToAnnualConversionRateAllTime !== undefined
+                ? (
+                  <span style={{ fontSize: '0.55em', fontWeight: 600, marginLeft: '8px', opacity: 0.9 }}>
+                    {kpis.bi.trialToAnnualConversionRateAllTime}%
+                  </span>
+                ) : null}
+            </div>
+            <div className="ar-admin-kpi-period">
+              {kpis?.bi?.trialToAnnualConversionsAllTime ?? 0}/{kpis?.bi?.trialsEndedAllTime ?? 0} ended · All-time
+            </div>
           </Link>
           <Link
             href="/academy/admin/members?filter=trial_dropoff_30d"
