@@ -1,16 +1,37 @@
 // api/admin/refresh.js
 // Sync Memberstack -> Supabase (member cache + module_open events)
-// Tuned to finish under Vercel limits: longer maxDuration + concurrent member sync.
+// Tuned for Vercel maxDuration + Memberstack rate limits.
 
 const memberstackAdmin = require("@memberstack/admin");
 const { createClient } = require("@supabase/supabase-js");
 const { createExampleQuestionsForMember } = require("../academy/qa/create-example-questions");
 const { getTrialConfig, trialLengthForStart } = require("../../lib/academyTrialConfig");
 const { shouldUpsertModuleOpen, moduleOpenKey } = require("../../lib/refreshModuleOpenDiff");
+const { formatErr, isRateLimited } = require("../../lib/refreshErrors");
 
 const TRIAL_PLAN_ID = "pln_academy-trial-30-days--wb7v0hbh";
 const PAGE_SIZE = 100;
-const CONCURRENCY = 8;
+// Keep low — Memberstack rejects bursts with a thrown string (no .message).
+const CONCURRENCY = 2;
+const PAGE_PAUSE_MS = 400;
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function withMsRetry(fn, label) {
+  let last;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      if (!isRateLimited(err) || attempt === 3) break;
+      await sleep(1000 * 2 ** attempt);
+    }
+  }
+  throw new Error(`${label}: ${formatErr(last)}`);
+}
 
 function safeIso(d) {
   try {
@@ -165,7 +186,10 @@ async function syncOneMember(ctx, m, existingById, existingOpensByKey) {
   let memberResponse = null;
   let fullMemberData = null;
   try {
-    memberResponse = await ctx.memberstack.members.retrieve({ id: memberId });
+    memberResponse = await withMsRetry(
+      () => ctx.memberstack.members.retrieve({ id: memberId }),
+      `retrieve ${memberId}`
+    );
     fullMemberData = memberResponse?.data || memberResponse;
   } catch {
     fullMemberData = m;
@@ -205,12 +229,11 @@ async function syncOneMember(ctx, m, existingById, existingOpensByKey) {
 
   if (!upsertMemberErr) {
     membersUpserted = 1;
-    // Only seed example Qs for brand-new cache rows (was N queries every refresh).
     if (isNewMember) {
       try {
         await createExampleQuestionsForMember(memberId, email, name);
       } catch (exampleErr) {
-        console.error(`[refresh-api] example questions failed for ${memberId}:`, exampleErr?.message || exampleErr);
+        console.error(`[refresh-api] example questions failed for ${memberId}:`, formatErr(exampleErr));
       }
     }
   }
@@ -272,7 +295,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Vercel Cron uses GET + Authorization: Bearer CRON_SECRET
     if (req.method === "GET") {
       const cronSecret = process.env.CRON_SECRET;
       const auth = String(req.headers.authorization || "");
@@ -281,6 +303,13 @@ module.exports = async (req, res) => {
       if (cronSecret && provided !== cronSecret) {
         return res.status(401).json({ error: "Unauthorized" });
       }
+    }
+
+    if (!process.env.MEMBERSTACK_SECRET_KEY) {
+      throw new Error("Missing MEMBERSTACK_SECRET_KEY");
+    }
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
     }
 
     const memberstack = memberstackAdmin.init(process.env.MEMBERSTACK_SECRET_KEY);
@@ -298,16 +327,17 @@ module.exports = async (req, res) => {
     let after = undefined;
 
     while (true) {
-      const { data: members, error: listMembersError } = await memberstack.members.list({
-        limit: PAGE_SIZE,
-        ...(after ? { after } : {}),
-        order: "ASC",
-      });
+      const page = await withMsRetry(
+        () => memberstack.members.list({
+          limit: PAGE_SIZE,
+          ...(after != null ? { after } : {}),
+          order: "ASC",
+        }),
+        "Memberstack members.list"
+      );
 
-      if (listMembersError) {
-        throw new Error(`Failed to fetch members list: ${listMembersError.message || "Unknown error"}`);
-      }
-      if (!members || members.length === 0) break;
+      const members = Array.isArray(page?.data) ? page.data : [];
+      if (members.length === 0) break;
 
       membersFetched += members.length;
       const ids = members.map((m) => m.id).filter(Boolean);
@@ -344,9 +374,10 @@ module.exports = async (req, res) => {
         eventsSkipped += r.eventsSkipped || 0;
       }
 
-      if (members.length < PAGE_SIZE) break;
-      after = members[members.length - 1]?.id;
-      if (!after) break;
+      if (!page?.hasNextPage) break;
+      after = page.endCursor;
+      if (after == null) break;
+      await sleep(PAGE_PAUSE_MS);
     }
 
     return res.status(200).json({
@@ -357,9 +388,8 @@ module.exports = async (req, res) => {
       events_skipped: eventsSkipped,
     });
   } catch (err) {
-    console.error("[refresh-api-dir] failed:", err?.message || err);
-    return res.status(500).json({
-      error: err?.message || "Unknown error",
-    });
+    const message = formatErr(err);
+    console.error("[refresh-api-dir] failed:", message);
+    return res.status(500).json({ error: message });
   }
 };

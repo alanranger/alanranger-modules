@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2026-10-18] - Admin refresh: surface Memberstack rate-limit errors
+
+**Problem:** Admin “Refresh Data” returned HTTP 500 `{ "error": "Unknown error" }` in ~6s. Memberstack rate-limits by *throwing a string* (`"Too many requests, please try again later."`). The catch used `err?.message`, which is undefined for string throws, so the UI hid the real cause. Concurrent retrieve (8-wide) also provoked the limit quickly.
+
+**Fix:**
+- `formatErr()` handles string / `{message}` / `{error}` throws
+- Retry with backoff on rate limits; concurrency 8 → 2; pause between pages
+- Paginate with `endCursor` + `hasNextPage` (Memberstack Admin SDK 1.7)
+- `pages/api/admin/refresh.js` delegates to `api/admin/refresh.js` with `maxDuration: 300`
+
+**Files:** `api/admin/refresh.js`, `pages/api/admin/refresh.js`, `lib/refreshErrors.js`, `tests/refresh-format-err.test.js`
+
+---
+
 ## [2026-10-12] - Hourly refresh: skip unchanged module_open upserts
 
 **Problem:** `/api/admin/refresh` (hourly cron) re-upserted every Memberstack `module_open` for every member (~1,685 Supabase API calls/hour → ~1.4M/month). Admin/member dashboards only need new or newer opens; live clicks already write via `track-tile-open`.
