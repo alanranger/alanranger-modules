@@ -510,6 +510,8 @@ async function rollbackSendSlot(memberId, prevCount) {
 }
 
 async function deliverEmail({ member, content }) {
+  // From/auth via lifecycleSmtpIdentity() inside sendLifecycleMail
+  // (hello@news.alanranger.com From, info@ SMTP login + BCC).
   const cfg = smtpConfig();
   if (!cfg.user || !cfg.pass) {
     return { sent: false, error: "Email not configured" };
