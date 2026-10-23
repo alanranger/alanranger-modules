@@ -13,7 +13,6 @@
 //   secret     — ORPHANED_WEBHOOK_SECRET for manual calls
 
 const { createClient } = require("@supabase/supabase-js");
-const nodemailer = require("nodemailer");
 const { EMAIL_STAGES, getStageByKey } = require("../../lib/emailStages");
 const { buildMemberEmailSnapshot } = require("../../lib/member-email-snapshot");
 const {
@@ -64,11 +63,6 @@ const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
-
-const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
-const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
-const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587", 10);
 
 function parseBool(v, defaultVal) {
   if (v === undefined || v === null || v === "") return defaultVal;

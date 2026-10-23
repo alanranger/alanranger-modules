@@ -5,7 +5,7 @@
 
 const memberstackAdmin = require("@memberstack/admin");
 const nodemailer = require("nodemailer");
-const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
+const { LIFECYCLE_BCC, lifecycleSmtpIdentity } = require("../../lib/lifecycleEmailConfig");
 
 // Get Memberstack key from environment
 const MEMBERSTACK_SECRET_KEY = process.env.MEMBERSTACK_SECRET_KEY;
@@ -16,23 +16,14 @@ if (!MEMBERSTACK_SECRET_KEY) {
 
 const memberstack = memberstackAdmin.init(MEMBERSTACK_SECRET_KEY);
 
-// Email configuration from environment variables
-const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
-const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
-const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
-
-// Create email transporter
+const _smtp = lifecycleSmtpIdentity();
 let emailTransporter = null;
-if (EMAIL_FROM && EMAIL_PASSWORD) {
+if (_smtp.user && _smtp.pass) {
   emailTransporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465, // true for 465, false for other ports
-    auth: {
-      user: EMAIL_FROM,
-      pass: EMAIL_PASSWORD
-    }
+    host: _smtp.host,
+    port: _smtp.port,
+    secure: _smtp.secure,
+    auth: { user: _smtp.user, pass: _smtp.pass },
   });
 }
 
@@ -68,7 +59,7 @@ This is an automated message. Your account was created ${member.hours_since_crea
 
   try {
     const info = await emailTransporter.sendMail({
-      from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+      from: _smtp.fromHeader,
       to: member.email,
       bcc: LIFECYCLE_BCC,
       subject: emailSubject,

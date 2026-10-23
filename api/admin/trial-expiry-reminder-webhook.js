@@ -80,12 +80,6 @@ if (!MEMBERSTACK_SECRET_KEY) {
 
 const memberstack = memberstackAdmin.init(MEMBERSTACK_SECRET_KEY);
 
-// Email configuration from environment variables
-const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
-const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
-const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587");
-
 // Every trial reminder email links to the Academy dashboard. The dashboard
 // snippet detects the trial state and opens the upgrade modal with SAVE20
 // auto-applied inside the grace window. Using a single URL keeps the

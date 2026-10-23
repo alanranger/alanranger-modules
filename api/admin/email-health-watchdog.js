@@ -4,7 +4,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
 const { londonHour } = require("../../lib/london-trial-days");
-const { LIFECYCLE_BCC } = require("../../lib/lifecycleEmailConfig");
+const { LIFECYCLE_BCC, lifecycleSmtpIdentity } = require("../../lib/lifecycleEmailConfig");
 const { detectTriggerSource } = require("../../lib/emailCronHeartbeat");
 const { DELIVERED_STATUSES } = require("../../lib/emailEvents");
 const {
@@ -21,10 +21,6 @@ const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
-const EMAIL_FROM = process.env.ORPHANED_EMAIL_FROM || process.env.EMAIL_FROM;
-const EMAIL_PASSWORD = process.env.ORPHANED_EMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const EMAIL_SMTP_HOST = process.env.EMAIL_SMTP_HOST || "smtp.gmail.com";
-const EMAIL_SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || "587", 10);
 
 const WATCHDOG_TO = process.env.EMAIL_WATCHDOG_TO || LIFECYCLE_BCC;
 
@@ -102,15 +98,17 @@ function eventsForStage(events, key) {
 }
 
 async function sendWatchdogMail(subject, text, html) {
-  if (!EMAIL_FROM || !EMAIL_PASSWORD) throw new Error("Email SMTP not configured");
+  // Internal admin alert: auth as info@, From stays on info@ (not news subdomain).
+  const cfg = lifecycleSmtpIdentity();
+  if (!cfg.user || !cfg.pass) throw new Error("Email SMTP not configured");
   const transporter = nodemailer.createTransport({
-    host: EMAIL_SMTP_HOST,
-    port: EMAIL_SMTP_PORT,
-    secure: EMAIL_SMTP_PORT === 465,
-    auth: { user: EMAIL_FROM, pass: EMAIL_PASSWORD },
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    auth: { user: cfg.user, pass: cfg.pass },
   });
   return transporter.sendMail({
-    from: `"Alan Ranger Photography Academy" <${EMAIL_FROM}>`,
+    from: `"Alan Ranger Photography Academy" <${cfg.user}>`,
     to: WATCHDOG_TO,
     subject,
     text,
