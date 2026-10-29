@@ -1952,7 +1952,19 @@ function assertSpacedCss(html, label) {
   if (hits.length) throw new Error(`${label}: compressed CSS (add spaces inside { }): ${hits[0]}`);
 }
 
+function assertSpacedJs(html, label) {
+  const hits = [];
+  String(html).replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (_, js) => {
+    const re = /\{[^\s{}]+\}|\$\{[^\s{}]+\}/g;
+    let m;
+    while ((m = re.exec(js))) hits.push(m[0]);
+    return _;
+  });
+  if (hits.length) throw new Error(`${label}: compressed JS (add spaces inside { } / \${ }): ${hits[0]}`);
+}
+
 assertSpacedCss(snippet, "foundation snippet");
+assertSpacedJs(snippet, "foundation snippet");
 fs.writeFileSync(OUT, snippet, "utf8");
 console.log("OK: wrote", OUT);
 execSync("node scripts/sync-badge-gates-to-snippets.mjs", { cwd: root, stdio: "inherit" });
